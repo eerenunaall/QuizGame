@@ -3,4 +3,3 @@ import { fileURLToPath } from 'node:url';
 import { cssVariables } from './tokens';
 
 writeFileSync(fileURLToPath(new URL('./tokens.css', import.meta.url)), cssVariables());
-console.log('tokens.css written');
