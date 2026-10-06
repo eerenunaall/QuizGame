@@ -31,7 +31,7 @@ commitment could be dropped for free after seeing the question):
 ```
 loss = tier.loss                                    # SAFE 0 · RISK 100 · HIGH 200 (RISK round: 200/300 = symmetric "stake lost")
                                                     # FINAL: RISK 150 · HIGH 250 · ALL_IN 400
-if doubleDown: loss = loss + doubleDown.extraLoss    # +100 (base), +stake loss in RISK rounds
+if doubleDown: loss = loss + doubleDown.extraLoss    # default +100 (= the base of a standard question)
 loss = min(loss, player.score)                      # scores never go below 0
 ```
 Unanswered without a stake, or unanswered while disconnected: delta 0.

@@ -11,8 +11,8 @@ without live generation (questions come from the bank).
 ### Interface (no player identity can enter)
 ```ts
 director(input: DirectorInput, cfg: DirectorConfig): DirectorOutput
-DirectorInput  = { roundIndex, totalRounds, currentLevel, recentCorrectPermille[], recentAvgAnswerPermille[],
-                   recentFailureRounds, riskMeter, categoryCounts, history: RoundKind[] }   // aggregates only
+DirectorInput  = { roundIndex, totalRounds, level, recentCorrectPermille[], recentAvgAnswerPermille[],
+                   recentRiskTakePermille[], chaos }                    // room aggregates only
 DirectorOutput = { nextLevel (1000..4000 milli-levels), bucket (EASY|MEDIUM|HARD|EXPERT),
                    specialEventPermille, riskIntensity (0..3), roundKind, chaos }
 ```
@@ -27,7 +27,7 @@ permutation of players. This is the structural form of "no hidden player-targeti
   (`[minLevel(r), maxLevel(r)]`, e.g. no EXPERT before round 5, no EASY after round 7).
 - Variance band: with high chaos the bucket may be ±1 around the target level, still inside the
   corridor, still a *calibrated* bucket – never random impossible questions.
-- `roundKind` is chosen from the allowed kinds for that slot (STANDARD, SPEED, RISK, CROWD) by a seeded
+- Category balance is not a Director input: it is applied at selection time (below). `roundKind` is chosen from the allowed kinds for that slot (STANDARD, SPEED, RISK, CROWD) by a seeded
   draw using `specialEventPermille` and hard constraints: ≤ 2 SPEED per game, ≥ 1 RISK before FINAL,
   no two specials in a row, FINAL always last. SPEED shortens the timer, never the content difficulty.
 - Everything is a pure function of its input + seeded RNG.
@@ -44,6 +44,6 @@ remaining question; if the deck is empty the game ends early with RESULTS (never
 Free-tier hosts get a deck restricted to the rotating free category (ADR-0013).
 
 ## Verification
-fast-check properties: output always inside bounds; level changes ≤ 350 per step; repeated failure
+fast-check properties: output always inside bounds; level changes ≤ `maxStep` (450) per step unless the corridor itself moved; repeated failure
 converges to the corridor floor but keeps buckets ≥ EASY; input has no player keys; permutation
 invariance; selection never repeats a question within a game and respects the corridor.

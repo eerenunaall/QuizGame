@@ -49,4 +49,5 @@ Dependency direction: `shared ← protocol ← game-engine ← apps/realtime`;
 | §7.6 six sabotages | five (Noise excluded, behind a flag) | fairness/policy/accessibility (ADR-0010) | "presentation/decision manipulation" |
 | §6.7 `ENTITLEMENT_GRANTED` | `ENTITLEMENT_CHANGED` only | one event for grant/restore/refund (ADR-0008) | TV unlocks without refresh |
 | §17.3 host = display | display + leader phone | remotes are poor input devices (ADR-0009) | host control separate from ownership |
+| §16 per-phase event names (`QUESTION_PRESENTED`, `REVEAL`, `SCORE_DELTA`, …) | one `PHASE_ENTERED` event whose `data` is the phase-discriminated view (same schema as the snapshot) | one schema for events *and* snapshots; fewer message types; reconnect = same code path (ADR-0008) | every GDD event's information is delivered; mapping table in `docs/PROTOCOL.md` |
 | §4.1 `tests/` per layer | package unit tests colocated + root `tests/` for cross-cutting layers | ergonomics | all layers exist |
