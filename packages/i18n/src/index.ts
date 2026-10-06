@@ -31,7 +31,7 @@ export function hasKey(key: string): key is MessageKey {
  * Looks up `key`; when `params.count` is numeric and `${key}_one` / `${key}_other` exist, the right
  * plural form is used. `{name}` placeholders are substituted; unknown placeholders are left as-is.
  */
-export function translate(locale: Locale, key: MessageKey | string, params: Params = {}): string {
+export function translate(locale: Locale, key: string, params: Params = {}): string {
   const catalog = catalogs[locale];
   let template: string | undefined;
   const lookup = (candidate: string): string | undefined =>
