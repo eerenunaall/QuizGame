@@ -17,6 +17,8 @@ export const FAST_GAME_CONFIG = {
     answerMs: { STANDARD: 1000, SPEED: 1000, RISK: 1000, CROWD: 1000, FINAL: 1000 },
     lockedMs: 50,
     revealMs: 80,
+    revealPerCharMs: 0,
+    revealExplanationMaxMs: 0,
     powerResolutionMs: 50,
     scoreUpdateMs: 80,
     microIntermissionMs: 50,
@@ -38,6 +40,8 @@ export interface TestServer {
 }
 
 export interface StartOptions {
+  /** Listen on a fixed port instead of an ephemeral one (browser tests need the URL up front). */
+  port?: number;
   env?: Record<string, string>;
   gameConfig?: unknown;
   /** Reuse an existing database (for restart/crash-recovery tests). */
@@ -50,7 +54,7 @@ export async function startServer(options: StartOptions = {}): Promise<TestServe
   if (!options.database && options.seed !== false) await seedTestBank(db.db);
   const config = loadConfig({
     NODE_ENV: 'test',
-    PORT: '0',
+    PORT: String(options.port ?? 0),
     HOST: '127.0.0.1',
     DATABASE_URL: db.url,
     QP_ALLOW_DEV_SEED: '1',
@@ -65,7 +69,7 @@ export async function startServer(options: StartOptions = {}): Promise<TestServe
     ...options.env,
   });
   const built = await buildApp({ config });
-  await built.app.listen({ port: 0, host: '127.0.0.1' });
+  await built.app.listen({ port: options.port ?? 0, host: '127.0.0.1' });
   const { port } = built.app.server.address() as AddressInfo;
   let stopped = false;
   const stop = async () => {

@@ -4,6 +4,8 @@ import { createDatabase, createPool, type Database } from '@quizparty/db';
 import type { Pool } from 'pg';
 import type { AppConfig } from './config';
 import { registerRoutes, apiError, type RouteSpec } from './http/routes';
+import { StaticWeb } from './http/static-web';
+import { CategoryCatalogService } from './rooms/catalog';
 import { DeckBuilder } from './rooms/deck-builder';
 import { RoomManager } from './rooms/manager';
 import { SessionService } from './rooms/sessions';
@@ -105,6 +107,10 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   const sessions = new SessionService(db, config.serverSecret, clock);
   const store = new PgRoomStore(db, config.instanceId, config.leaseMs, clock);
   const deckBuilder = new DeckBuilder(db, { allowDevSeed: config.allowDevSeed, clock });
+  const catalog = new CategoryCatalogService(db, deckBuilder, {
+    allowDevSeed: config.allowDevSeed,
+    clock,
+  });
   const telemetry = new DbTelemetrySink(db, onError);
   telemetry.start();
   const security = new SecurityLog(db, clock, metrics, onError);
@@ -149,7 +155,9 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     done();
   });
   app.addHook('onSend', (_request, reply, payload, done) => {
-    void reply.headers(securityHeaders());
+    // Routes that set their own caching or CSP (the static web app) keep it; the API gets the strict defaults.
+    for (const [name, value] of Object.entries(securityHeaders()))
+      if (!reply.hasHeader(name)) void reply.header(name, value);
     done(null, payload);
   });
   app.setNotFoundHandler((_request, reply) => apiError(reply, 404, 'NOT_FOUND'));
@@ -163,7 +171,29 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     return apiError(reply, 500, 'INTERNAL'); // never leak internals or stack traces
   });
 
-  registerRoutes(app, { config, manager, limiter, metrics, pool, migrationsDir: MIGRATIONS_DIR });
+  if (config.serveWeb) {
+    const root = config.webDist ?? fileURLToPath(new URL('../../web/dist', import.meta.url));
+    const publicUrl = new URL(config.publicWebUrl);
+    const web = new StaticWeb({
+      root,
+      webSocketOrigin: `${publicUrl.protocol === 'https:' ? 'wss' : 'ws'}://${publicUrl.host}`,
+      production: config.env === 'production',
+    });
+    await web.init();
+    app.get('/*', { config: { auth: 'public', limit: 'none' } }, (request, reply) =>
+      web.handle(request, reply),
+    );
+  }
+
+  registerRoutes(app, {
+    config,
+    manager,
+    catalog,
+    limiter,
+    metrics,
+    pool,
+    migrationsDir: MIGRATIONS_DIR,
+  });
   await app.ready();
   gateway.attach(app.server);
 

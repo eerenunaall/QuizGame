@@ -3,13 +3,14 @@ import { z } from 'zod';
 import { migrationsCurrent } from '@quizparty/db';
 import { parseRoomCode } from '@quizparty/shared';
 import {
-  ClientInfoSchema,
+  CreateRoomRequestSchema,
   LocaleSchema,
   MIN_SUPPORTED_PROTOCOL_VERSION,
   PROTOCOL_VERSION,
   type ErrorCode,
 } from '@quizparty/protocol';
 import type { AppConfig } from '../config';
+import type { CategoryCatalogService } from '../rooms/catalog';
 import type { RoomManager } from '../rooms/manager';
 import { clientIp } from '../ws/gateway';
 import { pseudonym } from '../security/crypto';
@@ -36,6 +37,7 @@ export interface RouteSpec {
 export interface RouteDeps {
   config: AppConfig;
   manager: RoomManager;
+  catalog: CategoryCatalogService;
   limiter: RateLimiter;
   metrics: Metrics;
   pool: Pool;
@@ -61,10 +63,8 @@ function ipHashOf(request: FastifyRequest, deps: RouteDeps): string {
   );
 }
 
-const CreateRoomBody = z.strictObject({
-  client: ClientInfoSchema,
-  locale: LocaleSchema.optional(),
-});
+const CreateRoomBody = CreateRoomRequestSchema;
+const CatalogQuery = z.strictObject({ language: LocaleSchema.default('tr') });
 
 /**
  * HTTP surface. Every route must declare `config.auth` and `config.limit`; the onRoute guard in
@@ -130,6 +130,19 @@ export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
         display: { sessionId: created.displaySessionId, reconnectToken: created.displayToken },
         maxPlayers: room.state.config.maxPlayers,
       });
+    },
+  );
+
+  app.get(
+    '/v1/categories',
+    { config: { auth: 'public', limit: 'catalog' } },
+    async (request, reply) => {
+      const limit = limiter.take(`catalog:${ipHashOf(request, deps)}`, LIMITS.catalog);
+      if (!limit.allowed)
+        return apiError(reply, 429, 'RATE_LIMITED', { retryAfterMs: limit.retryAfterMs });
+      const query = CatalogQuery.safeParse(request.query);
+      if (!query.success) return apiError(reply, 400, 'INVALID_MESSAGE');
+      return deps.catalog.list(query.data.language);
     },
   );
 

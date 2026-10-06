@@ -77,6 +77,7 @@ export class MemoryRateLimiter implements RateLimiter {
 export const LIMITS = {
   roomCreate: { capacity: 10, refillPerSec: 10 / 3600 },
   roomLookup: { capacity: 30, refillPerSec: 0.5 },
+  catalog: { capacity: 60, refillPerSec: 1 },
   wsConnect: { capacity: 30, refillPerSec: 0.5 },
   join: { capacity: 10, refillPerSec: 0.2 },
   reconnect: { capacity: 30, refillPerSec: 1 },
