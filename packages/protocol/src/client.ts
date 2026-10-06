@@ -4,6 +4,7 @@ import {
   CategoryIdSchema,
   ClientInfoSchema,
   DeviceIdSchema,
+  DifficultyPresetSchema,
   EpochMsSchema,
   NicknameSchema,
   OptionIdSchema,
@@ -12,6 +13,7 @@ import {
   SequenceSchema,
   UuidSchema,
 } from './common';
+import { MAX_ROUNDS, MIN_ROUNDS } from './constants';
 
 /** Envelope fields shared by every client → server message (GDD §16, ADR-0008). */
 export const clientEnvelopeShape = {
@@ -53,7 +55,8 @@ export const CLIENT_PAYLOADS = {
   // Host commands (display session or the room leader only)
   START_GAME: empty,
   SET_SETTINGS: z.strictObject({
-    rounds: z.int().min(3).max(10).optional(),
+    rounds: z.int().min(MIN_ROUNDS).max(MAX_ROUNDS).optional(),
+    difficulty: DifficultyPresetSchema.optional(),
     categories: z.union([z.literal('ALL'), z.array(CategoryIdSchema).min(1).max(24)]).optional(),
   }),
   KICK_PLAYER: z.strictObject({ playerId: PlayerIdSchema }),

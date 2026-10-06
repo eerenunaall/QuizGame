@@ -1,8 +1,11 @@
 import { z } from 'zod';
 import {
   DIFFICULTIES,
+  MAX_ROUNDS,
+  MIN_ROUNDS,
   RISK_TIERS,
   ROUND_KINDS,
+  type DifficultyPreset,
   type RiskTier,
   type RoundKind,
 } from '@quizparty/protocol';
@@ -32,8 +35,15 @@ export const GameConfigSchema = z.strictObject({
   version: z.int().positive(),
   maxPlayers: z.int().min(1).max(8),
   minPlayersToStart: z.int().min(1).max(8),
-  defaultRounds: z.int().min(3).max(10),
-  freeTier: z.strictObject({ maxRounds: z.int().min(3).max(10) }),
+  defaultRounds: z.int().min(MIN_ROUNDS).max(MAX_ROUNDS),
+  /** Hard cap for any room, whatever its tier. */
+  maxRounds: z.int().min(MIN_ROUNDS).max(MAX_ROUNDS),
+  freeTier: z.strictObject({ maxRounds: z.int().min(MIN_ROUNDS).max(MAX_ROUNDS) }),
+  /** The final stage is the last `clamp(floor(total / divisor), 1, maxRounds)` questions (ADR-0020). */
+  finalStage: z.strictObject({
+    divisor: z.int().min(1).max(10),
+    maxRounds: z.int().min(1).max(10),
+  }),
   timings: z.strictObject({
     countdownMs: ms(0, 10_000),
     roundIntroMs: ms(0, 10_000),
@@ -45,6 +55,9 @@ export const GameConfigSchema = z.strictObject({
     answerMs: perKind(ms(1_000, 60_000)),
     lockedMs: ms(0, 5_000),
     revealMs: ms(0, 20_000),
+    /** Extra reveal time per character of the explanation, capped by `revealExplanationMaxMs`. */
+    revealPerCharMs: ms(0, 200),
+    revealExplanationMaxMs: ms(0, 20_000),
     powerResolutionMs: ms(0, 15_000),
     scoreUpdateMs: ms(0, 20_000),
     microIntermissionMs: ms(0, 10_000),
@@ -77,6 +90,12 @@ export const GameConfigSchema = z.strictObject({
   }),
   director: z.strictObject({
     startLevel: z.int().min(1000).max(4000),
+    /** Lobby difficulty preset → milli-levels added to the start level and to every corridor. */
+    presetOffset: z.strictObject({
+      EASY: z.int().min(-2000).max(2000),
+      MEDIUM: z.int().min(-2000).max(2000),
+      HARD: z.int().min(-2000).max(2000),
+    }),
     baselineStep: z.int().min(0).max(1000),
     maxStep: z.int().min(0).max(3000),
     windowRounds: z.int().min(1).max(10),
@@ -118,7 +137,9 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   maxPlayers: 8,
   minPlayersToStart: 2,
   defaultRounds: 10,
-  freeTier: { maxRounds: 6 },
+  maxRounds: 20,
+  freeTier: { maxRounds: 5 },
+  finalStage: { divisor: 3, maxRounds: 5 },
   timings: {
     countdownMs: 3_000,
     roundIntroMs: 2_500,
@@ -130,6 +151,8 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     answerMs: { STANDARD: 15_000, SPEED: 8_000, RISK: 15_000, CROWD: 15_000, FINAL: 12_000 },
     lockedMs: 1_000,
     revealMs: 4_500,
+    revealPerCharMs: 35,
+    revealExplanationMaxMs: 5_000,
     powerResolutionMs: 3_000,
     scoreUpdateMs: 4_000,
     microIntermissionMs: 1_500,
@@ -172,6 +195,7 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   },
   director: {
     startLevel: 1200,
+    presetOffset: { EASY: -400, MEDIUM: 0, HARD: 400 },
     baselineStep: 150,
     maxStep: 450,
     windowRounds: 3,
@@ -208,6 +232,21 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   },
 };
 
+/** Number of questions in the final stage of a game of `totalRounds` questions. */
+export function finalStageLength(totalRounds: number, cfg: Pick<GameConfig, 'finalStage'>): number {
+  const raw = Math.floor(totalRounds / cfg.finalStage.divisor);
+  return Math.max(1, Math.min(cfg.finalStage.maxRounds, raw, totalRounds));
+}
+
+/** Highest round count a room may use: the tier limit, never above the hard cap. */
+export function maxRoundsFor(config: GameConfig, tier: 'FREE' | 'FULL'): number {
+  return tier === 'FREE' ? Math.min(config.freeTier.maxRounds, config.maxRounds) : config.maxRounds;
+}
+
+export function presetOffset(config: GameConfig, preset: DifficultyPreset): number {
+  return config.director.presetOffset[preset];
+}
+
 export function parseGameConfig(input: unknown): GameConfig {
   return GameConfigSchema.parse(input);
 }
@@ -234,6 +273,15 @@ function deepMerge(base: unknown, override: unknown): unknown {
     out[key] = key in base ? deepMerge(base[key], value) : value;
   }
   return out;
+}
+
+/**
+ * Which stake ladder governs a round. Every final-stage question pays the final's higher base and
+ * speed points, but the mandatory all-or-nothing ladder is reserved for the very last question so a
+ * five-question final does not become a coin flip (ADR-0020).
+ */
+export function ladderKindFor(kind: RoundKind, isLastRound: boolean): RoundKind {
+  return kind === 'FINAL' && !isLastRound ? 'STANDARD' : kind;
 }
 
 /** Tier that applies when a player has not chosen one: the lowest tier the ladder offers. */

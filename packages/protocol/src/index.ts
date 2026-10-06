@@ -6,3 +6,4 @@ export * from './errors';
 export * from './forbidden';
 export * from './server';
 export * from './views';
+export * from './http';

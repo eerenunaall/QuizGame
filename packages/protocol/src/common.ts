@@ -3,6 +3,7 @@ import {
   AVATAR_IDS,
   CLOSE_REASONS,
   DIFFICULTIES,
+  DIFFICULTY_PRESETS,
   LOCALES,
   MAX_NICKNAME_LENGTH,
   MIN_NICKNAME_LENGTH,
@@ -32,6 +33,7 @@ export const NicknameSchema = z
 
 export const PhaseSchema = z.enum(PHASES);
 export const DifficultySchema = z.enum(DIFFICULTIES);
+export const DifficultyPresetSchema = z.enum(DIFFICULTY_PRESETS);
 export const RoundKindSchema = z.enum(ROUND_KINDS);
 export const RiskTierSchema = z.enum(RISK_TIERS);
 export const TierSchema = z.enum(TIERS);

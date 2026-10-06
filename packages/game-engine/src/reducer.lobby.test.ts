@@ -141,7 +141,7 @@ describe('lobby commands', () => {
   it('lets only the display or the leader change settings, clamped by tier', () => {
     const free = new Harness({ tier: 'FREE' });
     const [leader, other] = free.joinPlayers(2) as [string, string];
-    expect(free.state.settings.rounds).toBe(6);
+    expect(free.state.settings.rounds).toBe(5);
     expect(
       free.command(free.actor(other), { type: 'SET_SETTINGS', payload: { rounds: 4 } }),
     ).toEqual({
@@ -151,7 +151,7 @@ describe('lobby commands', () => {
     expect(
       free.command(free.actor(leader), { type: 'SET_SETTINGS', payload: { rounds: 10 } }).ok,
     ).toBe(true);
-    expect(free.state.settings.rounds).toBe(6); // FREE tier cap
+    expect(free.state.settings.rounds).toBe(5); // FREE tier cap
     expect(
       free.command(free.displayActor(), {
         type: 'SET_SETTINGS',
@@ -318,7 +318,7 @@ describe('starting a game', () => {
     const h = new Harness({ tier: 'FREE' });
     h.joinPlayers(2);
     h.start();
-    expect(h.state.game!.totalRounds).toBe(6);
+    expect(h.state.game!.totalRounds).toBe(5);
   });
 });
 
@@ -379,7 +379,7 @@ describe('entitlement changes', () => {
     h.command(h.actor(a), { type: 'SET_SETTINGS', payload: { rounds: 10 } });
     h.apply({ kind: 'ENTITLEMENT', tier: 'FREE', hostAccountId: null });
     expect(h.state.tier).toBe('FREE');
-    expect(h.state.settings.rounds).toBe(6);
+    expect(h.state.settings.rounds).toBe(5);
     expect(events(h, 'ENTITLEMENT_CHANGED').at(-1)).toEqual({ tier: 'FREE', reason: 'REVOKED' });
     h.apply({ kind: 'ENTITLEMENT', tier: 'FULL', hostAccountId: 'acc-1' });
     expect(h.state.hostAccountId).toBe('acc-1');

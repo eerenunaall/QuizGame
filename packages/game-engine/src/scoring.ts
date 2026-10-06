@@ -8,6 +8,8 @@ import { defaultTier, type GameConfig } from './config';
  */
 export interface ScoreInput {
   roundKind: RoundKind;
+  /** Ladder that applies; defaults to the round kind (see `ladderKindFor`). */
+  ladderKind?: RoundKind;
   answered: boolean;
   correct: boolean;
   /** Milliseconds left on the clock at acceptance (0..answerMs). Ignored when not answered. */
@@ -39,9 +41,12 @@ export function speedBonus(speedMax: number, remainingMs: number, answerMs: numb
 export function computeScore(input: ScoreInput, config: GameConfig): ScoreResult {
   const { scoring } = config;
   const kind = input.roundKind;
-  const ladder = scoring.ladders[kind];
+  const ladderKind = input.ladderKind ?? kind;
+  const ladder = scoring.ladders[ladderKind];
   const tier =
-    input.stake !== undefined && ladder[input.stake] ? input.stake : defaultTier(config, kind);
+    input.stake !== undefined && ladder[input.stake]
+      ? input.stake
+      : defaultTier(config, ladderKind);
   const rule = ladder[tier] ?? { multiplier: 1, loss: 0 };
   const components: ScoreComponent[] = [];
 

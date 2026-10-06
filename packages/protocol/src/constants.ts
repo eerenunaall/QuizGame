@@ -7,6 +7,8 @@ export const MAX_CLIENT_MESSAGE_BYTES = 16 * 1024;
 export const MAX_NICKNAME_LENGTH = 16;
 export const MIN_NICKNAME_LENGTH = 2;
 export const MAX_PLAYERS_LIMIT = 8;
+export const MIN_ROUNDS = 3;
+export const MAX_ROUNDS = 20;
 
 export const PHASES = [
   'WAITING',
@@ -30,6 +32,10 @@ export type Phase = (typeof PHASES)[number];
 
 export const DIFFICULTIES = ['EASY', 'MEDIUM', 'HARD', 'EXPERT'] as const;
 export type Difficulty = (typeof DIFFICULTIES)[number];
+
+/** Lobby difficulty presets: they shift the director's band, they never pick questions per player. */
+export const DIFFICULTY_PRESETS = ['EASY', 'MEDIUM', 'HARD'] as const;
+export type DifficultyPreset = (typeof DIFFICULTY_PRESETS)[number];
 
 export const ROUND_KINDS = ['STANDARD', 'SPEED', 'RISK', 'CROWD', 'FINAL'] as const;
 export type RoundKind = (typeof ROUND_KINDS)[number];
@@ -72,5 +78,13 @@ export const AVATAR_IDS = [
   'unicorn',
   'dragon',
   'robot',
+  'octopus',
+  'alien',
+  'ghost',
+  'cool',
+  'nerd',
+  'cowboy',
+  'chick',
+  'whale',
 ] as const;
 export type AvatarId = (typeof AVATAR_IDS)[number];

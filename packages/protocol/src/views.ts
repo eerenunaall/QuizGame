@@ -4,6 +4,7 @@ import {
   CategoryIdSchema,
   CloseReasonSchema,
   ConnectionSchema,
+  DifficultyPresetSchema,
   DifficultySchema,
   EpochMsSchema,
   LocaleSchema,
@@ -16,6 +17,7 @@ import {
   TierSchema,
   UuidSchema,
 } from './common';
+import { MAX_ROUNDS, MIN_ROUNDS } from './constants';
 
 /**
  * Views are what clients may see. Every schema is `strictObject`: the server builds views from
@@ -37,7 +39,8 @@ export type PublicPlayer = z.infer<typeof PublicPlayerSchema>;
 
 export const LobbySettingsSchema = z.strictObject({
   mode: z.enum(['CLASSIC']),
-  rounds: z.int().min(3).max(10),
+  rounds: z.int().min(MIN_ROUNDS).max(MAX_ROUNDS),
+  difficulty: DifficultyPresetSchema,
   categories: z.union([z.literal('ALL'), z.array(CategoryIdSchema).min(1).max(24)]),
 });
 export type LobbySettings = z.infer<typeof LobbySettingsSchema>;
@@ -47,6 +50,10 @@ export const RoundPublicSchema = z.strictObject({
   total: z.int().positive(),
   kind: RoundKindSchema,
   isFinal: z.boolean(),
+  /** Position inside the final stage (1-based) and its length; null outside the final stage. */
+  finalStage: z
+    .strictObject({ position: z.int().positive(), length: z.int().positive() })
+    .nullable(),
   basePoints: z.int().positive(),
   speedMax: z.int().nonnegative(),
   answerMs: z.int().positive(),
@@ -260,6 +267,8 @@ export const RoomViewSchema = z.strictObject({
   tier: TierSchema,
   contentLanguage: LocaleSchema,
   maxPlayers: z.int().min(1).max(8),
+  /** What the current tier allows, so the lobby can lock options instead of hiding them. */
+  limits: z.strictObject({ maxRounds: z.int().min(MIN_ROUNDS).max(MAX_ROUNDS) }),
   settings: LobbySettingsSchema,
   displayConnected: z.boolean(),
   awaitingDisplay: z.boolean(),

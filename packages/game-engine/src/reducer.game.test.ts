@@ -30,8 +30,11 @@ describe('phase flow', () => {
       'SCORE_UPDATE',
       'MICRO_INTERMISSION',
     ];
-    const finalRound: Phase[] = [
-      'FINAL',
+    // The final stage of a 10-question game is questions 8–10: the splash plays once, before the first.
+    const finalOpening: Phase[] = [...perRound];
+    finalOpening[0] = 'FINAL';
+    const finalLast: Phase[] = [
+      'ROUND_INTRO',
       'QUESTION_PREP',
       'QUESTION',
       'ANSWERING',
@@ -40,12 +43,14 @@ describe('phase flow', () => {
       'SCORE_UPDATE',
       'RESULTS',
     ];
-    // LOBBY (three joins start with LOBBY once) + COUNTDOWN, nine standard rounds, the final.
+    // LOBBY (three joins start with LOBBY once) + COUNTDOWN, seven standard rounds, three final.
     expect(phases).toEqual([
       'LOBBY',
       'COUNTDOWN',
-      ...Array(9).fill(perRound).flat(),
-      ...finalRound,
+      ...Array(7).fill(perRound).flat(),
+      ...finalOpening,
+      ...perRound,
+      ...finalLast,
     ]);
     expect(h.state.game!.roundIndex).toBe(9);
     expect(h.state.game!.round!.kind).toBe('FINAL');
@@ -58,7 +63,7 @@ describe('phase flow', () => {
     h.start();
     const seen = new Set<string>();
     for (let round = 0; round < 10; round++) {
-      h.runUntil(round === 9 ? 'FINAL' : 'ROUND_INTRO');
+      h.runUntil(round === 7 ? 'FINAL' : 'ROUND_INTRO');
       const id = h.round().questionId;
       expect(seen.has(id), `round ${round} repeated ${id}`).toBe(false);
       seen.add(id);
@@ -202,6 +207,42 @@ describe('answer timing (ADR-0006)', () => {
       deadline + 5_000,
     );
     expect(result).toEqual({ ok: false, code: 'ANSWER_LATE' });
+  });
+});
+
+describe('reveal timing', () => {
+  const revealDuration = (h: Harness): number => {
+    h.runUntil('REVEAL');
+    return h.state.phaseDeadlineAt! - h.state.phaseEnteredAt;
+  };
+  const harnessWith = (timings: Record<string, number>, deck = makeDeck()) => {
+    const h = new Harness({ config: testConfig({ timings }) });
+    h.joinPlayers(2);
+    h.startWith(deck);
+    return h;
+  };
+
+  it('gives players time to read the explanation, per character', () => {
+    const h = harnessWith({ revealMs: 1000, revealPerCharMs: 10, revealExplanationMaxMs: 5000 });
+    const duration = revealDuration(h);
+    const explanation = h.round().question!.explanation!;
+    expect(explanation.length).toBeGreaterThan(0);
+    expect(duration).toBe(1000 + explanation.length * 10);
+  });
+
+  it('caps the extra reading time', () => {
+    const h = harnessWith({ revealMs: 1000, revealPerCharMs: 200, revealExplanationMaxMs: 300 });
+    expect(revealDuration(h)).toBe(1300);
+  });
+
+  it('adds nothing when the question has no explanation', () => {
+    const deck = makeDeck();
+    for (const question of Object.values(deck.questions)) question.explanation = null;
+    const h = harnessWith(
+      { revealMs: 1000, revealPerCharMs: 200, revealExplanationMaxMs: 5000 },
+      deck,
+    );
+    expect(revealDuration(h)).toBe(1000);
   });
 });
 
@@ -369,9 +410,11 @@ describe('final round, results and rematch', () => {
     const h = new Harness();
     const [a] = h.joinPlayers(2) as [string, string];
     h.start();
-    h.runUntil('ANSWERING');
-    h.answer(a, 'correct');
-    h.runUntil('RESULTS');
+    for (let i = 0; i < 10; i++) {
+      h.runUntil('ANSWERING');
+      h.answer(a, 'correct');
+      h.runUntil(i === 9 ? 'RESULTS' : 'MICRO_INTERMISSION');
+    }
     const oldGame = h.state.game!.gameId;
     expect(h.state.game!.players[a]!.score).toBeGreaterThan(0);
 

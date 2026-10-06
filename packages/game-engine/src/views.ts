@@ -6,6 +6,7 @@ import type {
   ScoreboardEntry,
   YouView,
 } from '@quizparty/protocol';
+import { maxRoundsFor } from './config';
 import { rankPlayers } from './rank';
 import type { Actor, RoomState } from './types';
 
@@ -52,12 +53,19 @@ export function isHostActor(state: RoomState, actor: Actor): boolean {
 }
 
 function roundPublic(state: RoomState): RoundPublic {
-  const round = state.game!.round!;
+  const game = state.game!;
+  const round = game.round!;
   return {
     index: round.index,
-    total: state.game!.totalRounds,
+    total: game.totalRounds,
     kind: round.kind,
     isFinal: round.isFinal,
+    finalStage: round.isFinal
+      ? {
+          position: round.index - (game.totalRounds - game.finalLength) + 1,
+          length: game.finalLength,
+        }
+      : null,
     basePoints: round.basePoints,
     speedMax: round.speedMax,
     answerMs: round.answerMs,
@@ -246,9 +254,11 @@ export function roomView(state: RoomState, viewer: Viewer, now: number): RoomVie
     tier: state.tier,
     contentLanguage: state.contentLanguage,
     maxPlayers: state.config.maxPlayers,
+    limits: { maxRounds: maxRoundsFor(state.config, state.tier) },
     settings: {
       mode: state.settings.mode,
       rounds: state.settings.rounds,
+      difficulty: state.settings.difficulty,
       categories: state.settings.categories === 'ALL' ? 'ALL' : [...state.settings.categories],
     },
     displayConnected: state.display.connected,

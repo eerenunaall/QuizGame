@@ -1,7 +1,17 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { answerColors, colors, cssVariables, playerColor, playerColors } from './tokens';
+import {
+  answerColors,
+  colors,
+  cssVariables,
+  fonts,
+  gradients,
+  mix,
+  playerColor,
+  playerColors,
+  shades,
+} from './tokens';
 
 /** WCAG relative luminance contrast ratio. */
 function contrast(foreground: string, background: string): number {
@@ -41,5 +51,33 @@ describe('design tokens', () => {
     expect(playerColor(8)).toBe(colors.player8);
     expect(playerColor(99)).toBe(colors.player8);
     expect(playerColor(0)).toBe(colors.player1);
+  });
+
+  it('derives highlight, shade and lip colours that stay on the same hue family', () => {
+    expect(mix('#000000', '#ffffff', 0.5)).toBe('#808080');
+    expect(mix('#102030', '#102030', 0.7)).toBe('#102030');
+    const { hi, lo, edge } = shades(colors.answerA);
+    expect(contrast(hi, colors.background)).toBeGreaterThan(
+      contrast(colors.answerA, colors.background),
+    );
+    expect(contrast(lo, colors.background)).toBeLessThan(
+      contrast(colors.answerA, colors.background),
+    );
+    expect(contrast(edge, colors.background)).toBeLessThan(contrast(lo, colors.background));
+    expect(gradients.answerA).toContain(hi);
+    expect(gradients.answerA).toContain(lo);
+  });
+
+  it('puts the answer colours in distinct hue families and keeps white labels readable on them', () => {
+    expect(new Set(answerColors).size).toBe(4);
+    // white letter badges and answer text sit on the glossy lower half of the card
+    for (const color of answerColors)
+      expect(contrast('#ffffff', shades(color).lo)).toBeGreaterThan(2.2);
+  });
+
+  it('names only fonts that carry the Turkish alphabet', () => {
+    expect(fonts.display).toContain('Paytone One');
+    expect(fonts.body).toContain('Baloo 2');
+    expect(`${fonts.display}${fonts.body}`).not.toMatch(/Fredoka|Titan/u);
   });
 });

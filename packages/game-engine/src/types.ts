@@ -127,6 +127,8 @@ export interface GamePlayerState {
 
 export interface DirectorState {
   level: number;
+  /** Lobby difficulty preset in milli-levels, fixed when the game starts. */
+  levelOffset: number;
   chaos: number;
   recentCorrectPermille: number[];
   recentAvgAnswerPermille: number[];
@@ -160,6 +162,8 @@ export interface GameState {
   gameId: string;
   startedAt: EpochMs;
   totalRounds: number;
+  /** Length of the final stage (the last questions of the game), fixed when the game starts. */
+  finalLength: number;
   /** PRIVATE: contains correct answers. */
   deck: Deck;
   director: DirectorState;

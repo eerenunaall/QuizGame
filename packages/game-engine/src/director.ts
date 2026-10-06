@@ -35,6 +35,10 @@ export interface DirectorInput {
   /** Share of players who took a stake above the lowest tier, per completed round (permille). */
   recentRiskTakePermille: readonly number[];
   chaos: number;
+  /** Number of questions in the final stage (the last ones of the game). */
+  finalLength: number;
+  /** Lobby difficulty preset expressed in milli-levels; shifts the corridor, never a person. */
+  levelOffset: number;
 }
 
 export interface DirectorOutput {
@@ -53,21 +57,37 @@ const mean = (values: readonly number[]): number =>
     ? 0
     : Math.floor(values.reduce((sum, value) => sum + value, 0) / values.length);
 
+export function isFinalRound(
+  roundIndex: number,
+  totalRounds: number,
+  finalLength: number,
+): boolean {
+  return roundIndex >= totalRounds - finalLength;
+}
+
 export function corridorFor(
   cfg: GameConfig['director'],
   roundIndex: number,
   totalRounds: number,
+  finalLength: number,
+  levelOffset = 0,
 ): readonly [number, number] {
-  const isFinal = roundIndex >= totalRounds - 1;
-  if (isFinal) return cfg.finalCorridor;
-  const nonFinal = totalRounds - 1;
-  const last = cfg.corridors.length - 1;
-  const index = nonFinal <= 1 ? 0 : Math.round((roundIndex * last) / (nonFinal - 1));
-  return cfg.corridors[clamp(index, 0, last)]!;
+  let base: readonly [number, number];
+  if (isFinalRound(roundIndex, totalRounds, finalLength)) base = cfg.finalCorridor;
+  else {
+    const nonFinal = totalRounds - finalLength;
+    const last = cfg.corridors.length - 1;
+    const index = nonFinal <= 1 ? 0 : Math.round((roundIndex * last) / (nonFinal - 1));
+    base = cfg.corridors[clamp(index, 0, last)]!;
+  }
+  if (levelOffset === 0) return base;
+  const low = clamp(base[0] + levelOffset, LEVEL_MIN, LEVEL_MAX);
+  const high = clamp(base[1] + levelOffset, LEVEL_MIN, LEVEL_MAX);
+  return low <= high ? [low, high] : [high, high];
 }
 
 export function direct(input: DirectorInput, cfg: GameConfig['director']): DirectorOutput {
-  const isFinal = input.roundIndex >= input.totalRounds - 1;
+  const isFinal = isFinalRound(input.roundIndex, input.totalRounds, input.finalLength);
   const correct = input.recentCorrectPermille.slice(-cfg.windowRounds);
 
   let adjust = 0;
@@ -86,7 +106,13 @@ export function direct(input: DirectorInput, cfg: GameConfig['director']): Direc
 
   const baseline = input.roundIndex === 0 ? 0 : cfg.baselineStep;
   const step = clamp(baseline + adjust, -cfg.maxStep, cfg.maxStep);
-  const corridor = corridorFor(cfg, input.roundIndex, input.totalRounds);
+  const corridor = corridorFor(
+    cfg,
+    input.roundIndex,
+    input.totalRounds,
+    input.finalLength,
+    input.levelOffset,
+  );
   const level = clamp(input.level + step, corridor[0], corridor[1]);
 
   let chaos = input.chaos;
@@ -130,6 +156,7 @@ export function direct(input: DirectorInput, cfg: GameConfig['director']): Direc
 export interface RoundKindInput {
   roundIndex: number;
   totalRounds: number;
+  finalLength: number;
   history: readonly RoundKind[];
   specialEventPermille: number;
   riskIntensity: number;
@@ -137,7 +164,7 @@ export interface RoundKindInput {
 
 /**
  * Picks the kind of the coming round. Hard constraints (never violated, whatever the dice say):
- * FINAL is last, nothing special in rounds 1–2, no two specials in a row, per-kind caps, and a RISK
+ * the final stage comes last, nothing special in rounds 1–2, no two specials in a row, per-kind caps, and a RISK
  * round before the final in games long enough to host one.
  */
 export function chooseRoundKind(
@@ -145,10 +172,10 @@ export function chooseRoundKind(
   cfg: GameConfig['director'],
   rng: Rng,
 ): RoundKind {
-  if (input.roundIndex >= input.totalRounds - 1) return 'FINAL';
+  if (isFinalRound(input.roundIndex, input.totalRounds, input.finalLength)) return 'FINAL';
   const count = (kind: RoundKind): number => input.history.filter((entry) => entry === kind).length;
   const previous = input.history.at(-1);
-  const nonFinalLeft = input.totalRounds - 1 - input.roundIndex; // includes this round
+  const nonFinalLeft = input.totalRounds - input.finalLength - input.roundIndex; // includes this round
 
   const riskAllowed = count('RISK') < cfg.maxRiskRounds;
   if (

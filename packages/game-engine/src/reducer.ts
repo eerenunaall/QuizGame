@@ -1,9 +1,16 @@
 import { produce, type Draft } from 'immer';
 import { Rng, clamp, rngStateFromSeed } from '@quizparty/shared';
 import type { CloseReason, ErrorCode, ServerEvent, Tier } from '@quizparty/protocol';
-import { resolveGameConfig, type GameConfig } from './config';
+import {
+  finalStageLength,
+  ladderKindFor,
+  maxRoundsFor,
+  presetOffset,
+  resolveGameConfig,
+  type GameConfig,
+} from './config';
 import { deckSize, selectQuestionId } from './deck';
-import { chooseRoundKind, direct } from './director';
+import { LEVEL_MAX, LEVEL_MIN, chooseRoundKind, direct } from './director';
 import { rankPlayers } from './rank';
 import { computeScore } from './scoring';
 import { isInGamePhase } from './timers';
@@ -51,10 +58,7 @@ export interface CreateRoomParams {
 export function createRoom(params: CreateRoomParams): RoomState {
   const config = params.config ?? resolveGameConfig();
   const tier = params.tier ?? 'FREE';
-  const rounds =
-    tier === 'FREE'
-      ? Math.min(config.defaultRounds, config.freeTier.maxRounds)
-      : config.defaultRounds;
+  const rounds = Math.min(config.defaultRounds, maxRoundsFor(config, tier));
   return {
     schemaVersion: 1,
     roomId: params.roomId,
@@ -68,7 +72,7 @@ export function createRoom(params: CreateRoomParams): RoomState {
     tier,
     hostAccountId: params.hostAccountId ?? null,
     contentLanguage: params.contentLanguage ?? 'tr',
-    settings: { mode: 'CLASSIC', rounds, categories: 'ALL' },
+    settings: { mode: 'CLASSIC', rounds, difficulty: 'MEDIUM', categories: 'ALL' },
     config,
     display: { sessionId: params.displaySessionId, connected: false, disconnectedAt: params.now },
     awaitingDisplay: false,
@@ -458,13 +462,14 @@ function onCommand(
       if (!isHost) return reject(ctx, 'NOT_HOST');
       if (d.phase !== 'LOBBY' && d.phase !== 'WAITING' && d.phase !== 'RESULTS')
         return reject(ctx, 'INVALID_STATE');
-      const maxRounds = d.tier === 'FREE' ? d.config.freeTier.maxRounds : 10;
+      const maxRounds = maxRoundsFor(d.config, d.tier);
       const rounds =
         command.payload.rounds === undefined
           ? d.settings.rounds
           : Math.min(command.payload.rounds, maxRounds);
       const categories = command.payload.categories ?? d.settings.categories;
       d.settings.rounds = rounds;
+      d.settings.difficulty = command.payload.difficulty ?? d.settings.difficulty;
       d.settings.categories = categories === 'ALL' ? 'ALL' : [...categories];
       touch(d, at);
       emit(
@@ -520,6 +525,7 @@ function structuredSettings(d: Room) {
   return {
     mode: d.settings.mode,
     rounds: d.settings.rounds,
+    difficulty: d.settings.difficulty,
     categories: d.settings.categories === 'ALL' ? ('ALL' as const) : [...d.settings.categories],
   };
 }
@@ -531,7 +537,7 @@ function connectedPlayerCount(d: Room): number {
 function requestDeck(d: Room, ctx: Ctx, purpose: 'START' | 'REMATCH', actor: Actor): void {
   if (connectedPlayerCount(d) < d.config.minPlayersToStart)
     return reject(ctx, 'NOT_ENOUGH_PLAYERS');
-  const maxRounds = d.tier === 'FREE' ? d.config.freeTier.maxRounds : 10;
+  const maxRounds = maxRoundsFor(d.config, d.tier);
   const request: DeckRequest = {
     rounds: Math.min(d.settings.rounds, maxRounds),
     categories: d.settings.categories === 'ALL' ? 'ALL' : [...d.settings.categories],
@@ -553,19 +559,22 @@ function onBeginGame(d: Room, ctx: Ctx, input: Extract<EngineInput, { kind: 'BEG
   if (connectedPlayerCount(d) < d.config.minPlayersToStart)
     return reject(ctx, 'NOT_ENOUGH_PLAYERS');
 
-  const maxRounds = d.tier === 'FREE' ? d.config.freeTier.maxRounds : 10;
+  const maxRounds = maxRoundsFor(d.config, d.tier);
   const totalRounds = Math.min(d.settings.rounds, maxRounds);
   if (deckSize(input.deck) < totalRounds) return reject(ctx, 'NOT_ENOUGH_QUESTIONS');
 
   if (input.config) d.config = input.config;
   const participants = activePlayerList(d);
+  const levelOffset = presetOffset(d.config, d.settings.difficulty);
   d.game = {
     gameId: input.gameId,
     startedAt: at,
     totalRounds,
+    finalLength: finalStageLength(totalRounds, d.config),
     deck: input.deck,
     director: {
-      level: d.config.director.startLevel,
+      level: Math.max(LEVEL_MIN, Math.min(LEVEL_MAX, d.config.director.startLevel + levelOffset)),
+      levelOffset,
       chaos: 0,
       recentCorrectPermille: [],
       recentAvgAnswerPermille: [],
@@ -724,6 +733,7 @@ function lockRound(d: Room, _ctx: Ctx, at: number): void {
     const score = computeScore(
       {
         roundKind: round.kind,
+        ladderKind: ladderKindFor(round.kind, round.index === game.totalRounds - 1),
         answered: answer !== undefined,
         correct: answer !== undefined && answer.optionId === question.correctOptionId,
         remainingMs: answer?.remainingMs ?? 0,
@@ -816,8 +826,13 @@ function advancePhase(d: Room, ctx: Ctx, at: number): void {
     }
     case 'ANSWERING':
       return lockRound(d, ctx, at);
-    case 'LOCKED':
-      return enterPhase(d, 'REVEAL', at, t.revealMs);
+    case 'LOCKED': {
+      const explanation = d.game!.round!.question!.explanation;
+      const readMs = explanation
+        ? Math.min(explanation.length * t.revealPerCharMs, t.revealExplanationMaxMs)
+        : 0;
+      return enterPhase(d, 'REVEAL', at, t.revealMs + readMs);
+    }
     case 'REVEAL':
       return enterScoreUpdate(d, ctx, at);
     case 'POWER_RESOLUTION':
@@ -854,6 +869,8 @@ function planRound(d: Room, ctx: Ctx, index: number): UpcomingRound {
       recentAvgAnswerPermille: game.director.recentAvgAnswerPermille,
       recentRiskTakePermille: game.director.recentRiskTakePermille,
       chaos: game.director.chaos,
+      finalLength: game.finalLength,
+      levelOffset: game.director.levelOffset,
     },
     cfg.director,
   );
@@ -862,6 +879,7 @@ function planRound(d: Room, ctx: Ctx, index: number): UpcomingRound {
     {
       roundIndex: index,
       totalRounds: game.totalRounds,
+      finalLength: game.finalLength,
       history: game.director.history,
       specialEventPermille: out.specialEventPermille,
       riskIntensity: out.riskIntensity,
@@ -909,6 +927,7 @@ function startRound(d: Room, ctx: Ctx, at: number, plan: UpcomingRound): void {
   const deckQuestion = game.deck.questions[plan.questionId]!;
   const ids = game.deck.remaining[deckQuestion.difficulty];
   game.deck.remaining[deckQuestion.difficulty] = ids.filter((id) => id !== plan.questionId);
+  const previousKind = game.director.history.at(-1);
   game.director.history.push(plan.kind);
   game.director.categoryCounts[deckQuestion.category.id] =
     (game.director.categoryCounts[deckQuestion.category.id] ?? 0) + 1;
@@ -934,7 +953,8 @@ function startRound(d: Room, ctx: Ctx, at: number, plan: UpcomingRound): void {
     outcome: null,
     scoreUpdate: null,
   };
-  if (plan.kind === 'FINAL') enterPhase(d, 'FINAL', at, t.finalIntroMs);
+  // The "Final" splash plays once, before the first question of the final stage.
+  if (plan.kind === 'FINAL' && previousKind !== 'FINAL') enterPhase(d, 'FINAL', at, t.finalIntroMs);
   else enterPhase(d, 'ROUND_INTRO', at, t.roundIntroMs);
 }
 

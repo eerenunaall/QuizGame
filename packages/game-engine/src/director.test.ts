@@ -2,7 +2,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { Rng, rngStateFromSeed } from '@quizparty/shared';
 import { ROUND_KINDS, type RoundKind } from '@quizparty/protocol';
-import { DEFAULT_GAME_CONFIG } from './config';
+import { DEFAULT_GAME_CONFIG, finalStageLength, maxRoundsFor, presetOffset } from './config';
 import {
   LEVEL_MAX,
   LEVEL_MIN,
@@ -24,15 +24,22 @@ const start = (overrides: Partial<DirectorInput> = {}): DirectorInput => ({
   recentAvgAnswerPermille: [],
   recentRiskTakePermille: [],
   chaos: 0,
+  finalLength: 1,
+  levelOffset: 0,
   ...overrides,
 });
 
 /** Plays a whole game with a scripted room performance and returns every output. */
-function simulate(correctFor: (round: number) => number, totalRounds = 10): DirectorOutput[] {
+function simulate(
+  correctFor: (round: number) => number,
+  totalRounds = 10,
+  finalLength = 1,
+  levelOffset = 0,
+): DirectorOutput[] {
   const outputs: DirectorOutput[] = [];
   const correct: number[] = [];
   const speed: number[] = [];
-  let level: number = cfg.startLevel;
+  let level: number = Math.max(LEVEL_MIN, Math.min(LEVEL_MAX, cfg.startLevel + levelOffset));
   let chaos = 0;
   for (let round = 0; round < totalRounds; round++) {
     const out = direct(
@@ -44,6 +51,8 @@ function simulate(correctFor: (round: number) => number, totalRounds = 10): Dire
         recentAvgAnswerPermille: speed,
         recentRiskTakePermille: [],
         chaos,
+        finalLength,
+        levelOffset,
       },
       cfg,
     );
@@ -87,14 +96,14 @@ describe('direct', () => {
   it('repeated total failure never produces an unplayable or out-of-corridor question', () => {
     const outputs = simulate(() => 0);
     outputs.forEach((out, round) => {
-      const [low, high] = corridorFor(cfg, round, 10);
+      const [low, high] = corridorFor(cfg, round, 10, 1);
       expect(out.level).toBeGreaterThanOrEqual(low);
       expect(out.level).toBeLessThanOrEqual(high);
       expect(out.level).toBeGreaterThanOrEqual(LEVEL_MIN);
     });
     expect(outputs.at(-1)!.chaos).toBeLessThanOrEqual(cfg.chaosMax);
     // failure raises chaos (comeback events), it does not make questions harder
-    expect(outputs.at(-1)!.level).toBeLessThanOrEqual(corridorFor(cfg, 9, 10)[1]);
+    expect(outputs.at(-1)!.level).toBeLessThanOrEqual(corridorFor(cfg, 9, 10, 1)[1]);
   });
 
   it('grows the special-event chance with chaos but never in the first two rounds or the final', () => {
@@ -128,8 +137,11 @@ describe('direct', () => {
         fc.array(permille, { maxLength: 10 }),
         fc.array(permille, { maxLength: 10 }),
         fc.integer({ min: 0, max: 20 }),
-        (totalRounds, roundRaw, level, correct, speed, chaos) => {
+        fc.integer({ min: 1, max: 5 }),
+        fc.constantFrom(-400, 0, 400),
+        (totalRounds, roundRaw, level, correct, speed, chaos, finalRaw, levelOffset) => {
           const roundIndex = Math.min(roundRaw, totalRounds - 1);
+          const finalLength = Math.min(finalRaw, totalRounds);
           const out = direct(
             {
               roundIndex,
@@ -139,10 +151,12 @@ describe('direct', () => {
               recentAvgAnswerPermille: speed,
               recentRiskTakePermille: [],
               chaos,
+              finalLength,
+              levelOffset,
             },
             cfg,
           );
-          const [low, high] = corridorFor(cfg, roundIndex, totalRounds);
+          const [low, high] = corridorFor(cfg, roundIndex, totalRounds, finalLength, levelOffset);
           expect(out.level).toBeGreaterThanOrEqual(low);
           expect(out.level).toBeLessThanOrEqual(high);
           expect(out.level % 1).toBe(0);
@@ -163,11 +177,83 @@ describe('direct', () => {
 });
 
 describe('corridorFor', () => {
-  it('scales the corridor table to shorter games and uses the final corridor for the last round', () => {
-    expect(corridorFor(cfg, 9, 10)).toEqual(cfg.finalCorridor);
-    expect(corridorFor(cfg, 5, 6)).toEqual(cfg.finalCorridor);
-    expect(corridorFor(cfg, 0, 6)).toEqual(cfg.corridors[0]);
-    expect(corridorFor(cfg, 4, 6)).toEqual(cfg.corridors.at(-1));
+  it('scales the corridor table to shorter games and uses the final corridor for the final stage', () => {
+    expect(corridorFor(cfg, 9, 10, 1)).toEqual(cfg.finalCorridor);
+    expect(corridorFor(cfg, 5, 6, 1)).toEqual(cfg.finalCorridor);
+    expect(corridorFor(cfg, 0, 6, 1)).toEqual(cfg.corridors[0]);
+    expect(corridorFor(cfg, 4, 6, 1)).toEqual(cfg.corridors.at(-1));
+  });
+
+  it('applies the final corridor to every question of a multi-question final stage', () => {
+    for (const round of [7, 8, 9])
+      expect(corridorFor(cfg, round, 10, 3)).toEqual(cfg.finalCorridor);
+    expect(corridorFor(cfg, 6, 10, 3)).toEqual(cfg.corridors.at(-1));
+    expect(corridorFor(cfg, 0, 10, 3)).toEqual(cfg.corridors[0]);
+    for (const round of [10, 11, 12, 13, 14])
+      expect(corridorFor(cfg, round, 15, 5)).toEqual(cfg.finalCorridor);
+  });
+
+  it('shifts and clamps corridors by the difficulty preset without inverting them', () => {
+    for (let round = 0; round < 10; round++) {
+      for (const offset of [-400, 0, 400, 2000, -2000]) {
+        const [low, high] = corridorFor(cfg, round, 10, 3, offset);
+        expect(low).toBeGreaterThanOrEqual(LEVEL_MIN);
+        expect(high).toBeLessThanOrEqual(LEVEL_MAX);
+        expect(low).toBeLessThanOrEqual(high);
+      }
+    }
+    const [mediumLow] = corridorFor(cfg, 8, 10, 3, 0);
+    expect(corridorFor(cfg, 8, 10, 3, 400)[0]).toBe(mediumLow + 400);
+  });
+});
+
+describe('difficulty presets', () => {
+  const average = (offset: number, correct: number): number => {
+    const outputs = simulate(() => correct, 15, 5, offset);
+    return outputs.reduce((sum, out) => sum + out.level, 0) / outputs.length;
+  };
+
+  it('EASY plays easier than MEDIUM, and MEDIUM easier than HARD, whatever the room does', () => {
+    const easy = presetOffset(DEFAULT_GAME_CONFIG, 'EASY');
+    const medium = presetOffset(DEFAULT_GAME_CONFIG, 'MEDIUM');
+    const hard = presetOffset(DEFAULT_GAME_CONFIG, 'HARD');
+    for (const correct of [100, 550, 950]) {
+      expect(average(easy, correct)).toBeLessThan(average(medium, correct));
+      expect(average(medium, correct)).toBeLessThan(average(hard, correct));
+    }
+  });
+
+  it('keeps adapting inside the preset band instead of freezing the difficulty', () => {
+    const outputs = simulate(() => 950, 15, 5, 400);
+    expect(outputs.at(-1)!.level).toBeGreaterThan(outputs[0]!.level);
+  });
+});
+
+describe('finalStageLength', () => {
+  it.each([
+    [3, 1],
+    [5, 1],
+    [6, 2],
+    [9, 3],
+    [10, 3],
+    [12, 4],
+    [15, 5],
+    [20, 5],
+  ])('a %i-question game ends with %i final question(s)', (total, expected) => {
+    expect(finalStageLength(total, DEFAULT_GAME_CONFIG)).toBe(expected);
+  });
+
+  it('never exceeds the game length and always leaves at least one question outside', () => {
+    for (let total = 3; total <= 20; total++) {
+      const length = finalStageLength(total, DEFAULT_GAME_CONFIG);
+      expect(length).toBeGreaterThanOrEqual(1);
+      expect(length).toBeLessThan(total);
+    }
+  });
+
+  it('caps rounds by tier: free rooms play short games, full rooms up to the hard cap', () => {
+    expect(maxRoundsFor(DEFAULT_GAME_CONFIG, 'FREE')).toBe(5);
+    expect(maxRoundsFor(DEFAULT_GAME_CONFIG, 'FULL')).toBe(20);
   });
 });
 
@@ -178,9 +264,10 @@ describe('chooseRoundKind', () => {
     totalRounds = 10,
     specialEventPermille = 1000,
     seed = 'k',
+    finalLength = 1,
   ) =>
     chooseRoundKind(
-      { roundIndex, totalRounds, history, specialEventPermille, riskIntensity: 1 },
+      { roundIndex, totalRounds, finalLength, history, specialEventPermille, riskIntensity: 1 },
       cfg,
       new Rng(rngStateFromSeed(seed)),
     );
@@ -212,6 +299,20 @@ describe('chooseRoundKind', () => {
       expect(history.filter((k) => k === 'FINAL')).toHaveLength(1);
       for (let i = 1; i < 9; i++) {
         expect(history[i] !== 'STANDARD' && history[i - 1] !== 'STANDARD').toBe(false);
+      }
+    }
+  });
+
+  it('makes exactly the last `finalLength` questions FINAL, for every game length', () => {
+    for (let total = 3; total <= 20; total++) {
+      const finalLength = finalStageLength(total, DEFAULT_GAME_CONFIG);
+      for (let s = 0; s < 20; s++) {
+        const history: RoundKind[] = [];
+        for (let round = 0; round < total; round++)
+          history.push(pick(history, round, total, 1000, `len-${total}-${s}`, finalLength));
+        expect(history.filter((kind) => kind === 'FINAL')).toHaveLength(finalLength);
+        expect(history.slice(total - finalLength).every((kind) => kind === 'FINAL')).toBe(true);
+        expect(history.slice(0, total - finalLength).some((kind) => kind === 'FINAL')).toBe(false);
       }
     }
   });
