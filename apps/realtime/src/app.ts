@@ -42,6 +42,15 @@ export interface BuildOptions {
 export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   const { config } = options;
   const clock = options.clock ?? systemClock;
+  const securityHeaders = (): Record<string, string> => ({
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'no-referrer',
+    'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
+    'Cache-Control': 'no-store',
+    ...(config.env === 'production'
+      ? { 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains' }
+      : {}),
+  });
   const app = Fastify({
     logger: {
       level: config.logLevel,
@@ -56,6 +65,12 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     bodyLimit: 16 * 1024,
     logController: new LogController({ disableRequestLogging: config.env === 'test' }),
     trustProxy: false,
+    // Malformed URLs never reach the router, so hooks do not run: answer them here with the same
+    // headers and error shape as every other response.
+    frameworkErrors: (_error, _request, reply) => {
+      void reply.headers(securityHeaders());
+      void apiError(reply, 400, 'INVALID_MESSAGE');
+    },
   });
 
   // Structural guard: no route may exist without an explicit auth/limit policy (ADR-0018).
@@ -134,13 +149,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     done();
   });
   app.addHook('onSend', (_request, reply, payload, done) => {
-    void reply
-      .header('X-Content-Type-Options', 'nosniff')
-      .header('Referrer-Policy', 'no-referrer')
-      .header('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'")
-      .header('Cache-Control', 'no-store');
-    if (config.env === 'production')
-      void reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    void reply.headers(securityHeaders());
     done(null, payload);
   });
   app.setNotFoundHandler((_request, reply) => apiError(reply, 404, 'NOT_FOUND'));

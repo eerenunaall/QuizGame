@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { Phase, ServerMessage } from '@quizparty/protocol';
+import type { Phase } from '@quizparty/protocol';
 import { TestClient } from '../helpers/client';
+import { autoAnswer } from '../helpers/play';
 import { preRevealLeaks } from '../helpers/scan';
 import { createRoom, startServer, type CreatedRoom, type TestServer } from '../helpers/server';
 import { waitUntil } from '../helpers/wait';
@@ -31,18 +32,6 @@ async function party(playerCount = 3): Promise<Party> {
     players.push(client);
   }
   return { created, display, players, leader: players[0]! };
-}
-
-/** Makes a player answer every question as soon as the options arrive, choosing option `index`. */
-function autoAnswer(client: TestClient, index: number): void {
-  client.subscribe((message: ServerMessage) => {
-    if (message.type !== 'PHASE_ENTERED' || message.payload.data.phase !== 'ANSWERING') return;
-    const data = message.payload.data;
-    client.send('SUBMIT_ANSWER', {
-      questionId: data.questionId,
-      optionId: data.options[index % data.options.length]!.optionId,
-    });
-  });
 }
 
 async function closeAll(p: Party): Promise<void> {

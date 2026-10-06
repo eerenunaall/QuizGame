@@ -8,6 +8,8 @@ import {
   type CreatedRoom,
   type TestServer,
 } from '../helpers/server';
+import { autoAnswer } from '../helpers/play';
+import { waitForSecurityEvent } from '../helpers/security';
 import { waitUntil } from '../helpers/wait';
 
 let server: TestServer;
@@ -162,12 +164,7 @@ describe('phone reconnect', () => {
     });
     late.send('RECONNECT', { reconnectToken: second.token, client: { kind: 'WEB', version: 't' } });
     expect((await late.nextOfType('ERROR')).payload.code).toBe('SESSION_EXPIRED');
-    const events = await server.db.db
-      .selectFrom('security_events')
-      .select('kind')
-      .where('session_id', '=', b.sessionId!)
-      .execute();
-    expect(events.map((e) => e.kind)).toContain('RECONNECT_TOKEN_REUSE');
+    await waitForSecurityEvent(server, { sessionId: b.sessionId! }, 'RECONNECT_TOKEN_REUSE');
     expect(server.built.manager.get(b.roomId!)?.state.phase).toBe('LOBBY');
     await Promise.all([display.close(), players[0]!.close()]);
   });
@@ -246,7 +243,10 @@ describe('host recovery', () => {
     })();
     expect(roomView.view.game?.roundIndex).toBe(phaseAtDrop);
     expect(roomView.view.displayConnected).toBe(true);
-    await roomView.client.waitForPhase('RESULTS', 15_000);
+    // Nobody answered so far (the 4 s window keeps the round index stable for the assertion above);
+    // from here on the phones answer at once so the rest of the game is quick even on a slow runner.
+    players.forEach((player, i) => autoAnswer(player, i));
+    await roomView.client.waitForPhase('RESULTS', 40_000);
     await roomView.client.close();
     await Promise.all(players.map((p) => p.close()));
   });

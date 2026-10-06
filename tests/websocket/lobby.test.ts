@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { TestClient } from '../helpers/client';
 import { createRoom, startServer, type TestServer } from '../helpers/server';
+import { waitForSecurityEvent } from '../helpers/security';
 
 let server: TestServer;
 beforeAll(async () => {
@@ -301,12 +302,7 @@ describe('host authority', () => {
       expect(error.payload.code, type).toBe('NOT_HOST');
     }
     expect(server.built.manager.get(created.roomId)?.state.phase).toBe('LOBBY');
-    const events = await server.db.db
-      .selectFrom('security_events')
-      .select('kind')
-      .where('room_id', '=', created.roomId)
-      .execute();
-    expect(events.map((e) => e.kind)).toContain('HOST_COMMAND_FORBIDDEN');
+    await waitForSecurityEvent(server, { roomId: created.roomId }, 'HOST_COMMAND_FORBIDDEN');
 
     leader.send('SET_SETTINGS', { rounds: 5 });
     await leader.nextOfType('ACK');

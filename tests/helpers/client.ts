@@ -10,6 +10,8 @@ import {
 
 export interface ConnectOptions {
   origin?: string;
+  /** Source address to bind (127.0.0.x on Linux) to simulate a client on another network. */
+  localAddress?: string;
 }
 
 function decode(data: RawData): string {
@@ -51,7 +53,10 @@ export class TestClient {
 
   static connect(url: string, options: ConnectOptions = {}): Promise<TestClient> {
     return new Promise((resolve, reject) => {
-      const ws = new WebSocket(url, { headers: options.origin ? { Origin: options.origin } : {} });
+      const ws = new WebSocket(url, {
+        headers: options.origin ? { Origin: options.origin } : {},
+        ...(options.localAddress ? { localAddress: options.localAddress } : {}),
+      });
       const client = new TestClient(ws);
       ws.once('open', () => resolve(client));
       ws.once('error', reject);

@@ -161,7 +161,7 @@ describe('sanitizeUserText', () => {
     });
     expect(sanitizeUserText('bak https://evil.example/x')).toEqual({ ok: false, reason: 'LINK' });
     expect(sanitizeUserText('www.kotu.com')).toEqual({ ok: false, reason: 'LINK' });
-    expect(sanitizeUserText('abc‮def')).toEqual({ ok: false, reason: 'FORBIDDEN_CHARACTER' });
+    expect(sanitizeUserText('abc\u202edef')).toEqual({ ok: false, reason: 'FORBIDDEN_CHARACTER' });
     expect(sanitizeUserText('x'.repeat(141))).toEqual({ ok: false, reason: 'TOO_LONG' });
     expect(sanitizeUserText('')).toEqual({ ok: false, reason: 'EMPTY' });
     expect(sanitizeUserText('amk')).toEqual({ ok: false, reason: 'PROFANITY' });
