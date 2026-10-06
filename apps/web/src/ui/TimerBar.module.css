@@ -1,0 +1,36 @@
+.timer {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.label {
+  min-width: 78px;
+  font-family: var(--qp-font-display);
+  font-size: 28px;
+  color: #fff;
+}
+
+.track {
+  flex: 1;
+  height: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+}
+
+.fill {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--qp-color-accent-a), var(--qp-color-accent-c));
+  border-radius: 999px;
+  transform-origin: left center;
+}
+
+.timer[data-urgent='true'] .fill {
+  background: var(--qp-color-danger);
+}
+.timer[data-urgent='true'] .label {
+  color: var(--qp-color-danger);
+  animation: qp-pulse 0.5s ease-in-out infinite;
+}

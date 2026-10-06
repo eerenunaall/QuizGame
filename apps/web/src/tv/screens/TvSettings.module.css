@@ -1,0 +1,114 @@
+.scrim {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: rgba(3, 8, 32, 0.78);
+  animation: qp-fade-in 200ms ease-out 1;
+}
+
+.panel {
+  width: 1560px;
+  padding: 40px 56px 44px;
+  animation: qp-pop-in 360ms ease-out 1;
+}
+
+.title {
+  margin-bottom: 26px;
+  font-family: var(--qp-font-display);
+  font-size: 60px;
+  font-weight: 400;
+  text-align: center;
+  color: var(--qp-color-accent-a);
+}
+
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 290px;
+  height: 188px;
+  margin: 0 9px 18px;
+  padding-top: 14px;
+  color: #fff;
+  background: rgba(23, 42, 112, 0.8);
+  border: 4px solid var(--qp-color-surface-line);
+  border-radius: 28px;
+  transition:
+    transform 120ms ease,
+    background 140ms ease;
+}
+
+.tile:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.on {
+  background: linear-gradient(180deg, #3a78ff, #1f4fd6);
+  border-color: #9cc0ff;
+  box-shadow: 0 0 30px rgba(47, 139, 255, 0.55);
+}
+
+.locked {
+  opacity: 0.45;
+}
+
+.lock {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+}
+
+.tileLabel {
+  margin-top: 4px;
+  max-width: 270px;
+  overflow: hidden;
+  font-size: 30px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.options {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 14px;
+}
+
+.group {
+  display: flex;
+  align-items: center;
+}
+.group > button {
+  margin-left: 14px;
+}
+
+.groupLabel {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--qp-color-muted-text);
+}
+
+.upsell {
+  margin-top: 22px;
+  font-size: 28px;
+  text-align: center;
+  color: var(--qp-color-warning);
+}
+
+.done {
+  display: block;
+  margin: 28px auto 0;
+}

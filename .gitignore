@@ -14,3 +14,7 @@ test-results/
 *.tsbuildinfo
 .vite/
 *.bundle
+scripts/assets/.cache/
+test-results/
+playwright-report/
+apps/web/dist/

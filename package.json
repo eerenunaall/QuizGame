@@ -18,13 +18,15 @@
     "test:ws": "vitest run --project websocket",
     "test:red-team": "vitest run --project red-team",
     "test:web": "vitest run --project web",
-    "test:e2e": "playwright test",
-    "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test",
+    "test:e2e": "pnpm run build:web && playwright test",
+    "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run test:web",
     "dev:db": "bash scripts/dev/db-up.sh",
     "db:migrate": "pnpm --filter @quizparty/db run migrate",
     "db:types": "pnpm --filter @quizparty/db run gen-types",
     "dev": "pnpm --filter @quizparty/realtime run dev",
-    "test:all": "pnpm run test && pnpm run test:integration && pnpm run test:ws && pnpm run test:red-team"
+    "test:all": "pnpm run test && pnpm run test:web && pnpm run test:integration && pnpm run test:ws && pnpm run test:red-team",
+    "assets:build": "pnpm --filter @quizparty/scripts run assets:build",
+    "build:web": "pnpm --filter @quizparty/web run build"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

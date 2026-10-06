@@ -1,0 +1,43 @@
+.ring {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(6, 13, 46, 0.92) 55%, rgba(6, 13, 46, 0.55) 100%);
+  box-shadow:
+    0 8px 0 rgba(0, 0, 0, 0.3),
+    0 14px 30px rgba(0, 0, 0, 0.4);
+}
+
+.svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.track {
+  stroke: rgba(255, 255, 255, 0.14);
+}
+
+.progress {
+  stroke: var(--qp-color-accent-a);
+}
+
+.text {
+  position: relative;
+  font-family: var(--qp-font-display);
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 4px 0 rgba(0, 0, 0, 0.35);
+}
+
+.ring[data-urgent='true'] .progress {
+  stroke: var(--qp-color-danger);
+}
+
+.ring[data-urgent='true'] .text {
+  color: var(--qp-color-danger);
+  animation: qp-pulse 0.5s ease-in-out infinite;
+}

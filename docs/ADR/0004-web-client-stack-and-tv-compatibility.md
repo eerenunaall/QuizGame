@@ -47,3 +47,30 @@ the display client (a pure realtime app with no SEO value) does not need.
 ## Verification
 Playwright capability suite (modern Chromium), `es-check` on the legacy bundle, `size-limit`,
 viewport matrix 1280×720 / 1920×1080 / 3840×2160 screenshots, reduced-motion and low-power runs.
+
+## Amendment (M1c, 2026-10-06): what shipped, and why it differs from the text above
+- **One modern bundle, no `nomodule` legacy build.** `@vitejs/plugin-legacy` guards its modern entry
+  with an inline `data:` module script and loads lazy CSS only in modern mode. Both clash with the
+  strict CSP below (`script-src 'self'` + hashes, no `data:`), and a second bundle doubles what must
+  be tested. The build targets Chromium 63+ / Safari 12+ (every TV engine still in warranty) with
+  core-js `modernPolyfills`; older engines get a static, localized "unsupported browser" page from a
+  `nomodule` script (`public/unsupported.js`) instead of a blank screen.
+- **No `react-router`.** A 90-line history-API router (`lib/router.tsx`: `matchPath`, `Link`,
+  `navigate`, lazy route chunks) covers `/`, `/tv`, `/join/:code?`, `/game/:code` and the static
+  pages; it is unit-tested and ~25 kB gzip smaller.
+- **Strict CSP, served by the realtime process** (`http/static-web.ts`): scripts only from `self`
+  plus the hashes of the two inline bootstrap scripts, no `unsafe-inline`/`unsafe-eval`,
+  `connect-src` limited to self and the WebSocket origin, `frame-ancestors 'none'`. Styling is CSS
+  Modules plus CSSOM writes (`element.style`), which CSP allows. `tests/websocket/static.test.ts`
+  and the Playwright suite run against exactly these headers.
+- **Conservative CSS** for shared styles: no flex `gap`, `aspect-ratio`, `inset`, `:focus-visible`
+  or `color-mix` (Chromium < 84 lacks some of them); screens are authored on a fixed 1920×1080
+  stage that is scaled with one CSS transform (`--qp-scale`).
+- **Fonts:** Paytone One (display) and Baloo 2 (text), self-hosted via `@fontsource`. The first
+  choices (Fredoka, Titan One) have no Ş/Ğ/İ and would have broken Turkish.
+- **Measured size** (gzip, `pnpm build:web`): shared entry 89 kB, TV chunk 21 kB, phone chunk 8 kB,
+  polyfills 44 kB, confetti 5 kB (lazy) — the TV path loads ~155 kB of JavaScript, inside the
+  180 kB budget; art is lazy and cached.
+- Capability detection (`platform/capabilities.ts`) is replaced by `lib/device.ts` (TV user agents,
+  Chromium major, hardware hints → low-motion mode) and the `nomodule` notice; `?perf=low` is
+  honoured through `data-motion="low"`.

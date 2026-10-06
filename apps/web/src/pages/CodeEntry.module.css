@@ -1,0 +1,66 @@
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  min-height: 100%;
+  padding: 28px 20px 24px;
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  margin-top: 150px;
+  padding: 22px 20px 20px;
+  background: rgba(15, 29, 82, 0.85);
+  border: 3px solid var(--qp-color-surface-line);
+  border-radius: 28px;
+  box-shadow: var(--qp-shadow-card);
+}
+
+.label {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--qp-color-muted-text);
+}
+
+.input {
+  width: 100%;
+  height: 74px;
+  font-family: var(--qp-font-display);
+  font-size: 40px;
+  letter-spacing: 0.3em;
+  text-align: center;
+  text-indent: 0.3em;
+  color: #fff;
+  background: rgba(6, 13, 46, 0.9);
+  border: 4px solid var(--qp-color-answer-b);
+  border-radius: 20px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.input:focus {
+  border-color: var(--qp-color-accent-a);
+  outline: none;
+}
+
+.hint {
+  min-height: 24px;
+  margin: 6px 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--qp-color-danger);
+}
+
+.tvLink {
+  margin-top: auto;
+  padding-top: 24px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--qp-color-muted-text);
+}

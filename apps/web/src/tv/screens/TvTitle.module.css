@@ -1,0 +1,134 @@
+.screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+}
+
+.hero {
+  position: absolute;
+  top: 190px;
+  left: 190px;
+  z-index: 2;
+}
+
+.menu {
+  position: absolute;
+  top: 330px;
+  right: 190px;
+  z-index: 3;
+  width: 640px;
+}
+.menu > button {
+  margin-bottom: 34px;
+}
+
+.hint {
+  position: absolute;
+  left: 0;
+  bottom: 54px;
+  z-index: 3;
+  width: 100%;
+  text-align: center;
+  font-size: 30px;
+  color: var(--qp-color-muted-text);
+}
+
+.banner {
+  position: absolute;
+  top: 60px;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.scrim {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: rgba(3, 8, 32, 0.72);
+  animation: qp-fade-in 200ms ease-out 1;
+}
+
+.dialog {
+  width: 1280px;
+  padding: 54px 70px 60px;
+  animation: qp-pop-in 360ms ease-out 1;
+}
+
+.dialogTitle {
+  margin-bottom: 36px;
+  font-family: var(--qp-font-display);
+  font-size: 64px;
+  font-weight: 400;
+  text-align: center;
+  color: var(--qp-color-accent-a);
+}
+
+.steps {
+  display: block;
+  margin: 0 0 30px;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 12px 26px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 28px;
+}
+
+.stepNumber {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  margin: 0 24px;
+  font-family: var(--qp-font-display);
+  font-size: 34px;
+  color: #1b1200;
+  background: var(--qp-gradient-gold);
+  border-radius: 50%;
+}
+
+.stepText {
+  flex: 1;
+  font-size: 38px;
+  font-weight: 700;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 30px;
+}
+
+.rowLabel {
+  font-size: 40px;
+  font-weight: 800;
+}
+
+.pills > button {
+  margin-left: 18px;
+}
+
+.close {
+  display: block;
+  margin: 18px auto 0;
+}

@@ -1,0 +1,106 @@
+.center {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 880px;
+  text-align: center;
+}
+
+.pop {
+  animation: qp-pop-in 560ms ease-out 1;
+}
+
+.ready {
+  font-family: var(--qp-font-display);
+  font-size: 96px;
+  color: #fff;
+  text-shadow: 0 8px 0 rgba(0, 0, 0, 0.4);
+}
+
+.bigNumber {
+  font-family: var(--qp-font-display);
+  font-size: 420px;
+  line-height: 1;
+  color: var(--qp-color-accent-a);
+  text-shadow:
+    0 14px 0 var(--qp-color-accent-a-edge),
+    0 0 90px rgba(255, 201, 40, 0.6);
+  animation: qp-pop-in 520ms ease-out 1;
+}
+
+.introTitle {
+  margin-top: 18px;
+  font-family: var(--qp-font-display);
+  font-size: 124px;
+  line-height: 1.05;
+  color: #fff;
+  text-shadow: 0 8px 0 rgba(0, 0, 0, 0.4);
+  animation: qp-zoom-in 460ms ease-out 1;
+}
+
+.kind {
+  margin-top: 14px;
+  padding: 4px 56px;
+  font-family: var(--qp-font-display);
+  font-size: 64px;
+  color: #1b1200;
+  background: var(--qp-gradient-gold);
+  border-radius: 999px;
+  box-shadow: 0 8px 0 var(--qp-color-accent-a-edge);
+  animation: qp-pop-in 520ms ease-out 1;
+}
+
+.worth {
+  margin-top: 22px;
+  font-size: 48px;
+  font-weight: 800;
+  color: var(--qp-color-muted-text);
+}
+
+.finalRow {
+  height: 200px;
+}
+
+.finalTitle {
+  margin-top: 6px;
+  font-family: var(--qp-font-display);
+  font-size: 190px;
+  line-height: 1;
+  color: var(--qp-color-accent-a);
+  text-shadow:
+    0 12px 0 #8a3d00,
+    0 0 100px rgba(255, 120, 0, 0.7);
+  animation: qp-zoom-in 620ms ease-out 1;
+}
+
+.finalBox {
+  margin-top: 40px;
+  padding: 24px 90px 30px;
+  background: rgba(6, 13, 46, 0.86);
+  border: 5px solid var(--qp-color-accent-a);
+  border-radius: 40px;
+  box-shadow: 0 0 60px rgba(255, 201, 40, 0.4);
+  animation: qp-slide-up 640ms ease-out 1;
+}
+
+.finalMain {
+  font-family: var(--qp-font-display);
+  font-size: 66px;
+  color: #fff;
+}
+
+.finalSub {
+  margin-top: 6px;
+  font-size: 54px;
+  font-weight: 800;
+  color: var(--qp-color-accent-a);
+}
+
+.cta {
+  margin-top: 56px;
+}

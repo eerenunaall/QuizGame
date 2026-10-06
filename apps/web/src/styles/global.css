@@ -1,0 +1,340 @@
+/* Global reset, base typography and the motion vocabulary every screen shares.
+   Conservative CSS on purpose: 2020–2021 smart-TV browsers (Chromium 63–79) are a target, so no
+   flex `gap`, `aspect-ratio`, `inset`, `:focus-visible` or `color-mix` in shared styles. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  background: var(--qp-color-background-deep);
+}
+
+body {
+  overflow: hidden;
+  color: var(--qp-color-text);
+  background: var(--qp-gradient-stage) fixed;
+  font-family: var(--qp-font-body);
+  font-weight: 600;
+  line-height: 1.25;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+  background: none;
+}
+
+img {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+input {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+a {
+  color: var(--qp-color-accent-a);
+}
+
+/* TV remotes and keyboards need an obvious focus target. */
+:focus {
+  outline: none;
+}
+[data-focusable]:focus,
+button:focus,
+a:focus,
+input:focus {
+  outline: 4px solid var(--qp-color-accent-c);
+  outline-offset: 4px;
+}
+button:focus:not([data-keyboard]) {
+  outline-color: transparent;
+}
+html[data-input='remote'] button:focus,
+html[data-input='keyboard'] button:focus {
+  outline-color: var(--qp-color-accent-c);
+}
+
+.qp-boot,
+.qp-noscript {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 22px;
+  color: var(--qp-color-muted-text);
+}
+
+.qp-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+  padding: 0;
+}
+
+/* ───────── motion vocabulary ───────── */
+
+@keyframes qp-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes qp-fade-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes qp-flip-in {
+  from {
+    opacity: 0;
+    transform: perspective(1400px) rotateX(-80deg);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(1400px) rotateX(0deg);
+  }
+}
+
+@keyframes qp-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(36px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes qp-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-36px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes qp-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes qp-zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes qp-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(var(--qp-tilt, 0deg));
+  }
+  50% {
+    transform: translateY(-14px) rotate(calc(var(--qp-tilt, 0deg) * -1));
+  }
+}
+
+@keyframes qp-wobble {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+
+@keyframes qp-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes qp-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 201, 40, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 18px rgba(255, 201, 40, 0);
+  }
+}
+
+@keyframes qp-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-12px);
+  }
+  40% {
+    transform: translateX(10px);
+  }
+  60% {
+    transform: translateX(-7px);
+  }
+  80% {
+    transform: translateX(5px);
+  }
+}
+
+@keyframes qp-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(-22px);
+  }
+  60% {
+    transform: translateY(0);
+  }
+  78% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes qp-twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes qp-shine {
+  from {
+    transform: translateX(-130%) skewX(-18deg);
+  }
+  to {
+    transform: translateX(230%) skewX(-18deg);
+  }
+}
+
+@keyframes qp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes qp-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-120px, 60px, 0);
+  }
+}
+
+@keyframes qp-pop-score {
+  0% {
+    opacity: 0;
+    transform: translateY(24px) scale(0.6);
+  }
+  25% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.25);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Low-power TVs and anyone who asks for less motion: keep state changes, drop decoration. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+html[data-motion='low'] .qp-deco,
+html[data-motion='low'] .qp-deco * {
+  animation: none !important;
+}

@@ -1,0 +1,203 @@
+.screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.meta {
+  position: absolute;
+  top: 128px;
+  left: 160px;
+  display: flex;
+  align-items: center;
+  animation: qp-fade-in 300ms ease-out 1;
+}
+
+.category {
+  margin: 0 16px 0 10px;
+  font-family: var(--qp-font-display);
+  font-size: 38px;
+  color: #fff;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
+}
+
+.difficulty {
+  padding: 2px 22px;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--qp-color-muted-text);
+  background: rgba(6, 13, 46, 0.7);
+  border-radius: 999px;
+}
+
+.question {
+  position: absolute;
+  top: 204px;
+  left: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1360px;
+  height: 188px;
+  padding: 0 56px;
+  background: rgba(6, 13, 46, 0.88);
+  border: 4px solid rgba(255, 255, 255, 0.22);
+  border-radius: 40px;
+  box-shadow:
+    0 10px 0 rgba(0, 0, 0, 0.32),
+    0 26px 50px rgba(0, 0, 0, 0.4);
+  animation: qp-zoom-in 420ms ease-out 1;
+}
+
+.questionText {
+  font-weight: 800;
+  line-height: 1.12;
+  text-align: center;
+  text-shadow: 0 4px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* Reveal with an explanation: the question card hands over to the "did you know" card. */
+.questionOut {
+  animation: qp-fade-out 360ms ease-in 1800ms 1 both;
+}
+
+.explain {
+  position: absolute;
+  top: 204px;
+  left: 160px;
+  display: flex;
+  align-items: center;
+  width: 1360px;
+  height: 188px;
+  padding: 0 44px 0 36px;
+  background: linear-gradient(180deg, rgba(255, 201, 40, 0.2), rgba(255, 201, 40, 0.08)), #0b1440;
+  border: 4px solid rgba(255, 201, 40, 0.7);
+  border-radius: 40px;
+  box-shadow:
+    0 10px 0 rgba(0, 0, 0, 0.32),
+    0 0 50px rgba(255, 201, 40, 0.25);
+  animation: qp-flip-in 520ms ease-out 1900ms 1 both;
+}
+
+.explainIcon {
+  flex: none;
+  margin-right: 28px;
+}
+
+.explainBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.explainLabel {
+  margin-bottom: 6px;
+  font-family: var(--qp-font-display);
+  font-size: 30px;
+  letter-spacing: 0.08em;
+  color: var(--qp-color-accent-a);
+  text-transform: uppercase;
+}
+
+.explainText {
+  max-height: 112px;
+  overflow: hidden;
+  font-weight: 700;
+  line-height: 1.14;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+}
+
+.timer {
+  position: absolute;
+  top: 192px;
+  left: 1580px;
+  animation: qp-pop-in 420ms ease-out 1;
+}
+
+.status {
+  position: absolute;
+  top: 408px;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 74px;
+  font-family: var(--qp-font-display);
+  font-size: 44px;
+  letter-spacing: 0.04em;
+  animation: qp-pop-in 360ms ease-out 1;
+}
+
+.status > span {
+  padding: 2px 38px;
+  border-radius: 999px;
+}
+.status > img {
+  margin-right: 8px;
+}
+
+.info > span {
+  color: #fff;
+  background: rgba(6, 13, 46, 0.7);
+}
+.gold > span {
+  color: #1b1200;
+  background: var(--qp-gradient-gold);
+}
+.success > span {
+  color: #052b12;
+  background: var(--qp-gradient-success);
+}
+
+.grid {
+  position: absolute;
+  top: 496px;
+  left: 160px;
+  display: flex;
+  flex-wrap: wrap;
+  width: 1600px;
+}
+
+.cell {
+  width: 780px;
+  margin: 0 20px 22px 0;
+  animation: qp-slide-up 460ms ease-out 1 both;
+  animation-delay: var(--qp-delay, 0ms);
+}
+.cell:nth-child(2n) {
+  margin-right: 0;
+}
+
+.two .cell {
+  width: 1600px;
+  margin-right: 0;
+}
+
+.choosers {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: none;
+  margin-left: 22px;
+}
+
+.chooser {
+  display: flex;
+  margin-left: -12px;
+}
+
+.more {
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  font-family: var(--qp-font-display);
+  font-size: 24px;
+  color: #1b1b3a;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.25);
+}

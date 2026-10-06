@@ -1,0 +1,68 @@
+.panel {
+  position: relative;
+  border: 3px solid var(--qp-color-surface-line);
+  border-radius: 32px;
+  box-shadow: var(--qp-shadow-card);
+}
+
+.navy {
+  background: var(--qp-gradient-panel);
+}
+
+.glass {
+  background: rgba(15, 29, 82, 0.62);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.violet {
+  background: linear-gradient(180deg, #9d54ff, #6a24d9);
+  border-color: #c9a2ff;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--qp-font-display);
+  color: #dfe6ff;
+  background: rgba(15, 29, 82, 0.9);
+  border: 3px solid var(--qp-color-surface-line);
+  border-radius: 999px;
+  transition:
+    transform 100ms ease,
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.pill-md {
+  min-width: 96px;
+  min-height: 58px;
+  padding: 4px 26px;
+  font-size: 28px;
+}
+
+.pill-lg {
+  min-width: 120px;
+  min-height: 72px;
+  padding: 6px 34px;
+  font-size: 34px;
+}
+
+.pill:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.selected {
+  color: #1b1200;
+  background: var(--qp-gradient-gold);
+  border-color: var(--qp-color-accent-a-hi);
+  box-shadow: 0 0 28px rgba(255, 201, 40, 0.45);
+}
+
+.locked {
+  opacity: 0.55;
+}
+
+.pill:disabled {
+  cursor: default;
+}

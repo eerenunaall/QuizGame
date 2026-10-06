@@ -1,0 +1,333 @@
+.center {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  animation: qp-fade-in 260ms ease-out 1;
+}
+
+.big {
+  margin-top: 10px;
+  font-family: var(--qp-font-display);
+  font-size: 38px;
+  line-height: 1.1;
+  text-shadow: 0 4px 0 rgba(0, 0, 0, 0.35);
+}
+
+.kicker {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--qp-color-muted-text);
+}
+
+.sub {
+  margin-top: 10px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--qp-color-muted-text);
+}
+
+.good {
+  color: var(--qp-color-success);
+}
+.bad {
+  color: var(--qp-color-danger);
+}
+
+.action {
+  margin-top: 22px;
+}
+
+.error {
+  margin: 8px 4px;
+  font-size: 16px;
+  font-weight: 800;
+  text-align: center;
+  color: var(--qp-color-danger);
+}
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+/* lobby */
+.lobby {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.lobbyHead {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.roster {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 14px -4px 6px;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  margin: 4px;
+  padding: 4px 14px 4px 6px;
+  background: rgba(15, 29, 82, 0.85);
+  border-radius: 999px;
+}
+.offline {
+  opacity: 0.55;
+}
+
+.chipButton {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+.chipSelected {
+  border-color: var(--qp-color-accent-a);
+  background: rgba(40, 60, 140, 0.95);
+}
+
+.manage {
+  margin-top: 8px;
+  padding: 12px 14px;
+}
+.manageTitle {
+  margin-bottom: 10px;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--qp-color-muted-text);
+}
+.manageRow {
+  display: flex;
+  flex-wrap: wrap;
+}
+.manageRow > button {
+  margin: 0 8px 8px 0;
+}
+
+.chipName {
+  margin: 0 8px 0 8px;
+  max-width: 130px;
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderPanel {
+  margin-top: 10px;
+  padding: 14px 14px 12px;
+}
+
+.groupTitle {
+  margin: 8px 2px 8px;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--qp-color-muted-text);
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+}
+.pills > button {
+  margin: 0 8px 8px 0;
+  min-width: 64px;
+  min-height: 44px;
+  padding: 2px 16px;
+  font-size: 19px;
+}
+
+.upsell {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--qp-color-warning);
+}
+
+.waiting {
+  margin: 18px 0;
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--qp-color-muted-text);
+}
+
+.startRow {
+  position: sticky;
+  bottom: -18px;
+  z-index: 5;
+  margin: 14px -16px -18px;
+  padding: 12px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, rgba(6, 13, 46, 0), rgba(6, 13, 46, 0.96) 30%);
+}
+
+.need {
+  margin-top: 8px;
+  font-size: 15px;
+  text-align: center;
+  color: var(--qp-color-warning);
+}
+
+/* answering */
+.answering {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.questionCard {
+  flex: none;
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  background: rgba(6, 13, 46, 0.88);
+}
+
+.questionText {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.18;
+  text-align: center;
+}
+
+.options {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.option {
+  margin-bottom: 12px;
+  animation: qp-slide-up 320ms ease-out 1 both;
+  animation-delay: var(--qp-delay, 0ms);
+}
+
+.timer {
+  flex: none;
+  padding-top: 4px;
+}
+
+.confirm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(47, 227, 110, 0.35), rgba(47, 227, 110, 0) 70%);
+  border-radius: 50%;
+}
+
+.confirmIcon {
+  animation: qp-pop-in 520ms ease-out 1;
+}
+
+/* reveal & score */
+.correctCard {
+  margin-top: 22px;
+  padding: 12px 22px;
+  min-width: 240px;
+  max-width: 100%;
+}
+
+.correctText {
+  margin-top: 4px;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.delta {
+  font-family: var(--qp-font-display);
+  font-size: 84px;
+  line-height: 1;
+  animation: qp-pop-score 700ms ease-out 1 both;
+}
+
+.total {
+  margin-top: 8px;
+  font-family: var(--qp-font-display);
+  font-size: 30px;
+}
+
+.mini {
+  width: 100%;
+  max-width: 340px;
+  margin-top: 24px;
+}
+
+.miniRow {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+  padding: 4px 14px 4px 10px;
+  background: rgba(15, 29, 82, 0.85);
+  border-radius: 999px;
+}
+
+.miniRank {
+  width: 26px;
+  font-family: var(--qp-font-display);
+  font-size: 20px;
+  color: var(--qp-color-accent-a);
+}
+
+.miniName {
+  flex: 1;
+  margin-left: 10px;
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 700;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.miniScore {
+  font-family: var(--qp-font-display);
+  font-size: 20px;
+}
+
+/* Room for the leader's crown above the avatar so it never covers the kicker. */
+.resultFace {
+  margin-top: 30px;
+}
+
+.rankBig {
+  margin: 4px 0;
+  font-family: var(--qp-font-display);
+  font-size: 110px;
+  line-height: 1;
+  color: var(--qp-color-accent-a);
+  text-shadow: 0 6px 0 var(--qp-color-accent-a-edge);
+}
+
+.actions {
+  width: 100%;
+  max-width: 360px;
+  margin-top: 18px;
+}
+.actions > button {
+  margin-bottom: 12px;
+}
+
+.leave {
+  margin-top: 16px;
+}
