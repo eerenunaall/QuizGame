@@ -190,7 +190,9 @@ describe('applyServerMessage', () => {
     let state = stateWith(roomView());
     state = applyServerMessage(
       state,
-      message('SETTINGS_CHANGED', { settings: { mode: 'CLASSIC', rounds: 8, categories: 'ALL' } }),
+      message('SETTINGS_CHANGED', {
+        settings: { mode: 'CLASSIC', rounds: 8, difficulty: 'HARD', categories: 'ALL' },
+      }),
       NOW,
     );
     expect(state.room?.settings.rounds).toBe(8);

@@ -1,9 +1,12 @@
 import { PROTOCOL_VERSION } from '@quizparty/protocol/constants';
 import type {
   AvatarId,
+  CategoryCatalog,
   ClientMessageType,
   ClientPayload,
   ErrorCode,
+  Locale,
+  RoomPreview,
   ServerMessage,
 } from '@quizparty/protocol';
 import { applyServerMessage } from './apply';
@@ -195,22 +198,22 @@ export class GameClient {
     return created;
   }
 
-  async preview(
-    code: string,
-  ): Promise<{ joinable: boolean; phase: string; playerCount: number; maxPlayers: number } | null> {
+  async preview(code: string): Promise<RoomPreview | null> {
     try {
       return (await this.http(`/v1/rooms/${encodeURIComponent(code)}/preview`, {
         method: 'GET',
-      })) as {
-        joinable: boolean;
-        phase: string;
-        playerCount: number;
-        maxPlayers: number;
-      };
+      })) as RoomPreview;
     } catch (error) {
       if (error instanceof ClientRequestError && error.code === 'ROOM_NOT_FOUND') return null;
       throw error;
     }
+  }
+
+  /** The categories a lobby can offer (and which one is free this week). */
+  async categories(language: Locale = 'tr'): Promise<CategoryCatalog> {
+    return (await this.http(`/v1/categories?language=${language}`, {
+      method: 'GET',
+    })) as CategoryCatalog;
   }
 
   // ───────────── connecting ─────────────
@@ -457,7 +460,7 @@ export class GameClient {
 
     this.store.update((s) => applyServerMessage(s, message, this.now()));
     if (message.type === 'PHASE_ENTERED' && message.payload.data.phase === 'ROOM_CLOSED') {
-      void this.terminate('ROOM_CLOSED', true, false);
+      void this.terminate('ROOM_CLOSED');
     }
   }
 
@@ -699,8 +702,9 @@ export class GameClient {
       if (this.store.get().closedReason !== 'ROOM_CLOSED') throw error;
     }
   }
-  setRounds(rounds: number): Promise<void> {
-    return this.request('SET_SETTINGS', { rounds });
+  /** Lobby settings; send only what changed. */
+  setSettings(settings: ClientPayload<'SET_SETTINGS'>): Promise<void> {
+    return this.request('SET_SETTINGS', settings);
   }
   kick(playerId: string): Promise<void> {
     return this.request('KICK_PLAYER', { playerId });

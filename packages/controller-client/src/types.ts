@@ -1,4 +1,4 @@
-import type { ClientInfo, ErrorCode, RoomView } from '@quizparty/protocol';
+import type { ClientInfo, CreateRoomResponse, ErrorCode, RoomView } from '@quizparty/protocol';
 
 export type MaybePromise<T> = T | Promise<T>;
 
@@ -97,14 +97,7 @@ export const INITIAL_CLIENT_STATE: ClientState = {
   rttMs: null,
 };
 
-export interface CreatedRoom {
-  roomId: string;
-  code: string;
-  tier: 'FREE' | 'FULL';
-  joinUrl: string;
-  display: { sessionId: string; reconnectToken: string };
-  maxPlayers: number;
-}
+export type CreatedRoom = CreateRoomResponse;
 
 export class ClientRequestError extends Error {
   readonly code: ErrorCode;
