@@ -1,0 +1,23 @@
+{
+  "name": "@quizparty/question-bank",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@quizparty/db": "workspace:*",
+    "@quizparty/question-schema": "workspace:*",
+    "kysely": "0.29.6",
+    "zod": "4.6.5",
+    "@quizparty/validation": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5"
+  }
+}

@@ -93,6 +93,12 @@ export const REASONS = {
   MISSING_EXPLANATION: reason('INFO', 'style', 'recommended for hard questions'),
   LLM_STYLE_PHRASES: reason('REVIEW', 'style', '§6 does this feel like a language model?'),
   LONG_QUOTE: reason('REVIEW', 'style', '§1 copyrighted text copied from a source'),
+  PROMPT_INJECTION_SUSPECT: reason(
+    'REJECT',
+    'style',
+    'ADR-0014 instructions aimed at an auditing model',
+    false,
+  ),
   REPEATED_OPENER: reason('REVIEW', 'style', '§4 repeating the same opening syntax'),
   // freshness
   AMBIGUOUS_TEMPORAL: reason('REVIEW', 'freshness', '§9.8 avoid ambiguous temporal wording'),

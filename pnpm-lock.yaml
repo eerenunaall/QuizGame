@@ -227,6 +227,28 @@ importers:
         specifier: 4.6.5
         version: 4.6.5
 
+  packages/question-bank:
+    dependencies:
+      '@quizparty/db':
+        specifier: workspace:*
+        version: link:../db
+      '@quizparty/question-schema':
+        specifier: workspace:*
+        version: link:../question-schema
+      '@quizparty/validation':
+        specifier: workspace:*
+        version: link:../validation
+      kysely:
+        specifier: 0.29.6
+        version: 0.29.6
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@types/node':
+        specifier: 22.20.5
+        version: 22.20.5
+
   packages/question-schema:
     dependencies:
       '@quizparty/protocol':
@@ -265,9 +287,18 @@ importers:
 
   scripts:
     dependencies:
+      '@quizparty/db':
+        specifier: workspace:*
+        version: link:../packages/db
       '@quizparty/protocol':
         specifier: workspace:*
         version: link:../packages/protocol
+      '@quizparty/question-bank':
+        specifier: workspace:*
+        version: link:../packages/question-bank
+      '@quizparty/question-schema':
+        specifier: workspace:*
+        version: link:../packages/question-schema
     devDependencies:
       '@types/node':
         specifier: 22.20.5
@@ -293,9 +324,18 @@ importers:
       '@quizparty/protocol':
         specifier: workspace:*
         version: link:../packages/protocol
+      '@quizparty/question-bank':
+        specifier: workspace:*
+        version: link:../packages/question-bank
+      '@quizparty/question-schema':
+        specifier: workspace:*
+        version: link:../packages/question-schema
       '@quizparty/realtime':
         specifier: workspace:*
         version: link:../apps/realtime
+      '@quizparty/scripts':
+        specifier: workspace:*
+        version: link:../scripts
       '@quizparty/shared':
         specifier: workspace:*
         version: link:../packages/shared

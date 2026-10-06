@@ -13,6 +13,7 @@ import {
   ASCII_FOLDED_TURKISH,
   CATEGORY_KEYWORDS,
   FILLER_OPENERS,
+  INJECTION_PATTERN,
   MOJIBAKE,
   NEGATIVE_WORDS,
   PLACEHOLDER_PATTERN,
@@ -21,7 +22,7 @@ import {
   SLOP_WEAK,
   TEMPORAL_PHRASES,
 } from './lexicon';
-import { foldKey, foldTokens, isStopword, lowerForLanguage } from './text';
+import { cleanText, foldKey, foldTokens, isStopword, lowerForLanguage } from './text';
 
 /** What the deterministic checks look at. Everything is data: no clock, no database. */
 export interface AuditSubject {
@@ -153,16 +154,14 @@ export function parseNumeric(text: string): number | null {
   return Number.isFinite(value) ? value : null;
 }
 
-type OptionKind = 'YEAR' | 'NUMBER' | 'WORDS';
+type OptionKind = 'NUMBER' | 'WORDS';
 
+/**
+ * Numbers (years and quantities alike: "1923" may be a year or a count, and mixing the two is not
+ * the distractor problem) versus words. Mixing numbers with words is.
+ */
 function kindOf(text: string): OptionKind {
-  const trimmed = text.trim();
-  if (/^\d{4}$/u.test(trimmed)) {
-    const year = Number(trimmed);
-    if (year >= 1000 && year <= 2100) return 'YEAR';
-  }
-  if (/^(?:m\.?\s?[öos]\.?)\s*\d{3,4}$/iu.test(trimmed)) return 'YEAR';
-  return parseNumeric(trimmed) === null ? 'WORDS' : 'NUMBER';
+  return parseNumeric(text.trim()) === null ? 'WORDS' : 'NUMBER';
 }
 
 interface PreparedOption {
@@ -192,7 +191,8 @@ function prepare(subject: AuditSubject, context: HeuristicContext): Prepared {
   const language = subject.language;
   const options: PreparedOption[] = subject.options.map((option) => ({
     text: option.text,
-    key: foldKey(option.text, language),
+    // Symbols and punctuation fold to nothing; compare such options as written.
+    key: foldKey(option.text, language) || cleanText(option.text),
     tokens: foldTokens(option.text, language),
     correct: option.correct,
     len: length(option.text),
@@ -406,6 +406,7 @@ function languageRules(p: Prepared, out: Finding[]): void {
   let encoding = false;
   let invalid = false;
   let placeholder = false;
+  let injection = false;
   let ascii = false;
   let emoji = false;
   let link = false;
@@ -415,7 +416,9 @@ function languageRules(p: Prepared, out: Finding[]): void {
   for (const { name, text } of p.fields) {
     if (MOJIBAKE.some((sequence) => text.includes(sequence))) encoding = true;
     if (CONTROL_OR_INVISIBLE.test(text)) invalid = true;
-    if (PLACEHOLDER_PATTERN.test(foldKey(text, p.language))) placeholder = true;
+    const folded = foldKey(text, p.language);
+    if (PLACEHOLDER_PATTERN.test(folded)) placeholder = true;
+    if (INJECTION_PATTERN.test(folded)) injection = true;
     if (EMOJI.test(text)) emoji = true;
     if (LINK.test(text)) link = true;
     if (containsProfanity(text)) profanity = true;
@@ -438,6 +441,7 @@ function languageRules(p: Prepared, out: Finding[]): void {
   if (encoding) out.push(finding('BROKEN_ENCODING'));
   if (invalid) out.push(finding('INVALID_CHARACTERS'));
   if (placeholder) out.push(finding('PLACEHOLDER_TEXT'));
+  if (injection) out.push(finding('PROMPT_INJECTION_SUSPECT'));
   if (profanity) out.push(finding('PROFANITY'));
   if (ascii) out.push(finding('ASCII_FOLDED_TURKISH'));
   if (emoji) out.push(finding('EMOJI_IN_TEXT'));

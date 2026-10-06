@@ -513,6 +513,57 @@ describe('bad questions are noticed (question red team)', () => {
   });
 });
 
+/**
+ * Regressions found by running the heuristics over real Turkish questions: each of these was a false
+ * accusation (a number that looked like a year, options that are punctuation) and each is a bug
+ * that must stay fixed.
+ */
+describe('options that only look unusual', () => {
+  it('does not call a year and an ordinary number different kinds of answer', () => {
+    // 1200 reads as a year and 3500 as a count, but a player sees five numbers.
+    expect(
+      codes(
+        subject(draft('Bir ordunun mevcudu kaç askerdir?', ['900', '1200', '1750', '2400'], 1)),
+      ),
+    ).not.toContain('OPTION_TYPE_MISMATCH');
+    expect(
+      codes(
+        subject(
+          draft('Bu antlaşma kaç yılında imzalanmıştır?', ['1071', '1200', '1453', '1923'], 0),
+          {
+            category: 'history',
+          },
+        ),
+      ),
+    ).not.toContain('OPTION_TYPE_MISMATCH');
+  });
+
+  it('still notices a word among numbers', () => {
+    expect(
+      codes(
+        subject(
+          draft('Bir üçgenin açıları toplamı kaç derecedir?', ['90', '180', 'Yüz yirmi', '360'], 1),
+        ),
+      ),
+    ).toContain('OPTION_TYPE_MISMATCH');
+  });
+
+  it('does not call punctuation-only options duplicates of each other', () => {
+    // Folded for comparison, "@", "#", "&" and "%" are all empty; they are four different symbols.
+    const symbols = draft(
+      'Bir e-posta adresinde kullanıcı adını alan adından ayıran simge hangisidir?',
+      ['@', '#', '&', '%'],
+    );
+    expect(codes(subject(symbols))).not.toContain('DUPLICATE_OPTIONS');
+    expect(codes(subject(symbols))).not.toContain('OPTIONS_NEARLY_IDENTICAL');
+  });
+
+  it('still catches two identical symbols', () => {
+    const twice = draft('Hangi simge bir e-posta adresinde kullanılır?', ['@', '@', '#', '%']);
+    expect(codes(subject(twice))).toContain('DUPLICATE_OPTIONS');
+  });
+});
+
 describe('English questions', () => {
   it('get the language-neutral checks without Turkish-only rules', () => {
     const english = subject(

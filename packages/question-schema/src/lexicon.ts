@@ -254,6 +254,14 @@ export const SENSITIVE_STEMS: ByLanguage<readonly string[]> = {
 export const ALL_OR_NONE =
   /^(?:hepsi|hicbiri|hicbirisi|bunlarin hepsi|bunlarin hicbiri|yukaridakilerin (?:hepsi|hicbiri)|yukaridakilerden hicbiri|ikisi de|her ikisi de|ikisi de dogru|hepsi dogru|hepsi yanlis|[a-f] ve [a-f]|all of the above|none of the above|both of the above|both)(?: |$)/u;
 
+/**
+ * Instructions aimed at a model that will read the question (prompt injection). Question text comes
+ * from imports and generators, so an audit prompt must never trust it; a question that talks to the
+ * auditor is rejected outright. Matched against folded text.
+ */
+export const INJECTION_PATTERN =
+  /\b(?:ignore|disregard|forget)\b.{0,30}\b(?:previous|prior|above|all|any|earlier)\b|\bsystem prompt\b|\bas an ai\b|\b(?:oncek|yukaridak)\w*\b.{0,30}\b(?:talimat|komut|yonerge)\w*\b|\b(?:talimat|komut|yonerge)\w*\b.{0,30}\b(?:yok say|unut|dikkate alma)\w*|\boutput (?:pass|approved)\b|\bscores?\b.{0,12}\b5\b.{0,12}\ball\b/u;
+
 /** Text that proves a row is a template or leftover, not a question. */
 export const PLACEHOLDER_PATTERN =
   /lorem ipsum|\btodo\b|\btbd\b|\bxxx+\b|\bn\/a\b|\{\{|\}\}|\[\.\.\.\]|<\/?[a-z][^>]*>|\b(?:secenek|option|answer|cevap) [a-f]\b|\bornek soru\b|\bsample question\b/iu;

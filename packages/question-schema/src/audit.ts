@@ -89,6 +89,8 @@ export type AuditPassResult = z.output<typeof PassResultSchema>;
  */
 export const ExternalAuditRowSchema = z.strictObject({
   questionId: z.string().min(1).max(64),
+  /** The revision the auditor was shown; results for another revision are not applied. */
+  revision: z.number().int().min(1).optional(),
   status: z.enum(AUDIT_STATUSES),
   scores: scoresSchema.default({}),
   dimensions: dimensionsSchema.default({}),
@@ -176,6 +178,8 @@ export interface ArbiterDecision {
   reasonCodes: string[];
   hardRejectReasons: string[];
   reviewReasons: string[];
+  /** Why a REVIEW verdict is not a PASS (empty for PASS and REJECT). */
+  blockers: string[];
   suggestedRewrite: string | null;
   /** A human approved this revision (their fact-check stands in for model scores). */
   humanApproved: boolean;
@@ -255,11 +259,12 @@ export function arbitrate(
   for (const key of ZERO_MEANS_REJECT) if (scores[key] === 0) hard.add(`SCORE_ZERO:${key}`);
 
   const reasons = new Set<string>(codes);
+  const blockers = new Set<string>();
   let status: AuditStatus;
   if (hard.size > 0 || DIMENSIONS.some((dimension) => dimensions[dimension] === 'FAIL')) {
     status = 'REJECT';
   } else {
-    const blockers = new Set<string>(review);
+    for (const reason of review) blockers.add(reason);
     if (dimensions.factCheck !== 'PASS')
       blockers.add(dimensions.factCheck === 'NOT_RUN' ? 'FACT_CHECK_NOT_RUN' : 'FACT_CHECK_REVIEW');
     const dimensionReview = DIMENSIONS.filter(
@@ -287,6 +292,7 @@ export function arbitrate(
     reasonCodes: [...reasons],
     hardRejectReasons: [...hard],
     reviewReasons: [...review],
+    blockers: [...blockers],
     suggestedRewrite: rewrite,
     humanApproved,
   };

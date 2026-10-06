@@ -20,7 +20,8 @@ type Entry = { word: string; patterns: ReturnType<typeof pattern>[] };
 /** Long, unmistakable stems: safe to match anywhere, even inside joined text. */
 const LONG_STEMS: Entry[] = [
   { word: 'orospu', patterns: [pattern`orospu`, pattern`orosp`] },
-  { word: 'yarrak', patterns: [pattern`yarrak`, pattern`yarak`] },
+  // "yarak" only at the start of a word: "-yarak" ends common verb forms (başlayarak, toplayarak)
+  { word: 'yarrak', patterns: [pattern`yarrak`, pattern`|yarak`] },
   { word: 'amcik', patterns: [pattern`amcik`, pattern`amcuk`] },
   { word: 'pezevenk', patterns: [pattern`pezevenk`] },
   {
@@ -46,25 +47,62 @@ const SHORT_STEMS: Entry[] = [
 ];
 
 /**
- * The English list matches word *prefixes* for "cum" and "anal" (and "kanal", "sanal", … through
- * its letter-prefixed variants), which begin ordinary Turkish words: Cuma, Cumartesi, Cumhur,
- * Cumhuriyeti, kanal, sanal, analiz. Only the whole-word forms are kept.
+ * The English list matches inside words that begin or contain ordinary Turkish ones: the prefixes
+ * "cum" and "anal" (Cuma, Cumartesi, Cumhuriyeti, kanal, sanal, analiz), and "anus", "penis", "turd"
+ * and "arse" anywhere (okyanus, Justinianus, penisilin, tür-de, arşe), "fag" (fagot). Those words
+ * are replaced by whole-word forms; the rest of the list is untouched. Found by running the filter
+ * over real Turkish text (the question bank audit), so extend this list the same way.
  */
+const WHOLE_WORD_ONLY = ['cum', 'anal', 'anus', 'penis', 'turd', 'arse', 'fag'];
+
 function turkishSafeEnglish(): DataSet<{ originalWord: string }> {
-  return new DataSet<{ originalWord: string }>()
-    .addAll(englishDataset)
-    .removePhrasesIf((phrase) => ['cum', 'anal'].includes(phrase.metadata?.originalWord ?? ''))
-    .addPhrase((builder) =>
-      builder
-        .setMetadata({ originalWord: 'cum' })
-        .addPattern(pattern`|cum|`)
-        .addPattern(pattern`|cums|`)
-        .addPattern(pattern`|cuming|`) // the transformers collapse doubled letters first
-        .addPattern(pattern`|cumshot`),
-    )
-    .addPhrase((builder) =>
-      builder.setMetadata({ originalWord: 'anal' }).addPattern(pattern`|anal|`),
-    );
+  return (
+    new DataSet<{ originalWord: string }>()
+      .addAll(englishDataset)
+      .removePhrasesIf((phrase) => WHOLE_WORD_ONLY.includes(phrase.metadata?.originalWord ?? ''))
+      .addPhrase((builder) =>
+        builder
+          .setMetadata({ originalWord: 'cum' })
+          .addPattern(pattern`|cum|`)
+          .addPattern(pattern`|cums|`)
+          .addPattern(pattern`|cuming|`) // the transformers collapse doubled letters first
+          .addPattern(pattern`|cumshot`),
+      )
+      .addPhrase((builder) =>
+        builder.setMetadata({ originalWord: 'anal' }).addPattern(pattern`|anal|`),
+      )
+      .addPhrase((builder) =>
+        builder
+          .setMetadata({ originalWord: 'anus' })
+          .addPattern(pattern`|anus|`)
+          .addPattern(pattern`|anuses|`),
+      )
+      .addPhrase((builder) =>
+        builder
+          .setMetadata({ originalWord: 'penis' })
+          .addPattern(pattern`|penis|`)
+          .addPattern(pattern`|penises|`)
+          .addPattern(pattern`|pnis|`),
+      )
+      .addPhrase((builder) =>
+        builder
+          .setMetadata({ originalWord: 'turd' })
+          .addPattern(pattern`|turd|`)
+          .addPattern(pattern`|turds|`),
+      )
+      // "arse" folds to the same letters as the Turkish "arşe" (a violin bow): only the compound stays.
+      .addPhrase((builder) =>
+        builder.setMetadata({ originalWord: 'arse' }).addPattern(pattern`|arsehole`),
+      )
+      .addPhrase((builder) =>
+        builder
+          .setMetadata({ originalWord: 'fag' })
+          .addPattern(pattern`|fag|`)
+          .addPattern(pattern`|fags|`)
+          .addPattern(pattern`|faggot`)
+          .addPattern(pattern`|fggot`),
+      )
+  );
 }
 
 function buildMatcher(entries: Entry[]): RegExpMatcher {

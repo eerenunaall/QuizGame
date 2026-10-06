@@ -173,8 +173,48 @@ describe('containsProfanity and ordinary Turkish', () => {
     }
   });
 
+  // Regression: found by auditing 340 Turkish quiz questions. The Turkish stem "yarak" and the English
+  // "anus", "penis", "turd" and "arse" matched inside everyday words ("başlayarak", "okyanus",
+  // "penisilin", "tür", "arşe").
+  it('does not flag words that merely contain a vulgar stem', () => {
+    for (const fine of [
+      'başlayarak',
+      'toplayarak',
+      'uğrayarak',
+      'Hangi sanatçı resmi yaparak ünlenmiştir?',
+      'okyanus',
+      'Dünyanın en büyük okyanusu hangisidir?',
+      'Justinianus',
+      'Urbanus',
+      'Penisilin',
+      'Penisilini 1928’de keşfeden bilim insanı kimdir?',
+      'tür',
+      'türde',
+      'Pikachu hangi türdendir?',
+      'türdeş',
+      'Arşe',
+      'Fagot',
+      'Arsenal',
+    ]) {
+      expect(containsProfanity(fine), fine).toBe(false);
+      expect(containsProfanity(fine, { strict: true }), `${fine} (strict)`).toBe(false);
+    }
+  });
+
   it('still catches the whole words', () => {
-    for (const bad of ['cum', 'anal', 'anal sex', 'cumming'])
+    for (const bad of [
+      'cum',
+      'anal',
+      'anal sex',
+      'cumming',
+      'anus',
+      'penis',
+      'turd',
+      'arsehole',
+      'yarak',
+      'yaraklı',
+      'faggot',
+    ])
       expect(containsProfanity(bad), bad).toBe(true);
   });
 });

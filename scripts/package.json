@@ -5,13 +5,20 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "assets:build": "node assets/build.ts"
+    "assets:build": "node assets/build.ts",
+    "question": "tsx question/main.ts"
   },
   "devDependencies": {
     "@types/node": "22.20.5",
     "sharp": "0.35.5"
   },
   "dependencies": {
-    "@quizparty/protocol": "workspace:*"
+    "@quizparty/protocol": "workspace:*",
+    "@quizparty/db": "workspace:*",
+    "@quizparty/question-bank": "workspace:*",
+    "@quizparty/question-schema": "workspace:*"
+  },
+  "exports": {
+    "./question/cli": "./question/cli.ts"
   }
 }

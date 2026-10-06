@@ -12,7 +12,10 @@
     "@quizparty/game-engine": "workspace:*",
     "@quizparty/i18n": "workspace:*",
     "@quizparty/protocol": "workspace:*",
+    "@quizparty/question-bank": "workspace:*",
+    "@quizparty/question-schema": "workspace:*",
     "@quizparty/realtime": "workspace:*",
+    "@quizparty/scripts": "workspace:*",
     "@quizparty/shared": "workspace:*",
     "@quizparty/validation": "workspace:*",
     "ws": "8.22.0"
