@@ -65,7 +65,12 @@ export default tseslint.config(
     languageOptions: { globals: { ...globals.node } },
   },
   {
-    files: ['scripts/**/*.ts', 'tests/**/*.ts', 'apps/realtime/src/cli/**/*.ts'],
+    files: [
+      'scripts/**/*.ts',
+      'tests/**/*.ts',
+      'apps/realtime/src/cli/**/*.ts',
+      'packages/db/src/cli/**/*.ts',
+    ],
     rules: { 'no-console': 'off' },
   },
   {

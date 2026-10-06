@@ -1,4 +1,5 @@
 import type {
+  AvatarId,
   CloseReason,
   ClientPayload,
   Difficulty,
@@ -28,7 +29,7 @@ export interface Player {
   nickname: string;
   /** Confusable-folded, case-folded key used for per-room uniqueness (computed by the server). */
   nicknameKey: string;
-  avatarId: string;
+  avatarId: AvatarId;
   colorSlot: number;
   joinIndex: number;
   ready: boolean;
@@ -47,6 +48,8 @@ export interface AnswerRecord {
 
 export interface PresentedOption {
   optionId: string;
+  /** PRIVATE stable key of the underlying bank option (for analytics); never copied into a view. */
+  key: string;
   text: string;
   /** PRIVATE. Never copied into any view. */
   correct: boolean;
@@ -225,7 +228,7 @@ export interface JoinRequest {
   sessionId: string;
   nickname: string;
   nicknameKey: string;
-  avatarId: string;
+  avatarId: AvatarId;
 }
 
 export type EngineInput =
@@ -285,10 +288,12 @@ export type PersistRecord =
       kind: RoundKind;
       questionId: string;
       answerMs: number;
+      correctOptionKey: string;
+      /** Answer counts keyed by the bank option key (not the per-presentation id). */
       distribution: Record<string, number>;
       players: {
         playerId: string;
-        optionId: string | null;
+        optionKey: string | null;
         correct: boolean;
         remainingMs: number;
         delta: number;

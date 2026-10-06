@@ -325,6 +325,12 @@ function onPlayerJoin(
     d.phaseEnteredAt = at;
   }
   touch(d, at);
+  // The first player becomes leader *before* the join is announced, so PLAYER_JOINED is consistent.
+  const becomesLeader = d.leaderPlayerId === null;
+  if (becomesLeader) {
+    d.leaderPlayerId = joining.playerId;
+    d.leaderLostAt = null;
+  }
   emit(
     ctx,
     { to: 'ALL' },
@@ -338,7 +344,7 @@ function onPlayerJoin(
     name: 'player_joined',
     props: { players: active.length + 1 },
   });
-  if (d.leaderPlayerId === null) setLeader(d, ctx, joining.playerId);
+  if (becomesLeader) setLeader(d, ctx, joining.playerId);
 }
 
 function onPlayerConnection(
@@ -949,9 +955,12 @@ function presentQuestion(d: Room, ctx: Ctx): void {
   const source = game.deck.questions[round.questionId]!;
   const rng = ctx.rng();
   const taken = new Set<string>();
-  const shuffled = rng.shuffle(source.options.map((o) => ({ text: o.text, correct: o.correct })));
+  const shuffled = rng.shuffle(
+    source.options.map((o) => ({ key: o.key, text: o.text, correct: o.correct })),
+  );
   const options: PresentedOption[] = shuffled.map((o) => ({
     optionId: opaqueId(rng, taken),
+    key: o.key,
     text: o.text,
     correct: o.correct,
   }));
@@ -1057,6 +1066,11 @@ function enterScoreUpdate(d: Room, ctx: Ctx, at: number): void {
   game.director.recentAvgAnswerPermille.push(used);
   game.director.recentRiskTakePermille.push(0);
 
+  const keyOf = new Map(round.question!.options.map((o) => [o.optionId, o.key]));
+  const distributionByKey: Record<string, number> = {};
+  for (const [optionId, count] of Object.entries(outcome.distribution)) {
+    distributionByKey[keyOf.get(optionId) ?? optionId] = count;
+  }
   ctx.effects.push({
     kind: 'persist',
     record: {
@@ -1066,12 +1080,13 @@ function enterScoreUpdate(d: Room, ctx: Ctx, at: number): void {
       kind: round.kind,
       questionId: round.questionId,
       answerMs: round.answerMs,
-      distribution: { ...outcome.distribution },
+      correctOptionKey: keyOf.get(round.question!.correctOptionId) ?? '',
+      distribution: distributionByKey,
       players: deltas.map((entry) => {
         const result = outcome.players[entry.playerId]!;
         return {
           playerId: entry.playerId,
-          optionId: result.optionId,
+          optionKey: result.optionId === null ? null : (keyOf.get(result.optionId) ?? null),
           correct: result.result === 'CORRECT',
           remainingMs: result.remainingMs,
           delta: result.delta,

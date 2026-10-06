@@ -9,6 +9,9 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  DATABASE_URL: postgres://quizparty:quizparty@127.0.0.1:5432/quizparty_dev
+
 jobs:
   check:
     name: Lint, typecheck, unit tests
@@ -25,3 +28,37 @@ jobs:
       - run: pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm run test
+
+  integration:
+    name: Integration, WebSocket and red-team tests (PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: quizparty
+          POSTGRES_PASSWORD: quizparty
+          POSTGRES_DB: quizparty_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U quizparty"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Database types are in sync with the migrations
+        run: |
+          pnpm run db:migrate
+          pnpm run db:types
+          git diff --exit-code -- packages/db/src/generated
+      - run: pnpm run test:integration
+      - run: pnpm run test:ws
+      - run: pnpm run test:red-team

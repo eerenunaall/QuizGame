@@ -23,6 +23,7 @@ Chromium than the sandbox ships (revision 1194 → Playwright 1.56).
 | Lint/format | ESLint 10 flat config + typescript-eslint (type-aware: `no-floating-promises`) + Prettier | |
 | IDs | `crypto.randomUUID()` (v4) for internal ids; 256-bit random for secrets | GDD §18 |
 | Time | all game logic takes `now` as an argument; `Date.now()` only at I/O edges | determinism |
+| Syntax subset | `erasableSyntaxOnly` for every package that ships to clients (shared, protocol, game-engine, validation, i18n, controller-client, UI); server-only code (`apps/realtime`, `packages/db`, `tests`) may use constructor parameter properties | runs under Babel (React Native) and Node type stripping where it matters |
 
 ## Consequences
 - Migrations are plain SQL, forward-only, checksummed, applied under an advisory lock.

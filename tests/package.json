@@ -1,0 +1,25 @@
+{
+  "name": "@quizparty/tests",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@quizparty/db": "workspace:*",
+    "@quizparty/game-engine": "workspace:*",
+    "@quizparty/protocol": "workspace:*",
+    "@quizparty/shared": "workspace:*",
+    "@quizparty/validation": "workspace:*",
+    "ws": "8.22.0",
+    "@quizparty/realtime": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/ws": "8.18.2",
+    "kysely": "0.29.6",
+    "pg": "8.23.1",
+    "@types/pg": "8.23.1"
+  }
+}

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  AVATAR_IDS,
   CLOSE_REASONS,
   DIFFICULTIES,
   LOCALES,
@@ -19,7 +20,7 @@ export const SequenceSchema = z.int().nonnegative().max(Number.MAX_SAFE_INTEGER)
 export const OptionIdSchema = z.string().regex(/^[A-Za-z0-9_-]{8,24}$/);
 export const QuestionIdSchema = z.string().min(1).max(64);
 export const PlayerIdSchema = z.string().min(1).max(64);
-export const AvatarIdSchema = z.string().regex(/^[a-z0-9-]{1,24}$/);
+export const AvatarIdSchema = z.enum(AVATAR_IDS);
 export const CategoryIdSchema = z.string().regex(/^[a-z0-9-]{1,40}$/);
 export const DeviceIdSchema = z.string().regex(/^[A-Za-z0-9_-]{16,64}$/);
 

@@ -21,8 +21,10 @@
     "test:e2e": "playwright test",
     "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test",
     "dev:db": "bash scripts/dev/db-up.sh",
-    "db:migrate": "tsx scripts/db/migrate.ts",
-    "db:types": "tsx scripts/db/gen-types.ts"
+    "db:migrate": "pnpm --filter @quizparty/db run migrate",
+    "db:types": "pnpm --filter @quizparty/db run gen-types",
+    "dev": "pnpm --filter @quizparty/realtime run dev",
+    "test:all": "pnpm run test && pnpm run test:integration && pnpm run test:ws && pnpm run test:red-team"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

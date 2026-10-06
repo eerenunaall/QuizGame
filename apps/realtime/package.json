@@ -1,0 +1,36 @@
+{
+  "name": "@quizparty/realtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./app": "./src/app.ts",
+    "./config": "./src/config.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@quizparty/db": "workspace:*",
+    "@quizparty/game-engine": "workspace:*",
+    "@quizparty/protocol": "workspace:*",
+    "@quizparty/shared": "workspace:*",
+    "@quizparty/validation": "workspace:*",
+    "fastify": "5.12.5",
+    "kysely": "0.29.6",
+    "pg": "8.23.1",
+    "prom-client": "15.1.3",
+    "ws": "8.22.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/pg": "8.23.1",
+    "@types/ws": "8.18.2",
+    "tsx": "4.23.15"
+  }
+}

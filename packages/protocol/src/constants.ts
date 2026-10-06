@@ -53,3 +53,24 @@ export type Locale = (typeof LOCALES)[number];
 
 export const TIERS = ['FREE', 'FULL'] as const;
 export type Tier = (typeof TIERS)[number];
+
+/** Fixed avatar set; the web and mobile clients draw these, the server only accepts these ids. */
+export const AVATAR_IDS = [
+  'fox',
+  'panda',
+  'owl',
+  'cat',
+  'dog',
+  'rabbit',
+  'tiger',
+  'koala',
+  'penguin',
+  'frog',
+  'lion',
+  'monkey',
+  'bear',
+  'unicorn',
+  'dragon',
+  'robot',
+] as const;
+export type AvatarId = (typeof AVATAR_IDS)[number];
