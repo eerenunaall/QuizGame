@@ -19,7 +19,10 @@ export type SoundName =
   | 'score'
   | 'rankUp'
   | 'final'
-  | 'fanfare';
+  | 'fanfare'
+  | 'power'
+  | 'shield'
+  | 'hit';
 
 interface AudioContextLike {
   currentTime: number;
@@ -252,6 +255,25 @@ export class Sfx {
       this.tone(c, out, at, { from: 90, to: 45, duration: 0.8, type: 'sine', gain: 0.5 });
       this.noise(c, out, at, { duration: 1.1, from: 200, to: 5000, gain: 0.18 });
       this.tone(c, out, at + 0.9, { from: NOTE.C5, duration: 0.5, type: 'sawtooth', gain: 0.16 });
+    },
+    power: (c, out, at) => {
+      this.tone(c, out, at, { from: 70, to: 140, duration: 0.45, type: 'sine', gain: 0.45 });
+      this.noise(c, out, at, { duration: 0.55, from: 400, to: 4500, gain: 0.14 });
+      this.tone(c, out, at + 0.35, {
+        from: NOTE.A4,
+        to: NOTE.A5,
+        duration: 0.3,
+        type: 'sawtooth',
+        gain: 0.12,
+      });
+    },
+    shield: (c, out, at) => {
+      this.tone(c, out, at, { from: NOTE.E6, duration: 0.09, type: 'triangle', gain: 0.22 });
+      this.tone(c, out, at + 0.07, { from: NOTE.C6, duration: 0.3, type: 'triangle', gain: 0.2 });
+    },
+    hit: (c, out, at) => {
+      this.noise(c, out, at, { duration: 0.28, from: 2400, to: 200, gain: 0.2 });
+      this.tone(c, out, at, { from: 220, to: 60, duration: 0.3, type: 'sawtooth', gain: 0.22 });
     },
     fanfare: (c, out, at) => {
       const chord = (when: number, notes: number[], length: number): void =>

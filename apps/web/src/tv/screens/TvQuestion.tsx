@@ -33,6 +33,32 @@ export function explanationFontSize(text: string): number {
   return 28;
 }
 
+export type CrowdSummary =
+  { kind: 'majority'; optionId: string; right: boolean } | { kind: 'split' } | null;
+
+/** CROWD rounds: what the room as a whole thought, and whether it was right. */
+export function crowdSummary(
+  distribution: readonly { optionId: string; count: number }[],
+  correctOptionId: string,
+): CrowdSummary {
+  const total = distribution.reduce((sum, entry) => sum + entry.count, 0);
+  if (total === 0) return null;
+  const top = Math.max(...distribution.map((entry) => entry.count));
+  const leaders = distribution.filter((entry) => entry.count === top);
+  if (leaders.length > 1) return { kind: 'split' };
+  const leader = leaders[0]!;
+  return {
+    kind: 'majority',
+    optionId: leader.optionId,
+    right: leader.optionId === correctOptionId,
+  };
+}
+
+/** Share of the votes an option got, as a whole percentage (0 when nobody voted). */
+export function votePercent(count: number, total: number): number {
+  return total <= 0 ? 0 : Math.round((count * 100) / total);
+}
+
 /** At most three faces fit on an answer card; more players collapse into a "+N" chip. */
 export const MAX_CHOOSER_FACES = 3;
 
@@ -61,6 +87,8 @@ interface Props {
     results: readonly { playerId: string; optionId: string | null }[];
     explanation: string | null;
   };
+  /** CROWD round: every card also shows the share of votes it got. */
+  crowd?: boolean;
   /** Extra content rendered between status and answers. */
   children?: ReactNode;
 }
@@ -69,6 +97,21 @@ const stateFor = (option: PublicOption, reveal: Props['reveal']): AnswerState =>
   if (!reveal) return 'idle';
   return option.optionId === reveal.correctOptionId ? 'correct' : 'dim';
 };
+
+function CrowdBar({ percent }: { percent: number }) {
+  return (
+    <>
+      <span className={styles.crowdPct} data-testid="crowd-percent">
+        {percent}%
+      </span>
+      <span
+        className={styles.crowdBar}
+        style={{ ['--qp-pct' as string]: percent / 100 }}
+        aria-hidden="true"
+      />
+    </>
+  );
+}
 
 function ChooserFaces({ players }: { players: readonly PublicPlayer[] }) {
   const overflow = players.length > MAX_CHOOSER_FACES;
@@ -96,6 +139,7 @@ export function TvQuestion({
   timer,
   status,
   reveal,
+  crowd,
   children,
 }: Props) {
   const { t, td } = useI18n();
@@ -108,6 +152,9 @@ export function TvQuestion({
       .map((result) => playersById.get(result.playerId))
       .filter((player): player is PublicPlayer => player !== undefined);
   const explanation = reveal?.explanation?.trim() ? reveal.explanation.trim() : null;
+  const votes = reveal?.distribution.reduce((sum, entry) => sum + entry.count, 0) ?? 0;
+  const countOf = (optionId: string): number =>
+    reveal?.distribution.find((entry) => entry.optionId === optionId)?.count ?? 0;
 
   return (
     <div className={styles.screen}>
@@ -193,6 +240,9 @@ export function TvQuestion({
                   textSize={answerFontSize(option.text, picked.length > 0)}
                 >
                   {picked.length > 0 ? <ChooserFaces players={picked} /> : null}
+                  {crowd && reveal ? (
+                    <CrowdBar percent={votePercent(countOf(option.optionId), votes)} />
+                  ) : null}
                 </AnswerCard>
               </div>
             );

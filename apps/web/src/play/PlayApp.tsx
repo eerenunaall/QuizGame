@@ -169,6 +169,15 @@ export function PlayApp({ code }: { code: string }) {
       void client.kick(playerId).catch((cause: unknown) => flash(describe(cause))),
     makeLeader: (playerId) =>
       void client.transferLeader(playerId).catch((cause: unknown) => flash(describe(cause))),
+    commit: (choice) =>
+      client.commitPrep({
+        stake: choice.stake,
+        doubleDown: choice.doubleDown,
+        sabotage: choice.sabotage,
+      }),
+    fifty: () => void client.useFiftyFifty().catch((cause: unknown) => flash(describe(cause))),
+    setReduced: (value) =>
+      void client.setReducedEffects(value).catch((cause: unknown) => flash(describe(cause))),
   };
 
   if (resuming && !inRoom) {

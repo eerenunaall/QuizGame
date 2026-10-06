@@ -14,10 +14,19 @@ import { CountUp } from '../ui/CountUp';
 import { Panel, Pill } from '../ui/Panel';
 import { AnimatedSticker, Sticker } from '../ui/Sticker';
 import { TimerBar } from '../ui/TimerBar';
-import { categoryIcon } from '../lib/assets';
 import { burst } from '../lib/confetti';
 import { useI18n } from '../lib/i18n';
 import { sfx } from '../lib/audio';
+import { HitNotices } from './HitNotices';
+import { PrepScreen } from './PrepScreen';
+import {
+  fiftyFiftyState,
+  isFogged,
+  isRemoved,
+  orderedOptions,
+  personalDeadline,
+  type PrepChoice,
+} from './powers';
 import styles from './Controller.module.css';
 import { cx } from '../lib/cx';
 
@@ -38,6 +47,10 @@ export interface ControllerActions {
   leave: () => void;
   kick: (playerId: string) => void;
   makeLeader: (playerId: string) => void;
+  /** QUESTION_PREP: stake, Double Down and sabotage in one final message. Rejects with the server's code. */
+  commit: (choice: PrepChoice) => Promise<void>;
+  fifty: () => void;
+  setReduced: (value: boolean) => void;
 }
 
 interface Props {
@@ -114,15 +127,18 @@ export function Controller({ room, state, now, catalog, busy, error, actions }: 
       );
     case 'QUESTION_PREP':
       return (
-        <Center testId="ctl-prep">
-          <Sticker id={categoryIcon(data.category.id)} size={130} />
-          <div className={styles.big}>{data.category.label}</div>
-          <div className={styles.sub}>{t('game.question.getReady')}</div>
-        </Center>
+        <PrepScreen
+          key={data.round.index}
+          room={room}
+          data={data}
+          now={now}
+          onCommit={actions.commit}
+        />
       );
     case 'QUESTION':
       return (
         <Center testId="ctl-question">
+          <HitNotices you={you} />
           <Panel className={styles.questionCard}>
             <div className={styles.questionText}>{data.text}</div>
           </Panel>
@@ -305,6 +321,19 @@ function LobbyScreen({
         </Panel>
       ) : null}
 
+      <label className={styles.prefRow}>
+        <input
+          type="checkbox"
+          checked={room.you?.reducedEffects ?? false}
+          onChange={(event) => actions.setReduced(event.target.checked)}
+          data-testid="pref-reduced"
+        />
+        <span className={styles.prefText}>
+          <span className={styles.prefName}>{t('ctl.prefs.reduced')}</span>
+          <span className={styles.prefHint}>{t('ctl.prefs.reduced.hint')}</span>
+        </span>
+      </label>
+
       {isLeader ? (
         <Panel className={styles.leaderPanel} tone="glass">
           <div className={styles.groupTitle}>{t('settings.questions')}</div>
@@ -431,6 +460,22 @@ function PlayerChip({
 
 type AnsweringData = PhaseDataOf<'ANSWERING'>;
 
+/** True while a FOG effect still hides an option: flips off by itself when the fog time is over. */
+function useFogActive(openedAt: number, fogMs: number, now: () => number): boolean {
+  const [active, setActive] = useState(() => fogMs > 0 && now() < openedAt + fogMs);
+  useEffect(() => {
+    const remaining = openedAt + fogMs - now();
+    if (fogMs <= 0 || remaining <= 0) {
+      setActive(false);
+      return undefined;
+    }
+    setActive(true);
+    const id = window.setTimeout(() => setActive(false), remaining);
+    return () => window.clearTimeout(id);
+  }, [openedAt, fogMs, now]);
+  return active;
+}
+
 function AnswerScreen({
   data,
   state,
@@ -443,10 +488,16 @@ function AnswerScreen({
   actions: ControllerActions;
 }) {
   const { t, td } = useI18n();
-  const answer = state.room?.you?.answer ?? null;
+  const you = state.room?.you ?? null;
+  const answer = you?.answer ?? null;
   const pending = state.pendingAnswer;
   const rejection = state.answerRejection;
   const locked = answer !== null && answer.questionId === data.questionId;
+  const effects = you?.effects ?? null;
+  const keep = you?.fiftyFifty?.keep;
+  const options = orderedOptions(data.options, effects?.order);
+  const fogActive = useFogActive(data.answerOpensAt, effects?.fogMs ?? 0, now);
+  const fiftyBlock = fiftyFiftyState(you);
 
   useEffect(() => {
     if (locked) {
@@ -472,25 +523,35 @@ function AnswerScreen({
 
   return (
     <div className={styles.answering} data-testid="ctl-answering">
+      <HitNotices you={you} />
       <Panel className={styles.questionCard}>
         <div className={styles.questionText}>{data.text}</div>
       </Panel>
-      <div className={styles.options}>
-        {data.options.map((option, index) => {
+      <div className={cx(styles.options, effects?.order && styles.shuffled)}>
+        {options.map((option, index) => {
           const chosen = pending?.optionId === option.optionId;
-          const stateName: AnswerState = pending ? (chosen ? 'selected' : 'dim') : 'idle';
+          const removed = isRemoved(option.optionId, keep);
+          const stateName: AnswerState = pending
+            ? chosen
+              ? 'selected'
+              : 'dim'
+            : removed
+              ? 'dim'
+              : 'idle';
+          const veiled = fogActive && isFogged(option.optionId, effects, data.answerOpensAt, now());
           return (
             <div
               key={option.optionId}
-              className={styles.option}
+              className={cx(styles.option, removed && styles.removed)}
               style={{ ['--qp-delay' as string]: `${index * 60}ms` }}
+              data-removed={removed || undefined}
             >
               <AnswerCard
                 size="phone"
                 index={index}
-                text={option.text}
+                text={veiled ? '• • •' : option.text}
                 state={stateName}
-                disabled={pending !== null}
+                disabled={pending !== null || removed}
                 onSelect={() => pick(option.optionId)}
               />
             </div>
@@ -498,8 +559,30 @@ function AnswerScreen({
         })}
       </div>
       {rejection ? <div className={styles.error}>{td(`error.${rejection.code}`)}</div> : null}
+      {keep ? (
+        <div className={styles.fiftyNote} data-testid="fifty-used">
+          {t('ctl.fifty.used')}
+        </div>
+      ) : fiftyBlock === null && !pending ? (
+        <Button
+          size="md"
+          variant="violet"
+          icon="light-bulb"
+          className={styles.fifty}
+          onClick={actions.fifty}
+          data-testid="use-fifty"
+        >
+          {t('ctl.fifty.use')} · {t('ctl.fifty.left', { count: you?.powers?.fiftyFifty ?? 0 })}
+        </Button>
+      ) : fiftyBlock === 'LOCKED' ? (
+        <div className={styles.fiftyNote}>{t('ctl.fifty.locked')}</div>
+      ) : null}
       <div className={styles.timer}>
-        <TimerBar now={now} startAt={data.answerOpensAt} deadlineAt={data.answerDeadlineAt} />
+        <TimerBar
+          now={now}
+          startAt={data.answerOpensAt}
+          deadlineAt={personalDeadline(data.answerDeadlineAt, effects)}
+        />
       </div>
       <div className={styles.sr} aria-live="polite">
         {pending ? t('ctl.answer.sending') : t('ctl.answer.pick')}

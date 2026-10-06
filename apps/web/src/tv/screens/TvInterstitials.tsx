@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Difficulty, RoundKind, RoundPublic } from '@quizparty/protocol';
+import type { PhaseDataOf, RoundKind, RoundPublic } from '@quizparty/protocol';
 import { Button } from '../../ui/Button';
+import { CountdownRing } from '../../ui/CountdownRing';
 import { AnimatedSticker, Sticker } from '../../ui/Sticker';
 import { categoryIcon } from '../../lib/assets';
 import { useI18n } from '../../lib/i18n';
+import { STAKE_STICKER } from '../../play/powers';
 import styles from './TvInterstitials.module.css';
+import { cx } from '../../lib/cx';
 
 /** Big 3·2·1 driven by the server deadline, so a late-joining TV shows the right number. */
 export function TvCountdown({
@@ -89,23 +92,80 @@ export function TvFinalSplash({ round }: { round: RoundPublic }) {
   );
 }
 
-/** Between "READY" and the question: the category and difficulty, for a beat. */
+/**
+ * QUESTION_PREP on the TV: the category, the stake ladder everyone is choosing from, which powers
+ * are on, and how many players have decided (never what they decided).
+ */
 export function TvPrep({
-  category,
-  difficulty,
+  data,
+  now,
+  startAt,
+  deadlineAt,
 }: {
-  category: { id: string; label: string };
-  difficulty: Difficulty;
+  data: PhaseDataOf<'QUESTION_PREP'>;
+  now: () => number;
+  startAt: number;
+  deadlineAt: number | null;
 }) {
   const { t, td } = useI18n();
+  const total = Math.max(data.eligibleCount, data.committedCount);
   return (
     <div className={styles.center} data-testid="tv-prep">
-      <Sticker id={categoryIcon(category.id)} size={260} className={styles.pop} />
-      <div className={styles.introTitle} key={category.id}>
-        {category.label}
+      <div className={styles.prepHead}>
+        <Sticker id={categoryIcon(data.category.id)} size={190} className={styles.pop} />
+        <div className={styles.prepTitleBox}>
+          <div className={styles.prepCategory} key={data.category.id}>
+            {data.category.label}
+          </div>
+          <div className={styles.prepPills}>
+            <span className={styles.pill}>{td(`game.difficulty.${data.difficulty}`)}</span>
+            <span className={styles.pill}>{td(`game.kind.${data.round.kind}`)}</span>
+          </div>
+        </div>
       </div>
-      <div className={styles.kind}>{td(`game.difficulty.${difficulty}`)}</div>
-      <div className={styles.worth}>{t('game.question.getReady')}</div>
+
+      <div className={styles.ladderTitle}>{t('tv.prep.title')}</div>
+      <div className={styles.ladder} data-testid="tv-ladder">
+        {data.riskLadder.map((rung) => (
+          <div key={rung.tier} className={cx(styles.rung, styles[`rung${rung.tier}`])}>
+            <Sticker id={STAKE_STICKER[rung.tier]} size={72} />
+            <span className={styles.rungName}>{td(`ctl.prep.stake.${rung.tier}`)}</span>
+            <span className={styles.rungMult}>×{rung.multiplier}</span>
+            <span className={styles.rungLoss}>
+              {rung.loss > 0
+                ? t('ctl.prep.stake.loss', { loss: rung.loss })
+                : t('ctl.prep.stake.noLoss')}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <div className={styles.badges}>
+        {data.stakeMandatory ? (
+          <span className={cx(styles.badge, styles.badgeGold)}>{t('tv.prep.mandatory')}</span>
+        ) : null}
+        {data.doubleDownEnabled ? (
+          <span className={styles.badge}>
+            <Sticker id="fire" size={44} />
+            {t('tv.prep.doubleDownOpen')}
+          </span>
+        ) : null}
+        {data.sabotageEnabled ? (
+          <span className={styles.badge}>
+            <Sticker id="bomb" size={44} />
+            {t('tv.prep.sabotageOpen')}
+          </span>
+        ) : null}
+      </div>
+
+      <div className={styles.prepFoot}>
+        <span className={styles.prepReady} data-testid="tv-prep-ready">
+          {t('tv.prep.ready', { done: data.committedCount, total })}
+        </span>
+        {deadlineAt !== null ? (
+          <CountdownRing now={now} startAt={startAt} deadlineAt={deadlineAt} size={120} />
+        ) : null}
+      </div>
     </div>
   );
 }

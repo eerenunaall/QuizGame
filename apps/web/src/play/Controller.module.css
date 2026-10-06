@@ -331,3 +331,56 @@
 .leave {
   margin-top: 16px;
 }
+
+/* powers on the answer screen */
+.fifty {
+  align-self: center;
+  margin-top: 4px;
+}
+.fiftyNote {
+  margin: 4px 0;
+  font-size: 15px;
+  font-weight: 800;
+  text-align: center;
+  color: var(--qp-color-muted-text);
+}
+.removed {
+  opacity: 0.3;
+  pointer-events: none;
+}
+.shuffled {
+  animation: qp-shake 520ms ease-out 1;
+}
+
+/* accessibility preference in the lobby */
+.prefRow {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  background: rgba(15, 29, 82, 0.6);
+  border-radius: 16px;
+}
+.prefRow > input {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  margin: 0 12px 0 0;
+  accent-color: var(--qp-color-accent-a);
+}
+.prefText {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+.prefName {
+  font-size: 16px;
+  font-weight: 800;
+}
+.prefHint {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--qp-color-muted-text);
+}

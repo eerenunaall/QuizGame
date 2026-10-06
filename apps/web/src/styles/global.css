@@ -126,6 +126,12 @@ html[data-input='keyboard'] button:focus {
   }
 }
 
+@keyframes qp-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+
 @keyframes qp-fade-out {
   from {
     opacity: 1;

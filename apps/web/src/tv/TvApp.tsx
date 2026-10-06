@@ -19,7 +19,8 @@ import {
   TvRoundIntro,
 } from './screens/TvInterstitials';
 import { TvLobby } from './screens/TvLobby';
-import { TvQuestion } from './screens/TvQuestion';
+import { TvPowerResolution } from './screens/TvPower';
+import { TvQuestion, crowdSummary } from './screens/TvQuestion';
 import { TvResults } from './screens/TvResults';
 import { TvScoreUpdate } from './screens/TvScore';
 import { TvSettings } from './screens/TvSettings';
@@ -312,7 +313,12 @@ export function TvApp({
       case 'QUESTION_PREP':
         return (
           <TvFrame {...base} strip={false}>
-            <TvPrep category={data.category} difficulty={data.difficulty} />
+            <TvPrep
+              data={data}
+              now={now}
+              startAt={room.phaseEnteredAt}
+              deadlineAt={room.phaseDeadlineAt}
+            />
           </TvFrame>
         );
       case 'QUESTION':
@@ -379,6 +385,17 @@ export function TvApp({
           data.results.map((result) => [result.playerId, result.outcome]),
         );
         const anyCorrect = data.results.some((result) => result.outcome === 'CORRECT');
+        const crowd = data.round.kind === 'CROWD';
+        const summary = crowd ? crowdSummary(data.distribution, data.correctOptionId) : null;
+        const statusText = summary
+          ? summary.kind === 'split'
+            ? t('game.crowd.split')
+            : summary.right
+              ? t('game.crowd.right')
+              : t('game.crowd.wrong')
+          : anyCorrect
+            ? t('game.reveal.correct')
+            : t('game.reveal.nobody');
         return (
           <TvFrame {...base} strip={{ results }} celebrate={anyCorrect}>
             <TvQuestion
@@ -387,11 +404,8 @@ export function TvApp({
               difficulty={memory?.difficulty}
               text={data.text}
               options={data.options}
-              status={{
-                tone: 'success',
-                text: anyCorrect ? t('game.reveal.correct') : t('game.reveal.nobody'),
-                icon: 'check',
-              }}
+              crowd={crowd}
+              status={{ tone: 'success', text: statusText, icon: 'check' }}
               reveal={{
                 correctOptionId: data.correctOptionId,
                 distribution: data.distribution,
@@ -404,8 +418,8 @@ export function TvApp({
       }
       case 'POWER_RESOLUTION':
         return (
-          <TvFrame {...base} strip={false}>
-            <TvIntermission next={null} />
+          <TvFrame {...base} theme="results" strip={false}>
+            <TvPowerResolution room={room} data={data} />
           </TvFrame>
         );
       case 'SCORE_UPDATE':

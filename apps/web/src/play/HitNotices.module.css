@@ -1,0 +1,27 @@
+.list {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+  padding: 6px 14px 6px 10px;
+  font-size: 16px;
+  font-weight: 800;
+  color: #1b1200;
+  background: var(--qp-gradient-gold);
+  border-radius: 16px;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.28);
+  animation: qp-pop-in 360ms ease-out 1;
+}
+.notice > img {
+  flex: none;
+  margin-right: 10px;
+}
+
+.blocked {
+  color: #052b12;
+  background: var(--qp-gradient-success);
+}

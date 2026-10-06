@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { answerFontSize, explanationFontSize, questionFontSize } from './TvQuestion';
+import {
+  answerFontSize,
+  crowdSummary,
+  explanationFontSize,
+  questionFontSize,
+  votePercent,
+} from './TvQuestion';
 import { isCrowned, rowHeightFor } from './TvScore';
 
 const nonIncreasing = (sizes: number[]): boolean =>
@@ -77,5 +83,31 @@ describe('score rows', () => {
     const loser = delta({ delta: 0, total: 300, rank: 2, previousRank: 1 });
     expect(isCrowned(loser, false)).toBe(true);
     expect(isCrowned(loser, true)).toBe(false);
+  });
+});
+
+describe('crowd rounds', () => {
+  it('summarises what the room thought, and whether it was right', () => {
+    const votes = (counts: number[]) =>
+      counts.map((count, index) => ({ optionId: `o${index}`, count }));
+    expect(crowdSummary(votes([0, 0, 0, 0]), 'o0')).toBeNull();
+    expect(crowdSummary(votes([3, 1, 0, 0]), 'o0')).toEqual({
+      kind: 'majority',
+      optionId: 'o0',
+      right: true,
+    });
+    expect(crowdSummary(votes([1, 3, 0, 0]), 'o0')).toEqual({
+      kind: 'majority',
+      optionId: 'o1',
+      right: false,
+    });
+    expect(crowdSummary(votes([2, 2, 0, 0]), 'o0')).toEqual({ kind: 'split' });
+  });
+
+  it('turns counts into whole percentages', () => {
+    expect(votePercent(0, 0)).toBe(0);
+    expect(votePercent(1, 3)).toBe(33);
+    expect(votePercent(2, 3)).toBe(67);
+    expect(votePercent(4, 4)).toBe(100);
   });
 });

@@ -201,3 +201,29 @@
   border-radius: 50%;
   box-shadow: 0 3px 0 rgba(0, 0, 0, 0.25);
 }
+
+/* CROWD rounds: share of the votes on every card */
+.crowdPct {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  margin-left: 14px;
+  padding: 0 16px;
+  font-family: var(--qp-font-display);
+  font-size: 40px;
+  color: #1b1b3a;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+}
+.crowdBar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  width: 100%;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.85);
+  transform: scaleX(var(--qp-pct, 0));
+  transform-origin: left center;
+  animation: qp-grow-x 900ms ease-out 1 both;
+}

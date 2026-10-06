@@ -104,3 +104,139 @@
 .cta {
   margin-top: 56px;
 }
+
+/* QUESTION_PREP */
+.prepHead {
+  display: flex;
+  align-items: center;
+}
+.prepTitleBox {
+  margin-left: 40px;
+  text-align: left;
+}
+.prepCategory {
+  font-family: var(--qp-font-display);
+  font-size: 118px;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 8px 0 rgba(0, 0, 0, 0.4);
+  animation: qp-zoom-in 460ms ease-out 1;
+}
+.prepPills {
+  margin-top: 14px;
+}
+.pill {
+  display: inline-block;
+  margin-right: 16px;
+  padding: 2px 30px;
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--qp-color-muted-text);
+  background: rgba(6, 13, 46, 0.75);
+  border-radius: 999px;
+}
+
+.ladderTitle {
+  margin-top: 28px;
+  font-family: var(--qp-font-display);
+  font-size: 60px;
+  color: var(--qp-color-accent-a);
+  text-shadow: 0 5px 0 rgba(0, 0, 0, 0.4);
+}
+.ladder {
+  display: flex;
+  margin-top: 12px;
+}
+.rung {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 300px;
+  margin: 0 14px;
+  padding: 14px 10px 12px;
+  color: #fff;
+  background: rgba(15, 29, 82, 0.92);
+  border: 4px solid var(--qp-color-surface-line);
+  border-radius: 28px;
+  box-shadow: 0 8px 0 rgba(0, 0, 0, 0.32);
+  animation: qp-slide-up 460ms ease-out 1 both;
+}
+.rung:nth-child(2) {
+  animation-delay: 90ms;
+}
+.rung:nth-child(3) {
+  animation-delay: 180ms;
+}
+.rung:nth-child(4) {
+  animation-delay: 270ms;
+}
+.rungName {
+  margin-top: 4px;
+  font-size: 38px;
+  font-weight: 800;
+}
+.rungMult {
+  font-family: var(--qp-font-display);
+  font-size: 76px;
+  line-height: 1;
+}
+.rungLoss {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--qp-color-muted-text);
+}
+.rungSAFE .rungMult {
+  color: var(--qp-color-success);
+}
+.rungRISK .rungMult {
+  color: var(--qp-color-accent-a);
+}
+.rungHIGH .rungMult {
+  color: var(--qp-color-danger);
+}
+.rungALL_IN .rungMult {
+  color: var(--qp-color-accent-b-hi);
+}
+
+.badges {
+  display: flex;
+  min-height: 70px;
+  margin-top: 22px;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 12px;
+  padding: 4px 30px 4px 18px;
+  font-size: 36px;
+  font-weight: 800;
+  color: #fff;
+  background: rgba(15, 29, 82, 0.92);
+  border: 3px solid var(--qp-color-surface-line);
+  border-radius: 999px;
+}
+.badge > img {
+  margin-right: 10px;
+}
+.badgeGold {
+  padding-left: 30px;
+  color: #1b1200;
+  background: var(--qp-gradient-gold);
+  border-color: var(--qp-color-accent-a-hi);
+}
+
+.prepFoot {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+}
+.prepFoot > :last-child {
+  margin-left: 36px;
+}
+.prepReady {
+  font-family: var(--qp-font-display);
+  font-size: 66px;
+  color: #fff;
+  text-shadow: 0 6px 0 rgba(0, 0, 0, 0.4);
+}
