@@ -10,7 +10,7 @@ it builds on). The attacker plays against the real server over real sockets; the
 | 2 Change client timer | server ignores | › ATTACK 2 | ✅ speed is scored from the server receive time; `clientSentAt` is diagnostic only |
 | 3 Answer after deadline | rejected | › ATTACK 3 (+ `game.test.ts`) | ✅ `ANSWER_LATE`, nothing recorded |
 | 4 Replay answer packet | rejected / idempotent | › ATTACK 4 | ✅ byte replay → `STALE_SEQUENCE`; re-sequenced replay → duplicate; cross-socket replay refused |
-| 5 Replay sabotage packet | rejected | `identity-and-network.test.ts` (todo) | ⏳ needs sabotage powers (M2) |
+| 5 Replay sabotage packet | rejected | `powers.test.ts` › ATTACK 5 | ✅ byte replay → `STALE_SEQUENCE`; re-sequenced replay → `ALREADY_COMMITTED`; another socket cannot use the frame; replayed next round it meets an empty token pouch; spam of forged targets/effects/fields spends nothing; stakes after seeing the question are refused; no frame ever shows another player's powers |
 | 6 Forge host command | rejected | › ATTACK 6 | ✅ `NOT_HOST` + `HOST_COMMAND_FORBIDDEN` event; display identity cannot be borrowed; deposed leader loses powers |
 | 7 Enumerate room codes | rate limited, hard | `identity-and-network.test.ts` › ATTACK 7 | ✅ misses cost 4 tokens, identical answers, > 30 days per IP for one hit among 1 000 rooms |
 | 8 Steal reconnect token | minimal blast radius, secure invalidation | › ATTACK 8 | ✅ thief = one ordinary slot; victim's return after the grace window revokes the session; nothing else touched |

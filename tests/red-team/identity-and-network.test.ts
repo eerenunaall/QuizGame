@@ -396,7 +396,6 @@ describe('ATTACK 12 — join from another network', () => {
 });
 
 describe('Attacks that need features from later milestones', () => {
-  it.todo('ATTACK 5 — replay a sabotage packet (needs sabotage powers, M2)');
   it.todo('ATTACK 9 — fake a purchase (needs payment verification, M4)');
   it.todo('ATTACK 10 — creator requests Blind Quiz raw answers (needs Blind Quiz, M5)');
 });

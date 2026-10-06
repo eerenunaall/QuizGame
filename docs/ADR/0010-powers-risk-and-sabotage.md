@@ -54,3 +54,28 @@ Rules (all validated by the reducer, all configurable):
 Reducer tests for each rule (spam, replay, cooldown, caps, self-target, shield, lockout chaining),
 payload scanner (no sabotage details to non-involved players pre-resolution), property test: with any
 sabotage sequence, every active player keeps ≥ 80 % of the answer window and ≥ 2 selectable options.
+
+## Amendment (M2, 2026-10-06): how it was built, and the details the text above left open
+- **One atomic commitment.** `COMMIT_PREP { stake, doubleDown, sabotage }` replaces separate
+  stake / Double Down / sabotage messages. It is validated as a whole (nothing is spent when any
+  part is refused), final, and counts the player as "ready": QUESTION_PREP ends early once every
+  online player has committed (`PREP_PROGRESS` carries counts only, never choices).
+- **Windows.** QUESTION_PREP lasts `prepMs` when nothing can be chosen, `prepQuickMs` (6 s) in
+  ordinary rounds, `prepDecisionMs` (10 s) in RISK and FINAL rounds. Sabotage opens from round 3 and
+  stays closed in the final stage; the former "rounds 3-9" cap is gone because longer games have
+  more rounds before their final stage and the token/cooldown/target caps already bound it.
+- **Resolution time.** Shields, effects and lockouts are resolved when QUESTION_PREP ends (the
+  options exist then); targets learn *what* hit them from that moment (`you.hits`, never the
+  attacker); everyone learns *who* at POWER_RESOLUTION, which now runs after REVEAL only when
+  something happened and carries each item's outcome.
+- **Shield.** Every player owns one by default, so the first hit on anyone is absorbed (the
+  attacker's token is spent, the shield is consumed, the TV shows "KALKAN engelledi!"). Tunable
+  with `powers.shieldPerGame`.
+- **Softened effects** change SHUFFLE and FOG into a half-strength JAM; JAM itself is not
+  disorienting and stays as is. The setting is private and never reaches other players.
+- **JAM** shortens only the target's own window, and their speed bonus is measured on that shorter
+  clock; early lock and the phase deadline are unchanged.
+- **Persistence.** `game_answers` gained `stake`, `double_down`, `fifty_fifty`; every sabotage
+  (blocked or not) is a row in `sabotage_events`.
+- **Director.** `recentRiskTakePermille` is now the share of the room that took a stake above the
+  default or doubled down, which drives risk rounds.
