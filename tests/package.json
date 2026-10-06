@@ -7,13 +7,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@quizparty/controller-client": "workspace:*",
     "@quizparty/db": "workspace:*",
     "@quizparty/game-engine": "workspace:*",
     "@quizparty/protocol": "workspace:*",
+    "@quizparty/realtime": "workspace:*",
     "@quizparty/shared": "workspace:*",
     "@quizparty/validation": "workspace:*",
-    "ws": "8.22.0",
-    "@quizparty/realtime": "workspace:*"
+    "ws": "8.22.0"
   },
   "devDependencies": {
     "@types/node": "22.20.5",

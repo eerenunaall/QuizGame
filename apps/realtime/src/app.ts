@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { LogController, type FastifyInstance } from 'fastify';
 import { createDatabase, createPool, type Database } from '@quizparty/db';
 import type { Pool } from 'pg';
 import type { AppConfig } from './config';
@@ -54,7 +54,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
       ],
     },
     bodyLimit: 16 * 1024,
-    disableRequestLogging: config.env === 'test',
+    logController: new LogController({ disableRequestLogging: config.env === 'test' }),
     trustProxy: false,
   });
 

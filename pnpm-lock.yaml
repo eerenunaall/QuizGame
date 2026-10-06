@@ -103,6 +103,15 @@ importers:
         specifier: 4.23.15
         version: 4.23.15
 
+  packages/controller-client:
+    dependencies:
+      '@quizparty/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@quizparty/shared':
+        specifier: workspace:*
+        version: link:../shared
+
   packages/db:
     dependencies:
       kysely:
@@ -173,6 +182,9 @@ importers:
 
   tests:
     dependencies:
+      '@quizparty/controller-client':
+        specifier: workspace:*
+        version: link:../packages/controller-client
       '@quizparty/db':
         specifier: workspace:*
         version: link:../packages/db
