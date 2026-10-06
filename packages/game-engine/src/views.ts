@@ -7,6 +7,13 @@ import type {
   YouView,
 } from '@quizparty/protocol';
 import { maxRoundsFor } from './config';
+import {
+  doubleDownOffered,
+  jokerLockedOut,
+  nextTokenStreak,
+  roundLadder,
+  sabotageOpen,
+} from './powers';
 import { rankPlayers } from './rank';
 import type { Actor, RoomState } from './types';
 
@@ -94,6 +101,29 @@ export function scoreboard(state: RoomState): ScoreboardEntry[] {
   }));
 }
 
+/** Players QUESTION_PREP waits for: in the game and online right now. */
+export function prepEligibleIds(state: RoomState): string[] {
+  return Object.entries(state.game?.players ?? {})
+    .filter(([playerId, gp]) => {
+      const player = state.players[playerId];
+      return !gp.removed && player?.status === 'ACTIVE' && player.connection === 'CONNECTED';
+    })
+    .map(([playerId]) => playerId);
+}
+
+export function prepCounts(state: RoomState): { committedCount: number; eligibleCount: number } {
+  const game = state.game;
+  const round = game?.round;
+  if (!game || !round) return { committedCount: 0, eligibleCount: 0 };
+  const committedCount = Object.keys(round.commitments).filter(
+    (playerId) => state.players[playerId]?.status === 'ACTIVE' && !game.players[playerId]?.removed,
+  ).length;
+  return {
+    committedCount,
+    eligibleCount: Math.max(prepEligibleIds(state).length, committedCount),
+  };
+}
+
 const orderedIds = (state: RoomState, ids: Iterable<string>): string[] => {
   const set = new Set(ids);
   return state.playerOrder.filter((id) => set.has(id));
@@ -115,15 +145,17 @@ export function phaseDataFor(state: RoomState): PhaseData {
       return { phase: 'FINAL', round: roundPublic(state) };
     case 'QUESTION_PREP': {
       const deckQuestion = game!.deck.questions[round!.questionId]!;
+      const ladder = roundLadder(state.config, round!, game!.totalRounds);
       return {
         phase: 'QUESTION_PREP',
         round: roundPublic(state),
         category: { id: deckQuestion.category.id, label: deckQuestion.category.label },
         difficulty: deckQuestion.difficulty,
-        riskLadder: [],
-        doubleDownEnabled: false,
-        sabotageEnabled: false,
-        committedCount: 0,
+        riskLadder: ladder.rungs.map((rung) => ({ ...rung })),
+        stakeMandatory: ladder.mandatory,
+        doubleDownEnabled: doubleDownOffered(state.config),
+        sabotageEnabled: sabotageOpen(state.config, round!),
+        ...prepCounts(state),
       };
     }
     case 'QUESTION': {
@@ -188,7 +220,11 @@ export function phaseDataFor(state: RoomState): PhaseData {
       };
     }
     case 'POWER_RESOLUTION':
-      return { phase: 'POWER_RESOLUTION', round: roundPublic(state), items: [] };
+      return {
+        phase: 'POWER_RESOLUTION',
+        round: roundPublic(state),
+        items: round!.powerItems.map((item) => ({ ...item })),
+      };
     case 'SCORE_UPDATE': {
       const update = round!.scoreUpdate!;
       return {
@@ -223,9 +259,35 @@ export function phaseDataFor(state: RoomState): PhaseData {
 export function youView(state: RoomState, playerId: string): YouView | null {
   const player = state.players[playerId];
   if (!player || player.status !== 'ACTIVE') return null;
-  const round = state.game?.round;
+  const game = state.game;
+  const round = game?.round;
+  const gamePlayer = game?.players[playerId];
   const answerPhases = ['ANSWERING', 'LOCKED', 'REVEAL', 'POWER_RESOLUTION', 'SCORE_UPDATE'];
   const record = round && answerPhases.includes(state.phase) ? round.answers[playerId] : undefined;
+
+  // Power state is private and only exists while a game runs.
+  const inRound = round !== undefined && round !== null && gamePlayer !== undefined;
+  const roundIsLive = inRound && state.phase !== 'COUNTDOWN' && state.phase !== 'ROUND_INTRO';
+  const powers =
+    game && gamePlayer && !gamePlayer.removed
+      ? {
+          fiftyFifty: gamePlayer.powers.fiftyFifty,
+          doubleDown: gamePlayer.powers.doubleDown,
+          shield: gamePlayer.powers.shield,
+          sabotageTokens: gamePlayer.powers.tokens,
+          nextTokenAtStreak: nextTokenStreak(state.config, gamePlayer.streak),
+          lockedJoker:
+            round && roundIsLive
+              ? ((['FIFTY_FIFTY', 'DOUBLE_DOWN'] as const).find((joker) =>
+                  jokerLockedOut(gamePlayer.powers, joker, round.index),
+                ) ?? null)
+              : null,
+        }
+      : null;
+  const commitment = roundIsLive ? (round.commitments[playerId] ?? null) : null;
+  const effects = roundIsLive ? (round.effects[playerId] ?? null) : null;
+  const questionLive = state.phase !== 'QUESTION_PREP';
+
   return {
     playerId,
     isLeader: state.leaderPlayerId === playerId,
@@ -238,6 +300,32 @@ export function youView(state: RoomState, playerId: string): YouView | null {
             lockedAt: (round.answerOpensAt ?? 0) + record.offsetMs,
           }
         : null,
+    powers,
+    commitment: commitment
+      ? {
+          stake: commitment.stake,
+          doubleDown: commitment.doubleDown,
+          sabotage: commitment.sabotage
+            ? { targetId: commitment.sabotage.targetId, effect: commitment.sabotage.effect }
+            : null,
+        }
+      : null,
+    fiftyFifty:
+      roundIsLive && round.fiftyFiftyUsers[playerId] && round.fiftyFifty
+        ? { keep: [...round.fiftyFifty.keep] }
+        : null,
+    // What hit the player is known once the options exist, i.e. after QUESTION_PREP.
+    effects:
+      effects && questionLive
+        ? {
+            jamMs: effects.jamMs,
+            order: effects.order ? [...effects.order] : null,
+            fogOptionId: effects.fogOptionId,
+            fogMs: effects.fogMs,
+          }
+        : null,
+    hits: effects && questionLive ? effects.hits.map((hit) => ({ ...hit })) : [],
+    reducedEffects: player.reducedEffects,
   };
 }
 

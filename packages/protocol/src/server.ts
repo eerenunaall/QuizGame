@@ -72,6 +72,11 @@ export const SERVER_PAYLOADS = {
     phaseDeadlineAt: EpochMsSchema.nullable(),
     data: PhaseDataSchema,
   }),
+  /** How many players have made their QUESTION_PREP choices (counts only, never the choices). */
+  PREP_PROGRESS: z.strictObject({
+    committedCount: z.int().nonnegative(),
+    eligibleCount: z.int().nonnegative(),
+  }),
   ANSWER_LOCKED: z.strictObject({
     playerId: PlayerIdSchema,
     answeredCount: z.int().nonnegative(),

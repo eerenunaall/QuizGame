@@ -47,7 +47,12 @@ export const GameConfigSchema = z.strictObject({
   timings: z.strictObject({
     countdownMs: ms(0, 10_000),
     roundIntroMs: ms(0, 10_000),
+    /** QUESTION_PREP when nothing can be chosen (no stakes, jokers or sabotage on offer). */
     prepMs: ms(0, 30_000),
+    /** QUESTION_PREP in ordinary rounds: stakes and powers are offered quietly. */
+    prepQuickMs: ms(0, 60_000),
+    /** QUESTION_PREP in RISK and FINAL rounds: the ladder is the point of the round. */
+    prepDecisionMs: ms(0, 60_000),
     readBaseMs: ms(0, 10_000),
     readPerCharMs: ms(0, 200),
     readMinMs: ms(0, 10_000),
@@ -59,6 +64,9 @@ export const GameConfigSchema = z.strictObject({
     revealPerCharMs: ms(0, 200),
     revealExplanationMaxMs: ms(0, 20_000),
     powerResolutionMs: ms(0, 15_000),
+    /** Extra POWER_RESOLUTION time for each item after the first, up to `powerResolutionMaxMs`. */
+    powerResolutionPerItemMs: ms(0, 5_000),
+    powerResolutionMaxMs: ms(0, 30_000),
     scoreUpdateMs: ms(0, 20_000),
     microIntermissionMs: ms(0, 10_000),
     finalIntroMs: ms(0, 15_000),
@@ -87,6 +95,31 @@ export const GameConfigSchema = z.strictObject({
     }),
     pointTax: z.strictObject({ permille: z.int().min(0).max(1000) }),
     maxGainPerQuestion: perKind(z.int().min(1).max(100_000)),
+  }),
+  powers: z.strictObject({
+    fiftyFiftyPerGame: z.int().min(0).max(5),
+    doubleDownPerGame: z.int().min(0).max(5),
+    shieldPerGame: z.int().min(0).max(3),
+    sabotage: z.strictObject({
+      enabled: z.boolean(),
+      startTokens: z.int().min(0).max(3),
+      maxTokens: z.int().min(1).max(5),
+      /** A token is earned when the correct-answer streak reaches one of these values. */
+      earnAtStreaks: z.array(z.int().min(1).max(30)).max(10),
+      /** Zero-based index of the first round in which sabotage may be committed; never in the final stage. */
+      firstRoundIndex: z.int().min(0).max(30),
+      attackerCooldownRounds: z.int().min(0).max(10),
+      maxPerRound: z.int().min(1).max(8),
+      /** A target may be hit again only after this many rounds without a hit. */
+      targetMinGapRounds: z.int().min(0).max(10),
+      targetMaxPerGame: z.int().min(1).max(20),
+      jamMs: z.int().min(0).max(10_000),
+      /** JAM never takes more than this share of the window (permille). */
+      jamMaxPermille: z.int().min(0).max(200),
+      fogMs: z.int().min(0).max(10_000),
+      /** POINT_TAX lapses after this many rounds if no gain consumed it. */
+      pointTaxRounds: z.int().min(1).max(10),
+    }),
   }),
   director: z.strictObject({
     startLevel: z.int().min(1000).max(4000),
@@ -144,6 +177,8 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     countdownMs: 3_000,
     roundIntroMs: 2_500,
     prepMs: 2_500,
+    prepQuickMs: 6_000,
+    prepDecisionMs: 10_000,
     readBaseMs: 1_500,
     readPerCharMs: 25,
     readMinMs: 2_000,
@@ -154,6 +189,8 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     revealPerCharMs: 35,
     revealExplanationMaxMs: 5_000,
     powerResolutionMs: 3_000,
+    powerResolutionPerItemMs: 700,
+    powerResolutionMaxMs: 8_000,
     scoreUpdateMs: 4_000,
     microIntermissionMs: 1_500,
     finalIntroMs: 4_000,
@@ -192,6 +229,26 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     fiftyFifty: { numerator: 1, denominator: 2 },
     pointTax: { permille: 250 },
     maxGainPerQuestion: { STANDARD: 1500, SPEED: 1500, RISK: 1500, CROWD: 1500, FINAL: 2500 },
+  },
+  powers: {
+    fiftyFiftyPerGame: 1,
+    doubleDownPerGame: 2,
+    shieldPerGame: 1,
+    sabotage: {
+      enabled: true,
+      startTokens: 1,
+      maxTokens: 2,
+      earnAtStreaks: [3, 6, 9],
+      firstRoundIndex: 2,
+      attackerCooldownRounds: 2,
+      maxPerRound: 2,
+      targetMinGapRounds: 2,
+      targetMaxPerGame: 3,
+      jamMs: 2_000,
+      jamMaxPermille: 150,
+      fogMs: 1_500,
+      pointTaxRounds: 3,
+    },
   },
   director: {
     startLevel: 1200,

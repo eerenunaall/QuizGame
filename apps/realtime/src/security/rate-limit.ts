@@ -83,5 +83,7 @@ export const LIMITS = {
   reconnect: { capacity: 30, refillPerSec: 1 },
   message: { capacity: 40, refillPerSec: 20 },
   answer: { capacity: 6, refillPerSec: 1 },
+  /** COMMIT_PREP, USE_FIFTY_FIFTY, SET_PREFERENCES: a handful a round, never a flood. */
+  power: { capacity: 8, refillPerSec: 0.5 },
   invalidMessage: { capacity: 8, refillPerSec: 0.2 },
 } as const satisfies Record<string, BucketSpec>;

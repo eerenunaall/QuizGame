@@ -4,12 +4,15 @@ import type {
   ClientPayload,
   Difficulty,
   ErrorCode,
+  Joker,
   LobbySettings,
   Locale,
   Outcome,
   Phase,
+  PowerResolutionItem,
   RiskTier,
   RoundKind,
+  SabotageKind,
   ScoreComponent,
   ServerEvent,
   Tier,
@@ -36,6 +39,8 @@ export interface Player {
   connection: 'CONNECTED' | 'DISCONNECTED';
   disconnectedAt: EpochMs | null;
   status: 'ACTIVE' | 'KICKED' | 'LEFT';
+  /** Accessibility: disorienting sabotage is softened for this player. Private; never disclosed. */
+  reducedEffects: boolean;
 }
 
 export interface AnswerRecord {
@@ -94,6 +99,50 @@ export interface ScoreUpdateRecord {
   scoreboard: { playerId: string; score: number; rank: number; streak: number }[];
 }
 
+/** What a player still has in hand, per game (ADR-0007, ADR-0010). All plain numbers: it is persisted. */
+export interface PowerLedger {
+  fiftyFifty: number;
+  doubleDown: number;
+  shield: number;
+  /** Sabotage tokens. */
+  tokens: number;
+  /** Round of this player's latest sabotage (attacker cooldown). */
+  lastSabotageRound: number | null;
+  /** Times this player has been targeted this game (a blocked hit still counts) and the latest round. */
+  hits: number;
+  lastHitRound: number | null;
+  /** A joker this player may not use in `round` (LOCKOUT). */
+  lockout: { joker: Joker; round: number } | null;
+  /** A pending POINT_TAX, lapsing after `expiresAfterRound`. */
+  pointTax: { expiresAfterRound: number } | null;
+}
+
+/** Everything a player decided in QUESTION_PREP. PRIVATE until POWER_RESOLUTION. */
+export interface Commitment {
+  stake: RiskTier;
+  doubleDown: boolean;
+  sabotage: { targetId: string; effect: SabotageKind; joker: Joker | null } | null;
+  committedAt: EpochMs;
+}
+
+/** Presentation effects resolved for one target when QUESTION_PREP ends. */
+export interface TargetEffects {
+  jamMs: number;
+  /** Option ids in the order this player's phone lists them (SHUFFLE). */
+  order: string[] | null;
+  fogOptionId: string | null;
+  fogMs: number;
+  /** What landed on this player, without naming the attacker. */
+  hits: { effect: SabotageKind; blocked: boolean }[];
+}
+
+export interface SabotageRecord {
+  actorId: string;
+  targetId: string;
+  effect: SabotageKind;
+  blocked: boolean;
+}
+
 export interface RoundState {
   index: number;
   kind: RoundKind;
@@ -109,6 +158,16 @@ export interface RoundState {
   answerDeadlineAt: EpochMs | null;
   lockedAt: EpochMs | null;
   answers: Record<string, AnswerRecord>;
+  /** PRIVATE until POWER_RESOLUTION. */
+  commitments: Record<string, Commitment>;
+  /** Sabotage resolved when QUESTION_PREP ended (shield checks done); public at POWER_RESOLUTION. */
+  sabotages: SabotageRecord[];
+  effects: Record<string, TargetEffects>;
+  /** The two options 50/50 leaves, chosen once per question and shared by everyone who uses it. */
+  fiftyFifty: { keep: string[] } | null;
+  fiftyFiftyUsers: Record<string, true>;
+  /** What the POWER_RESOLUTION screen shows (built when the reveal ends). */
+  powerItems: PowerResolutionItem[];
   /** PRIVATE until REVEAL (results) / SCORE_UPDATE (deltas). */
   outcome: RoundOutcome | null;
   scoreUpdate: ScoreUpdateRecord | null;
@@ -123,6 +182,7 @@ export interface GamePlayerState {
   totalRemainingMs: number;
   removed: boolean;
   rankHistory: number[];
+  powers: PowerLedger;
 }
 
 export interface DirectorState {
@@ -207,6 +267,9 @@ export type EngineCommandType =
   | 'READY'
   | 'SET_NICKNAME'
   | 'SUBMIT_ANSWER'
+  | 'COMMIT_PREP'
+  | 'USE_FIFTY_FIFTY'
+  | 'SET_PREFERENCES'
   | 'LEAVE_ROOM'
   | 'SET_SETTINGS'
   | 'KICK_PLAYER'
@@ -304,7 +367,10 @@ export type PersistRecord =
         totalAfter: number;
         components: ScoreComponent[];
         stake: RiskTier | null;
+        doubleDown: boolean;
+        fiftyFifty: boolean;
       }[];
+      sabotages: { actorId: string; targetId: string; effect: SabotageKind; blocked: boolean }[];
       configVersion: number;
     }
   | {

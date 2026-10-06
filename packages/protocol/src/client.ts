@@ -6,10 +6,13 @@ import {
   DeviceIdSchema,
   DifficultyPresetSchema,
   EpochMsSchema,
+  JokerSchema,
   NicknameSchema,
   OptionIdSchema,
   PlayerIdSchema,
   QuestionIdSchema,
+  RiskTierSchema,
+  SabotageKindSchema,
   SequenceSchema,
   UuidSchema,
 } from './common';
@@ -49,6 +52,26 @@ export const CLIENT_PAYLOADS = {
     /** Diagnostic only: never used for validity or scoring (ADR-0006). */
     clientSentAt: EpochMsSchema.optional(),
   }),
+  /**
+   * Everything a player decides in QUESTION_PREP, committed at once and final (ADR-0010): the stake,
+   * Double Down, and at most one sabotage. All-or-nothing: if any part is refused, nothing is spent.
+   */
+  COMMIT_PREP: z.strictObject({
+    stake: RiskTierSchema,
+    doubleDown: z.boolean(),
+    sabotage: z
+      .strictObject({
+        targetId: PlayerIdSchema,
+        effect: SabotageKindSchema,
+        /** LOCKOUT only: the joker to block next round. */
+        joker: JokerSchema.optional(),
+      })
+      .nullable(),
+  }),
+  /** 50/50, in ANSWERING before the player has answered. */
+  USE_FIFTY_FIFTY: empty,
+  /** Accessibility: disorienting sabotage effects are softened for this player (never disclosed). */
+  SET_PREFERENCES: z.strictObject({ reducedEffects: z.boolean() }),
   LEAVE_ROOM: empty,
   REQUEST_STATE: empty,
   PING: z.strictObject({ clientSentAt: EpochMsSchema }),

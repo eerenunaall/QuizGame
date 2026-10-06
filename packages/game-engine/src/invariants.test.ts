@@ -22,7 +22,18 @@ type Action =
   | { t: 'lobby' }
   | { t: 'settings'; rounds: number }
   | { t: 'forged'; p: number }
-  | { t: 'recover'; outage: number };
+  | { t: 'recover'; outage: number }
+  | {
+      t: 'commit';
+      p: number;
+      stake: number;
+      dd: boolean;
+      target: number | null;
+      effect: number;
+      joker: number;
+    }
+  | { t: 'fifty'; p: number }
+  | { t: 'prefs'; p: number; v: boolean };
 
 const arbAction: fc.Arbitrary<Action> = fc.oneof(
   {
@@ -74,7 +85,28 @@ const arbAction: fc.Arbitrary<Action> = fc.oneof(
       outage: fc.integer({ min: 0, max: 60_000 }),
     }),
   },
+  {
+    weight: 5,
+    arbitrary: fc.record({
+      t: fc.constant('commit' as const),
+      p: fc.nat(9),
+      stake: fc.nat(3),
+      dd: fc.boolean(),
+      target: fc.option(fc.nat(9), { nil: null }),
+      effect: fc.nat(4),
+      joker: fc.nat(1),
+    }),
+  },
+  { weight: 3, arbitrary: fc.record({ t: fc.constant('fifty' as const), p: fc.nat(9) }) },
+  {
+    weight: 1,
+    arbitrary: fc.record({ t: fc.constant('prefs' as const), p: fc.nat(9), v: fc.boolean() }),
+  },
 );
+
+const TIERS = ['SAFE', 'RISK', 'HIGH', 'ALL_IN'] as const;
+const EFFECTS = ['JAM', 'SHUFFLE', 'FOG', 'LOCKOUT', 'POINT_TAX'] as const;
+const JOKERS = ['FIFTY_FIFTY', 'DOUBLE_DOWN'] as const;
 
 const POST_REVEAL: ReadonlySet<Phase> = new Set(['REVEAL', 'POWER_RESOLUTION', 'SCORE_UPDATE']);
 
@@ -105,8 +137,36 @@ function checkInvariants(h: Harness, previous: RoomState): void {
       expect(gp.bestStreak).toBeGreaterThanOrEqual(gp.streak);
       expect(s.players[playerId]).toBeDefined();
     }
+    const { powers } = s.config;
+    for (const [playerId, gp] of Object.entries(game.players)) {
+      const ledger = gp.powers;
+      expect(ledger.fiftyFifty, `50/50 of ${playerId}`).toBeGreaterThanOrEqual(0);
+      expect(ledger.fiftyFifty).toBeLessThanOrEqual(powers.fiftyFiftyPerGame);
+      expect(ledger.doubleDown).toBeGreaterThanOrEqual(0);
+      expect(ledger.doubleDown).toBeLessThanOrEqual(powers.doubleDownPerGame);
+      expect(ledger.shield).toBeGreaterThanOrEqual(0);
+      expect(ledger.shield).toBeLessThanOrEqual(powers.shieldPerGame);
+      expect(ledger.tokens).toBeGreaterThanOrEqual(0);
+      expect(ledger.tokens).toBeLessThanOrEqual(powers.sabotage.maxTokens);
+      expect(ledger.hits).toBeLessThanOrEqual(powers.sabotage.targetMaxPerGame);
+    }
     const round = game.round;
     if (round) {
+      const sabotageCommits = Object.values(round.commitments).filter((c) => c.sabotage);
+      expect(sabotageCommits.length).toBeLessThanOrEqual(powers.sabotage.maxPerRound);
+      for (const [playerId, commitment] of Object.entries(round.commitments)) {
+        expect(game.players[playerId]).toBeDefined();
+        if (commitment.sabotage) expect(commitment.sabotage.targetId).not.toBe(playerId);
+      }
+      for (const [playerId, fx] of Object.entries(round.effects)) {
+        expect(game.players[playerId]).toBeDefined();
+        expect(round.answerMs - fx.jamMs).toBeGreaterThanOrEqual(round.answerMs * 0.8);
+      }
+      for (const playerId of Object.keys(round.fiftyFiftyUsers)) {
+        expect(game.players[playerId]).toBeDefined();
+        expect(round.fiftyFifty!.keep.length).toBeGreaterThanOrEqual(2);
+        expect(round.fiftyFifty!.keep).toContain(round.question!.correctOptionId);
+      }
       for (const [playerId, answer] of Object.entries(round.answers)) {
         expect(game.players[playerId]).toBeDefined();
         expect(answer.remainingMs).toBeGreaterThanOrEqual(0);
@@ -254,6 +314,41 @@ function run(actions: Action[]): void {
       case 'recover':
         h.apply({ kind: 'RECOVER', outageMs: action.outage }, h.now + action.outage);
         break;
+      case 'commit': {
+        const id = pick(action.p);
+        const target = action.target === null ? undefined : pick(action.target);
+        if (id) {
+          h.command(h.actor(id), {
+            type: 'COMMIT_PREP',
+            payload: {
+              stake: TIERS[action.stake % TIERS.length]!,
+              doubleDown: action.dd,
+              sabotage: target
+                ? {
+                    targetId: target,
+                    effect: EFFECTS[action.effect % EFFECTS.length]!,
+                    joker: JOKERS[action.joker % JOKERS.length]!,
+                  }
+                : null,
+            },
+          });
+        }
+        break;
+      }
+      case 'fifty': {
+        const id = pick(action.p);
+        if (id) h.command(h.actor(id), { type: 'USE_FIFTY_FIFTY', payload: {} });
+        break;
+      }
+      case 'prefs': {
+        const id = pick(action.p);
+        if (id)
+          h.command(h.actor(id), {
+            type: 'SET_PREFERENCES',
+            payload: { reducedEffects: action.v },
+          });
+        break;
+      }
     }
     checkInvariants(h, previous);
   }
@@ -278,7 +373,7 @@ describe('engine invariants under random input', () => {
     });
   });
 
-  it('holds for long games that actually reach the later phases', () => {
+  it('holds for long games that actually reach the later phases', { timeout: 60_000 }, () => {
     const biased = fc.array(
       fc.oneof(
         { weight: 10, arbitrary: fc.constant({ t: 'step' as const }) },

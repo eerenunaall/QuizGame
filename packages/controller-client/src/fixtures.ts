@@ -1,4 +1,10 @@
-import type { PhaseData, PublicPlayer, RoomView, ServerMessage } from '@quizparty/protocol';
+import type {
+  PhaseData,
+  PublicPlayer,
+  RoomView,
+  ServerMessage,
+  YouView,
+} from '@quizparty/protocol';
 import { INITIAL_CLIENT_STATE, type ClientState } from './types';
 
 /** Test fixtures (not part of the public surface). */
@@ -15,6 +21,22 @@ export function player(index: number, patch: Partial<PublicPlayer> = {}): Public
     connection: 'CONNECTED',
     ready: false,
     isLeader: index === 0,
+    ...patch,
+  };
+}
+
+export function you(playerId: string, patch: Partial<YouView> = {}): YouView {
+  return {
+    playerId,
+    isLeader: false,
+    canHost: false,
+    answer: null,
+    powers: null,
+    commitment: null,
+    fiftyFifty: null,
+    effects: null,
+    hits: [],
+    reducedEffects: false,
     ...patch,
   };
 }
@@ -38,7 +60,7 @@ export function roomView(patch: Partial<RoomView> = {}): RoomView {
     players: [player(0), player(1)],
     game: null,
     phaseData: { phase: 'LOBBY' },
-    you: { playerId: 'p1', isLeader: false, canHost: false, answer: null },
+    you: you('p1'),
     ...patch,
   };
 }

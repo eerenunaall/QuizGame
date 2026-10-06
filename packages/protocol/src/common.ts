@@ -4,12 +4,14 @@ import {
   CLOSE_REASONS,
   DIFFICULTIES,
   DIFFICULTY_PRESETS,
+  JOKERS,
   LOCALES,
   MAX_NICKNAME_LENGTH,
   MIN_NICKNAME_LENGTH,
   PHASES,
   RISK_TIERS,
   ROUND_KINDS,
+  SABOTAGE_KINDS,
   TIERS,
 } from './constants';
 
@@ -36,6 +38,8 @@ export const DifficultySchema = z.enum(DIFFICULTIES);
 export const DifficultyPresetSchema = z.enum(DIFFICULTY_PRESETS);
 export const RoundKindSchema = z.enum(ROUND_KINDS);
 export const RiskTierSchema = z.enum(RISK_TIERS);
+export const JokerSchema = z.enum(JOKERS);
+export const SabotageKindSchema = z.enum(SABOTAGE_KINDS);
 export const TierSchema = z.enum(TIERS);
 export const LocaleSchema = z.enum(LOCALES);
 export const CloseReasonSchema = z.enum(CLOSE_REASONS);

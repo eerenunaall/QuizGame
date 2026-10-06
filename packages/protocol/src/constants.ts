@@ -43,6 +43,14 @@ export type RoundKind = (typeof ROUND_KINDS)[number];
 export const RISK_TIERS = ['SAFE', 'RISK', 'HIGH', 'ALL_IN'] as const;
 export type RiskTier = (typeof RISK_TIERS)[number];
 
+/** Limited-use lifelines (ADR-0007). */
+export const JOKERS = ['FIFTY_FIFTY', 'DOUBLE_DOWN'] as const;
+export type Joker = (typeof JOKERS)[number];
+
+/** The sabotage subset (ADR-0010). NOISE is deliberately absent. */
+export const SABOTAGE_KINDS = ['JAM', 'SHUFFLE', 'FOG', 'LOCKOUT', 'POINT_TAX'] as const;
+export type SabotageKind = (typeof SABOTAGE_KINDS)[number];
+
 export const CLOSE_REASONS = [
   'HOST_ENDED',
   'IDLE',

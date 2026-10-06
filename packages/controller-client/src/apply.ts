@@ -134,6 +134,20 @@ export function applyServerMessage(
     case 'ENTITLEMENT_CHANGED':
       return withRoom(state, (room) => ({ ...room, tier: message.payload.tier }));
 
+    case 'PREP_PROGRESS':
+      return withRoom(state, (room) => {
+        const data = room.phaseData;
+        if (data.phase !== 'QUESTION_PREP') return room;
+        return {
+          ...room,
+          phaseData: {
+            ...data,
+            committedCount: message.payload.committedCount,
+            eligibleCount: message.payload.eligibleCount,
+          },
+        };
+      });
+
     case 'ANSWER_LOCKED':
       return withRoom(state, (room) => {
         const data = room.phaseData;

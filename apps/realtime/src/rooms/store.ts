@@ -256,6 +256,9 @@ export class PgRoomStore {
                   option_key: p.optionKey,
                   correct: p.correct,
                   remaining_ms: p.remainingMs,
+                  stake: p.stake,
+                  double_down: p.doubleDown,
+                  fifty_fifty: p.fiftyFifty,
                 })),
               )
               .onConflict((oc) => oc.doNothing())
@@ -271,6 +274,23 @@ export class PgRoomStore {
                   total_after: p.totalAfter,
                   components: JSON.stringify(p.components),
                   config_version: record.configVersion,
+                })),
+              )
+              .onConflict((oc) => oc.doNothing())
+              .execute();
+          }
+          if (record.sabotages.length > 0) {
+            await trx
+              .insertInto('sabotage_events')
+              .values(
+                record.sabotages.map((event, seq) => ({
+                  game_id: record.gameId,
+                  round_index: record.roundIndex,
+                  seq,
+                  actor_player_id: event.actorId,
+                  target_player_id: event.targetId,
+                  effect: event.effect,
+                  blocked: event.blocked,
                 })),
               )
               .onConflict((oc) => oc.doNothing())

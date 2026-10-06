@@ -40,11 +40,14 @@ export interface Categories {
 
 export interface GameAnswers {
   correct: boolean;
+  double_down: Generated<boolean>;
+  fifty_fifty: Generated<boolean>;
   game_id: string;
   option_key: string | null;
   player_id: string;
   remaining_ms: number;
   round_index: number;
+  stake: string | null;
 }
 
 export interface GamePlayers {
@@ -174,6 +177,16 @@ export interface RoomSessions {
   token_hash: string;
 }
 
+export interface SabotageEvents {
+  actor_player_id: string;
+  blocked: boolean;
+  effect: string;
+  game_id: string;
+  round_index: number;
+  seq: number;
+  target_player_id: string;
+}
+
 export interface SchemaMigrations {
   applied_at: Generated<Timestamp>;
   checksum: string;
@@ -220,6 +233,7 @@ export interface DB {
   room_events: RoomEvents;
   room_sessions: RoomSessions;
   rooms: Rooms;
+  sabotage_events: SabotageEvents;
   schema_migrations: SchemaMigrations;
   score_deltas: ScoreDeltas;
   security_events: SecurityEvents;

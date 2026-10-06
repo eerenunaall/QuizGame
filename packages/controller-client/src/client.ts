@@ -451,6 +451,7 @@ export class GameClient {
       case 'NICKNAME_CHANGED':
       case 'PHASE_ENTERED':
       case 'ANSWER_LOCKED':
+      case 'PREP_PROGRESS':
       case 'PLAYER_STATE':
       case 'ENTITLEMENT_CHANGED':
       case 'DISPLAY_STATUS':
@@ -684,6 +685,19 @@ export class GameClient {
 
   setReady(ready: boolean): Promise<void> {
     return this.request('READY', { ready });
+  }
+
+  /** QUESTION_PREP: stake, Double Down and at most one sabotage, committed at once and final. */
+  commitPrep(choice: ClientPayload<'COMMIT_PREP'>): Promise<void> {
+    return this.request('COMMIT_PREP', choice);
+  }
+  /** ANSWERING: remove two wrong options (once a game). The kept options arrive in `you.fiftyFifty`. */
+  useFiftyFifty(): Promise<void> {
+    return this.request('USE_FIFTY_FIFTY', {});
+  }
+  /** Accessibility: soften disorienting sabotage effects for this player. */
+  setReducedEffects(reducedEffects: boolean): Promise<void> {
+    return this.request('SET_PREFERENCES', { reducedEffects });
   }
   startGame(): Promise<void> {
     return this.request('START_GAME', {});

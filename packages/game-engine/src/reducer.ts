@@ -11,6 +11,19 @@ import {
 } from './config';
 import { deckSize, selectQuestionId } from './deck';
 import { LEVEL_MAX, LEVEL_MIN, chooseRoundKind, direct } from './director';
+import {
+  buildPowerItems,
+  checkCommit,
+  chooseFiftyFifty,
+  doubleDownOffered,
+  earnToken,
+  jamFor,
+  jokerLockedOut,
+  newLedger,
+  resolveSabotage,
+  roundLadder,
+  sabotageOpen,
+} from './powers';
 import { rankPlayers } from './rank';
 import { computeScore } from './scoring';
 import { isInGamePhase } from './timers';
@@ -31,7 +44,7 @@ import type {
   RoundOutcome,
   UpcomingRound,
 } from './types';
-import { isHostActor, phaseDataFor, toPublicPlayer, youView } from './views';
+import { isHostActor, phaseDataFor, prepCounts, toPublicPlayer, youView } from './views';
 
 type Room = Draft<RoomState>;
 
@@ -321,6 +334,7 @@ function onPlayerJoin(
     connection: 'CONNECTED',
     disconnectedAt: null,
     status: 'ACTIVE',
+    reducedEffects: false,
   };
   d.nextJoinIndex += 1;
   d.playerOrder.push(joining.playerId);
@@ -453,6 +467,20 @@ function onCommand(
         command.payload.questionId,
         command.payload.optionId,
       );
+    case 'COMMIT_PREP':
+      if (!playerId) return reject(ctx, 'FORBIDDEN');
+      return commitPrep(d, ctx, at, playerId, command.payload);
+    case 'USE_FIFTY_FIFTY':
+      if (!playerId) return reject(ctx, 'FORBIDDEN');
+      return useFiftyFifty(d, ctx, at, playerId);
+    case 'SET_PREFERENCES': {
+      if (!playerId) return reject(ctx, 'FORBIDDEN');
+      const player = d.players[playerId]!;
+      if (player.reducedEffects === command.payload.reducedEffects) return;
+      player.reducedEffects = command.payload.reducedEffects;
+      touch(d, at);
+      return emitPlayerState(d, ctx, playerId);
+    }
     case 'LEAVE_ROOM': {
       if (!playerId) return reject(ctx, 'FORBIDDEN');
       touch(d, at);
@@ -595,6 +623,7 @@ function onBeginGame(d: Room, ctx: Ctx, input: Extract<EngineInput, { kind: 'BEG
           totalRemainingMs: 0,
           removed: false,
           rankHistory: [],
+          powers: newLedger(d.config),
         },
       ]),
     ),
@@ -625,6 +654,93 @@ function onBeginGame(d: Room, ctx: Ctx, input: Extract<EngineInput, { kind: 'BEG
   });
 }
 
+// ───────────────────────────── powers ─────────────────────────────
+
+function emitPlayerState(d: Room, ctx: Ctx, playerId: string): void {
+  const you = youView(d, playerId);
+  if (you) emit(ctx, { to: 'PLAYER', playerId }, { type: 'PLAYER_STATE', payload: { you } });
+}
+
+function emitAllPlayerStates(d: Room, ctx: Ctx): void {
+  for (const player of activePlayerList(d)) emitPlayerState(d, ctx, player.playerId);
+}
+
+function commitPrep(
+  d: Room,
+  ctx: Ctx,
+  at: number,
+  playerId: string,
+  payload: Extract<EngineCommand, { type: 'COMMIT_PREP' }>['payload'],
+): void {
+  const refused = checkCommit(d, playerId, payload);
+  if (refused) return reject(ctx, refused);
+  const game = d.game!;
+  const round = game.round!;
+  const me = game.players[playerId]!;
+  const sabotage = payload.sabotage;
+  round.commitments[playerId] = {
+    stake: payload.stake,
+    doubleDown: payload.doubleDown,
+    sabotage: sabotage
+      ? {
+          targetId: sabotage.targetId,
+          effect: sabotage.effect,
+          joker: sabotage.effect === 'LOCKOUT' ? (sabotage.joker ?? null) : null,
+        }
+      : null,
+    committedAt: at,
+  };
+  // Spent on commitment, even if the answer turns out wrong (ADR-0007).
+  if (payload.doubleDown) me.powers.doubleDown -= 1;
+  if (sabotage) {
+    me.powers.tokens -= 1;
+    me.powers.lastSabotageRound = round.index;
+  }
+  touch(d, at);
+  emitPlayerState(d, ctx, playerId);
+  const counts = prepCounts(d);
+  emit(ctx, { to: 'ALL' }, { type: 'PREP_PROGRESS', payload: counts });
+  // Everyone online has decided: no reason to keep the table waiting.
+  if (counts.committedCount >= counts.eligibleCount) advancePhase(d, ctx, at);
+}
+
+function useFiftyFifty(d: Room, ctx: Ctx, at: number, playerId: string): void {
+  const game = d.game;
+  const round = game?.round;
+  if (!game || !round || d.phase !== 'ANSWERING') return reject(ctx, 'INVALID_STATE');
+  const me = game.players[playerId];
+  if (!me || me.removed) return reject(ctx, 'POWER_UNAVAILABLE');
+  if (round.answers[playerId]) return reject(ctx, 'INVALID_STATE');
+  if (round.fiftyFiftyUsers[playerId] || me.powers.fiftyFifty <= 0)
+    return reject(ctx, 'POWER_UNAVAILABLE');
+  if (jokerLockedOut(me.powers, 'FIFTY_FIFTY', round.index)) return reject(ctx, 'POWER_LOCKED_OUT');
+  const question = round.question!;
+  if (question.options.length < 3) return reject(ctx, 'POWER_UNAVAILABLE');
+  const cutoff =
+    round.answerDeadlineAt! - jamFor(round, playerId) + d.config.timings.latencyAllowanceMs;
+  if (at > cutoff) return reject(ctx, 'ANSWER_LATE');
+
+  round.fiftyFifty ??= {
+    keep: chooseFiftyFifty(question.options, question.correctOptionId, ctx.rng()),
+  };
+  round.fiftyFiftyUsers[playerId] = true;
+  me.powers.fiftyFifty -= 1;
+  touch(d, at);
+  emitPlayerState(d, ctx, playerId);
+}
+
+/** How long QUESTION_PREP lasts: longer when stakes are the point of the round or powers are on offer. */
+function prepDuration(d: Room): number {
+  const t = d.config.timings;
+  const game = d.game!;
+  const round = game.round!;
+  if (round.kind === 'RISK' || round.kind === 'FINAL') return t.prepDecisionMs;
+  const ladder = roundLadder(d.config, round, game.totalRounds);
+  const choices =
+    ladder.rungs.length > 1 || doubleDownOffered(d.config) || sabotageOpen(d.config, round);
+  return choices ? t.prepQuickMs : t.prepMs;
+}
+
 // ───────────────────────────── answering ─────────────────────────────
 
 function submitAnswer(
@@ -653,11 +769,16 @@ function submitAnswer(
   const option = question.options.find((o) => o.optionId === optionId);
   if (!option) return reject(ctx, 'OPTION_INVALID');
   if (round.answers[playerId]) return reject(ctx, 'ANSWER_DUPLICATE');
+  // 50/50 removed this option for this player.
+  if (round.fiftyFiftyUsers[playerId] && !round.fiftyFifty?.keep.includes(optionId))
+    return reject(ctx, 'OPTION_INVALID');
 
-  const cutoff = round.answerDeadlineAt! + d.config.timings.latencyAllowanceMs;
+  // A JAM shortens this player's own window; everyone else keeps the full one.
+  const deadline = round.answerDeadlineAt! - jamFor(round, playerId);
+  const cutoff = deadline + d.config.timings.latencyAllowanceMs;
   if (at > cutoff) return reject(ctx, 'ANSWER_LATE');
 
-  const remainingMs = clamp(round.answerDeadlineAt! - at, 0, round.answerMs);
+  const remainingMs = clamp(deadline - at, 0, round.answerMs);
   const offsetMs = Math.max(0, at - round.answerOpensAt!);
   round.answers[playerId] = { optionId, remainingMs, offsetMs };
   touch(d, at);
@@ -730,6 +851,8 @@ function lockRound(d: Room, _ctx: Ctx, at: number): void {
     const player = d.players[playerId];
     if (!player || player.status !== 'ACTIVE') continue;
     const answer = round.answers[playerId];
+    const commitment = round.commitments[playerId];
+    const tax = gamePlayer.powers.pointTax;
     const score = computeScore(
       {
         roundKind: round.kind,
@@ -738,15 +861,16 @@ function lockRound(d: Room, _ctx: Ctx, at: number): void {
         correct: answer !== undefined && answer.optionId === question.correctOptionId,
         remainingMs: answer?.remainingMs ?? 0,
         answerMs: round.answerMs,
-        stake: undefined,
-        doubleDown: false,
-        fiftyFifty: false,
-        pointTaxPending: false,
+        stake: commitment?.stake,
+        doubleDown: commitment?.doubleDown ?? false,
+        fiftyFifty: round.fiftyFiftyUsers[playerId] === true,
+        pointTaxPending: tax !== null && round.index <= tax.expiresAfterRound,
         connectedAtLock: player.connection === 'CONNECTED',
         currentScore: gamePlayer.score,
       },
       d.config,
     );
+    if (score.consumedPointTax) gamePlayer.powers.pointTax = null;
     outcome.players[playerId] = {
       result: score.outcome,
       delta: score.delta,
@@ -807,14 +931,21 @@ function advancePhase(d: Room, ctx: Ctx, at: number): void {
       return startRound(d, ctx, at, d.game!.upcoming ?? planRound(d, ctx, 0));
     case 'ROUND_INTRO':
     case 'FINAL':
-      return enterPhase(d, 'QUESTION_PREP', at, t.prepMs);
+      enterPhase(d, 'QUESTION_PREP', at, prepDuration(d));
+      emitAllPlayerStates(d, ctx); // fresh round: nothing committed, lockouts and tokens as they stand
+      return;
     case 'QUESTION_PREP': {
       presentQuestion(d, ctx);
+      resolveSabotage(d, ctx.rng());
       const round = d.game!.round!;
       round.questionStartedAt = at;
       const text = round.question!.text;
       const readMs = clamp(t.readBaseMs + t.readPerCharMs * text.length, t.readMinMs, t.readMaxMs);
-      return enterPhase(d, 'QUESTION', at, readMs);
+      enterPhase(d, 'QUESTION', at, readMs);
+      // After the phase change, so views already show what hit whom: targets learn what hit them,
+      // and everyone's shield and token counts are current.
+      emitAllPlayerStates(d, ctx);
+      return;
     }
     case 'QUESTION': {
       const round = d.game!.round!;
@@ -833,8 +964,18 @@ function advancePhase(d: Room, ctx: Ctx, at: number): void {
         : 0;
       return enterPhase(d, 'REVEAL', at, t.revealMs + readMs);
     }
-    case 'REVEAL':
-      return enterScoreUpdate(d, ctx, at);
+    case 'REVEAL': {
+      const round = d.game!.round!;
+      round.powerItems = buildPowerItems(d);
+      if (round.powerItems.length === 0) return enterScoreUpdate(d, ctx, at);
+      const extra = t.powerResolutionPerItemMs * (round.powerItems.length - 1);
+      return enterPhase(
+        d,
+        'POWER_RESOLUTION',
+        at,
+        Math.min(t.powerResolutionMaxMs, t.powerResolutionMs + extra),
+      );
+    }
     case 'POWER_RESOLUTION':
       return enterScoreUpdate(d, ctx, at);
     case 'SCORE_UPDATE': {
@@ -950,6 +1091,12 @@ function startRound(d: Room, ctx: Ctx, at: number, plan: UpcomingRound): void {
     answerDeadlineAt: null,
     lockedAt: null,
     answers: {},
+    commitments: {},
+    sabotages: [],
+    effects: {},
+    fiftyFifty: null,
+    fiftyFiftyUsers: {},
+    powerItems: [],
     outcome: null,
     scoreUpdate: null,
   };
@@ -1028,10 +1175,17 @@ function enterScoreUpdate(d: Room, ctx: Ctx, at: number): void {
       gp.bestStreak = Math.max(gp.bestStreak, gp.streak);
       gp.correctCount += 1;
       gp.totalRemainingMs += result.remainingMs;
+      earnToken(d.config, gp.powers, gp.streak);
     } else {
       gp.streak = 0;
     }
     if (result.optionId !== null) gp.answeredCount += 1;
+  }
+  // Whatever has run its course this round lapses: unspent POINT_TAX, and a lockout that held for it.
+  for (const gp of Object.values(game.players)) {
+    if (gp.powers.pointTax && round.index >= gp.powers.pointTax.expiresAfterRound)
+      gp.powers.pointTax = null;
+    if (gp.powers.lockout && gp.powers.lockout.round <= round.index) gp.powers.lockout = null;
   }
   const after = rankOf();
   for (const [playerId, rank] of after) game.players[playerId]!.rankHistory.push(rank);
@@ -1084,7 +1238,14 @@ function enterScoreUpdate(d: Room, ctx: Ctx, at: number): void {
           ) / answered.length,
         );
   game.director.recentAvgAnswerPermille.push(used);
-  game.director.recentRiskTakePermille.push(0);
+  // Share of the room that took a stake above the default or doubled down (ADR-0011, riskIntensity).
+  const ladder = roundLadder(d.config, round, game.totalRounds);
+  const risked = Object.entries(round.commitments).filter(
+    ([playerId, commitment]) =>
+      outcome.players[playerId] !== undefined &&
+      (commitment.stake !== ladder.defaultTier || commitment.doubleDown),
+  ).length;
+  game.director.recentRiskTakePermille.push(Math.floor((risked * 1000) / eligible));
 
   const keyOf = new Map(round.question!.options.map((o) => [o.optionId, o.key]));
   const distributionByKey: Record<string, number> = {};
@@ -1112,9 +1273,12 @@ function enterScoreUpdate(d: Room, ctx: Ctx, at: number): void {
           delta: result.delta,
           totalAfter: entry.total,
           components: entry.components,
-          stake: null,
+          stake: round.commitments[entry.playerId]?.stake ?? null,
+          doubleDown: round.commitments[entry.playerId]?.doubleDown ?? false,
+          fiftyFifty: round.fiftyFiftyUsers[entry.playerId] === true,
         };
       }),
+      sabotages: round.sabotages.map((record) => ({ ...record })),
       configVersion: d.config.version,
     },
   });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyServerMessage } from './apply';
-import { answeringData, message, player, ROUND, roomView, stateWith } from './fixtures';
+import { answeringData, message, player, ROUND, roomView, stateWith, you } from './fixtures';
 
 const NOW = 5_000;
 
@@ -120,6 +120,60 @@ describe('applyServerMessage', () => {
         NOW,
       ).room,
     ).toBe(lobby.room);
+  });
+
+  it('follows QUESTION_PREP progress and ignores it in any other phase', () => {
+    const prep = stateWith(
+      roomView({
+        phase: 'QUESTION_PREP',
+        phaseData: {
+          phase: 'QUESTION_PREP',
+          round: ROUND,
+          category: { id: 'geography', label: 'Coğrafya' },
+          difficulty: 'EASY',
+          riskLadder: [{ tier: 'SAFE', multiplier: 1, loss: 0 }],
+          stakeMandatory: false,
+          doubleDownEnabled: true,
+          sabotageEnabled: false,
+          committedCount: 0,
+          eligibleCount: 3,
+        },
+      }),
+    );
+    const next = applyServerMessage(
+      prep,
+      message('PREP_PROGRESS', { committedCount: 2, eligibleCount: 3 }),
+      NOW,
+    );
+    expect(next.room?.phaseData).toMatchObject({ committedCount: 2, eligibleCount: 3 });
+    expect(prep.room?.phaseData).toMatchObject({ committedCount: 0 }); // immutable update
+
+    const answering = stateWith(roomView({ phase: 'ANSWERING', phaseData: answeringData() }));
+    expect(
+      applyServerMessage(
+        answering,
+        message('PREP_PROGRESS', { committedCount: 1, eligibleCount: 3 }),
+        NOW,
+      ).room,
+    ).toBe(answering.room);
+  });
+
+  it('replaces the private view wholesale on PLAYER_STATE (powers, commitment, effects)', () => {
+    const state = stateWith(roomView());
+    const mine = you('p1', {
+      powers: {
+        fiftyFifty: 1,
+        doubleDown: 2,
+        shield: 1,
+        sabotageTokens: 1,
+        nextTokenAtStreak: 3,
+        lockedJoker: null,
+      },
+      commitment: { stake: 'RISK', doubleDown: true, sabotage: null },
+      hits: [{ effect: 'JAM', blocked: false }],
+    });
+    const next = applyServerMessage(state, message('PLAYER_STATE', { you: mine }), NOW);
+    expect(next.room?.you).toEqual(mine);
   });
 
   it('records an accepted answer on `you` and a rejection as a client error', () => {

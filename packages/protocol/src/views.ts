@@ -7,6 +7,7 @@ import {
   DifficultyPresetSchema,
   DifficultySchema,
   EpochMsSchema,
+  JokerSchema,
   LocaleSchema,
   OptionIdSchema,
   PhaseSchema,
@@ -14,6 +15,7 @@ import {
   QuestionIdSchema,
   RiskTierSchema,
   RoundKindSchema,
+  SabotageKindSchema,
   TierSchema,
   UuidSchema,
 } from './common';
@@ -98,14 +100,36 @@ export const ScoreComponentSchema = z.strictObject({
 });
 export type ScoreComponent = z.infer<typeof ScoreComponentSchema>;
 
-export const SABOTAGE_KINDS = ['JAM', 'SHUFFLE', 'FOG', 'LOCKOUT', 'POINT_TAX'] as const;
-export const SabotageKindSchema = z.enum(SABOTAGE_KINDS);
-export type SabotageKind = z.infer<typeof SabotageKindSchema>;
+/** One rung of the stake ladder as the phone and TV show it. */
+export const LadderRungSchema = z.strictObject({
+  tier: RiskTierSchema,
+  multiplier: z.int().positive(),
+  /** Points lost on a wrong (or missing) answer at this tier. */
+  loss: z.int().nonnegative(),
+});
+export type LadderRung = z.infer<typeof LadderRungSchema>;
 
+/**
+ * What the POWER_RESOLUTION screen shows after the reveal. Outcomes are already public by then (the
+ * reveal named them); they let the TV say "went HIGH and was right" without replaying the round.
+ */
 export const PowerResolutionItemSchema = z.discriminatedUnion('kind', [
-  z.strictObject({ kind: z.literal('STAKE'), playerId: PlayerIdSchema, tier: RiskTierSchema }),
-  z.strictObject({ kind: z.literal('DOUBLE_DOWN'), playerId: PlayerIdSchema }),
-  z.strictObject({ kind: z.literal('FIFTY_FIFTY'), playerId: PlayerIdSchema }),
+  z.strictObject({
+    kind: z.literal('STAKE'),
+    playerId: PlayerIdSchema,
+    tier: RiskTierSchema,
+    outcome: OutcomeSchema,
+  }),
+  z.strictObject({
+    kind: z.literal('DOUBLE_DOWN'),
+    playerId: PlayerIdSchema,
+    outcome: OutcomeSchema,
+  }),
+  z.strictObject({
+    kind: z.literal('FIFTY_FIFTY'),
+    playerId: PlayerIdSchema,
+    outcome: OutcomeSchema,
+  }),
   z.strictObject({
     kind: z.literal('SABOTAGE'),
     actorId: PlayerIdSchema,
@@ -129,10 +153,14 @@ export const PhaseDataSchema = z.discriminatedUnion('phase', [
     round,
     category: CategoryRefSchema,
     difficulty: DifficultySchema,
-    riskLadder: z.array(RiskTierSchema).max(4),
+    riskLadder: z.array(LadderRungSchema).min(1).max(4),
+    /** True when the ladder has no SAFE rung (the last question): a stake must be taken. */
+    stakeMandatory: z.boolean(),
     doubleDownEnabled: z.boolean(),
     sabotageEnabled: z.boolean(),
+    /** Players who have made their choices / players who are expected to. */
     committedCount: z.int().nonnegative(),
+    eligibleCount: z.int().nonnegative(),
   }),
   z.strictObject({
     phase: z.literal('QUESTION'),
@@ -235,6 +263,43 @@ export const PhaseDataSchema = z.discriminatedUnion('phase', [
 export type PhaseData = z.infer<typeof PhaseDataSchema>;
 export type PhaseDataOf<P extends PhaseData['phase']> = Extract<PhaseData, { phase: P }>;
 
+/** Remaining lifelines and tokens, private to their owner. */
+export const PowersViewSchema = z.strictObject({
+  fiftyFifty: z.int().nonnegative(),
+  doubleDown: z.int().nonnegative(),
+  shield: z.int().nonnegative(),
+  sabotageTokens: z.int().nonnegative(),
+  /** Correct-answer streak that earns the next sabotage token (null when none can be earned). */
+  nextTokenAtStreak: z.int().positive().nullable(),
+  /** Joker that a lockout blocks this round, else null. */
+  lockedJoker: JokerSchema.nullable(),
+});
+export type PowersView = z.infer<typeof PowersViewSchema>;
+
+/** What the player committed this round (private until POWER_RESOLUTION). */
+export const CommitmentViewSchema = z.strictObject({
+  stake: RiskTierSchema,
+  doubleDown: z.boolean(),
+  sabotage: z.strictObject({ targetId: PlayerIdSchema, effect: SabotageKindSchema }).nullable(),
+});
+export type CommitmentView = z.infer<typeof CommitmentViewSchema>;
+
+/** A sabotage that landed (or was blocked by the shield) on this player: never names the attacker. */
+export const HitViewSchema = z.strictObject({ effect: SabotageKindSchema, blocked: z.boolean() });
+export type HitView = z.infer<typeof HitViewSchema>;
+
+/** Presentation effects on this player's phone for the current question. */
+export const EffectsViewSchema = z.strictObject({
+  /** Milliseconds cut from this player's answer window (JAM, or half-strength when softened). */
+  jamMs: z.int().nonnegative(),
+  /** Option ids in the order this player's phone lists them (SHUFFLE), else null. */
+  order: z.array(OptionIdSchema).max(8).nullable(),
+  /** Option that stays hidden for the first `fogMs` of the window (FOG), else null. */
+  fogOptionId: OptionIdSchema.nullable(),
+  fogMs: z.int().nonnegative(),
+});
+export type EffectsView = z.infer<typeof EffectsViewSchema>;
+
 export const YouViewSchema = z.strictObject({
   playerId: PlayerIdSchema,
   isLeader: z.boolean(),
@@ -246,6 +311,14 @@ export const YouViewSchema = z.strictObject({
       lockedAt: EpochMsSchema,
     })
     .nullable(),
+  /** Null outside a running game. */
+  powers: PowersViewSchema.nullable(),
+  commitment: CommitmentViewSchema.nullable(),
+  /** The two options that remain after this player used 50/50 on the current question. */
+  fiftyFifty: z.strictObject({ keep: z.array(OptionIdSchema).max(8) }).nullable(),
+  effects: EffectsViewSchema.nullable(),
+  hits: z.array(HitViewSchema).max(8),
+  reducedEffects: z.boolean(),
 });
 export type YouView = z.infer<typeof YouViewSchema>;
 

@@ -54,6 +54,12 @@ export function clientIp(request: IncomingMessage, trustedHops: number): string 
 }
 
 /** WebSocket endpoint: upgrade policy, connection lifecycle, rate limits and message routing. */
+const POWER_COMMANDS: ReadonlySet<string> = new Set([
+  'COMMIT_PREP',
+  'USE_FIFTY_FIFTY',
+  'SET_PREFERENCES',
+]);
+
 export class Gateway {
   private readonly wss = new WebSocketServer({
     noServer: true,
@@ -221,6 +227,13 @@ export class Gateway {
       !this.deps.limiter.take(`answer:${connection.sessionId}`, LIMITS.answer).allowed
     ) {
       connection.error('RATE_LIMITED', message.messageId, { retryAfterMs: 1000 });
+      return;
+    }
+    if (
+      POWER_COMMANDS.has(message.type) &&
+      !this.deps.limiter.take(`power:${connection.sessionId}`, LIMITS.power).allowed
+    ) {
+      connection.error('RATE_LIMITED', message.messageId, { retryAfterMs: 2000 });
       return;
     }
     await room.handleClientMessage(connection, message, receivedAt);

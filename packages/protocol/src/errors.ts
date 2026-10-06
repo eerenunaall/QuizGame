@@ -31,6 +31,15 @@ export const ERROR_CODES = {
   ANSWER_DUPLICATE: { retryable: false },
   ANSWER_NOT_ALLOWED: { retryable: false },
   PLAYER_NOT_FOUND: { retryable: false },
+  /** A power that is used up, not offered this round, or outside its window. */
+  POWER_UNAVAILABLE: { retryable: false },
+  /** A sabotage "lockout" from another player blocks that joker this round. */
+  POWER_LOCKED_OUT: { retryable: false },
+  STAKE_INVALID: { retryable: false },
+  TARGET_INVALID: { retryable: false },
+  /** Sabotage cooldown, per-round, per-target or per-game cap reached. */
+  SABOTAGE_LIMIT: { retryable: false },
+  ALREADY_COMMITTED: { retryable: false },
   FEATURE_DISABLED: { retryable: false },
   INTERNAL: { retryable: true },
 } as const;
