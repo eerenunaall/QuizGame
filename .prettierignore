@@ -1,0 +1,15 @@
+node_modules
+dist
+build
+coverage
+.turbo
+.expo
+pnpm-lock.yaml
+docs
+database/migrations
+packages/db/src/generated
+apps/web/public/.well-known
+playwright-report
+test-results
+seed
+*.sql

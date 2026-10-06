@@ -5,6 +5,7 @@ Read in this order: `docs/STATUS.md` → `docs/PLAN.md` → the ADR relevant to 
 Sessions are ephemeral: commit and push to the designated branch after every green milestone.
 
 ## Hard rules
+
 - The server is authoritative (timer, answers, score, legality, visibility). Clients send intents only.
 - Never send unrevealed answers/hidden state to a client: build views with allow-lists, keep
   `.strict()` outbound schemas, keep the payload-scanner test green (ADR-0008).
@@ -14,6 +15,7 @@ Sessions are ephemeral: commit and push to the designated branch after every gre
 - Do not open a pull request unless the owner asks. Do not put model identifiers in commits, code or docs.
 
 ## Commands (pnpm workspace)
+
 ```
 pnpm install
 pnpm check                 # lint + typecheck + unit tests (what CI's first job runs)
@@ -25,15 +27,18 @@ pnpm dev                   # realtime + web
 ```
 
 ## Sandbox facts
+
 Node 22, pnpm 10, PostgreSQL 16 (`scripts/dev/db-up.sh` starts it), Redis 7, Playwright Chromium at
 `/opt/pw-browsers/chromium` (Playwright is pinned to 1.56.x to match; never run `playwright install`).
 No Docker daemon, no Xcode/Android SDK, no apple.com access. See ADR-0019 for what is provable here.
 
 ## Where things live
+
 `apps/realtime` (all backend logic) · `apps/web` (TV + browser controller) · `apps/admin` ·
 `apps/mobile` · `packages/*` (shared libs; engine is pure) · `database/migrations` · `scripts/*` ·
 `tests/*` (cross-cutting layers) · `docs/ADR/*` (decisions) · `docs/ACCEPTANCE.md` (A–AE matrix).
 
 ## Style
+
 Comments explain why (invariants, spec refs like `GDD §8.2`), match surrounding density. User-visible
 strings only in `packages/i18n`. Time and randomness are injected into pure logic.
