@@ -6,26 +6,26 @@ checklist in `docs/EXTERNAL_CHECKLIST.md`). Status is only changed together with
 
 | ID | Criterion | Milestone | Proof (test / evidence) | Cloud-verifiable | Status |
 |---|---|---|---|---|---|
-| A | TV opens without install | M1 | e2e `tv-boot` | yes | TODO |
-| B | QR appears | M1 | e2e `lobby-qr` | yes | TODO |
-| C | Phone can join | M1 | e2e `join-flow` | yes | TODO |
-| D | Different networks work | M7 | ws tests with per-client latency/loss proxy + distinct client IPs; real WAN test external | partly | TODO |
+| A | TV opens without install | M1 | e2e `game.spec.ts` (TV boots from the realtime-served bundle) + ws `static.test.ts` (CSP, headers, caching, SPA fallback) | yes | PASS |
+| B | QR appears | M1 | e2e `game.spec.ts` (join QR decodes to the room's join URL) | yes | PASS |
+| C | Phone can join | M1 | e2e `game.spec.ts` (three separate browser contexts join) + ws `lobby.test.ts` | yes | PASS |
+| D | Different networks work | M7 | red-team ATTACK 12 (phones on different source addresses join and roam mid-game); real WAN external | partly | PARTIAL |
 | E | Native app deep link works | M6 | association-file + link-parser tests; device test external | partly | TODO |
-| F | Browser fallback works | M1 | e2e `join-flow` (no app) | yes | TODO |
-| G | Room lobby is realtime | M1 | ws `lobby-events`, e2e | yes | TODO |
-| H | Host starts game | M1 | engine + e2e | yes | TODO |
-| I | Server owns timer | M1 | engine timing tests, red-team #2/#3 | yes | TODO |
-| J | Answers lock correctly | M1 | engine + ws | yes | TODO |
-| K | Correct answer hidden until reveal | M1 | payload-scanner test | yes | TODO |
-| L | Score is server-owned | M1 | engine + red-team #1 | yes | TODO |
+| F | Browser fallback works | M1 | e2e `game.spec.ts` (phones are plain browsers, no app) | yes | PASS |
+| G | Room lobby is realtime | M1 | ws `lobby.test.ts` › players join in realtime; e2e (TV roster follows joins) | yes | PASS |
+| H | Host starts game | M1 | engine `reducer.lobby.test.ts` + e2e (leader starts from the phone) | yes | PASS |
+| I | Server owns timer | M1 | engine `reducer.game.test.ts` › answer timing, red-team ATTACK 2/3, ws `recovery.test.ts` | yes | PASS |
+| J | Answers lock correctly | M1 | engine `reducer.game.test.ts` › early lock, ws `game.test.ts` | yes | PASS |
+| K | Correct answer hidden until reveal | M1 | ws `game.test.ts` (payload scanner on every frame) + engine `views.test.ts` | yes | PASS |
+| L | Score is server-owned | M1 | engine `scoring.test.ts` / `reducer.game.test.ts` + red-team ATTACK 1 | yes | PASS |
 | M | Power system works (50/50, Double Down) | M2 | engine + e2e | yes | TODO |
 | N | Risk system works | M2 | engine + e2e | yes | TODO |
 | O | Sabotage system works | M2 | engine + red-team #5 | yes | TODO |
-| P | Game Director works | M2 | property tests | yes | TODO |
-| Q | Reconnect works | M2 | ws + e2e + red-team #13 | yes | TODO |
-| R | Host disconnect recovery works | M2 | ws `host-recovery`, integration crash test | yes | TODO |
-| S | Final round works | M1/M2 | engine + e2e | yes | TODO |
-| T | Results / rematch work | M1 | e2e | yes | TODO |
+| P | Game Director works | M2 | engine `director.test.ts` (fast-check: stays inside corridors for arbitrary histories, deterministic, per-kind caps, presets; ADR-0011) | yes | PASS |
+| Q | Reconnect works | M2 | ws `reconnect.test.ts`, `client.test.ts`, red-team ATTACK 13, e2e (phone and TV reload mid-game) | yes | PASS |
+| R | Host disconnect recovery works | M2 | ws `reconnect.test.ts` › leadership moves after the grace period, display refresh, `recovery.test.ts` | yes | PASS |
+| S | Final round works | M1/M2 | engine `reducer.final-stage.test.ts` + e2e (final splash, 2× scoring) | yes | PASS |
+| T | Results / rematch work | M1 | e2e `game.spec.ts` (results, podium, rematch) + ws `game.test.ts` › rematch | yes | PASS |
 | U | Native purchase can be verified | M4 | integration (verifier code with generated chain / HTTP double); real store external | partly | TODO |
 | V | Purchase grants account entitlement | M4 | integration | yes | TODO |
 | W | TV sees entitlement without refresh | M4 | ws + e2e | yes | TODO |
