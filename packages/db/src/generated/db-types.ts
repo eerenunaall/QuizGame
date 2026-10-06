@@ -27,6 +27,64 @@ export type Numeric = ColumnType<string, number | string, number | string>;
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
+export interface AccountRoles {
+  account_id: string;
+  granted_at: Generated<Timestamp>;
+  granted_by: string | null;
+  role: string;
+}
+
+export interface Accounts {
+  avatar_id: string | null;
+  created_at: Generated<Timestamp>;
+  deleted_at: Timestamp | null;
+  display_name: string | null;
+  email: string | null;
+  email_verified_at: Timestamp | null;
+  id: Generated<string>;
+  last_login_at: Timestamp | null;
+  locale: Generated<string>;
+  status: Generated<string>;
+}
+
+export interface AccountSessions {
+  account_id: string;
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp;
+  id: Generated<string>;
+  ip_hash: string | null;
+  kind: string;
+  last_seen_at: Generated<Timestamp>;
+  revoked_at: Timestamp | null;
+  token_hash: string;
+  user_agent_hash: string | null;
+}
+
+export interface AdminAudit {
+  action: string;
+  actor_account_id: string | null;
+  actor_roles: Generated<string[]>;
+  at: Generated<Timestamp>;
+  detail: Generated<Json>;
+  id: Generated<Int8>;
+  ip_hash: string | null;
+  request_id: string | null;
+  target_id: string | null;
+  target_type: string;
+}
+
+export interface Bans {
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  expires_at: Timestamp | null;
+  id: Generated<string>;
+  kind: string;
+  lifted_at: Timestamp | null;
+  lifted_by: string | null;
+  reason: string;
+  subject_hash: string;
+}
+
 export interface Categories {
   created_at: Generated<Timestamp>;
   enabled: Generated<boolean>;
@@ -36,6 +94,27 @@ export interface Categories {
   label_tr: string;
   sort_order: Generated<number>;
   source_required: Generated<boolean>;
+}
+
+export interface EmailOtps {
+  attempts: Generated<number>;
+  code_hash: string;
+  consumed_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  email_hash: string;
+  expires_at: Timestamp;
+  id: Generated<string>;
+  ip_hash: string | null;
+  purpose: string;
+}
+
+export interface FeatureFlags {
+  description: Generated<string>;
+  enabled: Generated<boolean>;
+  key: string;
+  public: Generated<boolean>;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
 }
 
 export interface GameAnswers {
@@ -82,12 +161,66 @@ export interface Games {
   total_rounds: number;
 }
 
+export interface IncidentNotes {
+  at: Generated<Timestamp>;
+  author_account_id: string | null;
+  body: string;
+  id: Generated<Int8>;
+  incident_id: string;
+}
+
+export interface Incidents {
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  id: Generated<string>;
+  resolved_at: Timestamp | null;
+  severity: string;
+  status: Generated<string>;
+  summary: Generated<string>;
+  title: string;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface QuestionAudits {
+  actor_account_id: string | null;
+  created_at: Generated<Timestamp>;
+  detail: Generated<Json>;
+  dimensions: Generated<Json>;
+  hard_reject_reasons: Generated<string[]>;
+  id: Generated<Int8>;
+  pass: string;
+  provider: string;
+  question_id: string;
+  question_revision: number;
+  reason_codes: Generated<string[]>;
+  review_reasons: Generated<string[]>;
+  scores: Generated<Json>;
+  status: string;
+  suggested_rewrite: string | null;
+}
+
 export interface QuestionOptions {
   id: Generated<string>;
   is_correct: Generated<boolean>;
+  pick_count: Generated<Int8>;
   position: number;
   question_id: string;
   text: string;
+}
+
+export interface QuestionReports {
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  note: string | null;
+  question_id: string;
+  question_revision: number;
+  reason: string;
+  reporter_hash: string;
+  resolution: string | null;
+  resolved_at: Timestamp | null;
+  resolved_by: string | null;
+  room_id: string | null;
+  status: Generated<string>;
 }
 
 export interface Questions {
@@ -102,6 +235,7 @@ export interface Questions {
   expires_at: Timestamp | null;
   explanation: string | null;
   external_id: string | null;
+  fingerprint_version: Generated<number>;
   gameplay_score: Numeric | null;
   id: Generated<string>;
   is_dev_seed: Generated<boolean>;
@@ -115,8 +249,11 @@ export interface Questions {
   report_count: Generated<number>;
   retire_reason: string | null;
   retired_at: Timestamp | null;
+  revision: Generated<number>;
+  revision_txid: Int8 | null;
   semantic_fingerprint: string | null;
   semantic_provider: string | null;
+  skip_count: Generated<Int8>;
   status: Generated<string>;
   subcategory: string | null;
   text: string;
@@ -133,6 +270,17 @@ export interface QuestionSources {
   retrieved_at: Timestamp | null;
   title: string | null;
   url: string;
+}
+
+export interface QuestionStatusLog {
+  actor_account_id: string | null;
+  at: Generated<Timestamp>;
+  detail: Generated<Json>;
+  from_status: string | null;
+  id: Generated<Int8>;
+  question_id: string;
+  reason: string;
+  to_status: string;
 }
 
 export interface RoomEvents {
@@ -166,6 +314,7 @@ export interface RoomSessions {
   created_at: Generated<Timestamp>;
   device_id_hash: string | null;
   id: string;
+  ip_hash: string | null;
   last_client_sequence: Generated<Int8>;
   last_seen_at: Generated<Timestamp>;
   player_id: string | null;
@@ -222,13 +371,25 @@ export interface TelemetryEvents {
 }
 
 export interface DB {
+  account_roles: AccountRoles;
+  account_sessions: AccountSessions;
+  accounts: Accounts;
+  admin_audit: AdminAudit;
+  bans: Bans;
   categories: Categories;
+  email_otps: EmailOtps;
+  feature_flags: FeatureFlags;
   game_answers: GameAnswers;
   game_players: GamePlayers;
   game_rounds: GameRounds;
   games: Games;
+  incident_notes: IncidentNotes;
+  incidents: Incidents;
+  question_audits: QuestionAudits;
   question_options: QuestionOptions;
+  question_reports: QuestionReports;
   question_sources: QuestionSources;
+  question_status_log: QuestionStatusLog;
   questions: Questions;
   room_events: RoomEvents;
   room_sessions: RoomSessions;
