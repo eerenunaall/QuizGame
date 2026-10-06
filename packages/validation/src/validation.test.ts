@@ -145,6 +145,40 @@ describe('validateNickname', () => {
   });
 });
 
+describe('containsProfanity and ordinary Turkish', () => {
+  // Regression: the English list matches word prefixes ("cum…", "anal…", "kanal", "sanal") that
+  // begin everyday Turkish words, so "Türkiye Cumhuriyeti" and "Cuma" were reported as profanity.
+  it('does not flag common words, names and places that merely look like an English stem', () => {
+    for (const fine of [
+      'Cuma',
+      'Cumartesi',
+      'Cumhur',
+      'Cumali',
+      'Cumhuriyet',
+      'Cumhuriyeti',
+      'Türkiye Cumhuriyeti hangi yıl ilan edilmiştir?',
+      'Cumhurbaşkanı',
+      'kanal',
+      'Kanal D',
+      'sanal gerçeklik',
+      'yanal',
+      'analiz',
+      'analist',
+      'analog saat',
+      'Arsenal',
+      'Pazartesi, Salı ve Çarşamba',
+    ]) {
+      expect(containsProfanity(fine), fine).toBe(false);
+      expect(containsProfanity(fine, { strict: true }), `${fine} (strict)`).toBe(false);
+    }
+  });
+
+  it('still catches the whole words', () => {
+    for (const bad of ['cum', 'anal', 'anal sex', 'cumming'])
+      expect(containsProfanity(bad), bad).toBe(true);
+  });
+});
+
 describe('containsProfanity', () => {
   it('works on longer text and folds Turkish letters', () => {
     expect(containsProfanity('bu gerçekten güzel bir soru')).toBe(false);

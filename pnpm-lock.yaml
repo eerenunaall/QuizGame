@@ -227,6 +227,22 @@ importers:
         specifier: 4.6.5
         version: 4.6.5
 
+  packages/question-schema:
+    dependencies:
+      '@quizparty/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@quizparty/validation':
+        specifier: workspace:*
+        version: link:../validation
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@types/node':
+        specifier: 22.20.5
+        version: 22.20.5
+
   packages/shared: {}
 
   packages/ui-tokens:

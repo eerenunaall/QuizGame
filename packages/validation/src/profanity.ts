@@ -45,8 +45,30 @@ const SHORT_STEMS: Entry[] = [
   { word: 'pic', patterns: [pattern`|pic|`, pattern`|piclik`] },
 ];
 
+/**
+ * The English list matches word *prefixes* for "cum" and "anal" (and "kanal", "sanal", … through
+ * its letter-prefixed variants), which begin ordinary Turkish words: Cuma, Cumartesi, Cumhur,
+ * Cumhuriyeti, kanal, sanal, analiz. Only the whole-word forms are kept.
+ */
+function turkishSafeEnglish(): DataSet<{ originalWord: string }> {
+  return new DataSet<{ originalWord: string }>()
+    .addAll(englishDataset)
+    .removePhrasesIf((phrase) => ['cum', 'anal'].includes(phrase.metadata?.originalWord ?? ''))
+    .addPhrase((builder) =>
+      builder
+        .setMetadata({ originalWord: 'cum' })
+        .addPattern(pattern`|cum|`)
+        .addPattern(pattern`|cums|`)
+        .addPattern(pattern`|cuming|`) // the transformers collapse doubled letters first
+        .addPattern(pattern`|cumshot`),
+    )
+    .addPhrase((builder) =>
+      builder.setMetadata({ originalWord: 'anal' }).addPattern(pattern`|anal|`),
+    );
+}
+
 function buildMatcher(entries: Entry[]): RegExpMatcher {
-  const dataset = new DataSet<{ originalWord: string }>().addAll(englishDataset);
+  const dataset = turkishSafeEnglish();
   for (const entry of entries) {
     dataset.addPhrase((builder) => {
       let phrase = builder.setMetadata({ originalWord: entry.word });
