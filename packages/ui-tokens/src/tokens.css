@@ -1,0 +1,48 @@
+/* Generated from tokens.ts by build-css.ts — do not edit. */
+:root {
+  --qp-color-background: #0b0820;
+  --qp-color-background-deep: #06041a;
+  --qp-color-surface: #17123a;
+  --qp-color-surface-raised: #221a52;
+  --qp-color-surface-line: #3a2f7a;
+  --qp-color-text: #ffffff;
+  --qp-color-muted-text: #b9b2e8;
+  --qp-color-accent-a: #ff3d8b;
+  --qp-color-accent-b: #2de2e6;
+  --qp-color-accent-c: #ffd23f;
+  --qp-color-success: #35e08a;
+  --qp-color-danger: #ff5470;
+  --qp-color-warning: #ffb020;
+  --qp-color-answer-a: #ff3d8b;
+  --qp-color-answer-b: #2de2e6;
+  --qp-color-answer-c: #ffd23f;
+  --qp-color-answer-d: #8b5cf6;
+  --qp-color-player-1: #ff6b6b;
+  --qp-color-player-2: #4dd0e1;
+  --qp-color-player-3: #ffd166;
+  --qp-color-player-4: #06d6a0;
+  --qp-color-player-5: #a78bfa;
+  --qp-color-player-6: #f78c6b;
+  --qp-color-player-7: #5aa9ff;
+  --qp-color-player-8: #ff8fd8;
+  --qp-radius-sm: 10px;
+  --qp-radius-md: 18px;
+  --qp-radius-lg: 28px;
+  --qp-radius-xl: 40px;
+  --qp-radius-pill: 999px;
+  --qp-space-xs: 4px;
+  --qp-space-sm: 8px;
+  --qp-space-md: 16px;
+  --qp-space-lg: 24px;
+  --qp-space-xl: 40px;
+  --qp-space-xxl: 64px;
+  --qp-duration-fast: 120ms;
+  --qp-duration-base: 240ms;
+  --qp-duration-slow: 480ms;
+  --qp-duration-stage: 900ms;
+  --qp-font-display: 'Titan One', 'Fredoka', system-ui, sans-serif;
+  --qp-font-body: 'Fredoka', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --qp-shadow-card: 0 10px 0 rgba(0, 0, 0, 0.35), 0 24px 48px rgba(0, 0, 0, 0.45);
+  --qp-shadow-glow: 0 0 40px rgba(255, 61, 139, 0.55);
+  --qp-shadow-inset: inset 0 -6px 0 rgba(0, 0, 0, 0.22);
+}
