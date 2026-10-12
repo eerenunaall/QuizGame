@@ -86,6 +86,36 @@ export interface Bans {
   subject_hash: string;
 }
 
+export interface BlindPrompts {
+  catalog_key: string | null;
+  id: Generated<string>;
+  position: number;
+  quiz_id: string;
+  source: string;
+  text: string | null;
+}
+
+export interface BlindResponses {
+  approved_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  key_id: string;
+  prompt_id: string;
+  sealed: Buffer;
+  target_id: string;
+  updated_at: Generated<Timestamp>;
+  visibility_policy: Generated<string>;
+}
+
+export interface BlindTargets {
+  consented_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  display_name: string;
+  id: Generated<string>;
+  invite_hash: string;
+  quiz_id: string;
+}
+
 export interface Categories {
   created_at: Generated<Timestamp>;
   enabled: Generated<boolean>;
@@ -95,6 +125,16 @@ export interface Categories {
   label_tr: string;
   sort_order: Generated<number>;
   source_required: Generated<boolean>;
+}
+
+export interface CustomQuestions {
+  correct_index: number;
+  explanation: string | null;
+  id: Generated<string>;
+  options: Json;
+  position: number;
+  quiz_id: string;
+  text: string;
 }
 
 export interface EmailOtps {
@@ -203,6 +243,18 @@ export interface LinkIntents {
   room_id: string;
   status: Generated<string>;
   token_hash: string;
+}
+
+export interface PersonalQuizzes {
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  kind: string;
+  language: Generated<string>;
+  last_used_at: Timestamp | null;
+  owner_account_id: string;
+  retain_until: Timestamp;
+  title: string;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface PurchaseTransactions {
@@ -423,7 +475,11 @@ export interface DB {
   accounts: Accounts;
   admin_audit: AdminAudit;
   bans: Bans;
+  blind_prompts: BlindPrompts;
+  blind_responses: BlindResponses;
+  blind_targets: BlindTargets;
   categories: Categories;
+  custom_questions: CustomQuestions;
   email_otps: EmailOtps;
   entitlements: Entitlements;
   feature_flags: FeatureFlags;
@@ -434,6 +490,7 @@ export interface DB {
   incident_notes: IncidentNotes;
   incidents: Incidents;
   link_intents: LinkIntents;
+  personal_quizzes: PersonalQuizzes;
   purchase_transactions: PurchaseTransactions;
   question_audits: QuestionAudits;
   question_options: QuestionOptions;

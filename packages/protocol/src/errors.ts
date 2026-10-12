@@ -55,6 +55,14 @@ export const ERROR_CODES = {
   PURCHASE_REFUNDED: { retryable: false },
   /** The store could not be reached to verify; nothing was granted or refused. */
   STORE_UNAVAILABLE: { retryable: true },
+  /** Free text was refused (empty, too long, a link, profanity); `params.reason` says which. */
+  TEXT_REJECTED: { retryable: false },
+  /** A personal answer cannot be stored before the person has agreed to the consent text. */
+  CONSENT_REQUIRED: { retryable: false },
+  /** An account, quiz or room already holds the most of something it may hold. */
+  LIMIT_REACHED: { retryable: false },
+  /** The quiz is not ready to be played (not enough approved questions). */
+  NOT_READY: { retryable: false },
   INTERNAL: { retryable: true },
 } as const;
 

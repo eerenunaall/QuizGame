@@ -10,6 +10,7 @@ import type { Clock } from '../util/clock';
 export class MaintenanceJob {
   private timer: NodeJS.Timeout | null = null;
   private running = false;
+  private readonly tasks: (() => Promise<unknown>)[] = [];
 
   constructor(
     private readonly db: Database,
@@ -18,6 +19,11 @@ export class MaintenanceJob {
     private readonly onError: (error: unknown) => void,
     private readonly onReport: (report: MaintenanceReport) => void = () => undefined,
   ) {}
+
+  /** Other housekeeping that rides the same timer (retention of personal data, room scrubbing). */
+  addTask(task: () => Promise<unknown>): void {
+    this.tasks.push(task);
+  }
 
   start(): void {
     if (this.intervalMs <= 0 || this.timer) return;
@@ -31,6 +37,7 @@ export class MaintenanceJob {
     try {
       const report = await runMaintenance(this.db, { now: new Date(this.clock.now()) });
       this.onReport(report);
+      for (const task of this.tasks) await task().catch(this.onError);
       return report;
     } catch (error) {
       this.onError(error);

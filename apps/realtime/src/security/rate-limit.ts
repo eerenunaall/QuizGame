@@ -106,5 +106,9 @@ export const LIMITS = {
   /** Asking for a TV link code: a few per room, claiming one is limited per account. */
   linkCreate: { capacity: 5, refillPerSec: 5 / 600 },
   linkClaim: { capacity: 10, refillPerSec: 10 / 600 },
+  /** Creating and editing personal quizzes (per account). */
+  quiz: { capacity: 60, refillPerSec: 1 },
+  /** A person answering a Blind Quiz through an invite link (per address). */
+  blindRespond: { capacity: 60, refillPerSec: 1 },
   invalidMessage: { capacity: 8, refillPerSec: 0.2 },
 } as const satisfies Record<string, BucketSpec>;

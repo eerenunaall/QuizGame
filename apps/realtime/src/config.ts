@@ -1,4 +1,4 @@
-import { X509Certificate } from 'node:crypto';
+import { X509Certificate, createHmac } from 'node:crypto';
 import { hostname } from 'node:os';
 import { z } from 'zod';
 
@@ -74,6 +74,11 @@ const EnvSchema = z.object({
   GOOGLE_API_BASE: z.string().url().default('https://androidpublisher.googleapis.com'),
   /** Shared secret in the push URL of the real-time developer notifications. */
   GOOGLE_WEBHOOK_SECRET: z.string().min(24).optional(),
+  /**
+   * Keys that seal personal answers (ADR-0015): `id:base64key,id:base64key`, 32 bytes each; the first
+   * seals, all can open (rotation). Without it a production server serves no personal quizzes.
+   */
+  BLIND_DATA_KEYS: z.string().optional(),
   AUDIT_API_KEY: z.string().min(8).optional(),
   AUDIT_MODEL_FAST: z.string().min(1).max(100).optional(),
   AUDIT_MODEL_STRONG: z.string().min(1).max(100).optional(),
@@ -159,6 +164,29 @@ function paymentsConfig(e: z.infer<typeof EnvSchema>, production: boolean): Paym
   return { enabled: e.PAYMENTS_ENABLED, acceptSandbox: e.PAYMENTS_ACCEPT_SANDBOX, apple, google };
 }
 
+function blindKeys(
+  raw: string | undefined,
+  secret: string,
+  production: boolean,
+): { id: string; key: Buffer }[] | null {
+  if (!raw) {
+    // Development and tests get a key derived from the server secret; production refuses to guess.
+    return production
+      ? null
+      : [{ id: 'dev', key: createHmac('sha256', secret).update('blind-dev-key').digest() }];
+  }
+  const keys = raw.split(',').map((entry) => {
+    const [id, encoded] = entry.trim().split(':');
+    const key = encoded ? Buffer.from(encoded, 'base64') : Buffer.alloc(0);
+    if (!id || !/^[A-Za-z0-9_-]{1,32}$/u.test(id) || key.length !== 32)
+      throw new Error('Invalid configuration: BLIND_DATA_KEYS needs id:base64(32 bytes) entries');
+    return { id, key };
+  });
+  if (new Set(keys.map((k) => k.id)).size !== keys.length)
+    throw new Error('Invalid configuration: BLIND_DATA_KEYS has a repeated key id');
+  return keys;
+}
+
 export interface AppConfig {
   env: 'development' | 'test' | 'production';
   port: number;
@@ -191,6 +219,8 @@ export interface AppConfig {
   adminBootstrapEmails: string[];
   emailWebhook: { url: string; token: string | null } | null;
   payments: PaymentsConfig;
+  /** Sealing keys for personal answers; the first is the active one. Null = personal quizzes are off. */
+  blindKeys: { id: string; key: Buffer }[] | null;
   audit: { apiKey: string; apiBase: string | null; modelFast: string; modelStrong: string } | null;
   embeddings: { baseUrl: string; model: string; apiKey: string | null } | null;
 }
@@ -275,6 +305,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       ? { url: e.EMAIL_WEBHOOK_URL, token: e.EMAIL_WEBHOOK_TOKEN ?? null }
       : null,
     payments: paymentsConfig(e, production),
+    blindKeys: blindKeys(e.BLIND_DATA_KEYS, e.SERVER_SECRET ?? DEV_SECRET, production),
     audit:
       e.AUDIT_API_KEY && e.AUDIT_MODEL_FAST
         ? {

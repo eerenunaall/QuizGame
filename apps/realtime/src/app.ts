@@ -15,6 +15,10 @@ import { registerAdminRoutes } from './admin';
 import { buildAuditEngine } from './admin/engine';
 import { AccountSessionService } from './auth/account-sessions';
 import { AccountService } from './auth/accounts';
+import { QuizService } from './blind/quizzes';
+import { registerBlindRoutes } from './blind/routes';
+import { Sealer } from './blind/sealer';
+import { BlindVault } from './blind/vault';
 import { ConsoleEmailSender, WebhookEmailSender, type EmailSender } from './auth/email';
 import { installAuthGuard } from './auth/guard';
 import { OtpService } from './auth/otp';
@@ -57,6 +61,8 @@ export interface BuiltApp {
   accounts: AccountService;
   accountSessions: AccountSessionService;
   entitlements: EntitlementService;
+  vault: BlindVault;
+  quizzes: QuizService;
   maintenance: MaintenanceJob;
   routes: RouteSpec[];
   /** Graceful shutdown: stop accepting, flush rooms, release leases, close the pool. */
@@ -184,12 +190,20 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
       if (report.ran) log.info(report, 'question maintenance');
     },
   );
+  const vault = new BlindVault({
+    db,
+    sealer: config.blindKeys ? new Sealer(config.blindKeys) : null,
+    clock,
+    secret: config.serverSecret,
+  });
+  const quizzes = new QuizService({ db, clock, vault, publicWebUrl: config.publicWebUrl });
   const links = new LinkService({
     db,
     clock,
     secret: config.serverSecret,
     publicWebUrl: config.publicWebUrl,
   });
+  maintenance.addTask(() => quizzes.purgeExpired());
   const manager = new RoomManager({
     config,
     links,
@@ -319,6 +333,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     flags,
     engine: buildAuditEngine(config),
   });
+  registerBlindRoutes(app, { config, quizzes, vault, flags, limiter });
   registerPrivacyRoutes(app, {
     sessions: accountSessions,
     privacy: new AccountPrivacy({
@@ -387,6 +402,8 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     accounts,
     accountSessions,
     entitlements,
+    vault,
+    quizzes,
     maintenance,
     routes,
     close: () => shutdown(true),

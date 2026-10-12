@@ -137,6 +137,8 @@ export class AccountPrivacy {
         })
         .where('account_id', '=', accountId)
         .execute();
+      // Personal quizzes (and every answer sealed under them) go with the account.
+      await trx.deleteFrom('personal_quizzes').where('owner_account_id', '=', accountId).execute();
       await trx.deleteFrom('entitlements').where('account_id', '=', accountId).execute();
       await trx
         .updateTable('rooms')
