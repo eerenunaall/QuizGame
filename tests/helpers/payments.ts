@@ -86,7 +86,7 @@ export async function call<T = Record<string, unknown>>(
   return { status: response.status, body: (text ? JSON.parse(text) : null) as T };
 }
 
-export const pubsub = (event: unknown, messageId = randomUUID()) => ({
+export const pubsub = (event: unknown, messageId: string = randomUUID()) => ({
   message: { data: Buffer.from(JSON.stringify(event)).toString('base64'), messageId },
   subscription: 'projects/test/subscriptions/rtdn',
 });

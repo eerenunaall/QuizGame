@@ -10,7 +10,7 @@ import { clientIp } from '../ws/gateway';
 import type { AppleVerifier } from './apple';
 import type { GoogleVerifier } from './google';
 import { EntitlementError, type EntitlementService } from './service';
-import { PurchaseError, type PurchaseClaim } from './types';
+import { PurchaseError } from './types';
 
 export interface PaymentRouteDeps {
   config: AppConfig;
