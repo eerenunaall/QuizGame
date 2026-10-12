@@ -46,6 +46,8 @@ const EnvSchema = z.object({
   SERVE_WEB: flag('0'),
   WEB_DIST: z.string().optional(),
   RATE_LIMIT_SCALE: z.coerce.number().min(0.1).max(1000).default(1),
+  /** 0 switches the background maintenance pass off (tests run it by hand). */
+  MAINTENANCE_INTERVAL_MS: int(15 * 60_000, 0),
 });
 
 export interface AppConfig {
@@ -74,6 +76,7 @@ export interface AppConfig {
   webDist: string | null;
   /** Multiplies every rate-limit bucket; must stay 1 in production (tests/dev only). */
   rateLimitScale: number;
+  maintenanceIntervalMs: number;
 }
 
 /**
@@ -145,5 +148,6 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     serveWeb: e.SERVE_WEB,
     webDist: e.WEB_DIST ?? null,
     rateLimitScale: e.RATE_LIMIT_SCALE,
+    maintenanceIntervalMs: e.NODE_ENV === 'test' ? 0 : e.MAINTENANCE_INTERVAL_MS,
   };
 }

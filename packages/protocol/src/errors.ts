@@ -41,6 +41,8 @@ export const ERROR_CODES = {
   SABOTAGE_LIMIT: { retryable: false },
   ALREADY_COMMITTED: { retryable: false },
   FEATURE_DISABLED: { retryable: false },
+  /** The address or device is blocked by a moderator; the reason is never shown to the player. */
+  BANNED: { retryable: false },
   INTERNAL: { retryable: true },
 } as const;
 

@@ -10,6 +10,8 @@ import {
   type ErrorCode,
 } from '@quizparty/protocol';
 import type { AppConfig } from '../config';
+import type { FeatureFlags } from '../flags/service';
+import type { BanService } from '../moderation/bans';
 import type { CategoryCatalogService } from '../rooms/catalog';
 import type { RoomManager } from '../rooms/manager';
 import { clientIp } from '../ws/gateway';
@@ -38,6 +40,8 @@ export interface RouteDeps {
   config: AppConfig;
   manager: RoomManager;
   catalog: CategoryCatalogService;
+  flags: FeatureFlags;
+  bans: BanService;
   limiter: RateLimiter;
   metrics: Metrics;
   pool: Pool;
@@ -112,6 +116,8 @@ export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
       const limit = limiter.take(`roomCreate:${ipHashOf(request, deps)}`, LIMITS.roomCreate);
       if (!limit.allowed)
         return apiError(reply, 429, 'RATE_LIMITED', { retryAfterMs: limit.retryAfterMs });
+      if (await deps.bans.isBanned({ ip: ipHashOf(request, deps) }))
+        return apiError(reply, 403, 'BANNED');
       const body = CreateRoomBody.safeParse(request.body);
       if (!body.success) return apiError(reply, 400, 'INVALID_MESSAGE');
       if (manager.size() >= MAX_ROOMS_PER_INSTANCE) return apiError(reply, 503, 'INTERNAL');
@@ -120,6 +126,7 @@ export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
         tier: config.defaultRoomTier,
         language: body.data.locale ?? 'tr',
         clientKind: body.data.client.kind,
+        ipHash: ipHashOf(request, deps),
       });
       const { room } = created;
       return reply.code(201).send({
@@ -132,6 +139,14 @@ export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
       });
     },
   );
+
+  // The public feature switches clients may adapt to (never anything sensitive: see `public` in the table).
+  app.get('/v1/flags', { config: { auth: 'public', limit: 'flags' } }, async (request, reply) => {
+    const limit = limiter.take(`flags:${ipHashOf(request, deps)}`, LIMITS.flags);
+    if (!limit.allowed)
+      return apiError(reply, 429, 'RATE_LIMITED', { retryAfterMs: limit.retryAfterMs });
+    return { flags: await deps.flags.publicFlags() };
+  });
 
   app.get(
     '/v1/categories',

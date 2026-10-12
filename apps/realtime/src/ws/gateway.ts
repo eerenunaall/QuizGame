@@ -11,6 +11,7 @@ import {
 } from '@quizparty/protocol';
 import { validateNickname } from '@quizparty/validation';
 import type { AppConfig } from '../config';
+import type { BanService } from '../moderation/bans';
 import type { RoomManager } from '../rooms/manager';
 import type { SessionService } from '../rooms/sessions';
 import { pseudonym } from '../security/crypto';
@@ -26,6 +27,7 @@ export interface GatewayDeps {
   manager: RoomManager;
   sessions: SessionService;
   limiter: RateLimiter;
+  bans: BanService;
   security: SecurityLog;
   metrics: Metrics;
   log: FastifyBaseLogger;
@@ -229,6 +231,16 @@ export class Gateway {
       connection.error('RATE_LIMITED', message.messageId, { retryAfterMs: 1000 });
       return;
     }
+    if (message.type === 'REPORT_QUESTION') {
+      const mine = this.deps.limiter.take(`report:${connection.sessionId}`, LIMITS.report);
+      const theirs = this.deps.limiter.take(`reportIp:${connection.ipHash}`, LIMITS.reportIp);
+      if (!mine.allowed || !theirs.allowed) {
+        connection.error('RATE_LIMITED', message.messageId, {
+          retryAfterMs: Math.max(mine.retryAfterMs, theirs.retryAfterMs),
+        });
+        return;
+      }
+    }
     if (
       POWER_COMMANDS.has(message.type) &&
       !this.deps.limiter.take(`power:${connection.sessionId}`, LIMITS.power).allowed
@@ -247,6 +259,17 @@ export class Gateway {
     const joinLimit = limiter.take(`join:${connection.ipHash}`, LIMITS.join);
     if (!joinLimit.allowed) {
       connection.error('RATE_LIMITED', message.messageId, { retryAfterMs: joinLimit.retryAfterMs });
+      return;
+    }
+    // A blocked address or device learns nothing else: not whether the room exists, not why.
+    if (
+      await this.deps.bans.isBanned({
+        ip: connection.ipHash,
+        device: pseudonym(config.serverSecret, 'device', message.payload.deviceId),
+      })
+    ) {
+      security.record('BANNED_JOIN_BLOCKED', { ipHash: connection.ipHash });
+      connection.error('BANNED', message.messageId);
       return;
     }
     const code = parseRoomCode(message.payload.code);
@@ -286,6 +309,11 @@ export class Gateway {
     const attempt = limiter.take(`reconnect:${connection.ipHash}`, LIMITS.reconnect);
     if (!attempt.allowed) {
       connection.error('RATE_LIMITED', message.messageId, { retryAfterMs: attempt.retryAfterMs });
+      return;
+    }
+    if (await this.deps.bans.isBanned({ ip: connection.ipHash })) {
+      connection.error('BANNED', message.messageId);
+      connection.close(4003, 'removed');
       return;
     }
     const rotated = await sessions.rotate(message.sessionId, message.payload.reconnectToken);

@@ -4,6 +4,7 @@ import type {
   DifficultyPreset,
   PhaseDataOf,
   PublicPlayer,
+  QuestionReportReason,
   RoomView,
 } from '@quizparty/protocol';
 import type { ClientState } from '@quizparty/controller-client';
@@ -19,6 +20,7 @@ import { useI18n } from '../lib/i18n';
 import { sfx } from '../lib/audio';
 import { HitNotices } from './HitNotices';
 import { PrepScreen } from './PrepScreen';
+import { ReportControl } from './ReportControl';
 import {
   fiftyFiftyState,
   isFogged,
@@ -51,6 +53,8 @@ export interface ControllerActions {
   commit: (choice: PrepChoice) => Promise<void>;
   fifty: () => void;
   setReduced: (value: boolean) => void;
+  /** Flag the question just revealed. Absent while the server switch is off. Rejects with the server's code. */
+  report?: ((questionId: string, reason: QuestionReportReason) => Promise<void>) | undefined;
 }
 
 interface Props {
@@ -163,7 +167,7 @@ export function Controller({ room, state, now, catalog, busy, error, actions }: 
       );
     }
     case 'REVEAL':
-      return <RevealScreen data={data} myId={myId} />;
+      return <RevealScreen data={data} myId={myId} report={actions.report} />;
     case 'POWER_RESOLUTION':
       return (
         <Center>
@@ -606,7 +610,15 @@ function ConfirmedScreen() {
 
 // ───────────── reveal / score / results ─────────────
 
-function RevealScreen({ data, myId }: { data: PhaseDataOf<'REVEAL'>; myId: string }) {
+function RevealScreen({
+  data,
+  myId,
+  report,
+}: {
+  data: PhaseDataOf<'REVEAL'>;
+  myId: string;
+  report: ControllerActions['report'];
+}) {
   const { t } = useI18n();
   const mine = data.results.find((result) => result.playerId === myId);
   const outcome = mine?.outcome ?? 'NO_ANSWER';
@@ -651,6 +663,7 @@ function RevealScreen({ data, myId }: { data: PhaseDataOf<'REVEAL'>; myId: strin
         <div className={styles.kicker}>{t('game.reveal.correct')}</div>
         <div className={styles.correctText}>{correctText}</div>
       </Panel>
+      {report ? <ReportControl questionId={data.questionId} report={report} /> : null}
     </Center>
   );
 }

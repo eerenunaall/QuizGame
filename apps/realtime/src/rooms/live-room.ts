@@ -23,6 +23,7 @@ import {
 } from '@quizparty/game-engine';
 import { validateNickname } from '@quizparty/validation';
 import type { AppConfig } from '../config';
+import type { QuestionReports } from '../moderation/reports';
 import type { SecurityLog } from '../security/events';
 import type { TelemetrySink } from '../telemetry/sink';
 import type { Clock } from '../util/clock';
@@ -40,6 +41,7 @@ export interface RoomDeps {
   sessions: SessionService;
   deckBuilder: DeckBuilder;
   telemetry: TelemetrySink;
+  reports: QuestionReports;
   security: SecurityLog;
   metrics: Metrics;
   log: FastifyBaseLogger;
@@ -59,6 +61,14 @@ export type JoinOutcome =
 /** Snapshots are taken when a game segment starts or ends; events in between are replayed. */
 const SNAPSHOT_PHASES = new Set(['LOBBY', 'COUNTDOWN', 'ROUND_INTRO', 'FINAL', 'RESULTS']);
 const SNAPSHOT_EVERY_EVENTS = 40;
+/** The answer is public from the reveal on; only then may a player flag the question. */
+const REPORTABLE_PHASES: ReadonlySet<string> = new Set([
+  'REVEAL',
+  'POWER_RESOLUTION',
+  'SCORE_UPDATE',
+  'MICRO_INTERMISSION',
+]);
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MIN_REARM_DELAY_AFTER_NOOP_MS = 250;
 
 /**
@@ -380,6 +390,7 @@ export class LiveRoom {
           playerId,
           deviceId: input.deviceId,
           clientKind: input.clientKind,
+          ipHash: connection.ipHash,
         });
       } catch (error) {
         if (error instanceof DeviceAlreadyJoinedError) return { ok: false, code: 'ALREADY_JOINED' };
@@ -644,6 +655,11 @@ export class LiveRoom {
         return;
       }
 
+      if (message.type === 'REPORT_QUESTION') {
+        await this.reportQuestion(connection, message, sessionId);
+        return;
+      }
+
       const actor: Actor =
         connection.role === 'DISPLAY'
           ? { role: 'DISPLAY', sessionId }
@@ -693,6 +709,60 @@ export class LiveRoom {
         connection.error(result.code, message.messageId);
       }
     });
+  }
+
+  /**
+   * A player flags the question whose answer was just revealed. This is not game state, so it does
+   * not go through the reducer or the event log; the server decides which question it is (the id the
+   * client sends must match), and nothing the player typed is stored.
+   */
+  private async reportQuestion(
+    connection: Connection,
+    message: Extract<ClientMessage, { type: 'REPORT_QUESTION' }>,
+    sessionId: string,
+  ): Promise<void> {
+    const reject = (code: ErrorCode): void => connection.error(code, message.messageId);
+    if (connection.role !== 'PLAYER') return reject('FORBIDDEN');
+    const round = this.state.game?.round ?? null;
+    const question = round?.question ?? null;
+    if (!round || !question || !round.outcome || !REPORTABLE_PHASES.has(this.state.phase))
+      return reject('INVALID_STATE');
+    if (message.payload.questionId !== question.questionId) return reject('QUESTION_MISMATCH');
+    if (!UUID_RE.test(question.questionId)) return reject('INVALID_STATE'); // only bank questions have a record to flag
+    if (!(await this.deps.reports.enabled())) return reject('FEATURE_DISABLED');
+    await this.deps.reports.submit({
+      questionId: question.questionId,
+      sessionId,
+      roomId: this.id,
+      reason: message.payload.reason,
+    });
+    this.send(connection, { type: 'ACK', payload: { messageId: message.messageId } });
+  }
+
+  /** A moderator removed this session (a ban): the player sees an ordinary removal and is cut off. */
+  expelSession(sessionId: string): void {
+    const connection = this.connections.get(sessionId);
+    if (!connection) return;
+    try {
+      connection.send({ type: 'SESSION_REVOKED', payload: { reason: 'KICKED' } });
+    } catch {
+      // already closing
+    }
+    connection.close(4003, 'removed');
+    this.connections.delete(sessionId);
+    const meta = this.sessionMeta.get(sessionId);
+    if (meta?.role === 'PLAYER' && meta.playerId) {
+      const playerId = meta.playerId;
+      void this.enqueue(async () => {
+        await this.apply({
+          kind: 'PLAYER_CONNECTION',
+          at: this.deps.clock.now(),
+          entropy: this.entropy(),
+          playerId,
+          connected: false,
+        });
+      }).catch((error: unknown) => this.fail('expel', error));
+    }
   }
 
   /** Recipient count by role, for diagnostics. */

@@ -312,6 +312,7 @@ export interface Rooms {
 export interface RoomSessions {
   client_kind: string | null;
   created_at: Generated<Timestamp>;
+  device_hash: string | null;
   device_id_hash: string | null;
   id: string;
   ip_hash: string | null;

@@ -9,6 +9,7 @@ import {
   MAX_NICKNAME_LENGTH,
   MIN_NICKNAME_LENGTH,
   PHASES,
+  QUESTION_REPORT_REASONS,
   RISK_TIERS,
   ROUND_KINDS,
   SABOTAGE_KINDS,
@@ -40,6 +41,7 @@ export const RoundKindSchema = z.enum(ROUND_KINDS);
 export const RiskTierSchema = z.enum(RISK_TIERS);
 export const JokerSchema = z.enum(JOKERS);
 export const SabotageKindSchema = z.enum(SABOTAGE_KINDS);
+export const QuestionReportReasonSchema = z.enum(QUESTION_REPORT_REASONS);
 export const TierSchema = z.enum(TIERS);
 export const LocaleSchema = z.enum(LOCALES);
 export const CloseReasonSchema = z.enum(CLOSE_REASONS);

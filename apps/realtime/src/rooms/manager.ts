@@ -78,6 +78,7 @@ export class RoomManager {
     language: 'tr' | 'en';
     clientKind: string;
     hostAccountId?: string | null;
+    ipHash?: string | null;
   }): Promise<CreatedRoom> {
     const clock = this.deps.clock ?? systemClock;
     const gameConfig = resolveGameConfig(this.config.gameConfigOverride);
@@ -111,7 +112,12 @@ export class RoomManager {
 
     let display: { token: string };
     try {
-      display = await this.sessions.createDisplay(roomId, input.clientKind, displaySessionId);
+      display = await this.sessions.createDisplay(
+        roomId,
+        input.clientKind,
+        displaySessionId,
+        input.ipHash ?? null,
+      );
     } catch (error) {
       await this.store.closeRoom(roomId, 'ADMIN');
       throw error;

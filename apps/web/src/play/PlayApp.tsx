@@ -55,6 +55,7 @@ export function PlayApp({ code }: { code: string }) {
   const [error, setError] = useState<string | null>(null);
   const [resuming, setResuming] = useState(true);
   const [catalog, setCatalog] = useState<CategoryCatalog | null>(null);
+  const [canReport, setCanReport] = useState(false);
   const [showRestored, setShowRestored] = useState(false);
   const errorTimer = useRef<number | null>(null);
 
@@ -127,6 +128,18 @@ export function PlayApp({ code }: { code: string }) {
       .catch(() => undefined);
   }, [client, inLobby, locale]);
 
+  // Whether players may flag questions is a server-side switch; hide the control while it is off.
+  useEffect(() => {
+    if (!inRoom) return;
+    let cancelled = false;
+    void client.flags().then((flags) => {
+      if (!cancelled) setCanReport(flags['report.questions'] === true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [client, inRoom]);
+
   const join = async (nickname: string, avatarId: AvatarId): Promise<void> => {
     void sfx.unlock();
     setJoining(true);
@@ -175,6 +188,9 @@ export function PlayApp({ code }: { code: string }) {
         doubleDown: choice.doubleDown,
         sabotage: choice.sabotage,
       }),
+    report: canReport
+      ? (questionId, reason) => client.reportQuestion(questionId, reason)
+      : undefined,
     fifty: () => void client.useFiftyFifty().catch((cause: unknown) => flash(describe(cause))),
     setReduced: (value) =>
       void client.setReducedEffects(value).catch((cause: unknown) => flash(describe(cause))),

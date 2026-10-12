@@ -2,6 +2,7 @@ import type { DeckRequest, Deck, DeckQuestion } from '@quizparty/game-engine';
 import { buildDeckIndex } from '@quizparty/game-engine';
 import type { Database } from '@quizparty/db';
 import { DIFFICULTIES, type Difficulty } from '@quizparty/protocol';
+import type { FeatureFlags } from '../flags/service';
 import type { Clock } from '../util/clock';
 
 export class NotEnoughQuestionsError extends Error {
@@ -42,7 +43,7 @@ export function isoWeek(timestamp: number): { year: number; week: number } {
 export class DeckBuilder {
   constructor(
     private readonly db: Database,
-    private readonly options: { allowDevSeed: boolean; clock: Clock },
+    private readonly options: { allowDevSeed: boolean; clock: Clock; flags?: FeatureFlags },
   ) {}
 
   async freeCategoryId(): Promise<string | null> {
@@ -73,6 +74,8 @@ export class DeckBuilder {
     }
     if (categoryIds.length === 0) throw new NotEnoughQuestionsError(0, request.rounds);
 
+    // The CURRENT pool (news-bound questions) can be switched off without a deploy (GDD §22).
+    const currentEvents = (await this.options.flags?.isEnabled('content.current_events')) ?? true;
     const target = Math.max(request.rounds * 3, 12);
     const picked: { id: string; difficulty: Difficulty }[] = [];
     for (const bucket of DIFFICULTIES) {
@@ -91,6 +94,7 @@ export class DeckBuilder {
           ]),
         );
       if (!this.options.allowDevSeed) query = query.where('is_dev_seed', '=', false);
+      if (!currentEvents) query = query.where('pool', '!=', 'CURRENT');
       const rows = await query
         .orderBy((eb) => eb.fn.coalesce('last_used_at', eb.val(new Date(0))))
         .orderBy((eb) => eb.fn('random'))

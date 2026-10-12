@@ -75,3 +75,9 @@ export const ApiErrorBodySchema = z.strictObject({
   }),
 });
 export type ApiErrorBody = z.infer<typeof ApiErrorBodySchema>;
+
+/** The public feature switches (`GET /v1/flags`): flag key → on/off. Private flags never appear. */
+export const PublicFlagsSchema = z.strictObject({
+  flags: z.record(z.string().regex(/^[a-z][a-z0-9_.-]{1,63}$/), z.boolean()),
+});
+export type PublicFlags = z.infer<typeof PublicFlagsSchema>;

@@ -62,6 +62,7 @@ export class SessionService {
     roomId: string,
     clientKind: string,
     id: string = randomUuid(),
+    ipHash: string | null = null,
   ): Promise<{ session: SessionRecord; token: string }> {
     const token = randomToken();
     await this.db
@@ -72,6 +73,7 @@ export class SessionService {
         role: 'DISPLAY',
         token_hash: sha256Hex(token),
         client_kind: clientKind,
+        ip_hash: ipHash,
       })
       .execute();
     return {
@@ -85,6 +87,7 @@ export class SessionService {
     playerId: string;
     deviceId: string;
     clientKind: string;
+    ipHash?: string | null;
   }): Promise<{ session: SessionRecord; token: string }> {
     const id = randomUuid();
     const token = randomToken();
@@ -97,6 +100,8 @@ export class SessionService {
           role: 'PLAYER',
           player_id: input.playerId,
           device_id_hash: pseudonym(this.secret, `device:${input.roomId}`, input.deviceId),
+          device_hash: pseudonym(this.secret, 'device', input.deviceId),
+          ip_hash: input.ipHash ?? null,
           token_hash: sha256Hex(token),
           client_kind: input.clientKind,
         })

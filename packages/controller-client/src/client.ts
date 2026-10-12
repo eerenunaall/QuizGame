@@ -1,4 +1,5 @@
 import { PROTOCOL_VERSION } from '@quizparty/protocol/constants';
+import { PublicFlagsSchema } from '@quizparty/protocol/http';
 import type {
   AvatarId,
   CategoryCatalog,
@@ -6,6 +7,7 @@ import type {
   ClientPayload,
   ErrorCode,
   Locale,
+  QuestionReportReason,
   RoomPreview,
   ServerMessage,
 } from '@quizparty/protocol';
@@ -214,6 +216,17 @@ export class GameClient {
     return (await this.http(`/v1/categories?language=${language}`, {
       method: 'GET',
     })) as CategoryCatalog;
+  }
+
+  /** The public feature switches; an unreachable server means "none are on". */
+  async flags(): Promise<Record<string, boolean>> {
+    try {
+      const body = (await this.http('/v1/flags', { method: 'GET' })) as { flags?: unknown };
+      const parsed = PublicFlagsSchema.safeParse(body);
+      return parsed.success ? parsed.data.flags : {};
+    } catch {
+      return {};
+    }
   }
 
   // ───────────── connecting ─────────────
@@ -694,6 +707,10 @@ export class GameClient {
   /** ANSWERING: remove two wrong options (once a game). The kept options arrive in `you.fiftyFifty`. */
   useFiftyFifty(): Promise<void> {
     return this.request('USE_FIFTY_FIFTY', {});
+  }
+  /** REVEAL and after: flag the question that was just shown. Rejects with the server's code. */
+  reportQuestion(questionId: string, reason: QuestionReportReason): Promise<void> {
+    return this.request('REPORT_QUESTION', { questionId, reason });
   }
   /** Accessibility: soften disorienting sabotage effects for this player. */
   setReducedEffects(reducedEffects: boolean): Promise<void> {

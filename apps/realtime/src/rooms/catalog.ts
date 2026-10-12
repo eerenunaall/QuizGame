@@ -1,5 +1,6 @@
 import type { Database } from '@quizparty/db';
 import type { CategoryCatalog, Locale } from '@quizparty/protocol';
+import type { FeatureFlags } from '../flags/service';
 import type { Clock } from '../util/clock';
 import type { DeckBuilder } from './deck-builder';
 
@@ -16,12 +17,17 @@ export class CategoryCatalogService {
   private readonly cache = new Map<Locale, Cached>();
   private readonly db: Database;
   private readonly deckBuilder: DeckBuilder;
-  private readonly options: { allowDevSeed: boolean; clock: Clock; ttlMs: number };
+  private readonly options: {
+    allowDevSeed: boolean;
+    clock: Clock;
+    ttlMs: number;
+    flags?: FeatureFlags;
+  };
 
   constructor(
     db: Database,
     deckBuilder: DeckBuilder,
-    options: { allowDevSeed: boolean; clock: Clock; ttlMs?: number },
+    options: { allowDevSeed: boolean; clock: Clock; ttlMs?: number; flags?: FeatureFlags },
   ) {
     this.db = db;
     this.deckBuilder = deckBuilder;
@@ -52,6 +58,8 @@ export class CategoryCatalogService {
         ]),
       );
     if (!this.options.allowDevSeed) query = query.where('questions.is_dev_seed', '=', false);
+    if (!((await this.options.flags?.isEnabled('content.current_events')) ?? true))
+      query = query.where('questions.pool', '!=', 'CURRENT');
     const rows = await query
       .groupBy([
         'categories.id',

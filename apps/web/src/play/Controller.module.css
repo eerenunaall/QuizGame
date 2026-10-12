@@ -384,3 +384,50 @@
   font-weight: 700;
   color: var(--qp-color-muted-text);
 }
+
+/* reporting a question from the reveal screen */
+.reportLink {
+  margin-top: 18px;
+  padding: 10px 16px;
+  min-height: 44px;
+  background: transparent;
+  border: 0;
+  color: var(--qp-color-muted-text);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.reportSheet {
+  margin-top: 16px;
+  width: 100%;
+  max-width: 360px;
+}
+.reportChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 10px;
+}
+.reportChip {
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: 22px;
+  border: 2px solid var(--qp-color-muted-text);
+  background: rgb(255 255 255 / 8%);
+  color: inherit;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+}
+.reportChip:disabled {
+  opacity: 0.5;
+}
+.reportThanks {
+  margin-top: 18px;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--qp-color-success);
+}

@@ -231,7 +231,7 @@ export class PgRoomStore {
       }
       case 'ROUND_COMPLETED': {
         await this.db.transaction().execute(async (trx) => {
-          await trx
+          const inserted = await trx
             .insertInto('game_rounds')
             .values({
               game_id: record.gameId,
@@ -244,7 +244,8 @@ export class PgRoomStore {
               config_version: record.configVersion,
             })
             .onConflict((oc) => oc.doNothing())
-            .execute();
+            .returning('game_id')
+            .executeTakeFirst();
           if (record.players.length > 0) {
             await trx
               .insertInto('game_answers')
@@ -296,7 +297,9 @@ export class PgRoomStore {
               .onConflict((oc) => oc.doNothing())
               .execute();
           }
-          if (UUID_RE.test(record.questionId)) {
+          // Bank statistics move only when this call is the one that recorded the round: a replay
+          // after a crash or a retried write must not count it twice.
+          if (inserted && UUID_RE.test(record.questionId)) {
             const answered = record.players.filter((p) => p.optionKey !== null);
             await trx
               .updateTable('questions')
@@ -309,6 +312,7 @@ export class PgRoomStore {
                   '+',
                   answered.filter((p) => p.correct).length,
                 ),
+                skip_count: eb('skip_count', '+', record.players.length - answered.length),
                 total_answer_ms: eb(
                   'total_answer_ms',
                   '+',
@@ -317,6 +321,17 @@ export class PgRoomStore {
               }))
               .where('id', '=', record.questionId)
               .execute();
+            const picks = new Map<string, number>();
+            for (const p of answered) picks.set(p.optionKey!, (picks.get(p.optionKey!) ?? 0) + 1);
+            for (const [optionKey, count] of picks) {
+              if (!UUID_RE.test(optionKey)) continue;
+              await trx
+                .updateTable('question_options')
+                .set((eb) => ({ pick_count: eb('pick_count', '+', count) }))
+                .where('id', '=', optionKey)
+                .where('question_id', '=', record.questionId)
+                .execute();
+            }
           }
         });
         return;

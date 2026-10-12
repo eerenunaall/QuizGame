@@ -85,5 +85,9 @@ export const LIMITS = {
   answer: { capacity: 6, refillPerSec: 1 },
   /** COMMIT_PREP, USE_FIFTY_FIFTY, SET_PREFERENCES: a handful a round, never a flood. */
   power: { capacity: 8, refillPerSec: 0.5 },
+  /** A player flagging questions: a few per game, never a flood. */
+  report: { capacity: 4, refillPerSec: 1 / 30 },
+  reportIp: { capacity: 30, refillPerSec: 30 / 3600 },
+  flags: { capacity: 60, refillPerSec: 1 },
   invalidMessage: { capacity: 8, refillPerSec: 0.2 },
 } as const satisfies Record<string, BucketSpec>;

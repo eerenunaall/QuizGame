@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@quizparty/db": "workspace:*",
+    "@quizparty/protocol": "workspace:*",
     "@quizparty/question-schema": "workspace:*",
     "kysely": "0.29.6",
     "zod": "4.6.5",

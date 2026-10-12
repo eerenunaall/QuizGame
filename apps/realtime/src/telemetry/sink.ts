@@ -13,6 +13,7 @@ const ALLOWED: Record<string, readonly string[]> = {
   question_revealed: ['round', 'correctRatePermille'],
   game_finished: ['players', 'rounds'],
   room_closed: ['reason'],
+  question_reported: ['reason', 'demoted'],
   disconnect: ['role'],
   reconnect: ['role'],
 };

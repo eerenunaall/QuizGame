@@ -1,20 +1,12 @@
 import { sql } from 'kysely';
 import type { Database } from '@quizparty/db';
+import { QUESTION_REPORT_REASONS, type QuestionReportReason } from '@quizparty/protocol';
 import { cleanText } from '@quizparty/question-schema';
 import { sanitizeUserText } from '@quizparty/validation';
 import { LifecycleError, SYSTEM_ACTOR, transitionTx, type Actor } from './lifecycle';
 
-export const REPORT_REASONS = [
-  'WRONG_ANSWER',
-  'MULTIPLE_CORRECT',
-  'OUTDATED',
-  'TYPO',
-  'OFFENSIVE',
-  'UNCLEAR',
-  'DUPLICATE',
-  'OTHER',
-] as const;
-export type ReportReason = (typeof REPORT_REASONS)[number];
+export const REPORT_REASONS = QUESTION_REPORT_REASONS;
+export type ReportReason = QuestionReportReason;
 
 export interface ReportPolicy {
   /** Distinct open reporters that pull a question back to REVIEW. */

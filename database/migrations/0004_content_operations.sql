@@ -303,6 +303,11 @@ CREATE TRIGGER admin_audit_no_delete BEFORE DELETE ON admin_audit
 -- Where a room session came from, so a ban can be placed from a live room without ever showing
 -- an address or a device id to the moderator.
 ALTER TABLE room_sessions ADD COLUMN ip_hash text;
+-- The device pseudonym that bans use. `device_id_hash` is scoped to one room (so a device cannot be
+-- followed across rooms by the room tables); a device ban needs the same value in every room.
+ALTER TABLE room_sessions ADD COLUMN device_hash text;
+CREATE INDEX room_sessions_ip_idx ON room_sessions (ip_hash) WHERE ip_hash IS NOT NULL;
+CREATE INDEX room_sessions_device_idx ON room_sessions (device_hash) WHERE device_hash IS NOT NULL;
 
 CREATE TABLE bans (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

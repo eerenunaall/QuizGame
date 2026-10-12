@@ -5,6 +5,10 @@ import type { Pool } from 'pg';
 import type { AppConfig } from './config';
 import { registerRoutes, apiError, type RouteSpec } from './http/routes';
 import { StaticWeb } from './http/static-web';
+import { FeatureFlags } from './flags/service';
+import { BanService } from './moderation/bans';
+import { MaintenanceJob } from './moderation/maintenance';
+import { QuestionReports } from './moderation/reports';
 import { CategoryCatalogService } from './rooms/catalog';
 import { DeckBuilder } from './rooms/deck-builder';
 import { RoomManager } from './rooms/manager';
@@ -28,6 +32,9 @@ export interface BuiltApp {
   pool: Pool;
   manager: RoomManager;
   gateway: Gateway;
+  flags: FeatureFlags;
+  bans: BanService;
+  maintenance: MaintenanceJob;
   routes: RouteSpec[];
   /** Graceful shutdown: stop accepting, flush rooms, release leases, close the pool. */
   close(): Promise<void>;
@@ -106,14 +113,27 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
 
   const sessions = new SessionService(db, config.serverSecret, clock);
   const store = new PgRoomStore(db, config.instanceId, config.leaseMs, clock);
-  const deckBuilder = new DeckBuilder(db, { allowDevSeed: config.allowDevSeed, clock });
+  const flags = new FeatureFlags(db, clock);
+  const bans = new BanService(db);
+  const deckBuilder = new DeckBuilder(db, { allowDevSeed: config.allowDevSeed, clock, flags });
   const catalog = new CategoryCatalogService(db, deckBuilder, {
     allowDevSeed: config.allowDevSeed,
     clock,
+    flags,
   });
   const telemetry = new DbTelemetrySink(db, onError);
   telemetry.start();
   const security = new SecurityLog(db, clock, metrics, onError);
+  const reports = new QuestionReports(db, flags, config.serverSecret, telemetry);
+  const maintenance = new MaintenanceJob(
+    db,
+    clock,
+    config.maintenanceIntervalMs,
+    onError,
+    (report) => {
+      if (report.ran) log.info(report, 'question maintenance');
+    },
+  );
   const manager = new RoomManager({
     config,
     clock,
@@ -121,6 +141,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     sessions,
     deckBuilder,
     telemetry,
+    reports,
     security,
     metrics,
     log,
@@ -131,6 +152,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     manager,
     sessions,
     limiter,
+    bans,
     security,
     metrics,
     log,
@@ -189,6 +211,8 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     config,
     manager,
     catalog,
+    flags,
+    bans,
     limiter,
     metrics,
     pool,
@@ -200,12 +224,14 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   const recovered = await manager.recoverAll();
   if (recovered > 0) log.info({ recovered }, 'recovered rooms from the durable log');
   manager.startHeartbeat();
+  maintenance.start();
 
   let closed = false;
   const shutdown = async (graceful: boolean): Promise<void> => {
     if (closed) return;
     closed = true;
     limiter.stop();
+    maintenance.stop();
     gateway.shutdown();
     if (graceful) await manager.stop();
     else manager.abandonForTest();
@@ -221,6 +247,9 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     pool,
     manager,
     gateway,
+    flags,
+    bans,
+    maintenance,
     routes,
     close: () => shutdown(true),
     crash: () => shutdown(false),

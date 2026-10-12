@@ -18,6 +18,7 @@
     "@quizparty/db": "workspace:*",
     "@quizparty/game-engine": "workspace:*",
     "@quizparty/protocol": "workspace:*",
+    "@quizparty/question-bank": "workspace:*",
     "@quizparty/shared": "workspace:*",
     "@quizparty/validation": "workspace:*",
     "fastify": "5.12.5",

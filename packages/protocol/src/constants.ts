@@ -96,3 +96,20 @@ export const AVATAR_IDS = [
   'whale',
 ] as const;
 export type AvatarId = (typeof AVATAR_IDS)[number];
+
+/**
+ * Why a player reports a question from the reveal screen (GDD §10). The same list is the database
+ * constraint on `question_reports.reason`; a test keeps them equal. Reports carry no free text:
+ * nothing a player types ever reaches a moderator unchecked.
+ */
+export const QUESTION_REPORT_REASONS = [
+  'WRONG_ANSWER',
+  'MULTIPLE_CORRECT',
+  'OUTDATED',
+  'TYPO',
+  'OFFENSIVE',
+  'UNCLEAR',
+  'DUPLICATE',
+  'OTHER',
+] as const;
+export type QuestionReportReason = (typeof QUESTION_REPORT_REASONS)[number];

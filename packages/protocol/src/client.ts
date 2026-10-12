@@ -11,6 +11,7 @@ import {
   OptionIdSchema,
   PlayerIdSchema,
   QuestionIdSchema,
+  QuestionReportReasonSchema,
   RiskTierSchema,
   SabotageKindSchema,
   SequenceSchema,
@@ -72,6 +73,14 @@ export const CLIENT_PAYLOADS = {
   USE_FIFTY_FIFTY: empty,
   /** Accessibility: disorienting sabotage effects are softened for this player (never disclosed). */
   SET_PREFERENCES: z.strictObject({ reducedEffects: z.boolean() }),
+  /**
+   * A player flags the question on the reveal screen. The server reports the round's own question
+   * (the id is only checked against it), one report per player per question.
+   */
+  REPORT_QUESTION: z.strictObject({
+    questionId: QuestionIdSchema,
+    reason: QuestionReportReasonSchema,
+  }),
   LEAVE_ROOM: empty,
   REQUEST_STATE: empty,
   PING: z.strictObject({ clientSentAt: EpochMsSchema }),

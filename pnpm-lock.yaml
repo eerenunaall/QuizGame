@@ -65,6 +65,9 @@ importers:
       '@quizparty/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
+      '@quizparty/question-bank':
+        specifier: workspace:*
+        version: link:../../packages/question-bank
       '@quizparty/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -235,6 +238,9 @@ importers:
       '@quizparty/db':
         specifier: workspace:*
         version: link:../db
+      '@quizparty/protocol':
+        specifier: workspace:*
+        version: link:../protocol
       '@quizparty/question-schema':
         specifier: workspace:*
         version: link:../question-schema
