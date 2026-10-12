@@ -31,6 +31,9 @@ dev seed (≥ 170 TR questions), reports/moderation, admin API (RBAC) + admin SP
 queue, reports, categories, current events, users, entitlements, rooms, bans, flags, incidents),
 feature flags, telemetry.
 **Exit:** acceptance Y, Z, AC proven.
+**Deviation (recorded):** the account/session/role core and email-OTP sign-in were built in M3 (the admin
+console needs them), not M4. M4 keeps Apple/Google verification, entitlements, TV linking and the free tier.
+The console ships Turkish only (staff tool); player apps stay tr/en with parity tests.
 
 ## M4 — Accounts and payments
 Email-OTP auth, sessions, account deletion/export, purchase verification (Apple/Google), entitlements,

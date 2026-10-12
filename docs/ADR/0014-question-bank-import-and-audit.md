@@ -65,3 +65,28 @@ future decks drop it).
 Unit tests per heuristic with Turkish fixtures (good/bad pairs), property tests for normalization and
 fingerprint stability, MinHash accuracy test, importer idempotency, trigger tests, batch summary test,
 LLM adapter tests against a local HTTP double.
+
+## Amendment (M3, as built)
+- **Status semantics.** `DRAFT` rows are what an import creates; the importer never produces `ACTIVE`.
+  `REVIEW` is where the audit pipeline and player reports park a question for a human. The ten pipeline
+  stage names stay reserved in the enum but the build uses the audit history, not the status, to record
+  progress. `ACTIVE`/`APPROVED` need a PASS audit for the **current revision**; an edit that changes
+  content bumps the revision, demotes an `ACTIVE` question to `REVIEW` and makes older audits stale.
+  All of it is enforced by triggers, not by the API alone.
+- **Human approval with named waivers.** `approve` takes `waive: 'ALL' | string[]`. REJECT-severity
+  findings and a missing source in a source-required category can never be waived; everything else
+  must be named (or `ALL`) and the waiver is written to the status log and the admin audit.
+- **No `question_usage` table.** Usage, answer, correct, skip and per-option pick counters live on the
+  question and option rows and are updated idempotently when a round settles (cheaper, and enough for
+  the telemetry rules and the review queue priority).
+- **External results count as model passes.** Audit results produced by a chat assistant or a person
+  and uploaded through `/v1/admin/audit/results` (or `question-audit import-results`) are stored as a
+  pass labelled with the uploader's source tag. They are never an approval: only `approve` is.
+- **Models come from configuration.** Provider, model names and base URL are read from environment
+  variables (`AUDIT_*`, `EMBEDDINGS_*`); no model identifier is written in code, docs or commits.
+- **Reports.** `REPORT_QUESTION` (reasons only, no free text) is accepted from a player for the round's
+  own question during REVEAL…MICRO_INTERMISSION. One report per reporter per question (reporting again
+  only updates the reason); enough distinct open reporters (a lower number for serious reasons) pull an
+  `ACTIVE` question back to `REVIEW` at once. The maintenance job handles the slow signals (expiry, stale
+  verification, answer-distribution anomalies). The reporter is stored only as a keyed
+  pseudonym and never shown to staff.

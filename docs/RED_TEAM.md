@@ -20,8 +20,23 @@ it builds on). The attacker plays against the real server over real sockets; the
 | 12 Join from another network | success | › ATTACK 12 | ✅ phones bound to different source addresses join and roam mid-game |
 | 13 Drop connection mid-question | restore state | `websocket/reconnect.test.ts`, `websocket/client.test.ts` | ✅ answer preserved, token rotated |
 | 14 Restart realtime process | recover within limits | `websocket/recovery.test.ts` | ✅ snapshot + log replay, clock frozen during the outage, acknowledged answers survive |
+| 15 Poison the bank with reports | bounded, anonymous, only the round's question | `red-team/moderation.test.ts` › ATTACK 15 | ✅ a flood costs one report; no other question can be named; TV, lobby and open questions cannot report; reporter pseudonym is keyed and never shown |
+| 16 Evade or probe a ban | identical answers, no spoofing | › ATTACK 16 | ✅ real room, closed room and nonsense answer the same; spoofed `X-Forwarded-For` does not move a ban; nothing about who or why leaks |
+| 17 Read or change the switches | public flags only, read-only | › ATTACK 17 | ✅ declared shape, no write route, rate limited |
+| 18 Route table is the policy | every admin route has roles + a limit | `red-team/admin-access.test.ts` › ATTACK 18 | ✅ boot refuses an undeclared route; each role reaches exactly its routes; only short ADMIN sessions reach the console |
+| 19 CSRF | cookie writes need Origin + header | › ATTACK 19 | ✅ every state change by cookie without proof is refused; no session from URL or invented header |
+| 20 Climb: roles, mass assignment, ids | refused | › ATTACK 20 | ✅ editors cannot promote; undeclared fields refuse the request; bad ids end 400/404 |
+| 21 Garbage: injection, bombs, prototype tricks | no 5xx, no side effect | › ATTACK 21 | ✅ every list parameter, every write body, import bombs, inert stored markup |
+| 22 Guess the sign-in | per-mailbox limit, uniform answers | › ATTACK 22 | ✅ guesses are limited per mailbox however many addresses they come from; wrong code and unknown mailbox are indistinguishable |
+| 23 Keep a session that should be dead | immediate | › ATTACK 23 | ✅ revoked, suspended, signed-out tokens and removed roles stop at once |
+| 24 Hammer the console | limited per account | › ATTACK 24 | ✅ reads and writes limited apart without hurting others |
 
 Findings from running these attacks that changed the code:
+
+- A NUL byte in a query or body reached PostgreSQL and became a 500; a `preValidation` hygiene hook now
+  refuses it for every route (`http/hygiene.ts`).
+- Admin create mapped a duplicate to a 500; it is a 409 with the outcome.
+- Row-level duplicate detection compared identical text across tests; the red-team seeds distinct rows.
 
 - Malformed URLs (`%ff%fe`) were answered by Fastify's built-in handler without our security
   headers; `frameworkErrors` now returns the standard error shape and headers.

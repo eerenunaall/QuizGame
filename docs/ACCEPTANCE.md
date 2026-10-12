@@ -30,11 +30,11 @@ checklist in `docs/EXTERNAL_CHECKLIST.md`). Status is only changed together with
 | V | Purchase grants account entitlement | M4 | integration | yes | TODO |
 | W | TV sees entitlement without refresh | M4 | ws + e2e | yes | TODO |
 | X | Restore purchase works | M4 | integration (flows B, C) | yes (server side) | TODO |
-| Y | Question bank imports | M3 | integration `question-import` | yes | TODO |
-| Z | Question audit queue works | M3 | integration + admin API | yes | TODO |
+| Y | Question bank imports | M3 | integration `question-import` (JSONL/CSV, dry run, duplicates, conflicts, bad rows, dev-seed gate), `question-cli` (import/audit/export through the real CLIs), unit `seed.test.ts` (every seed row passes the schema and heuristics) + admin API import in `admin-api` | yes | PASS |
+| Z | Question audit queue works | M3 | integration `question-audit` (heuristic + model passes against an HTTP double that speaks the real wire contract, arbiter, lifecycle triggers), `question-ops` (queue priorities, approval with waivers, results import), `admin-api` (queue, approve, reject, transitions) + e2e `admin.spec.ts` (queue → editor → reject in the browser console) | yes | PASS |
 | AA | Blind Quiz works | M5 | integration + e2e | yes | TODO |
 | AB | Personal answer hidden from creator | M5 | canary test, red-team #10 | yes | TODO |
-| AC | Report / moderation controls work | M3/M5 | integration + admin | yes | TODO |
+| AC | Report / moderation controls work | M3/M5 | ws `moderation.test.ts` (report, expel, ban, bans survive reconnects) + integration `flags`, `admin-api` (reports, rooms, bans, incidents) + red-team ATTACK 15–17 + e2e `admin.spec.ts` (phone reports on the reveal screen → console resolves it). Blind-Quiz-specific reports remain M5 | yes | PARTIAL |
 | AD | Red Team suite runs | M7 | `pnpm test:red-team` in CI | yes | TODO |
 | AE | No core TODO placeholder remains | M7 | `scripts/release-audit` grep gate | yes | TODO |
 
