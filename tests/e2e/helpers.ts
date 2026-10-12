@@ -5,9 +5,11 @@ import { fileURLToPath } from 'node:url';
 import type { Browser, BrowserContext, Page } from '@playwright/test';
 import jsQR from 'jsqr';
 import { PNG } from 'pngjs';
+import type { EmailSender } from '../../apps/realtime/src/auth/email';
 import { FAST_GAME_CONFIG, startServer, type TestServer } from '../helpers/server';
 
 export const WEB_DIST = fileURLToPath(new URL('../../apps/web/dist', import.meta.url));
+export const ADMIN_DIST = fileURLToPath(new URL('../../apps/admin/dist', import.meta.url));
 export const SHOTS = fileURLToPath(new URL('../../test-results/screenshots', import.meta.url));
 
 /** Paced for a human-readable browser run: long enough for animations and screenshots, short enough to finish. */
@@ -86,12 +88,14 @@ export const PLAY_GAME_CONFIG = {
 export async function startE2eServer(
   gameConfig: unknown = E2E_GAME_CONFIG,
   env: Record<string, string> = {},
+  emailSender?: EmailSender,
 ): Promise<E2eServer> {
   const port = await freePort();
   const url = `http://127.0.0.1:${port}`;
   const server = await startServer({
     port,
     gameConfig,
+    ...(emailSender ? { emailSender } : {}),
     env: {
       SERVE_WEB: '1',
       WEB_DIST,

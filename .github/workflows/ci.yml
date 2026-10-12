@@ -31,6 +31,8 @@ jobs:
       - run: pnpm run test:web
       - name: Web production build
         run: pnpm run build:web
+      - name: Admin console production build
+        run: pnpm run build:admin
 
   integration:
     name: Integration, WebSocket and red-team tests (PostgreSQL)
@@ -94,6 +96,7 @@ jobs:
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
       - run: pnpm run build:web
+      - run: pnpm run build:admin
       - run: pnpm exec playwright test
       - name: Keep the screenshots and traces for review
         if: always()
