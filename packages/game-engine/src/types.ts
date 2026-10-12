@@ -250,6 +250,10 @@ export interface RoomState {
   hostAccountId: string | null;
   contentLanguage: Locale;
   settings: LobbySettings;
+  /** Server-only handle of the personal quiz in use (never in any view). */
+  contentRef: string | null;
+  /** A game in this room has used a personal quiz: its durable traces are erased when the room closes (ADR-0015). */
+  sensitiveContent: boolean;
   config: GameConfig;
   display: { sessionId: string; connected: boolean; disconnectedAt: EpochMs | null };
   awaitingDisplay: boolean;
@@ -326,6 +330,15 @@ export type EngineInput =
       /** Why the tier changed (shown nowhere but the display's unlock celebration); default LINKED / REVOKED. */
       reason?: 'GRANTED' | 'RESTORED' | 'LINKED' | 'REVOKED' | 'EXPIRED';
     })
+  | (InputBase & {
+      kind: 'SET_CONTENT';
+      mode: LobbySettings['mode'];
+      /** Server-only handle of the personal quiz (null for the classic game). */
+      ref: string | null;
+      title: string | null;
+      /** Rounds to play (the quiz's size); null leaves the lobby's choice alone. */
+      rounds: number | null;
+    })
   | (InputBase & { kind: 'RECOVER'; outageMs: number })
   | (InputBase & { kind: 'CLOSE'; reason: CloseReason });
 
@@ -333,6 +346,10 @@ export type Audience =
   { to: 'ALL' } | { to: 'DISPLAY' } | { to: 'PLAYERS' } | { to: 'PLAYER'; playerId: string };
 
 export interface DeckRequest {
+  roomId: string;
+  mode: LobbySettings['mode'];
+  /** The personal quiz to build from (BLIND, CUSTOM); null otherwise. */
+  contentRef: string | null;
   rounds: number;
   categories: string[] | 'ALL';
   language: Locale;

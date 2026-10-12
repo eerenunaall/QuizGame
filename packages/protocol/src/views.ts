@@ -40,7 +40,9 @@ export const PublicPlayerSchema = z.strictObject({
 export type PublicPlayer = z.infer<typeof PublicPlayerSchema>;
 
 export const LobbySettingsSchema = z.strictObject({
-  mode: z.enum(['CLASSIC']),
+  mode: z.enum(['CLASSIC', 'BLIND', 'CUSTOM', 'WHO_SAID_IT']),
+  /** Name of the personal quiz in use (shown on the lobby screens); null for the classic game. */
+  contentTitle: z.string().max(60).nullable(),
   rounds: z.int().min(MIN_ROUNDS).max(MAX_ROUNDS),
   difficulty: DifficultyPresetSchema,
   categories: z.union([z.literal('ALL'), z.array(CategoryIdSchema).min(1).max(24)]),

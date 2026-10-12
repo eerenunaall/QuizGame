@@ -24,6 +24,7 @@ import {
 import { validateNickname } from '@quizparty/validation';
 import type { AppConfig } from '../config';
 import type { QuestionReports } from '../moderation/reports';
+import type { PersonalDecks } from '../blind/decks';
 import type { LinkService } from '../payments/links';
 import type { SecurityLog } from '../security/events';
 import type { TelemetrySink } from '../telemetry/sink';
@@ -41,6 +42,7 @@ export interface RoomDeps {
   store: PgRoomStore;
   sessions: SessionService;
   deckBuilder: DeckBuilder;
+  personalDecks: PersonalDecks;
   telemetry: TelemetrySink;
   reports: QuestionReports;
   links: LinkService;
@@ -303,7 +305,10 @@ export class LiveRoom {
     this.startInFlight = true;
     void (async () => {
       try {
-        const deck = await this.deps.deckBuilder.build(effect.request);
+        const deck =
+          effect.request.mode === 'CLASSIC'
+            ? await this.deps.deckBuilder.build(effect.request)
+            : await this.deps.personalDecks.build(effect.request);
         await this.enqueue(async () => {
           const result = await this.apply({
             kind: 'BEGIN_GAME',
@@ -550,6 +555,7 @@ export class LiveRoom {
         await this.persistChain;
         await this.deps.store.saveSnapshot(this.id, this.state);
         await this.deps.store.closeRoom(this.id, reason);
+        if (this.state.sensitiveContent) await this.deps.store.scrubRoom(this.id);
         await this.deps.sessions.expireRoom(this.id);
       } catch (error) {
         this.fail('close', error);
@@ -735,6 +741,9 @@ export class LiveRoom {
       return reject('INVALID_STATE');
     if (message.payload.questionId !== question.questionId) return reject('QUESTION_MISMATCH');
     if (!UUID_RE.test(question.questionId)) return reject('INVALID_STATE'); // only bank questions have a record to flag
+    // Personal questions are not in the bank: there is nothing to flag there (reports of personal content are handled apart).
+    if (this.state.game?.deck.questions[question.questionId]?.source !== 'BANK')
+      return reject('INVALID_STATE');
     if (!(await this.deps.reports.enabled())) return reject('FEATURE_DISABLED');
     await this.deps.reports.submit({
       questionId: question.questionId,
@@ -753,7 +762,6 @@ export class LiveRoom {
     if (connection.role !== 'DISPLAY') return connection.error('FORBIDDEN', messageId);
     if (this.state.phase !== 'LOBBY' && this.state.phase !== 'RESULTS')
       return connection.error('INVALID_STATE', messageId);
-    if (this.state.tier === 'FULL') return connection.error('INVALID_STATE', messageId);
     const link = await this.deps.links.create(this.id);
     if (!link) return connection.error('RATE_LIMITED', messageId, { retryAfterMs: 30_000 });
     this.send(connection, { type: 'UNLOCK_LINK', payload: link });
@@ -824,6 +832,10 @@ export class LiveRoom {
     };
   }
 
+  mode(): 'CLASSIC' | 'BLIND' | 'CUSTOM' | 'WHO_SAID_IT' {
+    return this.state.settings.mode;
+  }
+
   tier(): 'FREE' | 'FULL' {
     return this.state.tier;
   }
@@ -854,6 +866,27 @@ export class LiveRoom {
       await this.deps.store
         .saveEntitlement(this.id, this.state.tier, this.state.hostAccountId)
         .catch((error: unknown) => this.fail('entitlement', error));
+    });
+  }
+
+  /** Attaches a personal quiz (or returns to the classic game); the engine decides if the room may. */
+  setContent(
+    mode: 'CLASSIC' | 'BLIND' | 'CUSTOM' | 'WHO_SAID_IT',
+    ref: string | null,
+    title: string | null,
+    rounds: number | null,
+  ): Promise<{ ok: true } | { ok: false; code: ErrorCode }> {
+    return this.enqueue(async () => {
+      const result = await this.apply({
+        kind: 'SET_CONTENT',
+        at: this.deps.clock.now(),
+        entropy: this.entropy(),
+        mode,
+        ref,
+        title,
+        rounds,
+      });
+      return result.ok ? { ok: true as const } : { ok: false as const, code: result.code };
     });
   }
 

@@ -10,8 +10,11 @@ import { clientIp } from '../ws/gateway';
 import type { AppleVerifier } from './apple';
 import type { GoogleVerifier } from './google';
 import type { LinkService } from './links';
+import type { QuizService } from '../blind/quizzes';
+import type { FeatureFlags } from '../flags/service';
 import type { RoomManager } from '../rooms/manager';
 import { EntitlementError, type EntitlementService } from './service';
+import type { ErrorCode } from '@quizparty/protocol';
 import { PurchaseError } from './types';
 
 export interface PaymentRouteDeps {
@@ -19,6 +22,10 @@ export interface PaymentRouteDeps {
   entitlements: EntitlementService;
   links: LinkService;
   manager: RoomManager;
+  quizzes: QuizService;
+  flags: FeatureFlags;
+  /** Whether Blind Quizzes can be sealed at all (a key is configured). */
+  blindEnabled: boolean;
   apple: AppleVerifier | null;
   google: GoogleVerifier | null;
   limiter: RateLimiter;
@@ -27,6 +34,9 @@ export interface PaymentRouteDeps {
 }
 
 const STATUS: Partial<Record<string, number>> = {
+  NOT_READY: 409,
+  TIER_REQUIRED: 403,
+  INVALID_STATE: 409,
   PURCHASE_INVALID: 422,
   PURCHASE_ACCOUNT_MISMATCH: 403,
   TRANSACTION_ALREADY_BOUND: 409,
@@ -143,12 +153,25 @@ export function registerPaymentRoutes(app: FastifyInstance, deps: PaymentRouteDe
     { config: { auth: 'session', limit: 'linkClaim' } },
     async (request, reply) => {
       if (!player(request, reply)) return reply;
+      const accountId = request.auth!.account.id;
       const params = LinkToken.safeParse(request.params);
-      const link = params.success ? await deps.links.peek(params.data.token) : null;
+      const link = params.success ? await deps.links.peek(params.data.token, accountId) : null;
       const room = link ? deps.manager.get(link.roomId) : undefined;
-      // One answer for unknown, used, expired and closed: a link says nothing about why it is dead.
+      // One answer for unknown, used by someone else, expired and closed: a link says nothing about why it is dead.
       if (!room) return apiError(reply, 404, 'NOT_FOUND');
-      return { roomCode: room.code, tier: await entitlements.tierOf(request.auth!.account.id) };
+      const [blind, custom] = await Promise.all([
+        deps.blindEnabled ? deps.flags.isEnabled('mode.blind_quiz') : false,
+        deps.flags.isEnabled('mode.custom_quiz'),
+      ]);
+      const quizzes = (await deps.quizzes.list(accountId)).filter((q) =>
+        q.kind === 'BLIND' ? blind : custom,
+      );
+      return {
+        roomCode: room.code,
+        tier: await entitlements.tierOf(accountId),
+        mode: room.mode(),
+        quizzes: quizzes.map((q) => ({ id: q.id, kind: q.kind, title: q.title, ready: q.ready })),
+      };
     },
   );
 
@@ -170,6 +193,52 @@ export function registerPaymentRoutes(app: FastifyInstance, deps: PaymentRouteDe
       else if (room.hostAccountId() === null && room.tier() === 'FREE')
         await room.applyEntitlement('FREE', accountId, 'LINKED');
       return { tier, roomCode: room.code };
+    },
+  );
+
+  /**
+   * Puts one of the signed-in account's personal quizzes into the room behind a link (or takes it out
+   * again with `quizId: null`). The link proves the caller is at the TV; the account proves the quiz
+   * is theirs; the room must be on the full game (an owner's account unlocks it on the way).
+   */
+  app.post(
+    '/v1/link-intents/:token/quiz',
+    { config: { auth: 'session', limit: 'linkClaim' } },
+    async (request, reply) => {
+      if (!player(request, reply)) return reply;
+      const params = LinkToken.safeParse(request.params);
+      const body = z.strictObject({ quizId: z.uuid().nullable() }).safeParse(request.body);
+      if (!params.success) return apiError(reply, 404, 'NOT_FOUND');
+      if (!body.success) return apiError(reply, 400, 'INVALID_MESSAGE');
+      const accountId = request.auth!.account.id;
+      const claimed = await deps.links.claim(params.data.token, accountId);
+      const room = claimed ? deps.manager.get(claimed.roomId) : undefined;
+      if (!room) return apiError(reply, 404, 'NOT_FOUND');
+
+      const fail = (result: { ok: false; code: string }) =>
+        apiError(reply, STATUS[result.code] ?? 409, result.code as ErrorCode);
+      if (body.data.quizId === null) {
+        const result = await room.setContent('CLASSIC', null, null, null);
+        return result.ok ? { mode: 'CLASSIC', title: null } : fail(result);
+      }
+      const quiz = await deps.quizzes.forAttach(accountId, body.data.quizId);
+      if (!quiz) return apiError(reply, 404, 'NOT_FOUND');
+      const enabled =
+        quiz.kind === 'BLIND'
+          ? deps.blindEnabled && (await deps.flags.isEnabled('mode.blind_quiz'))
+          : await deps.flags.isEnabled('mode.custom_quiz');
+      if (!enabled) return apiError(reply, 404, 'FEATURE_DISABLED');
+      if (!quiz.ready) return apiError(reply, 409, 'NOT_READY');
+      // Personal quizzes are part of the full game: an owner's account unlocks the room on the way.
+      if (room.tier() !== 'FULL') {
+        if ((await entitlements.tierOf(accountId)) !== 'FULL')
+          return apiError(reply, 403, 'TIER_REQUIRED');
+        await room.applyEntitlement('FULL', accountId, 'LINKED');
+      }
+      const result = await room.setContent(quiz.kind, body.data.quizId, quiz.title, quiz.questions);
+      return result.ok
+        ? { mode: quiz.kind, title: quiz.title, rounds: quiz.questions }
+        : fail(result);
     },
   );
 

@@ -78,18 +78,15 @@ describe('asking for the unlock link', () => {
     await closeParty(party);
   });
 
-  it('is refused once the room is already FULL', async () => {
+  it('is still available once the room is FULL (the same link attaches a personal quiz)', async () => {
     const party = await createParty(server(), 2);
     party.display.send('REQUEST_UNLOCK_LINK', {});
     const link = await party.display.nextOfType('UNLOCK_LINK');
     const buyer = await player(server());
     await buy(buyer);
     expect((await claim(buyer, tokenOf(link.payload.url))).body.tier).toBe('FULL');
-    const again = party.display.send('REQUEST_UNLOCK_LINK', {});
-    const refused = await party.display.next(
-      (m) => m.type === 'ERROR' && m.payload.messageId === again,
-    );
-    expect(refused.type === 'ERROR' && refused.payload.code).toBe('INVALID_STATE');
+    party.display.send('REQUEST_UNLOCK_LINK', {});
+    expect((await party.display.nextOfType('UNLOCK_LINK')).payload.url).toMatch(/\/unlock\//u);
     await closeParty(party);
   });
 });
@@ -125,10 +122,11 @@ describe('claiming a link', () => {
       'room row follows',
     );
 
-    // the same link cannot be used again, by anyone, and says nothing about why
+    // the link now belongs to the account that used it: that account may use it again (a second action
+    // at the same TV), nobody else may, and the answer for everyone else says nothing about why
     const other = await player(server());
     await buy(other);
-    expect(await claim(buyer, tokenOf(url))).toMatchObject({ status: 404 });
+    expect(await claim(buyer, tokenOf(url))).toMatchObject({ status: 200, body: { tier: 'FULL' } });
     expect(await claim(other, tokenOf(url))).toMatchObject({ status: 404 });
     await closeParty(party);
   });

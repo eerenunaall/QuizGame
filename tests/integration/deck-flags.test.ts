@@ -31,6 +31,9 @@ const setFlag = (enabled: boolean) =>
     .execute();
 
 const request = {
+  roomId: '00000000-0000-4000-8000-000000000001',
+  mode: 'CLASSIC',
+  contentRef: null,
   tier: 'FULL',
   language: 'tr',
   rounds: 5,

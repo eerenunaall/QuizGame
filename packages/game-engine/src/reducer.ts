@@ -1,6 +1,12 @@
 import { produce, type Draft } from 'immer';
 import { Rng, clamp, rngStateFromSeed } from '@quizparty/shared';
-import type { CloseReason, ErrorCode, ServerEvent, Tier } from '@quizparty/protocol';
+import {
+  MIN_ROUNDS,
+  type CloseReason,
+  type ErrorCode,
+  type ServerEvent,
+  type Tier,
+} from '@quizparty/protocol';
 import {
   finalStageLength,
   ladderKindFor,
@@ -85,7 +91,15 @@ export function createRoom(params: CreateRoomParams): RoomState {
     tier,
     hostAccountId: params.hostAccountId ?? null,
     contentLanguage: params.contentLanguage ?? 'tr',
-    settings: { mode: 'CLASSIC', rounds, difficulty: 'MEDIUM', categories: 'ALL' },
+    settings: {
+      mode: 'CLASSIC',
+      contentTitle: null,
+      rounds,
+      difficulty: 'MEDIUM',
+      categories: 'ALL',
+    },
+    contentRef: null,
+    sensitiveContent: false,
     config,
     display: { sessionId: params.displaySessionId, connected: false, disconnectedAt: params.now },
     awaitingDisplay: false,
@@ -179,6 +193,8 @@ function dispatch(d: Room, ctx: Ctx): void {
       return onBeginGame(d, ctx, input);
     case 'TICK':
       return onTick(d, ctx, input.at);
+    case 'SET_CONTENT':
+      return onSetContent(d, ctx, input);
     case 'ENTITLEMENT':
       return onEntitlement(d, ctx, input.tier, input.hostAccountId, input.reason);
     case 'RECOVER':
@@ -552,6 +568,7 @@ function onCommand(
 function structuredSettings(d: Room) {
   return {
     mode: d.settings.mode,
+    contentTitle: d.settings.contentTitle,
     rounds: d.settings.rounds,
     difficulty: d.settings.difficulty,
     categories: d.settings.categories === 'ALL' ? ('ALL' as const) : [...d.settings.categories],
@@ -567,6 +584,9 @@ function requestDeck(d: Room, ctx: Ctx, purpose: 'START' | 'REMATCH', actor: Act
     return reject(ctx, 'NOT_ENOUGH_PLAYERS');
   const maxRounds = maxRoundsFor(d.config, d.tier);
   const request: DeckRequest = {
+    roomId: d.roomId,
+    mode: d.settings.mode,
+    contentRef: d.contentRef,
     rounds: Math.min(d.settings.rounds, maxRounds),
     categories: d.settings.categories === 'ALL' ? 'ALL' : [...d.settings.categories],
     language: d.contentLanguage,
@@ -592,6 +612,9 @@ function onBeginGame(d: Room, ctx: Ctx, input: Extract<EngineInput, { kind: 'BEG
   if (deckSize(input.deck) < totalRounds) return reject(ctx, 'NOT_ENOUGH_QUESTIONS');
 
   if (input.config) d.config = input.config;
+  // Personal answers will sit in this room's durable log from here on; the room erases them when it closes.
+  if (Object.values(input.deck.questions).some((q) => q.source === 'BLIND'))
+    d.sensitiveContent = true;
   const participants = activePlayerList(d);
   const levelOffset = presetOffset(d.config, d.settings.difficulty);
   d.game = {
@@ -1357,6 +1380,40 @@ function enterResults(d: Room, ctx: Ctx, at: number): void {
 
 // ───────────────────────────── entitlement & recovery ─────────────────────────────
 
+/**
+ * The server attached a personal quiz (or went back to the classic game). Only in the lobby, and
+ * only on a FULL tier: personal quizzes are part of the full game (ADR-0013). The lobby's round
+ * count follows the quiz's size so the game never asks for more questions than it has.
+ */
+function onSetContent(
+  d: Room,
+  ctx: Ctx,
+  input: Extract<EngineInput, { kind: 'SET_CONTENT' }>,
+): void {
+  if (d.phase !== 'LOBBY' && d.phase !== 'WAITING') return reject(ctx, 'INVALID_STATE');
+  if (input.mode !== 'CLASSIC' && d.tier !== 'FULL') return reject(ctx, 'TIER_REQUIRED');
+  if (input.mode === 'CLASSIC') {
+    d.settings.mode = 'CLASSIC';
+    d.settings.contentTitle = null;
+    d.contentRef = null;
+  } else {
+    d.settings.mode = input.mode;
+    d.settings.contentTitle = input.title;
+    d.contentRef = input.ref;
+    if (input.rounds !== null)
+      d.settings.rounds = Math.max(
+        MIN_ROUNDS,
+        Math.min(input.rounds, maxRoundsFor(d.config, d.tier)),
+      );
+  }
+  touch(d, input.at);
+  emit(
+    ctx,
+    { to: 'ALL' },
+    { type: 'SETTINGS_CHANGED', payload: { settings: structuredSettings(d) } },
+  );
+}
+
 function onEntitlement(
   d: Room,
   ctx: Ctx,
@@ -1378,6 +1435,12 @@ function onEntitlement(
         payload: { tier, reason: reason ?? (tier === 'FULL' ? 'LINKED' : 'REVOKED') },
       },
     );
+    // Personal quizzes belong to the full game: without it the room goes back to the classic one.
+    if (tier === 'FREE' && d.settings.mode !== 'CLASSIC') {
+      d.settings.mode = 'CLASSIC';
+      d.settings.contentTitle = null;
+      d.contentRef = null;
+    }
     if (tier === 'FREE' && d.settings.rounds > d.config.freeTier.maxRounds) {
       d.settings.rounds = d.config.freeTier.maxRounds;
       emit(

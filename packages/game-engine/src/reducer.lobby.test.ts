@@ -393,3 +393,81 @@ describe('entitlement changes', () => {
     expect(h.state).toBe(before);
   });
 });
+
+describe('personal quizzes in the lobby (SET_CONTENT)', () => {
+  const set = (
+    h: Harness,
+    mode: 'CLASSIC' | 'BLIND' | 'CUSTOM' | 'WHO_SAID_IT',
+    rounds: number | null = 5,
+  ) => h.apply({ kind: 'SET_CONTENT', mode, ref: 'quiz-1', title: 'Ece hakkında', rounds });
+
+  it('attaches a quiz on the full game, shows only its mode and title, and follows the quiz size', () => {
+    const h = new Harness({ tier: 'FULL' });
+    h.joinPlayers(2);
+    expect(set(h, 'BLIND', 7)).toEqual({ ok: true });
+    expect(h.state.settings).toMatchObject({
+      mode: 'BLIND',
+      contentTitle: 'Ece hakkında',
+      rounds: 7,
+    });
+    expect(h.state.contentRef).toBe('quiz-1');
+    expect(events(h, 'SETTINGS_CHANGED').at(-1)).toMatchObject({
+      settings: { mode: 'BLIND', contentTitle: 'Ece hakkında', rounds: 7 },
+    });
+    // the handle never reaches a screen
+    expect(JSON.stringify(h.events('SETTINGS_CHANGED'))).not.toContain('quiz-1');
+    expect(JSON.stringify(h.view({ role: 'DISPLAY' }))).not.toContain('quiz-1');
+  });
+
+  it('clamps the round count to the game limits and keeps it when the quiz does not say', () => {
+    const h = new Harness({ tier: 'FULL' });
+    h.joinPlayers(2);
+    set(h, 'BLIND', 1);
+    expect(h.state.settings.rounds).toBe(3);
+    set(h, 'BLIND', 500);
+    expect(h.state.settings.rounds).toBe(h.state.config.maxRounds);
+    set(h, 'CUSTOM', null);
+    expect(h.state.settings.rounds).toBe(h.state.config.maxRounds);
+  });
+
+  it('is refused on the free tier and once a game is running', () => {
+    const free = new Harness({ tier: 'FREE' });
+    free.joinPlayers(2);
+    expect(set(free, 'BLIND')).toEqual({ ok: false, code: 'TIER_REQUIRED' });
+    expect(free.state.settings.mode).toBe('CLASSIC');
+
+    const h = new Harness({ tier: 'FULL' });
+    h.joinPlayers(2);
+    h.start();
+    expect(set(h, 'BLIND')).toEqual({ ok: false, code: 'INVALID_STATE' });
+  });
+
+  it('goes back to the classic game on request and when the room is downgraded', () => {
+    const h = new Harness({ tier: 'FULL' });
+    h.joinPlayers(2);
+    set(h, 'CUSTOM');
+    h.apply({ kind: 'SET_CONTENT', mode: 'CLASSIC', ref: null, title: null, rounds: null });
+    expect(h.state.settings).toMatchObject({ mode: 'CLASSIC', contentTitle: null });
+    expect(h.state.contentRef).toBeNull();
+
+    set(h, 'BLIND');
+    h.apply({ kind: 'ENTITLEMENT', tier: 'FREE', hostAccountId: null });
+    expect(h.state.settings).toMatchObject({ mode: 'CLASSIC', contentTitle: null });
+    expect(h.state.contentRef).toBeNull();
+  });
+
+  it('marks the room as holding personal content once a blind deck arrives', () => {
+    const h = new Harness({ tier: 'FULL' });
+    h.joinPlayers(2);
+    set(h, 'BLIND', 3);
+    const deck = makeDeck(3);
+    for (const q of Object.values(deck.questions)) q.source = 'BLIND';
+    expect(h.startWith(deck)).toEqual({ ok: true });
+    expect(h.state.sensitiveContent).toBe(true);
+
+    const plain = new Harness({ tier: 'FULL' });
+    plain.joinPlayers(2);
+    plain.startWith(makeDeck());
+    expect(plain.state.sensitiveContent).toBe(false);
+  });
+});

@@ -205,6 +205,22 @@ export class PgRoomStore {
       .execute();
   }
 
+  /**
+   * Erases a room's durable traces once it has closed (ADR-0015): the input log holds the deck, which
+   * for a Blind Quiz holds personal answers in the clear, and the snapshot holds it too. Scores and
+   * rounds stay (they carry no words).
+   */
+  async scrubRoom(roomId: string): Promise<void> {
+    await this.db.transaction().execute(async (trx) => {
+      await trx.deleteFrom('room_events').where('room_id', '=', roomId).execute();
+      await trx
+        .updateTable('rooms')
+        .set({ snapshot: null, snapshot_version: 0 })
+        .where('id', '=', roomId)
+        .execute();
+    });
+  }
+
   /** Graceful shutdown: let another instance (or our restart) take the rooms over immediately. */
   async releaseLeases(roomIds: string[]): Promise<void> {
     if (roomIds.length === 0) return;

@@ -94,11 +94,12 @@ test('the TV shows a QR code, the owner scans it and signs in, and the room unlo
   expect(env.server.built.manager.getByCode(code)!.state.tier).toBe('FULL');
   await expect(friend.page.getByTestId('ctl-lobby')).toBeVisible();
 
-  // The link was single-use: the same QR in another tab of the signed-in phone is dead.
+  // The link now belongs to this account: another tab of the signed-in phone can still use it, and
+  // the integration tests prove nobody else can.
   const again = await phone.context.newPage();
   await again.goto(link!);
-  await expect(again.getByTestId('unlock-dead')).toBeVisible();
-  await expect(again.getByTestId('unlock-claim')).toHaveCount(0);
+  await expect(again.getByTestId('unlock-claim')).toBeVisible();
+  await expect(again.getByTestId('unlock-dead')).toHaveCount(0);
 
   for (const screen of [tv, friend, phone]) await screen.context.close();
 });

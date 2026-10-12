@@ -15,6 +15,7 @@ import { registerAdminRoutes } from './admin';
 import { buildAuditEngine } from './admin/engine';
 import { AccountSessionService } from './auth/account-sessions';
 import { AccountService } from './auth/accounts';
+import { PersonalDecks } from './blind/decks';
 import { QuizService } from './blind/quizzes';
 import { registerBlindRoutes } from './blind/routes';
 import { Sealer } from './blind/sealer';
@@ -196,6 +197,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     clock,
     secret: config.serverSecret,
   });
+  const personalDecks = new PersonalDecks({ db, vault });
   const quizzes = new QuizService({ db, clock, vault, publicWebUrl: config.publicWebUrl });
   const links = new LinkService({
     db,
@@ -207,6 +209,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   const manager = new RoomManager({
     config,
     links,
+    personalDecks,
     clock,
     store,
     sessions,
@@ -351,6 +354,9 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     entitlements,
     links,
     manager,
+    quizzes,
+    flags,
+    blindEnabled: vault.enabled(),
     apple,
     google,
     limiter,

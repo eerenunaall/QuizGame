@@ -245,7 +245,13 @@ describe('applyServerMessage', () => {
     state = applyServerMessage(
       state,
       message('SETTINGS_CHANGED', {
-        settings: { mode: 'CLASSIC', rounds: 8, difficulty: 'HARD', categories: 'ALL' },
+        settings: {
+          mode: 'CLASSIC',
+          contentTitle: null,
+          rounds: 8,
+          difficulty: 'HARD',
+          categories: 'ALL',
+        },
       }),
       NOW,
     );

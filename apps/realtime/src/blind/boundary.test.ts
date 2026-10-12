@@ -30,6 +30,7 @@ describe('who may reach a personal answer', () => {
   it('only these modules import the vault', () => {
     expect(importing(/from '(?:\.\.?\/)+(?:blind\/)?vault'/u)).toEqual([
       'app.ts',
+      'blind/decks.ts',
       'blind/quizzes.ts',
       'blind/routes.ts',
     ]);

@@ -36,7 +36,7 @@ export class LinkService {
       await trx
         .deleteFrom('link_intents')
         .where('room_id', '=', roomId)
-        .where((eb) => eb.or([eb('expires_at', '<', now), eb('status', '!=', 'OPEN')]))
+        .where('expires_at', '<', now)
         .execute();
       const open = await trx
         .selectFrom('link_intents')
@@ -54,28 +54,41 @@ export class LinkService {
     });
   }
 
-  /** What an unlock page may learn from a link: which room it belongs to, and nothing if it is not usable. */
-  async peek(token: string): Promise<{ roomId: string } | null> {
+  /**
+   * What a phone may learn from a link it holds: which room it belongs to. A link is single-person:
+   * the first account to use it owns it until it expires (so one scan can unlock a room and attach a
+   * quiz); anyone else, and every dead link, gets nothing.
+   */
+  async peek(token: string, accountId: string): Promise<{ roomId: string } | null> {
     const row = await this.db
       .selectFrom('link_intents')
-      .select(['room_id', 'status', 'expires_at'])
+      .select(['room_id', 'status', 'expires_at', 'claimed_by'])
       .where('token_hash', '=', this.hash(token))
       .executeTakeFirst();
-    if (!row || row.status !== 'OPEN' || row.expires_at.getTime() <= this.clock.now()) return null;
-    return { roomId: row.room_id };
+    if (!row || row.expires_at.getTime() <= this.clock.now()) return null;
+    if (row.status === 'OPEN' || (row.status === 'CLAIMED' && row.claimed_by === accountId))
+      return { roomId: row.room_id };
+    return null;
   }
 
-  /** Spends the link for `accountId`. Null when it is unknown, used, cancelled or expired (all alike). */
+  /**
+   * Binds the link to `accountId` (the first one wins) and returns its room. Using it again as the
+   * same account works until it expires; any other account, an expired, cancelled or unknown link
+   * all get null.
+   */
   async claim(token: string, accountId: string): Promise<{ roomId: string } | null> {
     const now = new Date(this.clock.now());
     return this.db.transaction().execute(async (trx) => {
       const row = await trx
         .selectFrom('link_intents')
-        .select(['id', 'room_id', 'status', 'expires_at'])
+        .select(['id', 'room_id', 'status', 'expires_at', 'claimed_by'])
         .where('token_hash', '=', this.hash(token))
         .forUpdate()
         .executeTakeFirst();
-      if (!row || row.status !== 'OPEN' || row.expires_at.getTime() <= now.getTime()) return null;
+      if (!row || row.expires_at.getTime() <= now.getTime()) return null;
+      if (row.status === 'CLAIMED')
+        return row.claimed_by === accountId ? { roomId: row.room_id } : null;
+      if (row.status !== 'OPEN') return null;
       await trx
         .updateTable('link_intents')
         .set({ status: 'CLAIMED', claimed_by: accountId, claimed_at: now })

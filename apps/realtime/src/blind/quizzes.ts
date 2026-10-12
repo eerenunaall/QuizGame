@@ -435,15 +435,23 @@ export class QuizService {
   async forAttach(
     accountId: string,
     quizId: string,
-  ): Promise<{ kind: QuizKind; title: string; language: Locale; ready: boolean } | null> {
+  ): Promise<{
+    kind: QuizKind;
+    title: string;
+    language: Locale;
+    ready: boolean;
+    questions: number;
+  } | null> {
     const quiz = await this.owned(accountId, quizId);
     if (!quiz) return null;
     const kind = quiz.kind as QuizKind;
+    const questions = await this.playableCount(quizId, kind);
     return {
       kind,
       title: quiz.title,
       language: quiz.language as Locale,
-      ready: (await this.playableCount(quizId, kind)) >= BLIND_LIMITS.playableMin,
+      ready: questions >= BLIND_LIMITS.playableMin,
+      questions,
     };
   }
 

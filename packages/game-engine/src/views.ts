@@ -345,6 +345,7 @@ export function roomView(state: RoomState, viewer: Viewer, now: number): RoomVie
     limits: { maxRounds: maxRoundsFor(state.config, state.tier) },
     settings: {
       mode: state.settings.mode,
+      contentTitle: state.settings.contentTitle,
       rounds: state.settings.rounds,
       difficulty: state.settings.difficulty,
       categories: state.settings.categories === 'ALL' ? 'ALL' : [...state.settings.categories],
