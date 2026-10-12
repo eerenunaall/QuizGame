@@ -31,7 +31,8 @@ export const E2E_GAME_CONFIG = {
     // Reading time for the explanation card, like production (35 ms per character, at most 5 s).
     revealPerCharMs: 35,
     revealExplanationMaxMs: 5000,
-    scoreUpdateMs: 3800,
+    // Long enough that the score animation settles with room to spare, even with screenshots in between.
+    scoreUpdateMs: 6000,
     microIntermissionMs: 900,
     finalIntroMs: 2600,
     displayGraceMs: 30_000,

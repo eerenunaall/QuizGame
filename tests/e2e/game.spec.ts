@@ -112,13 +112,14 @@ test.describe('whole game in real browsers', () => {
         await shot(phones[0]!.page, '24-phone-score');
       }
       if (round === 0) {
-        await tv.page.waitForTimeout(2200);
-        await shot(tv.page, '12-tv-score-settled');
-        // Settled: the leader moved to the top and is the only one wearing the crown.
+        // Settled: the leader moved to the top and is the only one wearing the crown. These are
+        // lasting markers of the score phase, awaited with retries; a fixed sleep followed by an
+        // assertion would depend on how long the screenshots above took on a loaded machine.
         await expect(tv.page.getByTestId('score-row-Ece')).toHaveAttribute('data-rank', '1');
         await expect(
           tv.page.locator('[data-testid="tv-score"] img[data-sticker="crown"]'),
         ).toHaveCount(1);
+        await shot(tv.page, '12-tv-score-settled');
       }
     }
 
