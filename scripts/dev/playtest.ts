@@ -106,7 +106,7 @@ const server = spawn('pnpm', ['--filter', '@quizparty/realtime', 'run', 'start']
 
 console.log(`
 ══════════════════════════════════════════════════════════════
-  Quiz Party playtest
+  QuizNight playtest
   TV  (open full screen):  ${publicUrl}/tv
   Phones: scan the QR code on the TV, or open ${publicUrl}/join
   Bank:   340 development questions (Turkish), 17 categories

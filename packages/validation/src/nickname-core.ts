@@ -29,6 +29,8 @@ const RESERVED = [
   'host',
   'quizparty',
   'quizpartyofficial',
+  'quiznight',
+  'quiznightofficial',
   'support',
   'staff',
   'host',

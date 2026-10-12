@@ -91,7 +91,7 @@ export { safeCell };
  * answer is imported with `question-audit import-results`; it is treated as a model pass, never as
  * a human approval.
  */
-export const AUDIT_INSTRUCTIONS = `# Quiz Party: question audit round
+export const AUDIT_INSTRUCTIONS = `# QuizNight: question audit round
 
 You will receive a file with one trivia question per line (JSON). For EVERY question return ONE
 JSON object per line (JSON Lines), in this exact shape, and nothing else:

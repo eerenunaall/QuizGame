@@ -26,6 +26,7 @@
     "dev": "pnpm --filter @quizparty/realtime run dev",
     "test:all": "pnpm run test && pnpm run test:web && pnpm run test:integration && pnpm run test:ws && pnpm run test:red-team",
     "assets:build": "pnpm --filter @quizparty/scripts run assets:build",
+    "assets:brand": "pnpm --filter @quizparty/scripts run assets:brand",
     "build:web": "pnpm --filter @quizparty/web run build",
     "build:admin": "pnpm --filter @quizparty/admin run build",
     "playtest": "pnpm --filter @quizparty/scripts run playtest"

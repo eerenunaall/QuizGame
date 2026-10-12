@@ -282,7 +282,7 @@ describe('manual audit rounds and maintenance', () => {
     expect(await h.exec(['export', '--out', 'round/q.jsonl', '--status', 'DRAFT'])).toBe(0);
     expect(h.out[0]).toBe('2 questions written to round/q.jsonl');
     expect(h.written.get('round/q.jsonl.instructions.md')).toContain(
-      'Quiz Party: question audit round',
+      'QuizNight: question audit round',
     );
     const exported = h.written
       .get('round/q.jsonl')!

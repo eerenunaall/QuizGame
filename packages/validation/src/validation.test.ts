@@ -74,6 +74,7 @@ describe('validateNickname', () => {
       'Ad_min',
       '4dmin',
       'M0derator',
+      'QuizNight',
       'Quiz Party',
       'Sistem',
       'Yönetici',

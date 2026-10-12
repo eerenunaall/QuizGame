@@ -35,7 +35,7 @@ export function Home({
       <Suspense
         fallback={
           <div className="qp-boot" role="status">
-            Quiz Party
+            QuizNight
           </div>
         }
       >

@@ -1,4 +1,5 @@
-import { Sticker } from './Sticker';
+import { brandSize, brandUrl } from '../lib/brand';
+import { BRAND_NAME } from '../lib/config';
 import styles from './Wordmark.module.css';
 import { cx } from '../lib/cx';
 
@@ -8,23 +9,22 @@ interface Props {
   scale?: number;
 }
 
-/** Original wordmark: chunky gold/white lettering, a star and a party popper. */
+const WIDTH = 560;
+
+/** The QuizNight logo, popping in once and floating gently afterwards (still on low-power TVs). */
 export function Wordmark({ tagline, scale = 1 }: Props) {
+  const size = brandSize('logo');
+  const height = Math.round((WIDTH * size.height) / size.width);
   return (
-    <div
-      className={styles.wordmark}
-      style={{ transform: `scale(${scale})` }}
-      role="img"
-      aria-label="Quiz Party"
-    >
-      <Sticker id="star" size={86} className={cx(styles.starLeft, 'qp-deco')} float />
-      <Sticker id="party-popper" size={104} className={cx(styles.popper, 'qp-deco')} float />
-      <div className={cx(styles.word, styles.quiz)} data-text="QUIZ" aria-hidden="true">
-        <span>QUIZ</span>
-      </div>
-      <div className={cx(styles.word, styles.party)} data-text="PARTY" aria-hidden="true">
-        <span>PARTY</span>
-      </div>
+    <div className={styles.wordmark} style={{ transform: `scale(${scale})` }}>
+      <img
+        className={cx(styles.logo, 'qp-deco')}
+        src={brandUrl('logo')}
+        width={WIDTH}
+        height={height}
+        alt={BRAND_NAME}
+        draggable={false}
+      />
       {tagline ? <div className={styles.tagline}>{tagline}</div> : null}
     </div>
   );

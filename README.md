@@ -1,4 +1,4 @@
-# Quiz Party
+# QuizNight
 
 A TV-first multiplayer trivia party game. Open it on the TV, scan the QR code, grab your phone and
 turn a group of friends into a chaotic game show. The server is the game master; the TV is the stage;

@@ -4,7 +4,8 @@ import { Banner } from '../../ui/Banner';
 import { Button } from '../../ui/Button';
 import { Panel, Pill } from '../../ui/Panel';
 import { Sticker } from '../../ui/Sticker';
-import { Wordmark } from '../../ui/Wordmark';
+import { LetterParade } from '../../ui/LetterParade';
+import { Mascot } from '../../ui/Mascot';
 import { useI18n } from '../../lib/i18n';
 import styles from './TvTitle.module.css';
 
@@ -50,7 +51,11 @@ export function TvTitle({
     <div className={styles.screen}>
       <Backdrop theme="lobby" />
       <div className={styles.hero}>
-        <Wordmark tagline={t('brand.tagline.caps')} />
+        <LetterParade height={190} />
+        <div className={styles.tagline}>{t('brand.tagline.caps')}</div>
+      </div>
+      <div className={styles.mascot}>
+        <Mascot height={520} />
       </div>
       <div className={styles.menu}>
         <Button

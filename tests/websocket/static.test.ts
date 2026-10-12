@@ -7,7 +7,7 @@ import { resolveSafe } from '../../apps/realtime/src/http/static-web';
 import { startServer, type TestServer } from '../helpers/server';
 
 const INLINE = '!function(){document.title="legacy"}();';
-const HTML = `<!doctype html><html><head><title>Quiz Party</title></head><body><div id="root"></div>
+const HTML = `<!doctype html><html><head><title>QuizNight</title></head><body><div id="root"></div>
 <script nomodule>${INLINE}</script><script type="module" src="/assets/index-AbCd1234.js"></script></body></html>`;
 
 let server: TestServer;

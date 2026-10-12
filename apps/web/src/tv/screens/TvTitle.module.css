@@ -9,14 +9,32 @@
 
 .hero {
   position: absolute;
-  top: 190px;
-  left: 190px;
+  top: 70px;
+  left: 0;
+  z-index: 2;
+  width: 100%;
+  text-align: center;
+}
+
+.tagline {
+  margin-top: 26px;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #fff;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.4);
+}
+
+.mascot {
+  position: absolute;
+  bottom: 120px;
+  left: 250px;
   z-index: 2;
 }
 
 .menu {
   position: absolute;
-  top: 330px;
+  top: 400px;
   right: 190px;
   z-index: 3;
   width: 640px;

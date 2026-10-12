@@ -32,3 +32,9 @@ https://googlefonts.github.io/noto-emoji-animation/
 Animated emoji by Google (Noto Emoji Animation), licensed under Creative Commons Attribution 4.0 International. Frames were resized and re-encoded; no other changes were made.
 
 Licence: https://creativecommons.org/licenses/by/4.0/
+
+## QuizNight brand artwork — owner-supplied
+
+The QuizNight logo, party-cone mascot and the nine letter characters (`apps/web/src/assets/brand`, sources in
+`docs/design/brand/source`) were produced for the project owner and are used with the owner's permission.
+They are not under an open licence.

@@ -6,6 +6,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "assets:build": "node assets/build.ts",
+    "assets:brand": "node assets/brand.ts",
     "question": "tsx question/main.ts",
     "playtest": "tsx dev/playtest.ts"
   },

@@ -1,7 +1,7 @@
 import type { MessageKey } from './tr';
 
 export const en: Record<MessageKey, string> = {
-  'brand.name': 'QUIZ PARTY',
+  'brand.name': 'QUIZNIGHT',
   'brand.tagline': 'Your phone is the controller. Your TV is the arena.',
   'common.loading': 'Loading…',
   'common.cancel': 'Cancel',
@@ -21,7 +21,7 @@ export const en: Record<MessageKey, string> = {
   'landing.codeInvalid': 'The code has 6 characters.',
 
   'compat.title': 'This browser is not supported',
-  'compat.body': 'Quiz Party needs an up-to-date browser. Try one of these:',
+  'compat.body': 'QuizNight needs an up-to-date browser. Try one of these:',
   'compat.list': 'Chrome, Edge, Firefox, Safari (current versions)',
   'compat.missing': 'Missing features: {features}',
 
@@ -188,7 +188,7 @@ export const en: Record<MessageKey, string> = {
   'error.STORE_UNAVAILABLE': 'The store cannot be reached right now. Try again.',
   'error.INTERNAL': 'Something went wrong on our side. Please try again.',
   // Sign-in email (one-time code)
-  'email.otp.subject': 'Your Quiz Party sign-in code: {code}',
+  'email.otp.subject': 'Your QuizNight sign-in code: {code}',
   'email.otp.body':
     'Your sign-in code: {code}\n\nIt is valid for {minutes} minutes. If you did not ask to sign in you can ignore this email; nobody can get into your account without the code.',
 
@@ -383,7 +383,7 @@ export const en: Record<MessageKey, string> = {
   'purchase.intro':
     'The full game is a one-time purchase; players join for free and only one person buys it.',
   'purchase.how':
-    'You buy it inside the Quiz Party app (App Store or Google Play). Nothing is paid on this page.',
+    'You buy it inside the QuizNight app (App Store or Google Play). Nothing is paid on this page.',
   'purchase.restore':
     'If you bought it before, tap “Restore purchases” in the app, or sign in with the same account and scan the “Unlock the full game” code on the TV.',
   'purchase.privacy': 'Your card details never reach us; the store handles the payment.',

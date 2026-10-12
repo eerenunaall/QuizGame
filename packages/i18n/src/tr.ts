@@ -5,7 +5,7 @@
  */
 export const tr = {
   // Brand & generic
-  'brand.name': 'QUIZ PARTY',
+  'brand.name': 'QUIZNIGHT',
   'brand.tagline': "Telefonun kumanda, TV'n arena.",
   'common.loading': 'Yükleniyor…',
   'common.cancel': 'Vazgeç',
@@ -29,7 +29,7 @@ export const tr = {
   // Compatibility
   'compat.title': 'Bu tarayıcı desteklenmiyor',
   'compat.body':
-    "Quiz Party'yi oynamak için güncel bir tarayıcı gerekiyor. Aşağıdakilerden birini dene:",
+    "QuizNight'yi oynamak için güncel bir tarayıcı gerekiyor. Aşağıdakilerden birini dene:",
   'compat.list': 'Chrome, Edge, Firefox, Safari (güncel sürümler)',
   'compat.missing': 'Eksik özellikler: {features}',
 
@@ -203,7 +203,7 @@ export const tr = {
   'error.STORE_UNAVAILABLE': 'Mağazaya şu an ulaşılamıyor. Tekrar dene.',
   'error.INTERNAL': 'Sunucuda bir sorun oldu. Tekrar dene.',
   // Sign-in email (one-time code)
-  'email.otp.subject': 'Quiz Party giriş kodun: {code}',
+  'email.otp.subject': 'QuizNight giriş kodun: {code}',
   'email.otp.body':
     'Giriş kodun: {code}\n\nKod {minutes} dakika geçerli. Bu girişi sen istemediysen bu e-postayı yok sayabilirsin; kimse kodun olmadan hesabına giremez.',
 
@@ -398,7 +398,7 @@ export const tr = {
   'purchase.intro':
     'Tam oyun tek seferlik bir satın almadır; oynayanlar için ücretsizdir ve tek bir oyuncu satın alır.',
   'purchase.how':
-    'Satın alma Quiz Party uygulamasının içinden yapılır (App Store ya da Google Play). Burada ödeme alınmaz.',
+    'Satın alma QuizNight uygulamasının içinden yapılır (App Store ya da Google Play). Burada ödeme alınmaz.',
   'purchase.restore':
     'Daha önce satın aldıysan uygulamada “Satın alımları geri yükle” de, ya da aynı hesapla giriş yapıp TV’deki “Tam oyunu aç” kodunu tara.',
   'purchase.privacy': 'Kart bilgilerin bize hiç ulaşmaz; ödemeyi mağaza yönetir.',

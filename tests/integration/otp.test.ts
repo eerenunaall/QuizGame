@@ -69,7 +69,7 @@ describe('asking for a code', () => {
     expect(await otp.request('eren@example.com', 'ip-1', 'en')).toBe('SENT');
     await flush();
     const mail = mailbox.last('eren@example.com')!;
-    expect(mail.subject).toMatch(/^Your Quiz Party sign-in code: \d{6}$/u);
+    expect(mail.subject).toMatch(/^Your QuizNight sign-in code: \d{6}$/u);
     expect(mail.text).toContain('10 minutes');
     expect(mailbox.lastCode()).toMatch(/^\d{6}$/u);
     const tr = new MemoryEmailSender();
@@ -81,7 +81,7 @@ describe('asking for a code', () => {
       () => undefined,
     ).request('ece@example.com', 'ip', 'tr');
     await flush();
-    expect(tr.last()!.subject).toMatch(/^Quiz Party giriş kodun: \d{6}$/u);
+    expect(tr.last()!.subject).toMatch(/^QuizNight giriş kodun: \d{6}$/u);
   });
 
   it('stores only keyed hashes: no address, no code', async () => {

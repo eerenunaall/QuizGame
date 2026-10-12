@@ -3,7 +3,7 @@
  * player-facing apps), so it lives outside the tr/en parity catalogs; strings still stay here.
  */
 export const adminTr = {
-  'admin.title': 'Quiz Party Yönetim',
+  'admin.title': 'QuizNight Yönetim',
   'admin.loading': 'Yükleniyor…',
   'admin.empty': 'Kayıt yok.',
   'admin.retry': 'Tekrar dene',

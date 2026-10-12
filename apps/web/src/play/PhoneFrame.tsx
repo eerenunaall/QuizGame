@@ -46,7 +46,7 @@ export function PhoneFrame({ room, reconnecting, tvLost, restored, children }: P
             ) : null}
           </>
         ) : (
-          <span className={styles.name}>Quiz Party</span>
+          <span className={styles.name}>QuizNight</span>
         )}
       </header>
       <div className={styles.banners}>

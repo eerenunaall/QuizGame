@@ -26,4 +26,4 @@ export function resolveEndpoints(location: LocationLike, env: EnvLike = {}): End
 export const APP_VERSION = '0.1.0';
 
 /** The only place the brand name lives for non-localised surfaces (page titles come from i18n). */
-export const BRAND_NAME = 'Quiz Party';
+export const BRAND_NAME = 'QuizNight';

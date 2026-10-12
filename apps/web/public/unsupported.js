@@ -6,12 +6,12 @@
   var text = {
     tr: [
       'Bu tarayıcı desteklenmiyor',
-      'Quiz Party için güncel bir tarayıcı gerekiyor.',
+      'QuizNight için güncel bir tarayıcı gerekiyor.',
       "Chrome, Edge, Firefox veya Safari'nin güncel sürümünü deneyin ya da telefonunuzdan katılın.",
     ],
     en: [
       'This browser is not supported',
-      'Quiz Party needs an up-to-date browser.',
+      'QuizNight needs an up-to-date browser.',
       'Try a current Chrome, Edge, Firefox or Safari, or join from your phone.',
     ],
   }[lang];
