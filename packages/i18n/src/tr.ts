@@ -195,6 +195,12 @@ export const tr = {
   'error.ALREADY_COMMITTED': 'Seçimini zaten yaptın.',
   'error.FEATURE_DISABLED': 'Bu özellik şu an kapalı.',
   'error.BANNED': 'Bu cihazdan erişim engellendi.',
+  'error.PURCHASE_INVALID': 'Satın alma doğrulanamadı.',
+  'error.PURCHASE_ACCOUNT_MISMATCH': 'Bu satın alma başka bir hesaba ait.',
+  'error.TRANSACTION_ALREADY_BOUND': 'Bu satın alma başka bir hesaba bağlı.',
+  'error.PURCHASE_PENDING': 'Ödeme henüz tamamlanmadı. Biraz sonra tekrar dene.',
+  'error.PURCHASE_REFUNDED': 'Bu satın alma iade edilmiş.',
+  'error.STORE_UNAVAILABLE': 'Mağazaya şu an ulaşılamıyor. Tekrar dene.',
   'error.INTERNAL': 'Sunucuda bir sorun oldu. Tekrar dene.',
   // Sign-in email (one-time code)
   'email.otp.subject': 'Quiz Party giriş kodun: {code}',

@@ -45,6 +45,7 @@ export interface Accounts {
   last_login_at: Timestamp | null;
   locale: Generated<string>;
   status: Generated<string>;
+  store_account_token: Generated<string>;
 }
 
 export interface AccountSessions {
@@ -106,6 +107,18 @@ export interface EmailOtps {
   id: Generated<string>;
   ip_hash: string | null;
   purpose: string;
+}
+
+export interface Entitlements {
+  account_id: string;
+  granted_at: Generated<Timestamp>;
+  id: Generated<string>;
+  metadata: Generated<Json>;
+  platform: string | null;
+  product: string;
+  revoked_at: Timestamp | null;
+  source_transaction_id: string | null;
+  status: Generated<string>;
 }
 
 export interface FeatureFlags {
@@ -179,6 +192,33 @@ export interface Incidents {
   summary: Generated<string>;
   title: string;
   updated_at: Generated<Timestamp>;
+}
+
+export interface LinkIntents {
+  claimed_at: Timestamp | null;
+  claimed_by: string | null;
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp;
+  id: Generated<string>;
+  room_id: string;
+  status: Generated<string>;
+  token_hash: string;
+}
+
+export interface PurchaseTransactions {
+  account_id: string | null;
+  created_at: Generated<Timestamp>;
+  environment: string;
+  external_transaction_id: string;
+  former_account_ref: string | null;
+  id: Generated<string>;
+  platform: string;
+  product_id: string;
+  purchase_token_hash: string | null;
+  raw_summary: Generated<Json>;
+  status: Generated<string>;
+  updated_at: Generated<Timestamp>;
+  verified_at: Timestamp | null;
 }
 
 export interface QuestionAudits {
@@ -363,6 +403,12 @@ export interface SecurityEvents {
   session_id: string | null;
 }
 
+export interface StoreNotifications {
+  notification_id: string;
+  platform: string;
+  received_at: Generated<Timestamp>;
+}
+
 export interface TelemetryEvents {
   actor: string | null;
   at: Generated<Timestamp>;
@@ -379,6 +425,7 @@ export interface DB {
   bans: Bans;
   categories: Categories;
   email_otps: EmailOtps;
+  entitlements: Entitlements;
   feature_flags: FeatureFlags;
   game_answers: GameAnswers;
   game_players: GamePlayers;
@@ -386,6 +433,8 @@ export interface DB {
   games: Games;
   incident_notes: IncidentNotes;
   incidents: Incidents;
+  link_intents: LinkIntents;
+  purchase_transactions: PurchaseTransactions;
   question_audits: QuestionAudits;
   question_options: QuestionOptions;
   question_reports: QuestionReports;
@@ -399,5 +448,6 @@ export interface DB {
   schema_migrations: SchemaMigrations;
   score_deltas: ScoreDeltas;
   security_events: SecurityEvents;
+  store_notifications: StoreNotifications;
   telemetry_events: TelemetryEvents;
 }

@@ -64,6 +64,11 @@ describe('ATTACK 18 — the route table is the access policy', () => {
         'POST /v1/auth/email/verify [public]',
         'GET /v1/me [session]',
         'POST /v1/auth/logout [session]',
+        'GET /v1/entitlements [session]',
+        'POST /v1/purchases/verify [session]',
+        'POST /v1/purchases/restore [session]',
+        'POST /v1/webhooks/apple [public]',
+        'POST /v1/webhooks/google/:secret [public]',
       ].sort(),
     );
   });

@@ -1,3 +1,4 @@
+import { X509Certificate } from 'node:crypto';
 import { hostname } from 'node:os';
 import { z } from 'zod';
 
@@ -56,6 +57,23 @@ const EnvSchema = z.object({
   EMAIL_WEBHOOK_URL: z.string().url().optional(),
   EMAIL_WEBHOOK_TOKEN: z.string().min(8).optional(),
   /** Model-backed audit passes (ADR-0014): without a key the passes stay NOT_RUN. Names are never built in. */
+  /** Store purchases (ADR-0013). Off by default; each store is configured separately. */
+  PAYMENTS_ENABLED: flag('0'),
+  /** Accept App Review / TestFlight / test-track purchases as sandbox entitlements. */
+  PAYMENTS_ACCEPT_SANDBOX: flag('1'),
+  APPLE_BUNDLE_ID: z.string().min(3).max(155).optional(),
+  APPLE_APP_ID: z.coerce.number().int().positive().optional(),
+  APPLE_PRODUCT_ID: z.string().min(1).max(100).default('quizparty_full_game'),
+  /** PEM bundle with Apple's root certificate(s); apple.com cannot be fetched at run time. */
+  APPLE_ROOT_CERTS_PEM: z.string().min(100).optional(),
+  APPLE_ONLINE_CHECKS: flag('1'),
+  GOOGLE_PACKAGE_NAME: z.string().min(3).max(155).optional(),
+  GOOGLE_PRODUCT_ID: z.string().min(1).max(100).default('quizparty_full_game'),
+  /** The service-account key file's JSON (client_email, private_key, token_uri). */
+  GOOGLE_SERVICE_ACCOUNT_JSON: z.string().min(20).optional(),
+  GOOGLE_API_BASE: z.string().url().default('https://androidpublisher.googleapis.com'),
+  /** Shared secret in the push URL of the real-time developer notifications. */
+  GOOGLE_WEBHOOK_SECRET: z.string().min(24).optional(),
   AUDIT_API_KEY: z.string().min(8).optional(),
   AUDIT_MODEL_FAST: z.string().min(1).max(100).optional(),
   AUDIT_MODEL_STRONG: z.string().min(1).max(100).optional(),
@@ -64,6 +82,82 @@ const EnvSchema = z.object({
   EMBEDDINGS_MODEL: z.string().min(1).max(100).optional(),
   EMBEDDINGS_API_KEY: z.string().min(8).optional(),
 });
+
+export interface PaymentsConfig {
+  enabled: boolean;
+  acceptSandbox: boolean;
+  apple: {
+    bundleId: string;
+    appAppleId: number | null;
+    productId: string;
+    rootCertificates: Buffer[];
+    onlineChecks: boolean;
+  } | null;
+  google: {
+    packageName: string;
+    productId: string;
+    clientEmail: string;
+    privateKey: string;
+    tokenUri: string;
+    apiBase: string;
+    webhookSecret: string;
+  } | null;
+}
+
+function pemToDer(bundle: string): Buffer[] {
+  const matches =
+    bundle.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/gu) ?? [];
+  return matches.map((pem) => new X509Certificate(pem).raw);
+}
+
+function paymentsConfig(e: z.infer<typeof EnvSchema>, production: boolean): PaymentsConfig {
+  const problems: string[] = [];
+  let apple: PaymentsConfig['apple'] = null;
+  if (e.APPLE_BUNDLE_ID || e.APPLE_ROOT_CERTS_PEM) {
+    const roots = e.APPLE_ROOT_CERTS_PEM ? pemToDer(e.APPLE_ROOT_CERTS_PEM) : [];
+    if (!e.APPLE_BUNDLE_ID) problems.push('APPLE_ROOT_CERTS_PEM needs APPLE_BUNDLE_ID');
+    if (roots.length === 0) problems.push('APPLE_ROOT_CERTS_PEM holds no certificate');
+    if (production && !e.APPLE_APP_ID) problems.push('APPLE_APP_ID is required in production');
+    apple = {
+      bundleId: e.APPLE_BUNDLE_ID ?? '',
+      appAppleId: e.APPLE_APP_ID ?? null,
+      productId: e.APPLE_PRODUCT_ID,
+      rootCertificates: roots,
+      onlineChecks: e.APPLE_ONLINE_CHECKS,
+    };
+  }
+  let google: PaymentsConfig['google'] = null;
+  if (e.GOOGLE_PACKAGE_NAME || e.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    let account: { client_email?: unknown; private_key?: unknown; token_uri?: unknown } = {};
+    try {
+      account = JSON.parse(e.GOOGLE_SERVICE_ACCOUNT_JSON ?? '{}') as typeof account;
+    } catch {
+      problems.push('GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON');
+    }
+    if (!e.GOOGLE_PACKAGE_NAME)
+      problems.push('GOOGLE_SERVICE_ACCOUNT_JSON needs GOOGLE_PACKAGE_NAME');
+    if (typeof account.client_email !== 'string' || typeof account.private_key !== 'string')
+      problems.push('GOOGLE_SERVICE_ACCOUNT_JSON needs client_email and private_key');
+    if (!e.GOOGLE_WEBHOOK_SECRET)
+      problems.push('GOOGLE_WEBHOOK_SECRET is required with Google Play');
+    google = {
+      packageName: e.GOOGLE_PACKAGE_NAME ?? '',
+      productId: e.GOOGLE_PRODUCT_ID,
+      clientEmail: typeof account.client_email === 'string' ? account.client_email : '',
+      privateKey: typeof account.private_key === 'string' ? account.private_key : '',
+      tokenUri:
+        typeof account.token_uri === 'string'
+          ? account.token_uri
+          : 'https://oauth2.googleapis.com/token',
+      apiBase: e.GOOGLE_API_BASE.replace(/\/+$/u, ''),
+      webhookSecret: e.GOOGLE_WEBHOOK_SECRET ?? '',
+    };
+  }
+  if (e.PAYMENTS_ENABLED && !apple && !google)
+    problems.push('PAYMENTS_ENABLED needs Apple and/or Google Play settings');
+  if (problems.length > 0) throw new Error(`Invalid configuration: ${problems.join('; ')}`);
+  return { enabled: e.PAYMENTS_ENABLED, acceptSandbox: e.PAYMENTS_ACCEPT_SANDBOX, apple, google };
+}
 
 export interface AppConfig {
   env: 'development' | 'test' | 'production';
@@ -96,6 +190,7 @@ export interface AppConfig {
   maintenanceIntervalMs: number;
   adminBootstrapEmails: string[];
   emailWebhook: { url: string; token: string | null } | null;
+  payments: PaymentsConfig;
   audit: { apiKey: string; apiBase: string | null; modelFast: string; modelStrong: string } | null;
   embeddings: { baseUrl: string; model: string; apiKey: string | null } | null;
 }
@@ -179,6 +274,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     emailWebhook: e.EMAIL_WEBHOOK_URL
       ? { url: e.EMAIL_WEBHOOK_URL, token: e.EMAIL_WEBHOOK_TOKEN ?? null }
       : null,
+    payments: paymentsConfig(e, production),
     audit:
       e.AUDIT_API_KEY && e.AUDIT_MODEL_FAST
         ? {

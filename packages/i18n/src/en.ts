@@ -180,6 +180,12 @@ export const en: Record<MessageKey, string> = {
   'error.ALREADY_COMMITTED': 'You have already made your choice.',
   'error.FEATURE_DISABLED': 'This feature is currently off.',
   'error.BANNED': 'Access from this device is blocked.',
+  'error.PURCHASE_INVALID': 'The purchase could not be verified.',
+  'error.PURCHASE_ACCOUNT_MISMATCH': 'This purchase belongs to another account.',
+  'error.TRANSACTION_ALREADY_BOUND': 'This purchase is already linked to another account.',
+  'error.PURCHASE_PENDING': 'The payment is not complete yet. Try again shortly.',
+  'error.PURCHASE_REFUNDED': 'This purchase was refunded.',
+  'error.STORE_UNAVAILABLE': 'The store cannot be reached right now. Try again.',
   'error.INTERNAL': 'Something went wrong on our side. Please try again.',
   // Sign-in email (one-time code)
   'email.otp.subject': 'Your Quiz Party sign-in code: {code}',

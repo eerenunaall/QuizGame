@@ -28,6 +28,10 @@ import { DeckBuilder } from './rooms/deck-builder';
 import { RoomManager } from './rooms/manager';
 import { SessionService } from './rooms/sessions';
 import { PgRoomStore } from './rooms/store';
+import { AppleVerifier } from './payments/apple';
+import { GoogleVerifier } from './payments/google';
+import { registerPaymentRoutes } from './payments/routes';
+import { EntitlementService } from './payments/service';
 import { SecurityLog } from './security/events';
 import { MemoryRateLimiter } from './security/rate-limit';
 import { DbTelemetrySink } from './telemetry/sink';
@@ -50,6 +54,7 @@ export interface BuiltApp {
   bans: BanService;
   accounts: AccountService;
   accountSessions: AccountSessionService;
+  entitlements: EntitlementService;
   maintenance: MaintenanceJob;
   routes: RouteSpec[];
   /** Graceful shutdown: stop accepting, flush rooms, release leases, close the pool. */
@@ -189,6 +194,23 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     metrics,
     log,
   });
+  const payments = config.payments;
+  const apple =
+    payments.enabled && payments.apple
+      ? new AppleVerifier(payments.apple, payments.acceptSandbox)
+      : null;
+  const google =
+    payments.enabled && payments.google ? new GoogleVerifier(payments.google, clock) : null;
+  const entitlements = new EntitlementService({
+    db,
+    clock,
+    secret: config.serverSecret,
+    verifiers: { ...(apple ? { IOS: apple } : {}), ...(google ? { ANDROID: google } : {}) },
+    acceptSandbox: payments.acceptSandbox,
+    onChanged: (accountId, tier, reason) => manager.entitlementChanged(accountId, tier, reason),
+    onSecurity: (kind, detail) => security.record(kind, { detail }),
+    onError,
+  });
   const gateway = new Gateway({
     config,
     clock,
@@ -288,6 +310,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     flags,
     engine: buildAuditEngine(config),
   });
+  registerPaymentRoutes(app, { config, entitlements, apple, google, limiter, security, onError });
   registerRoutes(app, {
     config,
     manager,
@@ -332,6 +355,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     bans,
     accounts,
     accountSessions,
+    entitlements,
     maintenance,
     routes,
     close: () => shutdown(true),

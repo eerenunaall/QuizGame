@@ -803,6 +803,35 @@ export class LiveRoom {
     };
   }
 
+  /** The account whose purchase unlocks this room, if one was linked. */
+  hostAccountId(): string | null {
+    return this.state.hostAccountId;
+  }
+
+  /**
+   * The linked account's entitlement changed (a purchase, a restore, a refund) or an account was
+   * linked: the engine moves the tier and tells every screen; the row follows.
+   */
+  applyEntitlement(
+    tier: 'FREE' | 'FULL',
+    hostAccountId: string | null,
+    reason: 'GRANTED' | 'RESTORED' | 'LINKED' | 'REVOKED' | 'EXPIRED',
+  ): Promise<void> {
+    return this.enqueue(async () => {
+      await this.apply({
+        kind: 'ENTITLEMENT',
+        at: this.deps.clock.now(),
+        entropy: this.entropy(),
+        tier,
+        hostAccountId,
+        reason,
+      });
+      await this.deps.store
+        .saveEntitlement(this.id, this.state.tier, this.state.hostAccountId)
+        .catch((error: unknown) => this.fail('entitlement', error));
+    });
+  }
+
   /** A moderator ends the room for everyone; the reason on record is ADMIN. */
   closeByAdmin(): Promise<void> {
     return this.enqueue(async () => {

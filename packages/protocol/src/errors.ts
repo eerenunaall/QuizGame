@@ -43,6 +43,18 @@ export const ERROR_CODES = {
   FEATURE_DISABLED: { retryable: false },
   /** The address or device is blocked by a moderator; the reason is never shown to the player. */
   BANNED: { retryable: false },
+  /** The store data is not a valid, verified purchase of our product for this app. */
+  PURCHASE_INVALID: { retryable: false },
+  /** The purchase was made for another account than the one asking. */
+  PURCHASE_ACCOUNT_MISMATCH: { retryable: false },
+  /** The same store transaction already belongs to a different account. */
+  TRANSACTION_ALREADY_BOUND: { retryable: false },
+  /** The store has not completed the payment yet (ask to be restored later). */
+  PURCHASE_PENDING: { retryable: true },
+  /** The store refunded or revoked this purchase. */
+  PURCHASE_REFUNDED: { retryable: false },
+  /** The store could not be reached to verify; nothing was granted or refused. */
+  STORE_UNAVAILABLE: { retryable: true },
   INTERNAL: { retryable: true },
 } as const;
 

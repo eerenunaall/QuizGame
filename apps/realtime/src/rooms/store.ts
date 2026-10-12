@@ -105,6 +105,20 @@ export class PgRoomStore {
       .execute();
   }
 
+  /** Mirrors the room's tier and linked account into the row (admin views and reports read it there). */
+  async saveEntitlement(
+    roomId: string,
+    tier: 'FREE' | 'FULL',
+    hostAccountId: string | null,
+  ): Promise<void> {
+    await this.db
+      .updateTable('rooms')
+      .set({ tier, host_account_id: hostAccountId })
+      .where('id', '=', roomId)
+      .where('owner_instance_id', '=', this.instanceId)
+      .execute();
+  }
+
   /** Extends the lease of the given rooms; returns the ids this instance still owns. */
   async heartbeat(roomIds: string[]): Promise<string[]> {
     if (roomIds.length === 0) return [];

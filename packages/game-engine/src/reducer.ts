@@ -180,7 +180,7 @@ function dispatch(d: Room, ctx: Ctx): void {
     case 'TICK':
       return onTick(d, ctx, input.at);
     case 'ENTITLEMENT':
-      return onEntitlement(d, ctx, input.tier, input.hostAccountId);
+      return onEntitlement(d, ctx, input.tier, input.hostAccountId, input.reason);
     case 'RECOVER':
       return onRecover(d, ctx, input.at, input.outageMs);
     case 'CLOSE':
@@ -1357,7 +1357,13 @@ function enterResults(d: Room, ctx: Ctx, at: number): void {
 
 // ───────────────────────────── entitlement & recovery ─────────────────────────────
 
-function onEntitlement(d: Room, ctx: Ctx, tier: Tier, hostAccountId: string | null): void {
+function onEntitlement(
+  d: Room,
+  ctx: Ctx,
+  tier: Tier,
+  hostAccountId: string | null,
+  reason?: 'GRANTED' | 'RESTORED' | 'LINKED' | 'REVOKED' | 'EXPIRED',
+): void {
   const changed = d.tier !== tier || d.hostAccountId !== hostAccountId;
   if (!changed) return;
   const tierChanged = d.tier !== tier;
@@ -1369,7 +1375,7 @@ function onEntitlement(d: Room, ctx: Ctx, tier: Tier, hostAccountId: string | nu
       { to: 'ALL' },
       {
         type: 'ENTITLEMENT_CHANGED',
-        payload: { tier, reason: tier === 'FULL' ? 'LINKED' : 'REVOKED' },
+        payload: { tier, reason: reason ?? (tier === 'FULL' ? 'LINKED' : 'REVOKED') },
       },
     );
     if (tier === 'FREE' && d.settings.rounds > d.config.freeTier.maxRounds) {

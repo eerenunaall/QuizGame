@@ -99,5 +99,12 @@ export const LIMITS = {
   adminRead: { capacity: 240, refillPerSec: 4 },
   adminWrite: { capacity: 60, refillPerSec: 1 },
   adminHeavy: { capacity: 6, refillPerSec: 6 / 60 },
+  /** Verifying or restoring a purchase: a few attempts, each of which may cost a call to a store. */
+  purchase: { capacity: 10, refillPerSec: 10 / 600 },
+  /** Store server notifications: one source address can legitimately send many. */
+  webhook: { capacity: 120, refillPerSec: 2 },
+  /** Asking for a TV link code: a few per room, claiming one is limited per account. */
+  linkCreate: { capacity: 5, refillPerSec: 5 / 600 },
+  linkClaim: { capacity: 10, refillPerSec: 10 / 600 },
   invalidMessage: { capacity: 8, refillPerSec: 0.2 },
 } as const satisfies Record<string, BucketSpec>;

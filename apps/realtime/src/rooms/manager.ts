@@ -57,6 +57,21 @@ export class RoomManager {
     return this.byCode.get(code);
   }
 
+  /** An account's tier changed: every live room it hosts follows (rooms on other instances are not reached; single instance for now). */
+  entitlementChanged(
+    accountId: string,
+    tier: 'FREE' | 'FULL',
+    reason: 'GRANTED' | 'RESTORED' | 'LINKED' | 'REVOKED' | 'EXPIRED',
+  ): void {
+    for (const room of this.rooms.values())
+      if (room.hostAccountId() === accountId)
+        void room
+          .applyEntitlement(tier, accountId, reason)
+          .catch((error: unknown) =>
+            this.deps.log.error({ err: error, roomId: room.id }, 'entitlement change failed'),
+          );
+  }
+
   all(): LiveRoom[] {
     return [...this.rooms.values()];
   }

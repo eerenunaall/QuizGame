@@ -323,6 +323,8 @@ export type EngineInput =
       kind: 'ENTITLEMENT';
       tier: Tier;
       hostAccountId: string | null;
+      /** Why the tier changed (shown nowhere but the display's unlock celebration); default LINKED / REVOKED. */
+      reason?: 'GRANTED' | 'RESTORED' | 'LINKED' | 'REVOKED' | 'EXPIRED';
     })
   | (InputBase & { kind: 'RECOVER'; outageMs: number })
   | (InputBase & { kind: 'CLOSE'; reason: CloseReason });
