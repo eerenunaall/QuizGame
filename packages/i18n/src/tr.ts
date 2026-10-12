@@ -394,6 +394,14 @@ export const tr = {
   'unlock.notOwned':
     'Bu hesapta tam oyun yok. Uygulamadan satın aldığında bu oda kendiliğinden açılır.',
   'unlock.dead': 'Bu bağlantı artık geçerli değil. TV’den yeni bir kod iste.',
+  'purchase.title': 'Tam oyun',
+  'purchase.intro':
+    'Tam oyun tek seferlik bir satın almadır; oynayanlar için ücretsizdir ve tek bir oyuncu satın alır.',
+  'purchase.how':
+    'Satın alma Quiz Party uygulamasının içinden yapılır (App Store ya da Google Play). Burada ödeme alınmaz.',
+  'purchase.restore':
+    'Daha önce satın aldıysan uygulamada “Satın alımları geri yükle” de, ya da aynı hesapla giriş yapıp TV’deki “Tam oyunu aç” kodunu tara.',
+  'purchase.privacy': 'Kart bilgilerin bize hiç ulaşmaz; ödemeyi mağaza yönetir.',
 } as const;
 
 export type MessageKey = keyof typeof tr;

@@ -71,3 +71,28 @@ double of the Google API (the verification *code* is the production code; only t
 and trust anchor are test fixtures): fake receipt, wrong bundle/product/account token, replay on a
 second account, duplicate callback, restore, refund, crash-then-restore; WebSocket test that the
 display receives `ENTITLEMENT_CHANGED` without refresh. **EXTERNAL:** real store sandbox purchases.
+
+## Amendment (M4, as built)
+- **Link intents.** The token is 128 random bits in base64url; only a keyed hash is stored. A room may hold
+  five open links at a time, each lives 10 minutes and is single-use. Only the display may ask, only in the
+  lobby/results of a FREE room. Unknown, used, expired and closed-room links answer one identical `404`.
+  Claiming needs a player sign-in and a signed-in staff console session is refused. An account that does not own
+  the game yet is still linked (when the room has no host account) so a later purchase unlocks the same room.
+- **Rooms follow the host account.** Purchase, restore and refund change the tier of every live room the account
+  hosts through the engine's `ENTITLEMENT` input (with a reason: GRANTED, RESTORED, LINKED, REVOKED); a running
+  game is not interrupted. Single instance for now: rooms owned by another instance are not reached.
+- **Account binding.** Apple `appAccountToken` and Google's obfuscated account id must equal the asking
+  account's `store_account_token`; a receipt without one is refused. The token is regenerated on account deletion.
+- **Google notifications are hints.** The Pub/Sub push carries a secret in its URL and is only a prompt to read
+  the purchase again from Google; nothing is revoked unless Google itself reports the purchase as canceled, and
+  Google is only asked about purchase tokens we recorded. Apple notifications are verified signed payloads.
+  `REFUND_REVERSED` is not handled: a reversed refund needs a human decision.
+- **Sandbox.** Sandbox/test purchases are accepted by default (App Review needs them) and recorded with
+  `environment = 'SANDBOX'`; `PAYMENTS_ACCEPT_SANDBOX=0` refuses them. Apple's Xcode/local-testing environments
+  (which skip signature checks) are never configured.
+- **Configuration** (`PAYMENTS_ENABLED`, `APPLE_*`, `GOOGLE_*`) fails closed: production refuses a half-configured
+  store, and without the setting the purchase routes answer `FEATURE_DISABLED`.
+- **Deletion and export** (`DELETE /v1/me`, `GET /v1/me/export`, `DELETE /v1/me/sessions`): purchase records are kept
+  with the account link cut and a keyed tombstone; a member of staff is demoted by an administrator first.
+- **Not built:** server-side Apple/Google *purchase initiation* (the app talks to the stores), web checkout
+  (flag off, no code path), consumable/subscription products.

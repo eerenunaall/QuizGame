@@ -14,7 +14,7 @@ it builds on). The attacker plays against the real server over real sockets; the
 | 6 Forge host command | rejected | › ATTACK 6 | ✅ `NOT_HOST` + `HOST_COMMAND_FORBIDDEN` event; display identity cannot be borrowed; deposed leader loses powers |
 | 7 Enumerate room codes | rate limited, hard | `identity-and-network.test.ts` › ATTACK 7 | ✅ misses cost 4 tokens, identical answers, > 30 days per IP for one hit among 1 000 rooms |
 | 8 Steal reconnect token | minimal blast radius, secure invalidation | › ATTACK 8 | ✅ thief = one ordinary slot; victim's return after the grace window revokes the session; nothing else touched |
-| 9 Fake purchase | no entitlement | (todo) | ⏳ needs payment verification (M4) |
+| 9 Fake purchase | no entitlement | `red-team/payments.test.ts` › ATTACK 9 | ✅ forged receipts of 14 shapes (alg none, stripped/short/foreign chains, swapped payloads, junk) give nothing; the client cannot assert price/product/tier/account; a genuine receipt replayed by another account never entitles it; 25 concurrent redemptions end in one transaction and one entitlement and two accounts racing for one transaction id have one winner; Google purchases for another account/product or pending give nothing; forged refund notices change nothing; guessing is rate limited |
 | 10 Creator requests Blind Quiz raw answers | authorization failure | (todo) | ⏳ needs Blind Quiz (M5) |
 | 11 Malicious deep-link parameters | safe rejection | › ATTACK 11 + `packages/validation` link tests | ✅ links, HTTP params, WS params and nicknames |
 | 12 Join from another network | success | › ATTACK 12 | ✅ phones bound to different source addresses join and roam mid-game |
@@ -30,6 +30,7 @@ it builds on). The attacker plays against the real server over real sockets; the
 | 22 Guess the sign-in | per-mailbox limit, uniform answers | › ATTACK 22 | ✅ guesses are limited per mailbox however many addresses they come from; wrong code and unknown mailbox are indistinguishable |
 | 23 Keep a session that should be dead | immediate | › ATTACK 23 | ✅ revoked, suspended, signed-out tokens and removed roles stop at once |
 | 24 Hammer the console | limited per account | › ATTACK 24 | ✅ reads and writes limited apart without hurting others |
+| 25 Abuse the TV unlock link | no entitlement from the QR alone | `red-team/payments.test.ts` › ATTACK 25 | ✅ a stranger who claims the link without owning the game unlocks nothing; token guessing is 404/429 with one identical answer; no claim without a sign-in |
 
 Findings from running these attacks that changed the code:
 

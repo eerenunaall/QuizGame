@@ -7,7 +7,7 @@ import { Redirect, Router, type RouteDef } from './lib/router';
 import { createStorage, loadPreferences, savePreferences } from './lib/storage';
 import { CodeEntry } from './pages/CodeEntry';
 import { Home } from './pages/Home';
-import { CreditsPage, NotFoundPage } from './pages/StaticPages';
+import { CreditsPage, NotFoundPage, PurchasePage } from './pages/StaticPages';
 import { UnlockPage } from './pages/Unlock';
 
 // Phones never download the TV screens (and the QR code library); TVs never download the controller.
@@ -54,6 +54,7 @@ export function App() {
     { path: '/join/:code?', render: (params) => <PlayRoute code={params.code} /> },
     { path: '/play/:code?', render: (params) => <PlayRoute code={params.code} /> },
     { path: '/unlock/:token', render: (params) => <UnlockPage token={params.token ?? ''} /> },
+    { path: '/purchase', render: () => <PurchasePage /> },
     { path: '/credits', render: () => <CreditsPage /> },
   ];
 

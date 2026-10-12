@@ -379,4 +379,12 @@ export const en: Record<MessageKey, string> = {
   'unlock.notOwned':
     'This account does not own the full game yet. Buy it in the app and this room unlocks by itself.',
   'unlock.dead': 'This link no longer works. Ask the TV for a new code.',
+  'purchase.title': 'Full game',
+  'purchase.intro':
+    'The full game is a one-time purchase; players join for free and only one person buys it.',
+  'purchase.how':
+    'You buy it inside the Quiz Party app (App Store or Google Play). Nothing is paid on this page.',
+  'purchase.restore':
+    'If you bought it before, tap “Restore purchases” in the app, or sign in with the same account and scan the “Unlock the full game” code on the TV.',
+  'purchase.privacy': 'Your card details never reach us; the store handles the payment.',
 };

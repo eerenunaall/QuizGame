@@ -18,6 +18,7 @@ import { AccountService } from './auth/accounts';
 import { ConsoleEmailSender, WebhookEmailSender, type EmailSender } from './auth/email';
 import { installAuthGuard } from './auth/guard';
 import { OtpService } from './auth/otp';
+import { AccountPrivacy, registerPrivacyRoutes } from './auth/privacy';
 import { registerAuthRoutes } from './auth/routes';
 import { FeatureFlags } from './flags/service';
 import { BanService } from './moderation/bans';
@@ -317,6 +318,18 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     accountSessions,
     flags,
     engine: buildAuditEngine(config),
+  });
+  registerPrivacyRoutes(app, {
+    sessions: accountSessions,
+    privacy: new AccountPrivacy({
+      db,
+      clock,
+      secret: config.serverSecret,
+      sessions: accountSessions,
+      otp,
+      onEntitlementLost: (accountId) =>
+        manager.entitlementChanged(accountId, 'FREE', 'REVOKED', { unlink: true }),
+    }),
   });
   registerPaymentRoutes(app, {
     config,

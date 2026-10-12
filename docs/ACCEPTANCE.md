@@ -26,10 +26,10 @@ checklist in `docs/EXTERNAL_CHECKLIST.md`). Status is only changed together with
 | R | Host disconnect recovery works | M2 | ws `reconnect.test.ts` › leadership moves after the grace period, display refresh, `recovery.test.ts` | yes | PASS |
 | S | Final round works | M1/M2 | engine `reducer.final-stage.test.ts` + e2e (final splash, 2× scoring) | yes | PASS |
 | T | Results / rematch work | M1 | e2e `game.spec.ts` (results, podium, rematch) + ws `game.test.ts` › rematch | yes | PASS |
-| U | Native purchase can be verified | M4 | integration (verifier code with generated chain / HTTP double); real store external | partly | TODO |
-| V | Purchase grants account entitlement | M4 | integration | yes | TODO |
-| W | TV sees entitlement without refresh | M4 | ws + e2e | yes | TODO |
-| X | Restore purchase works | M4 | integration (flows B, C) | yes (server side) | TODO |
+| U | Native purchase can be verified | M4 | integration `purchases` (Apple's own verifier against a generated Apple-shaped chain; Google Play client against an HTTP double of the Developer API; forged/foreign/wrong-product/wrong-account data refused) + red-team ATTACK 9; real store sandbox purchases are external | partly | PARTIAL |
+| V | Purchase grants account entitlement | M4 | integration `purchases` (grant is idempotent, bound to one account, refund revokes and cannot be restored) + `account-privacy` (export, deletion) | yes | PASS |
+| W | TV sees entitlement without refresh | M4 | ws `unlock.test.ts` (link, claim, later purchase, refund mid-game; every screen gets ENTITLEMENT_CHANGED) + e2e `unlock.spec.ts` (TV QR → phone sign-in → TV unlocks by itself) | yes | PASS |
+| X | Restore purchase works | M4 | integration `purchases` (restore on another device, item by item; restore cannot undo a refund) | yes (server side) | PASS |
 | Y | Question bank imports | M3 | integration `question-import` (JSONL/CSV, dry run, duplicates, conflicts, bad rows, dev-seed gate), `question-cli` (import/audit/export through the real CLIs), unit `seed.test.ts` (every seed row passes the schema and heuristics) + admin API import in `admin-api` | yes | PASS |
 | Z | Question audit queue works | M3 | integration `question-audit` (heuristic + model passes against an HTTP double that speaks the real wire contract, arbiter, lifecycle triggers), `question-ops` (queue priorities, approval with waivers, results import), `admin-api` (queue, approve, reject, transitions) + e2e `admin.spec.ts` (queue → editor → reject in the browser console) | yes | PASS |
 | AA | Blind Quiz works | M5 | integration + e2e | yes | TODO |

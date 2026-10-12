@@ -50,3 +50,20 @@ export function NotFoundPage() {
     </main>
   );
 }
+
+/** Informational only: how to buy and restore. There is deliberately no payment form (ADR-0013). */
+export function PurchasePage() {
+  const { t } = useI18n();
+  return (
+    <main className={styles.page}>
+      <h1 className={styles.title}>{t('purchase.title')}</h1>
+      <p>{t('purchase.intro')}</p>
+      <p>{t('purchase.how')}</p>
+      <p>{t('purchase.restore')}</p>
+      <p>{t('purchase.privacy')}</p>
+      <p>
+        <Link to="/">{t('common.back')}</Link>
+      </p>
+    </main>
+  );
+}

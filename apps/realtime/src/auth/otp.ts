@@ -49,6 +49,14 @@ export class OtpService {
     return hmacHex(this.secret, `otp-code:${emailHash}`, code);
   }
 
+  /** Account deletion: no code issued for this address stays behind. */
+  async forget(email: string): Promise<void> {
+    await this.db
+      .deleteFrom('email_otps')
+      .where('email_hash', '=', this.emailHash(email))
+      .execute();
+  }
+
   async request(email: string, ipHash: string, locale: Locale): Promise<OtpRequestResult> {
     const emailHash = this.emailHash(email);
     const now = this.clock.now();

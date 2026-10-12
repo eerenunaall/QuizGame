@@ -12,7 +12,7 @@ Branch: `claude/cloud-session-infrastructure-ln57mp` · Last updated: 2026-10-12
 | M1c web TV + browser controller | DONE (CI green: check, integration, e2e) | `/tv` (QR lobby → game → results → rematch), `/join`, `/game`, settings (rounds, difficulty, categories), lobby tools for the leader, English + Turkish, synthesized sound, animated art; Playwright E2E with real Chromium |
 | M2 Party mechanics & resilience | DONE (CI result of the latest push: see "Next actions") | reconnect, token rotation, leader migration, display grace, crash recovery, rate limits (M1b) plus a prep phase with stakes, Double Down, 50/50, sabotage (JAM / SHUFFLE / FOG / LOCKOUT / POINT_TAX) with shield, token earning, cooldowns and softened effects, CROWD reveal, POWER_RESOLUTION screen, persistence of power use (migration 0003), ATTACK 5 closed |
 | M3 Content factory & admin | DONE (CI of the latest push: see "Next actions") | question schema + fingerprints + duplicate detection, importer/audit/export CLIs, 170+ TR dev seed, migration 0004, REPORT_QUESTION, bans, flags, maintenance job, email-OTP sign-in + staff roles, admin API (RBAC, CSRF, audit log), admin console SPA under `/admin`, acceptance Y/Z proven, AC partial (Blind Quiz reports are M5), red team ATTACK 15–24 |
-| M4 Accounts & payments | TODO | |
+| M4 Accounts & payments | DONE (store sandbox purchases are external) | purchase verification (Apple StoreKit 2 via Apple's verifier, Google Play via the Developer API), entitlements bound to one account, restore, refund notifications, TV unlock link (QR) with live tier change, `/unlock` and `/purchase` pages, account export/deletion; acceptance U partial, V–X pass; red team ATTACK 9 and 25 |
 | M5 Blind Quiz & friends | TODO | |
 | M6 Mobile | TODO | |
 | M7 Polish, hardening, release | TODO | |
@@ -21,20 +21,20 @@ Branch: `claude/cloud-session-infrastructure-ln57mp` · Last updated: 2026-10-12
 | Layer | Command | Count |
 |---|---|---|
 | unit (packages, realtime, scripts) | `pnpm test` | 612 |
-| web (jsdom: web app screens + admin console client, sign-in, question editor) | `pnpm test:web` | 96 |
-| integration (PostgreSQL) | `pnpm test:integration` | 205 |
-| websocket (real server, real sockets, static serving of both apps) | `pnpm test:ws` | 68 |
-| red team (ATTACK 1–24 map in `docs/RED_TEAM.md`) | `pnpm test:red-team` | 60 (+2 todo for the M4/M5 attacks) |
-| browser E2E (real Chromium: TV + phones, reloads, drops, QR, remote keys, every power, report → console loop) | `pnpm test:e2e` | 16 |
+| web (jsdom: web app screens, unlock page, admin console client, sign-in, question editor) | `pnpm test:web` | 101 |
+| integration (PostgreSQL) | `pnpm test:integration` | 231 |
+| websocket (real server, real sockets, static serving of both apps, TV unlock) | `pnpm test:ws` | 76 |
+| red team (ATTACK 1–25 map in `docs/RED_TEAM.md`) | `pnpm test:red-team` | 70 (+1 todo for the M5 attack) |
+| browser E2E (real Chromium: TV + phones, reloads, drops, QR, remote keys, every power, report → console loop, TV unlock by phone) | `pnpm test:e2e` | 17 |
 
 The local gate is `format → lint → typecheck → unit → web → integration → websocket → red-team`,
 then `pnpm run build:web && pnpm run build:admin && pnpm test:e2e`.
 
 ## Next actions
 1. Read the CI result of the latest push (`mcp__github__actions_list`) and fix anything red.
-2. M4: Apple/Google receipt verification (ports + doubles speaking the real wire contract), entitlements,
-   TV linking, free tier, account deletion/export (the OTP sign-in and sessions already exist, see `docs/ADMIN.md`).
-3. M5: Blind Quiz, Who Said It, Custom Quiz (flagged), ATTACK 9/10.
+2. M5: Blind Quiz, Who Said It, Custom Quiz (flagged), ATTACK 10; Blind-Quiz reports (acceptance AA, AB, AC rest).
+3. M6: Expo app (controller-client is already shared), deep links, native purchase flows against the verified server API.
+4. M7: polish, perf, release audit.
 
 ## Known issues / decisions pending
 - Polyfill chunk is 44 kB gzip; narrowing the browser target would shrink it (decide after a TV

@@ -62,11 +62,12 @@ export class RoomManager {
     accountId: string,
     tier: 'FREE' | 'FULL',
     reason: 'GRANTED' | 'RESTORED' | 'LINKED' | 'REVOKED' | 'EXPIRED',
+    options: { unlink?: boolean } = {},
   ): void {
     for (const room of this.rooms.values())
       if (room.hostAccountId() === accountId)
         void room
-          .applyEntitlement(tier, accountId, reason)
+          .applyEntitlement(tier, options.unlink ? null : accountId, reason)
           .catch((error: unknown) =>
             this.deps.log.error({ err: error, roomId: room.id }, 'entitlement change failed'),
           );
