@@ -31,6 +31,7 @@ import { PgRoomStore } from './rooms/store';
 import { AppleVerifier } from './payments/apple';
 import { GoogleVerifier } from './payments/google';
 import { registerPaymentRoutes } from './payments/routes';
+import { LinkService } from './payments/links';
 import { EntitlementService } from './payments/service';
 import { SecurityLog } from './security/events';
 import { MemoryRateLimiter } from './security/rate-limit';
@@ -182,8 +183,15 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
       if (report.ran) log.info(report, 'question maintenance');
     },
   );
+  const links = new LinkService({
+    db,
+    clock,
+    secret: config.serverSecret,
+    publicWebUrl: config.publicWebUrl,
+  });
   const manager = new RoomManager({
     config,
+    links,
     clock,
     store,
     sessions,
@@ -310,7 +318,17 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     flags,
     engine: buildAuditEngine(config),
   });
-  registerPaymentRoutes(app, { config, entitlements, apple, google, limiter, security, onError });
+  registerPaymentRoutes(app, {
+    config,
+    entitlements,
+    links,
+    manager,
+    apple,
+    google,
+    limiter,
+    security,
+    onError,
+  });
   registerRoutes(app, {
     config,
     manager,

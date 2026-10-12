@@ -24,6 +24,7 @@ import {
 import { validateNickname } from '@quizparty/validation';
 import type { AppConfig } from '../config';
 import type { QuestionReports } from '../moderation/reports';
+import type { LinkService } from '../payments/links';
 import type { SecurityLog } from '../security/events';
 import type { TelemetrySink } from '../telemetry/sink';
 import type { Clock } from '../util/clock';
@@ -42,6 +43,7 @@ export interface RoomDeps {
   deckBuilder: DeckBuilder;
   telemetry: TelemetrySink;
   reports: QuestionReports;
+  links: LinkService;
   security: SecurityLog;
   metrics: Metrics;
   log: FastifyBaseLogger;
@@ -659,6 +661,10 @@ export class LiveRoom {
         await this.reportQuestion(connection, message, sessionId);
         return;
       }
+      if (message.type === 'REQUEST_UNLOCK_LINK') {
+        await this.unlockLink(connection, message.messageId);
+        return;
+      }
 
       const actor: Actor =
         connection.role === 'DISPLAY'
@@ -739,6 +745,21 @@ export class LiveRoom {
     this.send(connection, { type: 'ACK', payload: { messageId: message.messageId } });
   }
 
+  /**
+   * The TV asks for a link to show as a QR code. Only the display may ask; the server mints a
+   * one-time token bound to this room (at most a handful open at once) and tells nobody else.
+   */
+  private async unlockLink(connection: Connection, messageId: string): Promise<void> {
+    if (connection.role !== 'DISPLAY') return connection.error('FORBIDDEN', messageId);
+    if (this.state.phase !== 'LOBBY' && this.state.phase !== 'RESULTS')
+      return connection.error('INVALID_STATE', messageId);
+    if (this.state.tier === 'FULL') return connection.error('INVALID_STATE', messageId);
+    const link = await this.deps.links.create(this.id);
+    if (!link) return connection.error('RATE_LIMITED', messageId, { retryAfterMs: 30_000 });
+    this.send(connection, { type: 'UNLOCK_LINK', payload: link });
+    this.send(connection, { type: 'ACK', payload: { messageId } });
+  }
+
   /** A moderator removed this session (a ban): the player sees an ordinary removal and is cut off. */
   expelSession(sessionId: string): void {
     const connection = this.connections.get(sessionId);
@@ -801,6 +822,10 @@ export class LiveRoom {
         sessionId: player.sessionId,
       })),
     };
+  }
+
+  tier(): 'FREE' | 'FULL' {
+    return this.state.tier;
   }
 
   /** The account whose purchase unlocks this room, if one was linked. */

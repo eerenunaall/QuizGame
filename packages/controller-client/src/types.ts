@@ -83,6 +83,10 @@ export interface ClientState {
   /** Option tapped locally and sent, awaiting the server's lock acknowledgement. */
   pendingAnswer: { questionId: string; optionId: string } | null;
   rttMs: number | null;
+  /** Display only: the one-time unlock link last handed out (shown as a QR code). */
+  unlockLink: { url: string; expiresAt: number } | null;
+  /** The last tier change, so a screen can celebrate an unlock or explain a refund once. */
+  entitlement: { tier: 'FREE' | 'FULL'; reason: string; at: number } | null;
 }
 
 export const INITIAL_CLIENT_STATE: ClientState = {
@@ -95,6 +99,8 @@ export const INITIAL_CLIENT_STATE: ClientState = {
   restoredAt: null,
   pendingAnswer: null,
   rttMs: null,
+  unlockLink: null,
+  entitlement: null,
 };
 
 export type CreatedRoom = CreateRoomResponse;

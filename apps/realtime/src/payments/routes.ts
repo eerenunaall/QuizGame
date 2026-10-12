@@ -9,12 +9,16 @@ import { LIMITS, type RateLimiter } from '../security/rate-limit';
 import { clientIp } from '../ws/gateway';
 import type { AppleVerifier } from './apple';
 import type { GoogleVerifier } from './google';
+import type { LinkService } from './links';
+import type { RoomManager } from '../rooms/manager';
 import { EntitlementError, type EntitlementService } from './service';
 import { PurchaseError } from './types';
 
 export interface PaymentRouteDeps {
   config: AppConfig;
   entitlements: EntitlementService;
+  links: LinkService;
+  manager: RoomManager;
   apple: AppleVerifier | null;
   google: GoogleVerifier | null;
   limiter: RateLimiter;
@@ -128,6 +132,44 @@ export function registerPaymentRoutes(app: FastifyInstance, deps: PaymentRouteDe
         }
       }
       return { results, ...(await entitlements.view(request.auth!.account.id)) };
+    },
+  );
+
+  // ───────────── linking a TV room to the owner of the full game ─────────────
+  const LinkToken = z.strictObject({ token: z.string().regex(/^[A-Za-z0-9_-]{16,40}$/u) });
+
+  app.get(
+    '/v1/link-intents/:token',
+    { config: { auth: 'session', limit: 'linkClaim' } },
+    async (request, reply) => {
+      if (!player(request, reply)) return reply;
+      const params = LinkToken.safeParse(request.params);
+      const link = params.success ? await deps.links.peek(params.data.token) : null;
+      const room = link ? deps.manager.get(link.roomId) : undefined;
+      // One answer for unknown, used, expired and closed: a link says nothing about why it is dead.
+      if (!room) return apiError(reply, 404, 'NOT_FOUND');
+      return { roomCode: room.code, tier: await entitlements.tierOf(request.auth!.account.id) };
+    },
+  );
+
+  app.post(
+    '/v1/link-intents/:token/claim',
+    { config: { auth: 'session', limit: 'linkClaim' } },
+    async (request, reply) => {
+      if (!player(request, reply)) return reply;
+      const params = LinkToken.safeParse(request.params);
+      if (!params.success) return apiError(reply, 404, 'NOT_FOUND');
+      const accountId = request.auth!.account.id;
+      const claimed = await deps.links.claim(params.data.token, accountId);
+      const room = claimed ? deps.manager.get(claimed.roomId) : undefined;
+      if (!room) return apiError(reply, 404, 'NOT_FOUND');
+      const tier = await entitlements.tierOf(accountId);
+      // An account that owns the game unlocks the room now. One that does not is still linked
+      // (when nobody else is), so buying afterwards unlocks this very room without scanning again.
+      if (tier === 'FULL') await room.applyEntitlement('FULL', accountId, 'LINKED');
+      else if (room.hostAccountId() === null && room.tier() === 'FREE')
+        await room.applyEntitlement('FREE', accountId, 'LINKED');
+      return { tier, roomCode: room.code };
     },
   );
 

@@ -467,6 +467,7 @@ export class GameClient {
       case 'PREP_PROGRESS':
       case 'PLAYER_STATE':
       case 'ENTITLEMENT_CHANGED':
+      case 'UNLOCK_LINK':
       case 'DISPLAY_STATUS':
       case 'ROOM_CLOSING':
         break;
@@ -711,6 +712,13 @@ export class GameClient {
   /** REVEAL and after: flag the question that was just shown. Rejects with the server's code. */
   reportQuestion(questionId: string, reason: QuestionReportReason): Promise<void> {
     return this.request('REPORT_QUESTION', { questionId, reason });
+  }
+  /** Display only: asks for a one-time link (as a QR code) that attaches a phone owner's full game to this room. */
+  async requestUnlockLink(): Promise<{ url: string; expiresAt: number }> {
+    await this.request('REQUEST_UNLOCK_LINK', {});
+    const link = this.store.get().unlockLink;
+    if (!link) throw new ClientRequestError('INTERNAL');
+    return link;
   }
   /** Accessibility: soften disorienting sabotage effects for this player. */
   setReducedEffects(reducedEffects: boolean): Promise<void> {

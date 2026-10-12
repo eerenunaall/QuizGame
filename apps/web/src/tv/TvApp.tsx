@@ -25,6 +25,7 @@ import { TvResults } from './screens/TvResults';
 import { TvScoreUpdate } from './screens/TvScore';
 import { TvSettings } from './screens/TvSettings';
 import { TvTitle } from './screens/TvTitle';
+import { TvUnlock } from './screens/TvUnlock';
 import styles from './TvApp.module.css';
 
 const JOIN_KEY = 'qp.tv.join';
@@ -78,6 +79,8 @@ export function TvApp({
   const [rematching, setRematching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showUnlock, setShowUnlock] = useState(false);
+  const [unlockError, setUnlockError] = useState<string | null>(null);
   const [catalog, setCatalog] = useState<CategoryCatalog | null>(null);
   const [joinUrl, setJoinUrl] = useState<string | null>(null);
   const [prefs, setPrefs] = useState(() => loadPreferences(storage));
@@ -120,7 +123,10 @@ export function TvApp({
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return undefined;
-    return installRemoteNavigation(root, () => setShowSettings(false));
+    return installRemoteNavigation(root, () => {
+      setShowSettings(false);
+      setShowUnlock(false);
+    });
   }, []);
 
   // Join link: remembered at creation; derived from the page origin after a resume.
@@ -199,6 +205,21 @@ export function TvApp({
     }
   };
 
+  // Unlocked from a phone: let the celebration show for a moment, then hand the lobby back.
+  const unlockedNow = showUnlock && room?.tier === 'FULL';
+  useEffect(() => {
+    if (!unlockedNow) return undefined;
+    const timer = setTimeout(() => setShowUnlock(false), 3500);
+    return () => clearTimeout(timer);
+  }, [unlockedNow]);
+
+  /** Opens the unlock dialog and asks the server for a fresh one-time link (also used for "new code"). */
+  const openUnlock = (): void => {
+    setShowUnlock(true);
+    setUnlockError(null);
+    client.requestUnlockLink().catch((cause: unknown) => setUnlockError(describe(cause)));
+  };
+
   const hostCommand = async (run: () => Promise<void>): Promise<void> => {
     setRematching(true);
     try {
@@ -271,6 +292,7 @@ export function TvApp({
               error={error}
               onStart={() => void startGame()}
               onOpenSettings={() => setShowSettings(true)}
+              onOpenUnlock={openUnlock}
               categoryLabel={categorySummary(room, catalog, t('settings.mixed'))}
             />
             {showSettings ? (
@@ -283,6 +305,15 @@ export function TvApp({
                     .catch((cause: unknown) => setError(describe(cause)))
                 }
                 onClose={() => setShowSettings(false)}
+              />
+            ) : null}
+            {showUnlock ? (
+              <TvUnlock
+                link={state.unlockLink?.url ?? null}
+                unlocked={room.tier === 'FULL'}
+                error={unlockError}
+                onNewCode={openUnlock}
+                onClose={() => setShowUnlock(false)}
               />
             ) : null}
             {overlay ? <div className={styles.overlay}>{overlay}</div> : null}

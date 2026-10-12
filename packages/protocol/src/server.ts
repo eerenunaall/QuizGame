@@ -105,6 +105,11 @@ export const SERVER_PAYLOADS = {
     tier: TierSchema,
     reason: z.enum(ENTITLEMENT_REASONS),
   }),
+  /** To the requesting display only: where the QR code points and when it stops working. */
+  UNLOCK_LINK: z.strictObject({
+    url: z.url().max(300),
+    expiresAt: EpochMsSchema,
+  }),
   DISPLAY_STATUS: z.strictObject({ connected: z.boolean(), awaitingDisplay: z.boolean() }),
   ROOM_CLOSING: z.strictObject({ reason: CloseReasonSchema }),
 } as const;

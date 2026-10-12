@@ -132,7 +132,17 @@ export function applyServerMessage(
       }));
 
     case 'ENTITLEMENT_CHANGED':
-      return withRoom(state, (room) => ({ ...room, tier: message.payload.tier }));
+      return withRoom(
+        {
+          ...state,
+          unlockLink: null,
+          entitlement: { tier: message.payload.tier, reason: message.payload.reason, at: now },
+        },
+        (room) => ({ ...room, tier: message.payload.tier }),
+      );
+
+    case 'UNLOCK_LINK':
+      return { ...state, unlockLink: message.payload };
 
     case 'PREP_PROGRESS':
       return withRoom(state, (room) => {

@@ -81,6 +81,8 @@ export const CLIENT_PAYLOADS = {
     questionId: QuestionIdSchema,
     reason: QuestionReportReasonSchema,
   }),
+  /** The TV asks for a one-time link (shown as a QR code) that attaches a phone owner's full game to this room. */
+  REQUEST_UNLOCK_LINK: empty,
   LEAVE_ROOM: empty,
   REQUEST_STATE: empty,
   PING: z.strictObject({ clientSentAt: EpochMsSchema }),

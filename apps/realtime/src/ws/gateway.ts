@@ -242,6 +242,13 @@ export class Gateway {
       }
     }
     if (
+      message.type === 'REQUEST_UNLOCK_LINK' &&
+      !this.deps.limiter.take(`link:${connection.sessionId}`, LIMITS.linkCreate).allowed
+    ) {
+      connection.error('RATE_LIMITED', message.messageId, { retryAfterMs: 60_000 });
+      return;
+    }
+    if (
       POWER_COMMANDS.has(message.type) &&
       !this.deps.limiter.take(`power:${connection.sessionId}`, LIMITS.power).allowed
     ) {

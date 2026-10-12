@@ -19,6 +19,7 @@ interface Props {
   error: string | null;
   onStart: () => void;
   onOpenSettings: () => void;
+  onOpenUnlock: () => void;
   categoryLabel: string;
 }
 
@@ -33,6 +34,7 @@ export function TvLobby({
   error,
   onStart,
   onOpenSettings,
+  onOpenUnlock,
   categoryLabel,
 }: Props) {
   const { t, td } = useI18n();
@@ -115,6 +117,11 @@ export function TvLobby({
             >
               {t('lobby.settings')}
             </Button>
+            {room.tier === 'FREE' ? (
+              <Button variant="ghost" size="lg" onClick={onOpenUnlock} data-testid="lobby-unlock">
+                {t('tv.unlock.button')}
+              </Button>
+            ) : null}
           </div>
           <div className={styles.summary} data-testid="lobby-summary">
             <Sticker id="bullseye" size={44} />

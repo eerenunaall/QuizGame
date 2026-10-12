@@ -8,6 +8,7 @@ import { createStorage, loadPreferences, savePreferences } from './lib/storage';
 import { CodeEntry } from './pages/CodeEntry';
 import { Home } from './pages/Home';
 import { CreditsPage, NotFoundPage } from './pages/StaticPages';
+import { UnlockPage } from './pages/Unlock';
 
 // Phones never download the TV screens (and the QR code library); TVs never download the controller.
 const TvApp = lazy(() => import('./tv/TvApp').then((module) => ({ default: module.TvApp })));
@@ -52,6 +53,7 @@ export function App() {
     },
     { path: '/join/:code?', render: (params) => <PlayRoute code={params.code} /> },
     { path: '/play/:code?', render: (params) => <PlayRoute code={params.code} /> },
+    { path: '/unlock/:token', render: (params) => <UnlockPage token={params.token ?? ''} /> },
     { path: '/credits', render: () => <CreditsPage /> },
   ];
 
