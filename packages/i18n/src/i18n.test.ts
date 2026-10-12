@@ -76,3 +76,12 @@ describe('locale helpers', () => {
     expect(upper('en', 'istanbul')).toBe('ISTANBUL');
   });
 });
+
+describe('admin console copy', () => {
+  it('has no empty strings and substitutes placeholders', async () => {
+    const { adminTr, adminText } = await import('./index');
+    for (const [key, value] of Object.entries(adminTr)) expect(value.trim(), key).not.toBe('');
+    expect(adminText('admin.page', { from: 1, to: 25, total: 90 })).toBe('1–25 / 90');
+    expect(adminText('admin.error.generic')).not.toContain('{');
+  });
+});

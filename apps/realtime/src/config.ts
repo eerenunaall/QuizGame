@@ -45,6 +45,8 @@ const EnvSchema = z.object({
   MAX_WS_PER_IP: int(40, 1),
   SERVE_WEB: flag('0'),
   WEB_DIST: z.string().optional(),
+  SERVE_ADMIN: flag('0'),
+  ADMIN_DIST: z.string().optional(),
   RATE_LIMIT_SCALE: z.coerce.number().min(0.1).max(1000).default(1),
   /** 0 switches the background maintenance pass off (tests run it by hand). */
   MAINTENANCE_INTERVAL_MS: int(15 * 60_000, 0),
@@ -86,6 +88,8 @@ export interface AppConfig {
   maxWsConnections: number;
   maxWsPerIp: number;
   serveWeb: boolean;
+  serveAdmin: boolean;
+  adminDist: string | null;
   webDist: string | null;
   /** Multiplies every rate-limit bucket; must stay 1 in production (tests/dev only). */
   rateLimitScale: number;
@@ -167,6 +171,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     maxWsPerIp: e.MAX_WS_PER_IP,
     serveWeb: e.SERVE_WEB,
     webDist: e.WEB_DIST ?? null,
+    serveAdmin: e.SERVE_ADMIN,
+    adminDist: e.ADMIN_DIST ?? null,
     rateLimitScale: e.RATE_LIMIT_SCALE,
     maintenanceIntervalMs: e.NODE_ENV === 'test' ? 0 : e.MAINTENANCE_INTERVAL_MS,
     adminBootstrapEmails: e.ADMIN_BOOTSTRAP_EMAILS.map((email) => email.trim().toLowerCase()),

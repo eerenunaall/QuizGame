@@ -79,6 +79,10 @@ export interface StaticWebOptions {
   /** `ws://host` / `wss://host` of the public web origin (Safari needs it spelled out). */
   webSocketOrigin: string;
   production: boolean;
+  /** URL prefix the app is served under (`/admin`); empty for the root-mounted web app. */
+  mount?: string;
+  /** Names the app in the boot error ("web", "admin"). */
+  label?: string;
 }
 
 /** Serves the built web app: hashed assets forever, the HTML shell never, unknown routes → the SPA. */
@@ -93,14 +97,18 @@ export class StaticWeb {
   async init(): Promise<void> {
     const html = await readFile(join(this.options.root, 'index.html'), 'utf8').catch(() => {
       throw new Error(
-        `SERVE_WEB is on but ${this.options.root}/index.html does not exist (build the web app first)`,
+        `serving the ${this.options.label ?? 'web'} app is on but ${this.options.root}/index.html does not exist (build it first)`,
       );
     });
     this.csp = buildCsp(inlineScriptHashes(html), this.options.webSocketOrigin);
   }
 
   async handle(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
-    const path = request.raw.url?.split('?')[0] ?? '/';
+    const fullPath = request.raw.url?.split('?')[0] ?? '/';
+    const mount = this.options.mount ?? '';
+    if (mount !== '' && fullPath === mount) return reply.redirect(`${mount}/`, 308);
+    if (mount !== '' && !fullPath.startsWith(`${mount}/`)) return apiError(reply, 404, 'NOT_FOUND');
+    const path = mount === '' ? fullPath : fullPath.slice(mount.length);
     if (request.method !== 'GET' && request.method !== 'HEAD')
       return apiError(reply, 404, 'NOT_FOUND');
     if (

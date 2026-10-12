@@ -18,3 +18,4 @@ scripts/assets/.cache/
 test-results/
 playwright-report/
 apps/web/dist/
+apps/admin/dist/

@@ -1,5 +1,10 @@
 import { fileURLToPath } from 'node:url';
-import Fastify, { LogController, type FastifyInstance } from 'fastify';
+import Fastify, {
+  LogController,
+  type FastifyInstance,
+  type FastifyReply,
+  type FastifyRequest,
+} from 'fastify';
 import { createDatabase, createPool, type Database } from '@quizparty/db';
 import type { Pool } from 'pg';
 import type { AppConfig } from './config';
@@ -231,6 +236,22 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     return apiError(reply, 500, 'INTERNAL'); // never leak internals or stack traces
   });
 
+  if (config.serveAdmin) {
+    const root = config.adminDist ?? fileURLToPath(new URL('../../admin/dist', import.meta.url));
+    const publicUrl = new URL(config.publicWebUrl);
+    const admin = new StaticWeb({
+      root,
+      webSocketOrigin: `${publicUrl.protocol === 'https:' ? 'wss' : 'ws'}://${publicUrl.host}`,
+      production: config.env === 'production',
+      mount: '/admin',
+      label: 'admin',
+    });
+    await admin.init();
+    const serveAdmin = (request: FastifyRequest, reply: FastifyReply) =>
+      admin.handle(request, reply);
+    app.get('/admin', { config: { auth: 'public', limit: 'none' } }, serveAdmin);
+    app.get('/admin/*', { config: { auth: 'public', limit: 'none' } }, serveAdmin);
+  }
   if (config.serveWeb) {
     const root = config.webDist ?? fileURLToPath(new URL('../../web/dist', import.meta.url));
     const publicUrl = new URL(config.publicWebUrl);

@@ -1,0 +1,260 @@
+:root {
+  --bg: #f6f7fb;
+  --panel: #fff;
+  --ink: #14172b;
+  --muted: #636a85;
+  --line: #dfe2ee;
+  --accent: #4b3fe0;
+  --accent-ink: #fff;
+  --good: #137a3c;
+  --bad: #b3261e;
+  --warn: #9a5b00;
+  --good-bg: #e3f6ea;
+  --bad-bg: #fde8e6;
+  --warn-bg: #fff1d6;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1120;
+    --panel: #181b30;
+    --ink: #eceefa;
+    --muted: #9aa1c2;
+    --line: #2b2f4d;
+    --accent: #8b82ff;
+    --accent-ink: #0f1120;
+    --good: #6bd391;
+    --bad: #ff8d84;
+    --warn: #f1b45a;
+    --good-bg: #123322;
+    --bad-bg: #3a1714;
+    --warn-bg: #3a2b0c;
+  }
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font:
+    15px/1.5 system-ui,
+    sans-serif;
+}
+a {
+  color: var(--accent);
+}
+h1 {
+  font-size: 1.5rem;
+  margin: 0 0 1rem;
+}
+h2 {
+  font-size: 1.1rem;
+  margin: 1.5rem 0 0.5rem;
+}
+.shell {
+  display: grid;
+  grid-template-columns: 15rem 1fr;
+  min-height: 100vh;
+}
+.side {
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  padding: 1rem;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: auto;
+}
+.side .brand {
+  font-weight: 800;
+  margin-bottom: 1rem;
+}
+.side a {
+  display: block;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  color: var(--ink);
+}
+.side a[aria-current='page'] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.side .who {
+  margin-top: 1.5rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  word-break: break-all;
+}
+main {
+  padding: 1.5rem;
+  max-width: 70rem;
+  width: 100%;
+}
+@media (max-width: 760px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+  .side {
+    position: static;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .side nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+  main {
+    padding: 1rem;
+  }
+}
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+  margin-bottom: 0.75rem;
+}
+.stack {
+  display: grid;
+  gap: 0.75rem;
+}
+label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+input,
+select,
+textarea,
+button {
+  font: inherit;
+}
+input,
+select,
+textarea {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--bg);
+  color: var(--ink);
+  min-width: 0;
+}
+textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+button {
+  padding: 0.45rem 0.9rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+}
+button.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+button.danger {
+  color: var(--bad);
+  border-color: var(--bad);
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th,
+td {
+  text-align: left;
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+th {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+.table-wrap {
+  overflow-x: auto;
+}
+.muted {
+  color: var(--muted);
+}
+.note {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  margin: 0.5rem 0;
+}
+.note.error {
+  background: var(--bad-bg);
+  color: var(--bad);
+}
+.note.ok {
+  background: var(--good-bg);
+  color: var(--good);
+}
+.badge {
+  display: inline-block;
+  padding: 0.05rem 0.5rem;
+  border-radius: 99px;
+  background: var(--line);
+  font-size: 0.78rem;
+  margin-right: 0.25rem;
+}
+.badge.good {
+  background: var(--good-bg);
+  color: var(--good);
+}
+.badge.bad {
+  background: var(--bad-bg);
+  color: var(--bad);
+}
+.badge.warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.pager {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin: 0.75rem 0;
+}
+.option-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+.kv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.15rem 1rem;
+}
+.login {
+  max-width: 24rem;
+  margin: 15vh auto;
+}
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}

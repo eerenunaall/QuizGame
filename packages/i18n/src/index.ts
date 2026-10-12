@@ -1,3 +1,4 @@
+import { adminTr } from './admin.tr';
 import { en } from './en';
 import { tr, type MessageKey } from './tr';
 
@@ -63,4 +64,19 @@ export function upper(locale: Locale, text: string): string {
 
 export function lower(locale: Locale, text: string): string {
   return text.toLocaleLowerCase(locale === 'tr' ? 'tr-TR' : 'en-US');
+}
+
+export { adminTr };
+export type AdminKey = keyof typeof adminTr;
+
+/** Admin console copy (Turkish only); same `{placeholder}` substitution as `translate`. */
+export function adminText(key: AdminKey, params: Params = {}): string {
+  return adminTr[key].replace(/\{(\w+)\}/g, (match, name: string) => {
+    const value = params[name];
+    return value === undefined ? match : String(value);
+  });
+}
+
+export function hasAdminKey(key: string): key is AdminKey {
+  return key in adminTr;
 }
