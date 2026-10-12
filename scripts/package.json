@@ -6,7 +6,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "assets:build": "node assets/build.ts",
-    "question": "tsx question/main.ts"
+    "question": "tsx question/main.ts",
+    "playtest": "tsx dev/playtest.ts"
   },
   "devDependencies": {
     "@types/node": "22.20.5",

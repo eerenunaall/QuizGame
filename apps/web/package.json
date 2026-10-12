@@ -15,6 +15,7 @@
     "@quizparty/controller-client": "workspace:*",
     "@quizparty/i18n": "workspace:*",
     "@quizparty/protocol": "workspace:*",
+    "@quizparty/question-schema": "workspace:*",
     "@quizparty/shared": "workspace:*",
     "@quizparty/ui-tokens": "workspace:*",
     "@quizparty/validation": "workspace:*",

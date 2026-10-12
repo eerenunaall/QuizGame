@@ -86,7 +86,16 @@ export type StickerId =
   | 'cat-tech'
   | 'cat-2000s'
   | 'cat-mixed'
-  | 'cat-custom';
+  | 'cat-custom'
+  | 'cat-geography'
+  | 'cat-nature'
+  | 'cat-art'
+  | 'cat-literature'
+  | 'cat-food'
+  | 'cat-myth'
+  | 'cat-language'
+  | 'cat-business'
+  | 'cat-math';
 
 export type AnimationId =
   | 'party-popper'
@@ -129,7 +138,15 @@ export function avatarIds(): readonly AvatarId[] {
 /** Category id → icon. Unknown categories get the globe so a new bank category never shows a hole. */
 const CATEGORY_ICONS: Record<string, StickerId> = {
   general: 'cat-general',
-  geography: 'cat-general',
+  geography: 'cat-geography',
+  nature: 'cat-nature',
+  'art-culture': 'cat-art',
+  literature: 'cat-literature',
+  'food-drink': 'cat-food',
+  'mythology-folklore': 'cat-myth',
+  'language-words': 'cat-language',
+  'business-economy': 'cat-business',
+  'math-logic': 'cat-math',
   'general-culture': 'cat-general',
   cinema: 'cat-cinema',
   'cinema-tv': 'cat-cinema',

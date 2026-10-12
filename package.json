@@ -26,7 +26,8 @@
     "dev": "pnpm --filter @quizparty/realtime run dev",
     "test:all": "pnpm run test && pnpm run test:web && pnpm run test:integration && pnpm run test:ws && pnpm run test:red-team",
     "assets:build": "pnpm --filter @quizparty/scripts run assets:build",
-    "build:web": "pnpm --filter @quizparty/web run build"
+    "build:web": "pnpm --filter @quizparty/web run build",
+    "playtest": "pnpm --filter @quizparty/scripts run playtest"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

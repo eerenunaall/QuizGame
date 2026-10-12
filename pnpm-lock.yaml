@@ -120,6 +120,9 @@ importers:
       '@quizparty/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
+      '@quizparty/question-schema':
+        specifier: workspace:*
+        version: link:../../packages/question-schema
       '@quizparty/shared':
         specifier: workspace:*
         version: link:../../packages/shared

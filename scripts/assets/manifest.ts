@@ -113,6 +113,16 @@ export const STICKERS: readonly FluentAsset[] = [
   { id: 'cat-2000s', folder: 'Optical disk' },
   { id: 'cat-mixed', folder: 'Game die' },
   { id: 'cat-custom', folder: 'Pencil' },
+  // categories of the launch bank (GDD §9.4) that have no sticker of their own above
+  { id: 'cat-geography', folder: 'World map' },
+  { id: 'cat-nature', folder: 'Deciduous tree' },
+  { id: 'cat-art', folder: 'Artist palette' },
+  { id: 'cat-literature', folder: 'Books' },
+  { id: 'cat-food', folder: 'Pizza' },
+  { id: 'cat-myth', folder: 'Crystal ball' },
+  { id: 'cat-language', folder: 'Speech balloon' },
+  { id: 'cat-business', folder: 'Money bag' },
+  { id: 'cat-math', folder: 'Abacus' },
 ];
 
 /** Frame-animated celebration/reaction art (loaded lazily for big moments only). */
