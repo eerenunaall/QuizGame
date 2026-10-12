@@ -60,3 +60,15 @@ BROWSER_MATRIX, EXTERNAL_CHECKLIST, PRIVACY), `scripts/release-audit`, `FINAL_RE
 ## Standing activities
 After each subsystem: attacker pass (red team). After each push: read CI result and fix before moving
 on. Keep `CLAUDE.md` and `docs/STATUS.md` accurate for the next session.
+
+## Queued: themes and venue profiles (owner request)
+A selectable theme system on top of the design tokens (`packages/ui-tokens`): at least the colourful party
+theme and a dark grey/black-and-gold "venue" theme (first user: Gusto Board Game, a board-game café), with a
+venue profile (logo, palette, wordmark, optional mascot, own question pool via Custom Quiz).
+- Category colours/icons per category, chosen from colour-psychology research (to do first, with sources):
+  attention and conversion in marketing, emotional associations, Turkish cultural readings, the pull of 2D
+  assets. Answer colours stay distinguishable (letter + shape remain), contrast meets WCAG on a TV at distance,
+  colour-blindness simulation, confetti and animation colours follow the theme.
+- Red-team the palette: contrast measurements, colour-blind simulations, glare/TV checks, A/B reading tests.
+- Needs from the owner: venue logo as SVG/PDF, exact colour codes, brand font, kind of audience.
+Scheduled after M5 and before the mobile app polish; the tokens already isolate colours, so this is mostly data.
