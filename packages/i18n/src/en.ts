@@ -181,6 +181,11 @@ export const en: Record<MessageKey, string> = {
   'error.FEATURE_DISABLED': 'This feature is currently off.',
   'error.BANNED': 'Access from this device is blocked.',
   'error.INTERNAL': 'Something went wrong on our side. Please try again.',
+  // Sign-in email (one-time code)
+  'email.otp.subject': 'Your Quiz Party sign-in code: {code}',
+  'email.otp.body':
+    'Your sign-in code: {code}\n\nIt is valid for {minutes} minutes. If you did not ask to sign in you can ignore this email; nobody can get into your account without the code.',
+
   // Reporting a question (reveal screen)
   'report.open': 'Report question',
   'report.title': 'What is wrong with this question?',

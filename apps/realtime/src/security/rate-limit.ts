@@ -89,5 +89,15 @@ export const LIMITS = {
   report: { capacity: 4, refillPerSec: 1 / 30 },
   reportIp: { capacity: 30, refillPerSec: 30 / 3600 },
   flags: { capacity: 60, refillPerSec: 1 },
+  /** Asking for a sign-in code: per address; the per-mailbox cap lives in the one-time-code service. */
+  authRequest: { capacity: 10, refillPerSec: 10 / 3600 },
+  /** Trying a code: per address and, separately, per mailbox. */
+  authVerify: { capacity: 20, refillPerSec: 20 / 900 },
+  authVerifyEmail: { capacity: 10, refillPerSec: 10 / 900 },
+  /** Signed-in callers, per account. */
+  session: { capacity: 120, refillPerSec: 2 },
+  adminRead: { capacity: 240, refillPerSec: 4 },
+  adminWrite: { capacity: 60, refillPerSec: 1 },
+  adminHeavy: { capacity: 6, refillPerSec: 6 / 60 },
   invalidMessage: { capacity: 8, refillPerSec: 0.2 },
 } as const satisfies Record<string, BucketSpec>;

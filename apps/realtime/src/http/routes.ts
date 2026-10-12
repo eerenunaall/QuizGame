@@ -9,6 +9,7 @@ import {
   PROTOCOL_VERSION,
   type ErrorCode,
 } from '@quizparty/protocol';
+import type { Role } from '../auth/accounts';
 import type { AppConfig } from '../config';
 import type { FeatureFlags } from '../flags/service';
 import type { BanService } from '../moderation/bans';
@@ -20,12 +21,14 @@ import { LIMITS, type RateLimiter } from '../security/rate-limit';
 import type { Metrics } from '../util/metrics';
 import type { Pool } from 'pg';
 
-export type RouteAuth = 'public' | 'metrics-token';
+/** `session`: any signed-in account. `admin`: a staff session holding one of the route's `roles`. */
+export type RouteAuth = 'public' | 'metrics-token' | 'session' | 'admin';
 export type RouteLimit = keyof typeof LIMITS | 'none';
 declare module 'fastify' {
   interface FastifyContextConfig {
     auth?: RouteAuth;
     limit?: RouteLimit;
+    roles?: readonly Role[];
   }
 }
 
@@ -34,6 +37,7 @@ export interface RouteSpec {
   url: string;
   auth: RouteAuth;
   limit: RouteLimit;
+  roles: readonly Role[];
 }
 
 export interface RouteDeps {

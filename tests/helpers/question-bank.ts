@@ -21,8 +21,12 @@ export async function importRows(
   return rows.map((row) => byExternalId.get(row.externalId)!);
 }
 
-export const importClean = (db: Database, count: number, prefix = 'h'): Promise<string[]> =>
-  importRows(db, cleanRows(count, prefix));
+export const importClean = (
+  db: Database,
+  count: number,
+  prefix = 'h',
+  skip = 0,
+): Promise<string[]> => importRows(db, cleanRows(count, prefix, skip));
 
 export async function statusCounts(db: Database): Promise<Record<string, number>> {
   const rows = await db
@@ -50,8 +54,13 @@ export const logOf = (db: Database, id: string) =>
     .execute();
 
 /** Clean questions taken all the way to ACTIVE through the real pipeline (scripted auditors, real arbiter). */
-export async function activate(db: Database, count: number, prefix = 'a'): Promise<string[]> {
-  const ids = await importClean(db, count, prefix);
+export async function activate(
+  db: Database,
+  count: number,
+  prefix = 'a',
+  skip = 0,
+): Promise<string[]> {
+  const ids = await importClean(db, count, prefix, skip);
   await runAudit(db, ids, { now: NOW, providers: panel(), autoActivate: true });
   return ids;
 }

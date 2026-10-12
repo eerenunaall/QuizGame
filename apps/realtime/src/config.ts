@@ -48,6 +48,19 @@ const EnvSchema = z.object({
   RATE_LIMIT_SCALE: z.coerce.number().min(0.1).max(1000).default(1),
   /** 0 switches the background maintenance pass off (tests run it by hand). */
   MAINTENANCE_INTERVAL_MS: int(15 * 60_000, 0),
+  /** Addresses that become ADMIN on their first sign-in (how the first administrator exists). */
+  ADMIN_BOOTSTRAP_EMAILS: csv,
+  /** Where sign-in mail goes: any service that takes a JSON POST `{to, subject, text}`. */
+  EMAIL_WEBHOOK_URL: z.string().url().optional(),
+  EMAIL_WEBHOOK_TOKEN: z.string().min(8).optional(),
+  /** Model-backed audit passes (ADR-0014): without a key the passes stay NOT_RUN. Names are never built in. */
+  AUDIT_API_KEY: z.string().min(8).optional(),
+  AUDIT_MODEL_FAST: z.string().min(1).max(100).optional(),
+  AUDIT_MODEL_STRONG: z.string().min(1).max(100).optional(),
+  AUDIT_API_BASE: z.string().url().optional(),
+  EMBEDDINGS_BASE_URL: z.string().url().optional(),
+  EMBEDDINGS_MODEL: z.string().min(1).max(100).optional(),
+  EMBEDDINGS_API_KEY: z.string().min(8).optional(),
 });
 
 export interface AppConfig {
@@ -77,6 +90,10 @@ export interface AppConfig {
   /** Multiplies every rate-limit bucket; must stay 1 in production (tests/dev only). */
   rateLimitScale: number;
   maintenanceIntervalMs: number;
+  adminBootstrapEmails: string[];
+  emailWebhook: { url: string; token: string | null } | null;
+  audit: { apiKey: string; apiBase: string | null; modelFast: string; modelStrong: string } | null;
+  embeddings: { baseUrl: string; model: string; apiKey: string | null } | null;
 }
 
 /**
@@ -118,6 +135,9 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     }
   }
 
+  if (e.AUDIT_API_KEY && !e.AUDIT_MODEL_FAST)
+    throw new Error('Invalid configuration: AUDIT_API_KEY needs AUDIT_MODEL_FAST');
+
   const webOrigin = new URL(e.PUBLIC_WEB_URL).origin;
   const allowedOrigins = Array.from(
     new Set([...e.ALLOWED_ORIGINS, ...(production ? [] : [webOrigin])]),
@@ -149,5 +169,26 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     webDist: e.WEB_DIST ?? null,
     rateLimitScale: e.RATE_LIMIT_SCALE,
     maintenanceIntervalMs: e.NODE_ENV === 'test' ? 0 : e.MAINTENANCE_INTERVAL_MS,
+    adminBootstrapEmails: e.ADMIN_BOOTSTRAP_EMAILS.map((email) => email.trim().toLowerCase()),
+    emailWebhook: e.EMAIL_WEBHOOK_URL
+      ? { url: e.EMAIL_WEBHOOK_URL, token: e.EMAIL_WEBHOOK_TOKEN ?? null }
+      : null,
+    audit:
+      e.AUDIT_API_KEY && e.AUDIT_MODEL_FAST
+        ? {
+            apiKey: e.AUDIT_API_KEY,
+            apiBase: e.AUDIT_API_BASE ?? null,
+            modelFast: e.AUDIT_MODEL_FAST,
+            modelStrong: e.AUDIT_MODEL_STRONG ?? e.AUDIT_MODEL_FAST,
+          }
+        : null,
+    embeddings:
+      e.EMBEDDINGS_BASE_URL && e.EMBEDDINGS_MODEL
+        ? {
+            baseUrl: e.EMBEDDINGS_BASE_URL,
+            model: e.EMBEDDINGS_MODEL,
+            apiKey: e.EMBEDDINGS_API_KEY ?? null,
+          }
+        : null,
   };
 }

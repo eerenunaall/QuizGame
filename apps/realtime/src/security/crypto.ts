@@ -19,3 +19,8 @@ export function pseudonym(secret: string, scope: string, value: string): string 
     .digest('base64url')
     .slice(0, 22);
 }
+
+/** Full keyed digest (hex) for secrets that are compared, never shown: one-time codes, session tokens. */
+export function hmacHex(secret: string, scope: string, value: string): string {
+  return createHmac('sha256', secret).update(scope).update('\0').update(value).digest('hex');
+}

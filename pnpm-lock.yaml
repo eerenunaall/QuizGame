@@ -62,12 +62,18 @@ importers:
       '@quizparty/game-engine':
         specifier: workspace:*
         version: link:../../packages/game-engine
+      '@quizparty/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@quizparty/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
       '@quizparty/question-bank':
         specifier: workspace:*
         version: link:../../packages/question-bank
+      '@quizparty/question-schema':
+        specifier: workspace:*
+        version: link:../../packages/question-schema
       '@quizparty/shared':
         specifier: workspace:*
         version: link:../../packages/shared

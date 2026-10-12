@@ -3,8 +3,17 @@ import Fastify, { LogController, type FastifyInstance } from 'fastify';
 import { createDatabase, createPool, type Database } from '@quizparty/db';
 import type { Pool } from 'pg';
 import type { AppConfig } from './config';
+import { installInputHygiene } from './http/hygiene';
 import { registerRoutes, apiError, type RouteSpec } from './http/routes';
 import { StaticWeb } from './http/static-web';
+import { registerAdminRoutes } from './admin';
+import { buildAuditEngine } from './admin/engine';
+import { AccountSessionService } from './auth/account-sessions';
+import { AccountService } from './auth/accounts';
+import { ConsoleEmailSender, WebhookEmailSender, type EmailSender } from './auth/email';
+import { installAuthGuard } from './auth/guard';
+import { OtpService } from './auth/otp';
+import { registerAuthRoutes } from './auth/routes';
 import { FeatureFlags } from './flags/service';
 import { BanService } from './moderation/bans';
 import { MaintenanceJob } from './moderation/maintenance';
@@ -34,6 +43,8 @@ export interface BuiltApp {
   gateway: Gateway;
   flags: FeatureFlags;
   bans: BanService;
+  accounts: AccountService;
+  accountSessions: AccountSessionService;
   maintenance: MaintenanceJob;
   routes: RouteSpec[];
   /** Graceful shutdown: stop accepting, flush rooms, release leases, close the pool. */
@@ -45,6 +56,8 @@ export interface BuiltApp {
 export interface BuildOptions {
   config: AppConfig;
   clock?: Clock;
+  /** Replaces the configured mail delivery (tests read codes from a mailbox double). */
+  emailSender?: EmailSender;
 }
 
 /** Wires every component. Does not listen; callers use `app.listen` (see main.ts) or `app.inject`. */
@@ -92,11 +105,23 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
         `Route ${String(route.method)} ${route.url} must declare config.auth and config.limit`,
       );
     }
+    const roles = policy.roles ?? [];
+    // Staff routes name the roles that may use them; "any staff" is not a policy, and neither is an
+    // unlimited signed-in route (a stolen session must not be a free pass for scripts).
+    if (policy.auth === 'admin' && roles.length === 0)
+      throw new Error(`Admin route ${String(route.method)} ${route.url} must declare config.roles`);
+    if ((policy.auth === 'admin' || policy.auth === 'session') && policy.limit === 'none')
+      throw new Error(`Route ${String(route.method)} ${route.url} must declare a rate limit`);
+    if (policy.auth !== 'admin' && roles.length > 0)
+      throw new Error(
+        `Route ${String(route.method)} ${route.url} declares roles without auth: admin`,
+      );
     routes.push({
       method: String(route.method),
       url: route.url,
       auth: policy.auth,
       limit: policy.limit,
+      roles,
     });
   });
 
@@ -124,6 +149,19 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   const telemetry = new DbTelemetrySink(db, onError);
   telemetry.start();
   const security = new SecurityLog(db, clock, metrics, onError);
+  const accounts = new AccountService(db, clock, config.adminBootstrapEmails);
+  const accountSessions = new AccountSessionService(db, accounts, config.serverSecret, clock);
+  const mail: EmailSender | null =
+    options.emailSender ??
+    (config.emailWebhook
+      ? new WebhookEmailSender({
+          url: config.emailWebhook.url,
+          ...(config.emailWebhook.token ? { token: config.emailWebhook.token } : {}),
+        })
+      : config.env === 'production'
+        ? null // fail closed: no way to deliver a code means no email sign-in
+        : new ConsoleEmailSender((line) => log.info(line)));
+  const otp = mail ? new OtpService(db, config.serverSecret, clock, mail, onError) : null;
   const reports = new QuestionReports(db, flags, config.serverSecret, telemetry);
   const maintenance = new MaintenanceJob(
     db,
@@ -207,6 +245,28 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     );
   }
 
+  installInputHygiene(app);
+  installAuthGuard(app, { config, sessions: accountSessions, limiter, security });
+  registerAuthRoutes(app, {
+    config,
+    otp,
+    accounts,
+    sessions: accountSessions,
+    flags,
+    bans,
+    limiter,
+    security,
+  });
+  registerAdminRoutes(app, {
+    config,
+    db,
+    clock,
+    manager,
+    accounts,
+    accountSessions,
+    flags,
+    engine: buildAuditEngine(config),
+  });
   registerRoutes(app, {
     config,
     manager,
@@ -249,6 +309,8 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     gateway,
     flags,
     bans,
+    accounts,
+    accountSessions,
     maintenance,
     routes,
     close: () => shutdown(true),

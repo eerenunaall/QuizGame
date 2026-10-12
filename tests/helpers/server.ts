@@ -1,5 +1,6 @@
 import type { AddressInfo } from 'node:net';
 import { buildApp, loadConfig, type AppConfig, type BuiltApp } from '@quizparty/realtime';
+import type { EmailSender } from '../../apps/realtime/src/auth/email';
 import { createTestDatabase, type TestDatabase } from '@quizparty/db/testing';
 import { seedTestBank } from './bank';
 
@@ -51,6 +52,8 @@ export interface StartOptions {
   /** Reuse an existing database (for restart/crash-recovery tests). */
   database?: TestDatabase;
   seed?: boolean;
+  /** Where sign-in mail goes (a mailbox double that tests read like a user would). */
+  emailSender?: EmailSender;
 }
 
 export async function startServer(options: StartOptions = {}): Promise<TestServer> {
@@ -72,7 +75,10 @@ export async function startServer(options: StartOptions = {}): Promise<TestServe
     GAME_CONFIG_OVERRIDE: JSON.stringify(options.gameConfig ?? FAST_GAME_CONFIG),
     ...options.env,
   });
-  const built = await buildApp({ config });
+  const built = await buildApp({
+    config,
+    ...(options.emailSender ? { emailSender: options.emailSender } : {}),
+  });
   await built.app.listen({ port: options.port ?? 0, host: '127.0.0.1' });
   const { port } = built.app.server.address() as AddressInfo;
   let stopped = false;

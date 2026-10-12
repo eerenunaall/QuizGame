@@ -24,10 +24,10 @@ export function seedRows(): Row[] {
 export const FREE_OF_SOURCES = ['general', 'food-drink', 'language-words', 'math-logic'];
 
 /** Eighty clean questions presented as human-written, so tests can import them without the dev-seed switch. */
-export function cleanRows(count = 80, prefix = 'h'): Row[] {
+export function cleanRows(count = 80, prefix = 'h', skip = 0): Row[] {
   return seedRows()
     .filter((row) => FREE_OF_SOURCES.includes(row.category))
-    .slice(0, count)
+    .slice(skip, skip + count)
     .map((row) => ({ ...row, externalId: `${prefix}-${row.externalId}`, authorType: 'HUMAN' }));
 }
 

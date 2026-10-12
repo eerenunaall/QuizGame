@@ -129,6 +129,14 @@ export class RoomManager {
     return { room, displaySessionId, displayToken: display.token };
   }
 
+  /**
+   * Ends a room held by another instance: the row is closed, and the owner notices at its next
+   * heartbeat that it no longer holds an active room (it then drops the connections).
+   */
+  async closeRemote(roomId: string, reason: string): Promise<void> {
+    await this.store.closeRoom(roomId, reason);
+  }
+
   /** Rebuilds claimed rooms from snapshot + input log and applies the time-freeze recovery. */
   async recover(ids: string[]): Promise<number> {
     let recovered = 0;

@@ -196,6 +196,11 @@ export const tr = {
   'error.FEATURE_DISABLED': 'Bu özellik şu an kapalı.',
   'error.BANNED': 'Bu cihazdan erişim engellendi.',
   'error.INTERNAL': 'Sunucuda bir sorun oldu. Tekrar dene.',
+  // Sign-in email (one-time code)
+  'email.otp.subject': 'Quiz Party giriş kodun: {code}',
+  'email.otp.body':
+    'Giriş kodun: {code}\n\nKod {minutes} dakika geçerli. Bu girişi sen istemediysen bu e-postayı yok sayabilirsin; kimse kodun olmadan hesabına giremez.',
+
   // Reporting a question (reveal screen)
   'report.open': 'Soruyu bildir',
   'report.title': 'Bu soruda ne yanlış?',

@@ -765,6 +765,56 @@ export class LiveRoom {
     }
   }
 
+  /** What a moderator may see of a live room: who is in it, never anything they typed beyond a nickname. */
+  adminView(): {
+    id: string;
+    code: string;
+    phase: string;
+    tier: string;
+    language: string;
+    connections: number;
+    createdAt: number;
+    players: {
+      playerId: string;
+      nickname: string;
+      avatarId: string;
+      status: string;
+      connected: boolean;
+      sessionId: string;
+    }[];
+  } {
+    const state = this.state;
+    return {
+      id: this.id,
+      code: this.code,
+      phase: state.phase,
+      tier: state.tier,
+      language: state.contentLanguage,
+      connections: this.connections.size,
+      createdAt: state.createdAt,
+      players: Object.values(state.players).map((player) => ({
+        playerId: player.playerId,
+        nickname: player.nickname,
+        avatarId: player.avatarId,
+        status: player.status,
+        connected: player.connection === 'CONNECTED',
+        sessionId: player.sessionId,
+      })),
+    };
+  }
+
+  /** A moderator ends the room for everyone; the reason on record is ADMIN. */
+  closeByAdmin(): Promise<void> {
+    return this.enqueue(async () => {
+      await this.apply({
+        kind: 'CLOSE',
+        at: this.deps.clock.now(),
+        entropy: this.entropy(),
+        reason: 'ADMIN',
+      });
+    });
+  }
+
   /** Recipient count by role, for diagnostics. */
   describe(): {
     id: string;

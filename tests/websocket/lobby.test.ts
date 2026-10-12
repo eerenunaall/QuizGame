@@ -108,7 +108,7 @@ describe('room creation (HTTP)', () => {
     const policies = server.built.routes;
     expect(policies.length).toBeGreaterThan(4);
     for (const route of policies) {
-      expect(['public', 'metrics-token']).toContain(route.auth);
+      expect(['public', 'metrics-token', 'session', 'admin']).toContain(route.auth);
       expect(route.limit).toBeTruthy();
     }
   });
