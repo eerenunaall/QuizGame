@@ -24,6 +24,7 @@ import { TvQuestion, crowdSummary } from './screens/TvQuestion';
 import { TvResults } from './screens/TvResults';
 import { TvScoreUpdate } from './screens/TvScore';
 import { TvSettings } from './screens/TvSettings';
+import type { ThemeId } from '@quizparty/ui-tokens';
 import { TvTitle } from './screens/TvTitle';
 import { TvUnlock } from './screens/TvUnlock';
 import styles from './TvApp.module.css';
@@ -62,9 +63,13 @@ function categorySummary(room: RoomView, catalog: CategoryCatalog | null, mixed:
 export function TvApp({
   locale,
   onLocale,
+  theme,
+  onTheme,
 }: {
   locale: 'tr' | 'en';
   onLocale: (locale: 'tr' | 'en') => void;
+  theme?: ThemeId;
+  onTheme?: (theme: ThemeId) => void;
 }) {
   const { storage } = useRuntime();
   const client = useClient();
@@ -269,6 +274,7 @@ export function TvApp({
           locale={locale}
           onVolume={changePrefs}
           onLocale={changeLocale}
+          {...(theme && onTheme ? { theme, onTheme } : {})}
         />
       );
     }

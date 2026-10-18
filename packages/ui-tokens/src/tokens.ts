@@ -97,6 +97,9 @@ export function shades(base: string): { hi: string; lo: string; edge: string } {
   };
 }
 
+/** Every colour token a theme must define. */
+export type Palette = { [K in keyof typeof colors]: string };
+
 const SHADED = [
   'accentA',
   'accentB',
@@ -113,35 +116,59 @@ const glossy = (base: string): string => {
   return `linear-gradient(180deg, ${shade.hi} 0%, ${base} 52%, ${shade.lo} 100%)`;
 };
 
-export const gradients = {
-  stage: `radial-gradient(1400px 800px at 50% -15%, ${colors.surfaceRaised} 0%, ${colors.background} 58%, ${colors.backgroundDeep} 100%)`,
-  panel: `linear-gradient(180deg, ${colors.surfaceRaised} 0%, ${colors.surface} 100%)`,
-  gold: glossy(colors.accentA),
-  violet: glossy(colors.accentB),
-  success: glossy(colors.success),
-  danger: glossy(colors.danger),
-  answerA: glossy(colors.answerA),
-  answerB: glossy(colors.answerB),
-  answerC: glossy(colors.answerC),
-  answerD: glossy(colors.answerD),
-} as const;
+/** Gradient tokens for a palette (the base palette and every theme build theirs the same way). */
+export function gradientsFor(p: Palette): Record<GradientName, string> {
+  return {
+    stage: `radial-gradient(1400px 800px at 50% -15%, ${p.surfaceRaised} 0%, ${p.background} 58%, ${p.backgroundDeep} 100%)`,
+    panel: `linear-gradient(180deg, ${p.surfaceRaised} 0%, ${p.surface} 100%)`,
+    gold: glossy(p.accentA),
+    violet: glossy(p.accentB),
+    success: glossy(p.success),
+    danger: glossy(p.danger),
+    answerA: glossy(p.answerA),
+    answerB: glossy(p.answerB),
+    answerC: glossy(p.answerC),
+    answerD: glossy(p.answerD),
+  };
+}
+
+export type GradientName =
+  | 'stage'
+  | 'panel'
+  | 'gold'
+  | 'violet'
+  | 'success'
+  | 'danger'
+  | 'answerA'
+  | 'answerB'
+  | 'answerC'
+  | 'answerD';
+
+export const gradients = gradientsFor(colors);
 
 const kebab = (name: string): string =>
   name.replace(/[A-Z0-9]/g, (match) => `-${match.toLowerCase()}`);
 
-/** `:root { --qp-… }` declarations for every token. */
-export function cssVariables(): string {
+/** Declarations for the colour-dependent tokens of one palette (colours, shades, gradients). */
+export function paletteDeclarations(p: Palette, extra: Record<string, string> = {}): string[] {
   const lines: string[] = [];
-  for (const [name, value] of Object.entries(colors))
+  for (const [name, value] of Object.entries(p))
     lines.push(`  --qp-color-${kebab(name)}: ${value};`);
   for (const name of SHADED) {
-    const shade = shades(colors[name]);
+    const shade = shades(p[name]);
     lines.push(`  --qp-color-${kebab(name)}-hi: ${shade.hi};`);
     lines.push(`  --qp-color-${kebab(name)}-lo: ${shade.lo};`);
     lines.push(`  --qp-color-${kebab(name)}-edge: ${shade.edge};`);
   }
-  for (const [name, value] of Object.entries(gradients))
+  for (const [name, value] of Object.entries(gradientsFor(p)))
     lines.push(`  --qp-gradient-${kebab(name)}: ${value};`);
+  for (const [name, value] of Object.entries(extra)) lines.push(`  --qp-${name}: ${value};`);
+  return lines;
+}
+
+/** `:root { --qp-… }` declarations for every token. */
+export function cssVariables(): string {
+  const lines: string[] = paletteDeclarations(colors);
   for (const [name, value] of Object.entries(radius))
     lines.push(`  --qp-radius-${name}: ${value}px;`);
   for (const [name, value] of Object.entries(spacing))

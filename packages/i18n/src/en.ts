@@ -11,6 +11,11 @@ export const en: Record<MessageKey, string> = {
   'common.close': 'Close',
   'common.sound.on': 'Sound on',
   'common.sound.off': 'Sound off',
+  'theme.label': 'Theme',
+  'theme.party': 'Party',
+  'theme.venueGold': 'Venue gold',
+  'theme.highContrast': 'High contrast',
+  'theme.logo.alt': 'Venue logo',
   'common.language': 'Language',
 
   'landing.startOnTv': 'Start a game on the TV',

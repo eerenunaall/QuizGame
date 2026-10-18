@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import {
   answerColors,
   colors,
-  cssVariables,
   fonts,
   gradients,
   mix,
@@ -12,6 +11,7 @@ import {
   playerColors,
   shades,
 } from './tokens';
+import { fullCss } from './themes';
 
 /** WCAG relative luminance contrast ratio. */
 function contrast(foreground: string, background: string): number {
@@ -32,7 +32,7 @@ function contrast(foreground: string, background: string): number {
 describe('design tokens', () => {
   it('the committed tokens.css is generated from tokens.ts (no drift)', () => {
     const css = readFileSync(fileURLToPath(new URL('./tokens.css', import.meta.url)), 'utf8');
-    expect(css).toBe(cssVariables());
+    expect(css).toBe(fullCss());
   });
 
   it('keeps text readable on the stage background (contrast ≥ 4.5:1, large text ≥ 3:1)', () => {

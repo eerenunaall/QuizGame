@@ -15,6 +15,11 @@ export const tr = {
   'common.close': 'Kapat',
   'common.sound.on': 'Ses açık',
   'common.sound.off': 'Ses kapalı',
+  'theme.label': 'Tema',
+  'theme.party': 'Parti',
+  'theme.venueGold': 'Mekan altın',
+  'theme.highContrast': 'Yüksek kontrast',
+  'theme.logo.alt': 'Mekan logosu',
   'common.language': 'Dil',
 
   // Landing

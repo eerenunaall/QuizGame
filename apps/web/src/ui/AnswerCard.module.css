@@ -6,7 +6,7 @@
   min-width: 0;
   overflow: hidden;
   text-align: left;
-  color: #fff;
+  color: var(--qp-color-on-answer, #fff);
   border-radius: 28px;
   transition:
     transform 140ms ease,

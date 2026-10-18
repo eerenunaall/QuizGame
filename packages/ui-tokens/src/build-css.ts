@@ -1,5 +1,5 @@
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { cssVariables } from './tokens';
+import { fullCss } from './themes';
 
-writeFileSync(fileURLToPath(new URL('./tokens.css', import.meta.url)), cssVariables());
+writeFileSync(fileURLToPath(new URL('./tokens.css', import.meta.url)), fullCss());

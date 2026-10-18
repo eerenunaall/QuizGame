@@ -1,4 +1,5 @@
 import type { KeyValueStorage } from '@quizparty/controller-client';
+import { isThemeId, type ThemeId } from '@quizparty/ui-tokens';
 
 /**
  * localStorage that never throws: private windows, blocked site data and storage-less embedded
@@ -51,6 +52,8 @@ export interface Preferences {
   muted: boolean;
   /** Overrides the browser language. */
   locale: 'tr' | 'en' | null;
+  /** Chosen theme; absent = use the venue default (VITE_DEFAULT_THEME) or `party`. */
+  theme?: ThemeId;
 }
 
 const PREFS_KEY = 'qp.prefs';
@@ -68,6 +71,7 @@ export function loadPreferences(storage: KeyValueStorage): Preferences {
           : DEFAULT_PREFS.volume,
       muted: parsed.muted === true,
       locale: parsed.locale === 'tr' || parsed.locale === 'en' ? parsed.locale : null,
+      ...(isThemeId(parsed.theme) ? { theme: parsed.theme } : {}),
     };
   } catch {
     return DEFAULT_PREFS;

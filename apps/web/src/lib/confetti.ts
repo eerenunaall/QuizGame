@@ -19,12 +19,25 @@ export function unmountConfetti(): void {
   instance = null;
 }
 
-const COLORS = ['#ffc928', '#8f3dff', '#f23e5a', '#2f8bff', '#25c85a', '#2de2e6', '#ffffff'];
+let colors: readonly string[] = [
+  '#ffc928',
+  '#8f3dff',
+  '#f23e5a',
+  '#2f8bff',
+  '#25c85a',
+  '#2de2e6',
+  '#ffffff',
+];
+
+/** Confetti follows the active theme (lib/theme.ts). */
+export function setConfettiColors(next: readonly string[]): void {
+  colors = next;
+}
 
 async function fire(options: Record<string, unknown>): Promise<void> {
   if (!instance || isLowMotion()) return;
   const confetti = await instance;
-  void confetti({ colors: COLORS, disableForReducedMotion: true, ...options });
+  void confetti({ colors: [...colors], disableForReducedMotion: true, ...options });
 }
 
 /** A single burst from a point (0–1 coordinates). */

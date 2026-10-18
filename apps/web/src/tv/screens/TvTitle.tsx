@@ -1,3 +1,4 @@
+import { THEME_IDS, type ThemeId } from '@quizparty/ui-tokens';
 import { useEffect, useRef, useState } from 'react';
 import { Backdrop } from '../../ui/Backdrop';
 import { Banner } from '../../ui/Banner';
@@ -7,6 +8,7 @@ import { Sticker } from '../../ui/Sticker';
 import { LetterParade } from '../../ui/LetterParade';
 import { Mascot } from '../../ui/Mascot';
 import { useI18n } from '../../lib/i18n';
+import type { MessageKey } from '@quizparty/i18n';
 import styles from './TvTitle.module.css';
 
 interface Props {
@@ -18,7 +20,15 @@ interface Props {
   locale: 'tr' | 'en';
   onVolume: (volume: number, muted: boolean) => void;
   onLocale: (locale: 'tr' | 'en') => void;
+  theme?: ThemeId;
+  onTheme?: (theme: ThemeId) => void;
 }
+
+const THEME_NAME_KEY = {
+  party: 'theme.party',
+  'venue-gold': 'theme.venueGold',
+  'high-contrast': 'theme.highContrast',
+} as const satisfies Record<ThemeId, MessageKey>;
 
 type Dialog = null | 'howto' | 'settings';
 
@@ -37,6 +47,8 @@ export function TvTitle({
   volume,
   muted,
   locale,
+  theme,
+  onTheme,
   onVolume,
   onLocale,
 }: Props) {
@@ -137,6 +149,18 @@ export function TvTitle({
                     </Pill>
                   </div>
                 </div>
+                {theme && onTheme ? (
+                  <div className={styles.row}>
+                    <span className={styles.rowLabel}>{t('theme.label')}</span>
+                    <div className={styles.pills}>
+                      {THEME_IDS.map((id) => (
+                        <Pill key={id} selected={theme === id} onClick={() => onTheme(id)}>
+                          {t(THEME_NAME_KEY[id])}
+                        </Pill>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </>
             )}
             <Button size="md" onClick={() => setDialog(null)} className={styles.close} autoFocus>

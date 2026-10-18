@@ -4,6 +4,8 @@ import type { Locale } from '@quizparty/i18n';
 import { ClientProvider } from './lib/client-context';
 import { I18nProvider, pickLocale } from './lib/i18n';
 import { Redirect, Router, type RouteDef } from './lib/router';
+import type { ThemeId } from '@quizparty/ui-tokens';
+import { applyTheme, saveTheme } from './lib/theme';
 import { createStorage, loadPreferences, savePreferences } from './lib/storage';
 import { CodeEntry } from './pages/CodeEntry';
 import { Home } from './pages/Home';
@@ -44,13 +46,25 @@ export function App() {
     [storage],
   );
 
+  const [theme, setTheme] = useState<ThemeId>(
+    () => (document.documentElement.dataset.theme as ThemeId | undefined) ?? 'party',
+  );
+  const changeTheme = useCallback(
+    (next: ThemeId): void => {
+      setTheme(next);
+      applyTheme(document, next);
+      saveTheme(storage, next);
+    },
+    [storage],
+  );
+
   const routes: RouteDef[] = [
     { path: '/', render: () => <Home locale={locale} onLocale={changeLocale} /> },
     {
       path: '/tv',
       render: () => (
         <ClientProvider kind="DISPLAY">
-          <TvApp locale={locale} onLocale={changeLocale} />
+          <TvApp locale={locale} onLocale={changeLocale} theme={theme} onTheme={changeTheme} />
         </ClientProvider>
       ),
     },
