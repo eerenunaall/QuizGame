@@ -34,6 +34,25 @@ jobs:
       - name: Admin console production build
         run: pnpm run build:admin
 
+  mobile:
+    name: Mobile app (Jest, lint, typecheck, Expo export smoke)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run test:mobile
+      # Bundles the JS for Android with Metro; proves the app compiles, not that it runs on a device.
+      - name: Expo export smoke (Android)
+        run: pnpm --filter @quizparty/mobile run export:android
+        env:
+          CI: '1'
+          EXPO_NO_TELEMETRY: '1'
+
   integration:
     name: Integration, WebSocket and red-team tests (PostgreSQL)
     runs-on: ubuntu-latest

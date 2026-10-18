@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { createAppleChain, APPLE_PRODUCT, BUNDLE_ID, type AppleChain } from './apple-store';
 import { GOOGLE_PACKAGE, GOOGLE_PRODUCT, startGooglePlay, type GooglePlay } from './google-store';
+import type { EmailSender } from '../../apps/realtime/src/auth/email';
 import { startServer, type TestServer } from './server';
 
 export interface Shop {
@@ -14,10 +15,14 @@ export interface Shop {
 export const WEBHOOK_SECRET = 'google-webhook-secret-0123456789abcdef';
 
 /** A real server with both stores configured and pointed at the local doubles. */
-export async function startShop(env: Record<string, string> = {}): Promise<Shop> {
+export async function startShop(
+  env: Record<string, string> = {},
+  options: { emailSender?: EmailSender } = {},
+): Promise<Shop> {
   const apple = createAppleChain('Shop');
   const google = await startGooglePlay();
   const server = await startServer({
+    ...(options.emailSender ? { emailSender: options.emailSender } : {}),
     env: {
       PAYMENTS_ENABLED: '1',
       PAYMENTS_ACCEPT_SANDBOX: '1',

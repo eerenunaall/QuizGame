@@ -10,7 +10,7 @@ checklist in `docs/EXTERNAL_CHECKLIST.md`). Status is only changed together with
 | B | QR appears | M1 | e2e `game.spec.ts` (join QR decodes to the room's join URL) | yes | PASS |
 | C | Phone can join | M1 | e2e `game.spec.ts` (three separate browser contexts join) + ws `lobby.test.ts` | yes | PASS |
 | D | Different networks work | M7 | red-team ATTACK 12 (phones on different source addresses join and roam mid-game); real WAN external | partly | PARTIAL |
-| E | Native app deep link works | M6 | association-file + link-parser tests; device test external | partly | TODO |
+| E | Native app deep link works | M6 | Jest `links.test.ts` (custom scheme, `/j/CODE`, `/join/CODE`, `/unlock/ID`, 40+ malicious inputs), `association.test.ts` (AASA / assetlinks shape + refusal of placeholders), `config.test.ts` (`app.config.ts` intent filters / associated domains), ws `mobile-phone.test.ts` (link → join → game with the app runtime), ws `static.test.ts` (`/.well-known` files served as JSON, nothing else). **External:** real domain + signed builds + Apple/Google association fetch, opening from Camera/Safari/Messages | partly | PARTIAL |
 | F | Browser fallback works | M1 | e2e `game.spec.ts` (phones are plain browsers, no app) | yes | PASS |
 | G | Room lobby is realtime | M1 | ws `lobby.test.ts` › players join in realtime; e2e (TV roster follows joins) | yes | PASS |
 | H | Host starts game | M1 | engine `reducer.lobby.test.ts` + e2e (leader starts from the phone) | yes | PASS |

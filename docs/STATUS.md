@@ -14,7 +14,7 @@ Branch: `claude/cloud-session-infrastructure-ln57mp` · Last updated: 2026-10-18
 | M3 Content factory & admin | DONE (CI of the latest push: see "Next actions") | question schema + fingerprints + duplicate detection, importer/audit/export CLIs, 170+ TR dev seed, migration 0004, REPORT_QUESTION, bans, flags, maintenance job, email-OTP sign-in + staff roles, admin API (RBAC, CSRF, audit log), admin console SPA under `/admin`, acceptance Y/Z proven, AC partial (Blind Quiz reports are M5), red team ATTACK 15–24 |
 | M4 Accounts & payments | DONE (store sandbox purchases are external) | purchase verification (Apple StoreKit 2 via Apple's verifier, Google Play via the Developer API), entitlements bound to one account, restore, refund notifications, TV unlock link (QR) with live tier change, `/unlock` and `/purchase` pages, account export/deletion; acceptance U partial, V–X pass; red team ATTACK 9 and 25 |
 | M5 Blind Quiz & friends | WIP | M5-a..c Blind/Custom quiz done; M5-d Who Said It done (`SUBMIT_STATEMENT`, statement-per-question deck, author exempt, scrubbed at close, flag `mode.who_said_it`); M5-e AI decoy adapter (flag `ai.decoys`, off; HTTP provider with deadline + circuit breaker, strict output, fallback to the target's own alternatives); M5-f canary + ATTACK 10, which found and closed the creator-held-invite hole (claim cookie, migration 0007); Blind-Quiz reports remain |
-| M6 Mobile | TODO | |
+| M6 Mobile | DONE in the sandbox (device/store parts are external) | `apps/mobile` Expo SDK 58 + expo-router, TypeScript strict: Home, Join (code / nickname / avatar, deep links `quiznight://join/CODE`, `https://host/j/CODE`), Lobby, Prep (Risk stake, Double Down, Sabotage), Question (50/50, SHUFFLE/FOG/JAM), Reveal/Score/Results, Reconnect banner, Purchase (`PurchaseProvider` over `expo-iap`, account-bound), Unlock link, Profile (email OTP as MOBILE session, export, delete). Shared `controller-client`/`i18n`/`ui-tokens`; Jest 132 tests; ws test drives the app runtime against the real server. See `docs/MOBILE.md` |
 | M7 Polish, hardening, release | TODO | |
 
 ## Test inventory (all run locally and in CI)
@@ -23,8 +23,9 @@ Branch: `claude/cloud-session-infrastructure-ln57mp` · Last updated: 2026-10-18
 | unit (packages, realtime, scripts) | `pnpm test` | 684 |
 | web (jsdom: web app screens, unlock page, admin console client, sign-in, question editor) | `pnpm test:web` | 110 |
 | integration (PostgreSQL) | `pnpm test:integration` | 261 |
-| websocket (real server, real sockets, static serving of both apps, TV unlock) | `pnpm test:ws` | 85 |
+| websocket (real server, real sockets, static serving of both apps, TV unlock, the phone app runtime) | `pnpm test:ws` | 95 |
 | red team (ATTACK 1–26 map in `docs/RED_TEAM.md`) | `pnpm test:red-team` | 80 |
+| mobile (Jest + Testing Library: logic, state→UI mapping, purchase flows) | `pnpm test:mobile` | 132 |
 | browser E2E (real Chromium: TV + phones, reloads, drops, QR, remote keys, every power, report → console loop, TV unlock by phone) | `pnpm test:e2e` | 17 |
 
 The local gate is `format → lint → typecheck → unit → web → integration → websocket → red-team`,
@@ -33,7 +34,7 @@ then `pnpm run build:web && pnpm run build:admin && pnpm test:e2e`.
 ## Next actions
 1. Read the CI result of the latest push (`mcp__github__actions_list`) and fix anything red.
 2. M5: Blind-Quiz reports (acceptance AC rest); a "suggest alternatives" button and a "link already used" message on the respond page (server route and 403 exist; web not wired); browser E2E for the respond page.
-3. M6: Expo app (controller-client is already shared), deep links, native purchase flows against the verified server API.
+3. M6 follow-ups: everything in `docs/MOBILE.md` "Owner checklist" (accounts, ids, keys, EAS builds, device runs); then phone parity (categories, kick, report).
 4. M7: polish, perf, release audit.
 
 ## Known issues / decisions pending
