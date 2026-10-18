@@ -47,6 +47,13 @@ const answerOf = (code: string) => {
 const option = (page: Page, text: string) =>
   page.locator('button[data-answer-index]').filter({ hasText: text });
 
+/** The sheet's single big button, then the commit that follows its 2 s undo window. */
+async function sendSabotage(phone: Screen): Promise<void> {
+  await phone.page.getByTestId('sabotage-confirm').click();
+  await expect(phone.page.getByTestId('sabotage-going')).toBeVisible();
+  await expect(phone.page.getByTestId('ctl-prep-committed')).toBeVisible({ timeout: 8000 });
+}
+
 async function lobby(browser: Parameters<typeof tvPage>[0], names = ['Ece', 'Ahmet', 'Merve']) {
   const tv = await tvPage(browser, env.url);
   const code = await openLobby(tv);
@@ -171,7 +178,11 @@ test('a sabotage the shield blocks, then one that lands on the target and nobody
   // Rounds 1 and 2 are plain: sabotage opens at round 3.
   for (let round = 0; round < 2; round++) {
     await expect(ece.page.getByTestId('ctl-prep')).toBeVisible();
-    await expect(ece.page.getByTestId('prep-sabotage')).toHaveCount(0);
+    // Sabotage opens at round 3: until then the chip is there, grey, and says so in one line.
+    await expect(ece.page.getByTestId('prep-sabotage')).toBeDisabled();
+    await expect(ece.page.getByTestId('prep-sabotage')).toContainText(
+      tr['ctl.prep.sabotage.closed'],
+    );
     for (const phone of phones) await ready(phone);
     await expect(ece.page.getByTestId('ctl-answering')).toBeVisible();
     const pick = answerOf(code);
@@ -186,8 +197,11 @@ test('a sabotage the shield blocks, then one that lands on the target and nobody
   await merve.page.getByTestId('sabotage-target-Ece').click();
   await shot(merve.page, '38-phone-sabotage-what');
   await merve.page.getByTestId('sabotage-effect-SHUFFLE').click();
-  await expect(merve.page.getByTestId('prep-sabotage')).toContainText('Karıştır → Ece');
-  await merve.page.getByTestId('prep-ready').click();
+  await shot(merve.page, '38b-phone-sabotage-confirm');
+  await merve.page.getByTestId('sabotage-confirm').click();
+  await expect(merve.page.getByTestId('sabotage-going')).toContainText('Karıştır → Ece');
+  await shot(merve.page, '38c-phone-sabotage-undo');
+  await expect(merve.page.getByTestId('ctl-prep-committed')).toBeVisible({ timeout: 8000 });
   await ready(ece);
   await ready(ahmet);
   await expect(ece.page.getByTestId('hit-notices')).toContainText('Kalkanın engelledi');
@@ -206,7 +220,7 @@ test('a sabotage the shield blocks, then one that lands on the target and nobody
   await ahmet.page.getByTestId('prep-sabotage').click();
   await ahmet.page.getByTestId('sabotage-target-Ece').click();
   await ahmet.page.getByTestId('sabotage-effect-JAM').click();
-  await ahmet.page.getByTestId('prep-ready').click();
+  await sendSabotage(ahmet);
   await ready(ece);
   await ready(merve);
   await expect(ece.page.getByTestId('ctl-answering')).toBeVisible();
@@ -255,7 +269,7 @@ test('a shuffle and a fog change what the target sees, and only the target', asy
   await merve.page.getByTestId('prep-sabotage').click();
   await merve.page.getByTestId('sabotage-target-Ece').click();
   await merve.page.getByTestId('sabotage-effect-SHUFFLE').click();
-  await merve.page.getByTestId('prep-ready').click();
+  await sendSabotage(merve);
   await ready(ece);
   await ready(phones[1]!);
   await expect(ece.page.getByTestId('ctl-answering')).toBeVisible();
@@ -274,7 +288,7 @@ test('a shuffle and a fog change what the target sees, and only the target', asy
   await merve.page.getByTestId('prep-sabotage').click();
   await merve.page.getByTestId('sabotage-target-Ece').click();
   await merve.page.getByTestId('sabotage-effect-FOG').click();
-  await merve.page.getByTestId('prep-ready').click();
+  await sendSabotage(merve);
   await ready(ece);
   await ready(phones[1]!);
   await expect(ece.page.getByTestId('ctl-answering')).toBeVisible();
