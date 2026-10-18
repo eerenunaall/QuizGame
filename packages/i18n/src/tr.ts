@@ -171,6 +171,7 @@ export const tr = {
   'ctl.revoked': 'Oturumun sonlandırıldı. Tekrar katılabilirsin.',
   'ctl.superseded': 'Başka bir cihazda oynuyorsun.',
   'ctl.closed': 'Oda kapandı.',
+  'ctl.closed.returning': 'Katılma ekranına dönülüyor…',
   'ctl.rejoin': 'Yeniden katıl',
 
   // Errors (by protocol code)

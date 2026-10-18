@@ -210,9 +210,20 @@ export function PlayApp({ code }: { code: string }) {
   }
 
   if (state.closedReason && state.closedReason !== 'LEFT') {
+    const roomClosed = state.closedReason === 'ROOM_CLOSED';
+    const why = room?.phaseData.phase === 'ROOM_CLOSED' ? room.phaseData.reason : null;
     return (
       <PhoneFrame room={room} reconnecting={false} tvLost={false} restored={false}>
-        <ClosedNotice reason={state.closedReason} onRejoin={() => void client.forget()} />
+        <ClosedNotice
+          reason={state.closedReason}
+          why={why}
+          // A closed room cannot be joined again: go to the code entry, not back to its join form.
+          onRejoin={() =>
+            void client.forget().then(() => {
+              if (roomClosed) navigate('/join', { replace: true });
+            })
+          }
+        />
       </PhoneFrame>
     );
   }
@@ -253,20 +264,44 @@ export function PlayApp({ code }: { code: string }) {
   );
 }
 
-function ClosedNotice({ reason, onRejoin }: { reason: string; onRejoin: () => void }) {
-  const { t } = useI18n();
+/** How long a phone shows "the room is closed" before it goes back to the join screen on its own. */
+const CLOSED_RETURN_MS = 6_000;
+
+function ClosedNotice({
+  reason,
+  why,
+  onRejoin,
+}: {
+  reason: string;
+  /** The server's close reason (HOST_ENDED, ABANDONED …) when the closing room view was kept. */
+  why: string | null;
+  onRejoin: () => void;
+}) {
+  const { t, td } = useI18n();
+  const roomClosed = reason === 'ROOM_CLOSED';
   const message =
     reason === 'KICKED'
       ? t('ctl.kicked')
       : reason === 'SUPERSEDED'
         ? t('ctl.superseded')
-        : reason === 'ROOM_CLOSED'
-          ? t('ctl.closed')
+        : roomClosed
+          ? why
+            ? td(`closed.${why}`)
+            : t('ctl.closed')
           : t('ctl.revoked');
+  // The callback changes every render; the countdown must not restart with it.
+  const rejoin = useRef(onRejoin);
+  rejoin.current = onRejoin;
+  useEffect(() => {
+    if (!roomClosed) return undefined;
+    const timer = window.setTimeout(() => rejoin.current(), CLOSED_RETURN_MS);
+    return () => window.clearTimeout(timer);
+  }, [roomClosed]);
   return (
     <div className={styles.center} data-testid="ctl-ended">
       <Sticker id="hourglass" size={120} />
       <div className={styles.message}>{message}</div>
+      {roomClosed ? <div className={styles.message}>{t('ctl.closed.returning')}</div> : null}
       <Button size="lg" onClick={onRejoin} className={styles.action}>
         {t('ctl.rejoin')}
       </Button>

@@ -158,6 +158,7 @@ export const en: Record<MessageKey, string> = {
   'ctl.revoked': 'Your session was ended. You can join again.',
   'ctl.superseded': 'You are playing on another device.',
   'ctl.closed': 'The room is closed.',
+  'ctl.closed.returning': 'Going back to the join screen…',
   'ctl.rejoin': 'Join again',
 
   'error.INVALID_MESSAGE': 'Something went wrong. Please try again.',
