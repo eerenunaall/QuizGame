@@ -41,7 +41,7 @@ export function TvPowerResolution({ room, data }: { room: RoomView; data: PowerD
   useEffect(() => {
     const timers = data.items.map((item, index) =>
       window.setTimeout(
-        () => sfx.play(item.kind === 'SABOTAGE' ? (item.blocked ? 'shield' : 'hit') : 'power'),
+        () => sfx.play(item.kind === 'SABOTAGE' ? (item.blocked ? 'shield' : 'sabotage') : 'power'),
         itemDelay(index),
       ),
     );

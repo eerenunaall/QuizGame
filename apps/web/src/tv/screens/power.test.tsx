@@ -112,7 +112,7 @@ describe('TvPowerResolution', () => {
       'power',
       'power',
       'power',
-      'hit',
+      'sabotage',
       'shield',
     ]);
   });

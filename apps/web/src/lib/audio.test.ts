@@ -21,6 +21,7 @@ const SOUNDS: SoundName[] = [
   'power',
   'shield',
   'hit',
+  'sabotage',
 ];
 
 function fakeContext(state = 'running') {

@@ -22,7 +22,8 @@ export type SoundName =
   | 'fanfare'
   | 'power'
   | 'shield'
-  | 'hit';
+  | 'hit'
+  | 'sabotage';
 
 interface AudioContextLike {
   currentTime: number;
@@ -61,6 +62,8 @@ const NOTE = {
   A5: 880,
   C6: 1046.5,
   E6: 1318.5,
+  G6: 1568,
+  D4: 293.66,
 } as const;
 
 export class Sfx {
@@ -195,9 +198,9 @@ export class Sfx {
       this.tone(c, out, at + 0.09, { from: NOTE.G5, duration: 0.2, type: 'triangle' });
     },
     tick: (c, out, at) =>
-      this.tone(c, out, at, { from: 1400, duration: 0.04, type: 'square', gain: 0.07 }),
+      this.tone(c, out, at, { from: NOTE.E6, duration: 0.04, type: 'triangle', gain: 0.07 }),
     tickUrgent: (c, out, at) =>
-      this.tone(c, out, at, { from: 1900, duration: 0.07, type: 'square', gain: 0.12 }),
+      this.tone(c, out, at, { from: NOTE.G6, duration: 0.07, type: 'triangle', gain: 0.12 }),
     countdown: (c, out, at) =>
       this.tone(c, out, at, { from: NOTE.A5, duration: 0.18, type: 'triangle', gain: 0.3 }),
     go: (c, out, at) => {
@@ -212,7 +215,7 @@ export class Sfx {
     },
     lock: (c, out, at) => {
       this.tone(c, out, at, { from: 170, to: 90, duration: 0.22, type: 'sine', gain: 0.4 });
-      this.tone(c, out, at, { from: 900, to: 400, duration: 0.05, type: 'square', gain: 0.1 });
+      this.tone(c, out, at, { from: 900, to: 400, duration: 0.05, type: 'triangle', gain: 0.1 });
     },
     reveal: (c, out, at) => {
       this.noise(c, out, at, { duration: 0.5, from: 500, to: 4000, gain: 0.14 });
@@ -229,21 +232,27 @@ export class Sfx {
       );
     },
     wrong: (c, out, at) => {
-      this.tone(c, out, at, { from: 320, to: 110, duration: 0.4, type: 'sawtooth', gain: 0.2 });
-      this.tone(c, out, at + 0.05, {
-        from: 300,
-        to: 100,
+      this.tone(c, out, at, {
+        from: NOTE.E4,
+        to: NOTE.C4 / 2,
         duration: 0.4,
-        type: 'square',
+        type: 'triangle',
+        gain: 0.2,
+      });
+      this.tone(c, out, at + 0.05, {
+        from: NOTE.D4,
+        to: NOTE.C4 / 2,
+        duration: 0.4,
+        type: 'triangle',
         gain: 0.1,
       });
     },
     score: (c, out, at) => {
       for (let i = 0; i < 4; i++)
         this.tone(c, out, at + i * 0.06, {
-          from: 1200 + i * 220,
+          from: [NOTE.C6, NOTE.E6, NOTE.G6, NOTE.C6 * 2][i] ?? NOTE.C6,
           duration: 0.09,
-          type: 'square',
+          type: 'triangle',
           gain: 0.08,
         });
     },
@@ -254,7 +263,7 @@ export class Sfx {
     final: (c, out, at) => {
       this.tone(c, out, at, { from: 90, to: 45, duration: 0.8, type: 'sine', gain: 0.5 });
       this.noise(c, out, at, { duration: 1.1, from: 200, to: 5000, gain: 0.18 });
-      this.tone(c, out, at + 0.9, { from: NOTE.C5, duration: 0.5, type: 'sawtooth', gain: 0.16 });
+      this.tone(c, out, at + 0.9, { from: NOTE.C5, duration: 0.5, type: 'triangle', gain: 0.16 });
     },
     power: (c, out, at) => {
       this.tone(c, out, at, { from: 70, to: 140, duration: 0.45, type: 'sine', gain: 0.45 });
@@ -263,7 +272,7 @@ export class Sfx {
         from: NOTE.A4,
         to: NOTE.A5,
         duration: 0.3,
-        type: 'sawtooth',
+        type: 'triangle',
         gain: 0.12,
       });
     },
@@ -273,7 +282,13 @@ export class Sfx {
     },
     hit: (c, out, at) => {
       this.noise(c, out, at, { duration: 0.28, from: 2400, to: 200, gain: 0.2 });
-      this.tone(c, out, at, { from: 220, to: 60, duration: 0.3, type: 'sawtooth', gain: 0.22 });
+      this.tone(c, out, at, { from: 220, to: 60, duration: 0.3, type: 'triangle', gain: 0.22 });
+    },
+    // Warm falling minor-third wobble: reads as "gotcha" without the harshness of the old buzz.
+    sabotage: (c, out, at) => {
+      this.tone(c, out, at, { from: NOTE.G5, to: NOTE.E5, duration: 0.14, gain: 0.22 });
+      this.tone(c, out, at + 0.12, { from: NOTE.E5, to: NOTE.C5, duration: 0.14, gain: 0.22 });
+      this.tone(c, out, at + 0.24, { from: NOTE.C4, to: NOTE.C4 / 2, duration: 0.3, gain: 0.35 });
     },
     fanfare: (c, out, at) => {
       const chord = (when: number, notes: number[], length: number): void =>
