@@ -1,3 +1,4 @@
+import { allPlayersGoneMsFor } from './config';
 import type { RoomState } from './types';
 
 const IN_GAME_PHASES = new Set([
@@ -16,6 +17,44 @@ const IN_GAME_PHASES = new Set([
 ]);
 
 export const isInGamePhase = (phase: RoomState['phase']): boolean => IN_GAME_PHASES.has(phase);
+
+/**
+ * When the last active player dropped, if EVERY active player is disconnected right now (so a single
+ * connected phone, or a room with nobody seated yet, yields null). A reconnect clears it, because the
+ * condition then no longer holds; the window restarts with the next full silence.
+ */
+export function allPlayersGoneSince(
+  state: Pick<RoomState, 'phase' | 'playerOrder' | 'players'>,
+): number | null {
+  if (state.phase === 'WAITING' || state.phase === 'ROOM_CLOSED') return null;
+  let since: number | null = null;
+  for (const id of state.playerOrder) {
+    const player = state.players[id];
+    if (!player || player.status !== 'ACTIVE') continue;
+    // A seat without a stamp cannot be dated: treat the room as not (yet) abandoned.
+    if (player.connection !== 'DISCONNECTED' || player.disconnectedAt === null) return null;
+    since = since === null ? player.disconnectedAt : Math.max(since, player.disconnectedAt);
+  }
+  return since;
+}
+
+/**
+ * Whether the leader role has anywhere to go: another active player is connected, or nobody else is
+ * seated (the role then just stops waiting). Handing it to another *disconnected* player is
+ * pointless and would bounce it back and forth forever while everybody is gone.
+ */
+export function leaderHandoverPossible(
+  state: Pick<RoomState, 'leaderPlayerId' | 'playerOrder' | 'players'>,
+): boolean {
+  let others = 0;
+  for (const id of state.playerOrder) {
+    const player = state.players[id];
+    if (!player || player.status !== 'ACTIVE' || id === state.leaderPlayerId) continue;
+    if (player.connection === 'CONNECTED') return true;
+    others += 1;
+  }
+  return others === 0;
+}
 
 /**
  * The earliest time the room needs a `TICK`, or null when nothing is scheduled. The server keeps
@@ -49,7 +88,14 @@ export function nextWakeAt(state: RoomState, now: number): number | null {
     candidates.push(state.display.disconnectedAt + timings.abandonMs);
   }
 
-  if (state.leaderPlayerId !== null && state.leaderLostAt !== null) {
+  const goneSince = allPlayersGoneSince(state);
+  if (goneSince !== null) candidates.push(goneSince + allPlayersGoneMsFor(state.config));
+
+  if (
+    state.leaderPlayerId !== null &&
+    state.leaderLostAt !== null &&
+    leaderHandoverPossible(state)
+  ) {
     candidates.push(state.leaderLostAt + timings.leaderGraceMs);
   }
 

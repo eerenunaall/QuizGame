@@ -76,6 +76,12 @@ export const GameConfigSchema = z.strictObject({
     displayGraceMs: ms(0, 300_000),
     leaderGraceMs: ms(0, 300_000),
     abandonMs: ms(10_000, 3_600_000),
+    /**
+     * Every active player's phone has been disconnected this long: the room closes (ABANDONED) so the
+     * TV returns to its title menu. Optional so snapshots stored before it existed still parse; read it
+     * via `allPlayersGoneMsFor`.
+     */
+    allPlayersGoneMs: ms(10_000, 3_600_000).optional(),
     lobbyIdleMs: ms(60_000, 86_400_000),
     resultsIdleMs: ms(60_000, 86_400_000),
     maxLifetimeMs: ms(600_000, 172_800_000),
@@ -210,6 +216,7 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     displayGraceMs: 20_000,
     leaderGraceMs: 20_000,
     abandonMs: 600_000,
+    allPlayersGoneMs: 45_000,
     lobbyIdleMs: 1_800_000,
     resultsIdleMs: 600_000,
     maxLifetimeMs: 21_600_000,
@@ -367,6 +374,11 @@ export function doubleDownExcludedStakes(config: GameConfig): readonly RiskTier[
   return (
     config.powers.doubleDownExcludedStakes ?? DEFAULT_GAME_CONFIG.powers.doubleDownExcludedStakes!
   );
+}
+
+/** How long every active player may be disconnected before the room closes (old snapshots fall back to the default). */
+export function allPlayersGoneMsFor(config: GameConfig): number {
+  return config.timings.allPlayersGoneMs ?? DEFAULT_GAME_CONFIG.timings.allPlayersGoneMs!;
 }
 
 /** Tier that applies when a player has not chosen one: the lowest tier the ladder offers. */

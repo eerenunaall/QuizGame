@@ -9,6 +9,7 @@ import {
   type Tier,
 } from '@quizparty/protocol';
 import {
+  allPlayersGoneMsFor,
   finalStageLength,
   ladderKindFor,
   maxRoundsFor,
@@ -33,7 +34,7 @@ import {
 } from './powers';
 import { rankPlayers } from './rank';
 import { computeScore } from './scoring';
-import { isInGamePhase } from './timers';
+import { allPlayersGoneSince, isInGamePhase, leaderHandoverPossible } from './timers';
 import { exemptPlayerId, tickFor } from './who-said-it';
 import type {
   Actor,
@@ -999,10 +1000,18 @@ function onTick(d: Room, ctx: Ctx, at: number): void {
     if (at - d.display.disconnectedAt >= t.abandonMs) return closeRoom(d, ctx, at, 'ABANDONED');
   }
 
+  // Phones that merely dropped (not LEFT) never close a room by themselves, so a TV would hang on
+  // a dead lobby for ever: when every active seat is gone for a while, send the TV back to its menu.
+  const goneSince = allPlayersGoneSince(d);
+  if (goneSince !== null && at - goneSince >= allPlayersGoneMsFor(d.config))
+    return closeRoom(d, ctx, at, 'ABANDONED');
+
   if (
     d.leaderPlayerId !== null &&
     d.leaderLostAt !== null &&
-    at - d.leaderLostAt >= t.leaderGraceMs
+    at - d.leaderLostAt >= t.leaderGraceMs &&
+    // nobody connected to hand over to: keep waiting, the next reconnect makes the hand-over due
+    leaderHandoverPossible(d)
   ) {
     const next = pickLeader(d, d.leaderPlayerId);
     if (next !== null) setLeader(d, ctx, next);
