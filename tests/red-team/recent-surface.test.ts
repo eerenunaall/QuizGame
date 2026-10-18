@@ -1,4 +1,5 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { connect } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -214,5 +215,100 @@ describe('ATTACK 30 — hostile theme and venue-logo values', () => {
     }
     expect(resolveVenueLogo('/venue/logo.svg')).toBe('/venue/logo.svg');
     expect(resolveVenueLogo('https://cdn.venue.example/logo.png')).toBe('https://cdn.venue.example/logo.png');
+  });
+});
+
+describe('ATTACK 31 — the static server and the two association files', () => {
+  let server: TestServer;
+  let dist: string;
+  let outside: string;
+  beforeAll(async () => {
+    dist = await mkdtemp(join(tmpdir(), 'qp-a31-'));
+    outside = await mkdtemp(join(tmpdir(), 'qp-a31-out-'));
+    await writeFile(join(outside, 'loot.txt'), 'LOOT=1');
+    await mkdir(join(dist, 'assets'));
+    await writeFile(join(dist, 'index.html'), '<!doctype html><div id="root"></div>');
+    await writeFile(join(dist, '.env'), 'LOOT=2');
+    await mkdir(join(dist, '.well-known'));
+    await writeFile(join(dist, '.well-known', 'apple-app-site-association'), '{"applinks":{}}');
+    await writeFile(join(dist, '.well-known', 'assetlinks.json'), '[]');
+    await writeFile(join(dist, '.well-known', 'other.json'), 'LOOT=3');
+    await writeFile(join(dist, '.well-known', '.hidden'), 'LOOT=4');
+    await symlink(join(outside, 'loot.txt'), join(dist, '.well-known', 'link.txt'));
+    server = await startServer({ env: { SERVE_WEB: '1', WEB_DIST: dist } });
+  });
+  afterAll(async () => {
+    await server.dispose();
+    await rm(dist, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
+  });
+
+  /** Raw request line, so nothing normalises the path before the server sees it. */
+  const raw = (target: string, method = 'GET'): Promise<{ status: number; head: string; body: string }> =>
+    new Promise((resolve, reject) => {
+      const port = new URL(server.httpUrl).port;
+      const socket = connect(Number(port), '127.0.0.1', () =>
+        socket.write(`${method} ${target} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n`),
+      );
+      let data = '';
+      socket.on('data', (chunk: Buffer) => (data += chunk.toString('latin1')));
+      socket.on('error', reject);
+      socket.on('close', () => {
+        const [head = '', ...rest] = data.split('\r\n\r\n');
+        resolve({ status: Number(/^HTTP\/1\.1 (\d+)/u.exec(head)?.[1] ?? 0), head, body: rest.join('\r\n\r\n') });
+      });
+    });
+
+  it('never serves a dotfile, a sibling of the association files, a traversal or a case variant', async () => {
+    const paths = [
+      '/.well-known/other.json',
+      '/.well-known/.hidden',
+      '/.well-known/link.txt',
+      '/.well-known/assetlinks.json/../other.json',
+      '/.well-known/assetlinks.json/..%2fother.json',
+      '/.well-known/%2e%2e/.env',
+      '/.well-known/%2E%2E/.env',
+      '/%2e%2e/%2e%2e/etc/passwd',
+      '/.well-known/%2e/.env',
+      '/.well-known%2f..%2f.env',
+      '/.WELL-KNOWN/assetlinks.json',
+      '/.well-known/ASSETLINKS.JSON',
+      '/.well-known/Apple-App-Site-Association',
+      '/.well-known/assetlinks.json%00.txt',
+      '/.well-known/assetlinks.json%2500',
+      '/.well-known/assetlinks.json::$DATA',
+      '/.well-known/assetlinks.json%20',
+      '/.well-known/assetlinks.json%5c..%5c.env',
+      '/.well-known\\assetlinks.json',
+      '/.env',
+      '/%2eenv',
+      '/%252e%252e/.env',
+      '/assets/../.env',
+      '//.env',
+      `/${'..%2f'.repeat(30)}etc/passwd`,
+      `http://evil.example/../../.env`,
+    ];
+    for (const path of paths) {
+      const response = await raw(path);
+      expect(response.body, path).not.toMatch(/LOOT=|root:/u);
+    }
+  });
+
+  it('serves each association file as JSON however its path is spelled, and nothing else as that type', async () => {
+    for (const path of [
+      '/.well-known/apple-app-site-association',
+      '/%2ewell-known/apple-app-site-association',
+      '/.well-known/apple-app-site-association/',
+      '/.well-known//apple-app-site-association',
+    ]) {
+      const response = await raw(path);
+      expect(response.status, path).toBe(200);
+      expect(response.head.toLowerCase(), path).toContain('content-type: application/json');
+      expect(response.head.toLowerCase(), path).toContain('x-content-type-options: nosniff');
+    }
+    // the file is not a page: no CSP-less HTML, no directory listing
+    const dir = await raw('/.well-known/');
+    expect(dir.body).not.toContain('apple-app-site-association');
+    expect(dir.head.toLowerCase()).not.toContain('text/html; charset=utf-8\r\ncontent-length: 0');
   });
 });

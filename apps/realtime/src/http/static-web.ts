@@ -127,6 +127,9 @@ export class StaticWeb {
     const safe = resolveSafe(this.options.root, path);
     if (safe === null) return apiError(reply, 404, 'NOT_FOUND');
 
+    // Judge by the decoded, resolved path: `/%2ewell-known/…` is the same file as `/.well-known/…`
+    // and must not get a different type, or fall through to the HTML shell when the file is absent.
+    const wellKnown = safe.startsWith(join(this.options.root, '.well-known') + sep);
     let file = safe;
     let info = await stat(file).catch(() => null);
     if (info?.isDirectory()) {
@@ -134,7 +137,7 @@ export class StaticWeb {
       info = await stat(file).catch(() => null);
     }
     // A missing association file must not turn into the HTML shell (the store would cache that).
-    const asksForAsset = extname(path) !== '' || path.startsWith('/.well-known/');
+    const asksForAsset = extname(path) !== '' || wellKnown;
     if (!info?.isFile()) {
       if (asksForAsset) return apiError(reply, 404, 'NOT_FOUND'); // a missing .js must not become HTML
       file = join(this.options.root, 'index.html');
@@ -142,7 +145,7 @@ export class StaticWeb {
       if (!info?.isFile()) return apiError(reply, 404, 'NOT_FOUND');
     }
 
-    const type = path.startsWith('/.well-known/')
+    const type = wellKnown
       ? 'application/json; charset=utf-8'
       : (CONTENT_TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream');
     const isHtml = type.startsWith('text/html');
