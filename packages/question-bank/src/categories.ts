@@ -38,3 +38,38 @@ export async function loadCategories(db: Database): Promise<Map<string, Category
     ]),
   );
 }
+
+export interface ExtraCategory {
+  id: string;
+  tr: string;
+  en: string;
+  /** Sort position; extra categories follow the launch ones. */
+  sortOrder?: number;
+}
+
+/**
+ * Creates additional (demo/extension) categories from data, so adding a category needs no code.
+ * Never eligible for the weekly free rotation and never source-required (they hold dev/demo
+ * content); existing rows are left as the admin set them.
+ */
+export async function ensureExtraCategories(
+  db: Database,
+  categories: readonly ExtraCategory[],
+): Promise<number> {
+  if (categories.length === 0) return 0;
+  const result = await db
+    .insertInto('categories')
+    .values(
+      categories.map((category, index) => ({
+        id: category.id,
+        label_tr: category.tr,
+        label_en: category.en,
+        sort_order: category.sortOrder ?? 100 + index,
+        free_rotation: false,
+        source_required: false,
+      })),
+    )
+    .onConflict((conflict) => conflict.doNothing())
+    .executeTakeFirst();
+  return Number(result.numInsertedOrUpdatedRows ?? 0);
+}

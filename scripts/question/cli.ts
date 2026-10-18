@@ -6,6 +6,7 @@ import {
   AUDIT_INSTRUCTIONS,
   AnthropicClient,
   HttpEmbeddingProvider,
+  ensureExtraCategories,
   ensureLaunchCategories,
   exportForAudit,
   importAuditResults,
@@ -19,6 +20,7 @@ import {
   runMaintenance,
   selectQuestionIds,
   type AuditProvider,
+  type ExtraCategory,
   type ImportFormat,
 } from '@quizparty/question-bank';
 import {
@@ -71,8 +73,8 @@ Commands
                 (also writes <out>.instructions.md for the manual audit round)
   import-results <file> --source label
   maintain
-  seed         [--seed-file seed/questions.tr.jsonl] [--dry-run]
-  categories
+  seed         [--seed-file seed/questions.tr.jsonl] [--categories-file cats.json] [--dry-run]
+  categories   [--categories-file cats.json]   (extra categories: [{id,tr,en}], e.g. seed/demo/categories.json)
 
 Environment
   DATABASE_URL, NODE_ENV, QP_ALLOW_DEV_SEED
@@ -102,6 +104,24 @@ function readInput(io: Io, path: string): string {
       `cannot read ${path}: ${error instanceof Error ? error.message : 'unknown error'}`,
     );
   }
+}
+
+/** Extra categories as data: a JSON array of `{ id, tr, en }` (see seed/demo/categories.json). */
+function readCategories(io: Io, path: string): ExtraCategory[] {
+  const parsed: unknown = JSON.parse(readInput(io, path));
+  const valid =
+    Array.isArray(parsed) &&
+    parsed.every(
+      (item: unknown) =>
+        typeof item === 'object' &&
+        item !== null &&
+        typeof (item as ExtraCategory).id === 'string' &&
+        /^[a-z0-9-]{1,40}$/u.test((item as ExtraCategory).id) &&
+        typeof (item as ExtraCategory).tr === 'string' &&
+        typeof (item as ExtraCategory).en === 'string',
+    );
+  if (!valid) throw new UsageError(`${path} must be a JSON array of { id, tr, en }`);
+  return parsed as ExtraCategory[];
 }
 
 function parseStatuses(value: string | undefined, fallback: QuestionStatus[]): QuestionStatus[] {
@@ -184,6 +204,7 @@ export async function run(
         out: { type: 'string' },
         source: { type: 'string' },
         'seed-file': { type: 'string' },
+        'categories-file': { type: 'string' },
       },
     });
     const now = options.now ?? (() => new Date());
@@ -206,6 +227,13 @@ export async function run(
       case 'categories': {
         const created = await ensureLaunchCategories(db);
         io.out(`launch categories: ${created} created`);
+        if (values['categories-file']) {
+          const extra = await ensureExtraCategories(
+            db,
+            readCategories(io, values['categories-file']),
+          );
+          io.out(`extra categories: ${extra} created`);
+        }
         return 0;
       }
 
@@ -341,6 +369,8 @@ export async function run(
         const file = values['seed-file'] ?? 'seed/questions.tr.jsonl';
         const text = readInput(io, file);
         await ensureLaunchCategories(db);
+        if (values['categories-file'])
+          await ensureExtraCategories(db, readCategories(io, values['categories-file']));
         const report = await importQuestions(db, parseImportText(text, 'jsonl'), {
           now: now(),
           dryRun: values['dry-run'] ?? false,

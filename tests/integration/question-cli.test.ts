@@ -332,6 +332,28 @@ describe('manual audit rounds and maintenance', () => {
     expect(await again.exec(['categories'])).toBe(0);
     expect(again.out[0]).toBe('launch categories: 0 created');
   });
+
+  it('creates extra categories and seeds the demo bank from data files, refusing malformed ones', async () => {
+    const demo = (name: string) =>
+      readFileSync(fileURLToPath(new URL(`../../seed/demo/${name}`, import.meta.url)), 'utf8');
+    const files = {
+      'cats.json': demo('categories.json'),
+      'demo.jsonl': demo('questions.cult.tr.jsonl'),
+      'bad.json': '[{"id":"Bad Id","tr":"x","en":"y"}]',
+    };
+    const h = harness(files);
+    expect(await h.exec(['categories', '--categories-file', 'cats.json'])).toBe(0);
+    expect(h.out[1]).toBe('extra categories: 11 created');
+    const seeded = harness(files);
+    expect(
+      await seeded.exec(['seed', '--seed-file', 'demo.jsonl', '--categories-file', 'cats.json']),
+    ).toBe(0);
+    expect(seeded.out[0]).toBe('seed: 275 CREATED');
+    expect(await statusCounts(t.db)).toEqual({ ACTIVE: 275 });
+    const refused = harness(files);
+    expect(await refused.exec(['categories', '--categories-file', 'bad.json'])).toBe(2);
+    expect(refused.err.join('\n')).toContain('must be a JSON array');
+  });
 });
 
 describe('the real executable', () => {
