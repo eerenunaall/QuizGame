@@ -117,9 +117,9 @@ export function TvLobby({
             >
               {t('lobby.settings')}
             </Button>
-            {room.tier === 'FREE' ? (
+            {room.tier === 'FREE' || room.settings.mode === 'CLASSIC' ? (
               <Button variant="ghost" size="lg" onClick={onOpenUnlock} data-testid="lobby-unlock">
-                {t('tv.unlock.button')}
+                {room.tier === 'FREE' ? t('tv.unlock.button') : t('tv.quiz.button')}
               </Button>
             ) : null}
           </div>
@@ -133,6 +133,13 @@ export function TvLobby({
               })}
             </span>
           </div>
+          {room.settings.mode !== 'CLASSIC' ? (
+            <div className={styles.summary} data-testid="lobby-mode">
+              <span>
+                {t(`lobby.mode.${room.settings.mode}`, { title: room.settings.contentTitle ?? '' })}
+              </span>
+            </div>
+          ) : null}
           {!enough ? <div className={styles.need}>{t('lobby.needMore', { min: 2 })}</div> : null}
           {error ? <div className={styles.error}>{error}</div> : null}
         </div>

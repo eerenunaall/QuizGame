@@ -253,6 +253,11 @@ function LobbyScreen({
         ) : null}
         <div className={styles.big}>{t('ctl.lobby.title')}</div>
       </div>
+      {room.settings.mode !== 'CLASSIC' ? (
+        <div className={styles.big} data-testid="ctl-mode">
+          {t(`lobby.mode.${room.settings.mode}`, { title: room.settings.contentTitle ?? '' })}
+        </div>
+      ) : null}
 
       <Button
         size="lg"
