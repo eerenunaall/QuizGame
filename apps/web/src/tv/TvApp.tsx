@@ -273,6 +273,7 @@ export function TvApp({
       );
     }
     const data = room.phaseData;
+    const whoSaidIt = room.settings.mode === 'WHO_SAID_IT';
     const round =
       'round' in data
         ? { index: data.round.index, total: data.round.total, isFinal: data.round.isFinal }
@@ -360,6 +361,7 @@ export function TvApp({
               category={data.category}
               difficulty={data.difficulty}
               text={data.text}
+              whoSaidIt={whoSaidIt}
               status={{ tone: 'info', text: t('game.question.getReady'), icon: 'hourglass' }}
             />
           </TvFrame>
@@ -374,6 +376,7 @@ export function TvApp({
               difficulty={data.difficulty}
               text={data.text}
               options={data.options}
+              whoSaidIt={whoSaidIt}
               timer={{
                 now,
                 startAt: data.answerOpensAt,
@@ -386,7 +389,11 @@ export function TvApp({
                 tone: 'info',
                 text: t('game.answered', {
                   count: data.answeredPlayerIds.length,
-                  total: Math.max(eligible, data.answeredPlayerIds.length),
+                  // the author of a Who Said It statement is not waited for (and the TV does not know who)
+                  total: Math.max(
+                    whoSaidIt ? eligible - 1 : eligible,
+                    data.answeredPlayerIds.length,
+                  ),
                 }),
               }}
             />
@@ -404,6 +411,7 @@ export function TvApp({
               difficulty={memory?.difficulty}
               text={memory?.text ?? ''}
               {...(memory ? { options: memory.options } : {})}
+              whoSaidIt={whoSaidIt}
               status={{ tone: 'gold', text: t('game.locked'), icon: 'lock' }}
             />
           </TvFrame>
@@ -418,15 +426,20 @@ export function TvApp({
         const anyCorrect = data.results.some((result) => result.outcome === 'CORRECT');
         const crowd = data.round.kind === 'CROWD';
         const summary = crowd ? crowdSummary(data.distribution, data.correctOptionId) : null;
-        const statusText = summary
-          ? summary.kind === 'split'
-            ? t('game.crowd.split')
-            : summary.right
-              ? t('game.crowd.right')
-              : t('game.crowd.wrong')
-          : anyCorrect
-            ? t('game.reveal.correct')
-            : t('game.reveal.nobody');
+        const author = whoSaidIt
+          ? data.options.find((option) => option.optionId === data.correctOptionId)
+          : undefined;
+        const statusText = author
+          ? t('whosaidit.reveal', { name: author.text })
+          : summary
+            ? summary.kind === 'split'
+              ? t('game.crowd.split')
+              : summary.right
+                ? t('game.crowd.right')
+                : t('game.crowd.wrong')
+            : anyCorrect
+              ? t('game.reveal.correct')
+              : t('game.reveal.nobody');
         return (
           <TvFrame {...base} strip={{ results }} celebrate={anyCorrect}>
             <TvQuestion
@@ -436,6 +449,7 @@ export function TvApp({
               text={data.text}
               options={data.options}
               crowd={crowd}
+              whoSaidIt={whoSaidIt}
               status={{ tone: 'success', text: statusText, icon: 'check' }}
               reveal={{
                 correctOptionId: data.correctOptionId,

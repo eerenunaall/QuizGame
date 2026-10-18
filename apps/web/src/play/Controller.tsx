@@ -21,6 +21,7 @@ import { sfx } from '../lib/audio';
 import { HitNotices } from './HitNotices';
 import { PrepScreen } from './PrepScreen';
 import { ReportControl } from './ReportControl';
+import { StatementForm } from './StatementForm';
 import {
   fiftyFiftyState,
   isFogged,
@@ -53,6 +54,8 @@ export interface ControllerActions {
   commit: (choice: PrepChoice) => Promise<void>;
   fifty: () => void;
   setReduced: (value: boolean) => void;
+  /** Who Said It, lobby: the player's one statement. Rejects with the server's code (and the reason of a refused text). */
+  submitStatement: (text: string) => Promise<void>;
   /** Flag the question just revealed. Absent while the server switch is off. Rejects with the server's code. */
   report?: ((questionId: string, reason: QuestionReportReason) => Promise<void>) | undefined;
 }
@@ -130,6 +133,8 @@ export function Controller({ room, state, now, catalog, busy, error, actions }: 
         </Center>
       );
     case 'QUESTION_PREP':
+      // Who Said It: the author has nothing to stake on their own statement.
+      if (you?.authorOfRound) return <SitOut />;
       return (
         <PrepScreen
           key={data.round.index}
@@ -146,12 +151,16 @@ export function Controller({ room, state, now, catalog, busy, error, actions }: 
           <Panel className={styles.questionCard}>
             <div className={styles.questionText}>{data.text}</div>
           </Panel>
-          <div className={styles.sub}>{t('game.question.getReady')}</div>
+          <div className={styles.sub}>
+            {you?.authorOfRound ? t('ctl.statement.mine') : t('game.question.getReady')}
+          </div>
         </Center>
       );
     case 'ANSWERING':
+      if (you?.authorOfRound) return <SitOut text={data.text} />;
       return <AnswerScreen data={data} state={state} now={now} actions={actions} />;
     case 'LOCKED': {
+      if (you?.authorOfRound) return <SitOut />;
       const answered = Boolean(you?.answer);
       return (
         <Center testId="ctl-locked">
@@ -167,7 +176,15 @@ export function Controller({ room, state, now, catalog, busy, error, actions }: 
       );
     }
     case 'REVEAL':
-      return <RevealScreen data={data} myId={myId} report={actions.report} />;
+      return (
+        <RevealScreen
+          data={data}
+          myId={myId}
+          report={actions.report}
+          whoSaidIt={room.settings.mode === 'WHO_SAID_IT'}
+          sitOut={you?.authorOfRound ?? false}
+        />
+      );
     case 'POWER_RESOLUTION':
       return (
         <Center>
@@ -229,7 +246,11 @@ function LobbyScreen({
   const free = room.tier === 'FREE';
   const selected = room.settings.categories;
   const isAll = selected === 'ALL';
-  const enough = room.players.length >= 2;
+  const statementCount =
+    room.phaseData.phase === 'LOBBY' ? (room.phaseData.statementPlayerIds?.length ?? 0) : 0;
+  // Who Said It needs a guesser for every statement: two are the least that makes a game.
+  const enough =
+    room.players.length >= 2 && (room.settings.mode !== 'WHO_SAID_IT' || statementCount >= 2);
   // Leader-only player management: tap a player, then "make leader" or (after a confirm tap) "remove".
   const [managedId, setManagedId] = useState<string | null>(null);
   const [confirmKick, setConfirmKick] = useState(false);
@@ -257,6 +278,10 @@ function LobbyScreen({
         <div className={styles.big} data-testid="ctl-mode">
           {t(`lobby.mode.${room.settings.mode}`, { title: room.settings.contentTitle ?? '' })}
         </div>
+      ) : null}
+
+      {room.settings.mode === 'WHO_SAID_IT' ? (
+        <StatementForm saved={room.you?.myStatement ?? null} onSubmit={actions.submitStatement} />
       ) : null}
 
       <Button
@@ -409,7 +434,13 @@ function LobbyScreen({
           >
             {t('ctl.lobby.start')}
           </Button>
-          {!enough ? <div className={styles.need}>{t('lobby.needMore', { min: 2 })}</div> : null}
+          {!enough ? (
+            <div className={styles.need}>
+              {room.settings.mode === 'WHO_SAID_IT' && room.players.length >= 2
+                ? t('whosaidit.tv.count', { count: statementCount, total: room.players.length })
+                : t('lobby.needMore', { min: 2 })}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -615,14 +646,34 @@ function ConfirmedScreen() {
 
 // ───────────── reveal / score / results ─────────────
 
+/** Who Said It: the author's own statement is on screen and they sit the round out. */
+function SitOut({ text }: { text?: string }) {
+  const { t } = useI18n();
+  return (
+    <Center testId="ctl-sitout">
+      {text ? (
+        <Panel className={styles.questionCard}>
+          <div className={styles.questionText}>{text}</div>
+        </Panel>
+      ) : null}
+      <AnimatedSticker id="thinking" size={130} />
+      <div className={styles.big}>{t('ctl.statement.mine')}</div>
+    </Center>
+  );
+}
+
 function RevealScreen({
   data,
   myId,
   report,
+  whoSaidIt,
+  sitOut,
 }: {
   data: PhaseDataOf<'REVEAL'>;
   myId: string;
   report: ControllerActions['report'];
+  whoSaidIt: boolean;
+  sitOut: boolean;
 }) {
   const { t } = useI18n();
   const mine = data.results.find((result) => result.playerId === myId);
@@ -658,17 +709,21 @@ function RevealScreen({
         data-testid="ctl-outcome"
         data-outcome={outcome}
       >
-        {outcome === 'CORRECT'
-          ? t('ctl.reveal.correct')
-          : outcome === 'INCORRECT'
-            ? t('ctl.reveal.incorrect')
-            : t('ctl.reveal.noAnswer')}
+        {sitOut
+          ? t('ctl.statement.mine')
+          : outcome === 'CORRECT'
+            ? t('ctl.reveal.correct')
+            : outcome === 'INCORRECT'
+              ? t('ctl.reveal.incorrect')
+              : t('ctl.reveal.noAnswer')}
       </div>
       <Panel className={styles.correctCard} tone="glass">
         <div className={styles.kicker}>{t('game.reveal.correct')}</div>
-        <div className={styles.correctText}>{correctText}</div>
+        <div className={styles.correctText}>
+          {whoSaidIt ? t('whosaidit.reveal', { name: correctText }) : correctText}
+        </div>
       </Panel>
-      {report ? <ReportControl questionId={data.questionId} report={report} /> : null}
+      {report && !whoSaidIt ? <ReportControl questionId={data.questionId} report={report} /> : null}
     </Center>
   );
 }

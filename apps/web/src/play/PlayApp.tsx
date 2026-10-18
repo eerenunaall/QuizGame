@@ -192,6 +192,7 @@ export function PlayApp({ code }: { code: string }) {
       ? (questionId, reason) => client.reportQuestion(questionId, reason)
       : undefined,
     fifty: () => void client.useFiftyFifty().catch((cause: unknown) => flash(describe(cause))),
+    submitStatement: (text) => client.submitStatement(text),
     setReduced: (value) =>
       void client.setReducedEffects(value).catch((cause: unknown) => flash(describe(cause))),
   };

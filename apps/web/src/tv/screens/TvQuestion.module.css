@@ -227,3 +227,17 @@
   transform-origin: left center;
   animation: qp-grow-x 900ms ease-out 1 both;
 }
+
+/* Who Said It: the line above the statement */
+.prompt {
+  margin-bottom: 14px;
+  font-family: var(--qp-font-display);
+  font-size: 40px;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: var(--qp-color-accent-a);
+}
+
+.optionAvatar {
+  display: flex;
+}

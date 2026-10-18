@@ -65,6 +65,8 @@ export const accountApi = {
       roomCode: string;
       tier: 'FREE' | 'FULL';
       mode: string;
+      /** Who Said It is on for this build (it needs no quiz of the account's). */
+      whoSaidIt?: boolean;
       quizzes: { id: string; kind: QuizKind; title: string; ready: boolean }[];
     }>(`/v1/link-intents/${encodeURIComponent(token)}`, 'GET'),
   claimLink: (token: string) =>
@@ -78,6 +80,12 @@ export const accountApi = {
       `/v1/link-intents/${encodeURIComponent(token)}/quiz`,
       'POST',
       { quizId },
+    ),
+  attachWhoSaidIt: (token: string) =>
+    call<{ mode: string; title: string | null }>(
+      `/v1/link-intents/${encodeURIComponent(token)}/quiz`,
+      'POST',
+      { mode: 'WHO_SAID_IT' },
     ),
 
   // ───────────── personal quizzes (creator) ─────────────

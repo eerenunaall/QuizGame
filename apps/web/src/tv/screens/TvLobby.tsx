@@ -39,7 +39,11 @@ export function TvLobby({
 }: Props) {
   const { t, td } = useI18n();
   const startRef = useRef<HTMLButtonElement>(null);
-  const enough = room.players.length >= 2;
+  const statementCount =
+    room.phaseData.phase === 'LOBBY' ? (room.phaseData.statementPlayerIds?.length ?? 0) : 0;
+  const whoSaidIt = room.settings.mode === 'WHO_SAID_IT';
+  // Who Said It needs a guesser for every statement: two statements are the least that makes a game.
+  const enough = room.players.length >= 2 && (!whoSaidIt || statementCount >= 2);
   useEffect(() => {
     startRef.current?.focus();
   }, []);
@@ -140,7 +144,17 @@ export function TvLobby({
               </span>
             </div>
           ) : null}
-          {!enough ? <div className={styles.need}>{t('lobby.needMore', { min: 2 })}</div> : null}
+          {whoSaidIt ? (
+            <div className={styles.summary} data-testid="lobby-statements">
+              <span>
+                {t('whosaidit.tv.count', { count: statementCount, total: room.players.length })} ·{' '}
+                {t('whosaidit.tv.hint')}
+              </span>
+            </div>
+          ) : null}
+          {!enough && room.players.length < 2 ? (
+            <div className={styles.need}>{t('lobby.needMore', { min: 2 })}</div>
+          ) : null}
           {error ? <div className={styles.error}>{error}</div> : null}
         </div>
       </div>

@@ -89,6 +89,8 @@ interface Props {
   };
   /** CROWD round: every card also shows the share of votes it got. */
   crowd?: boolean;
+  /** Who Said It: the question is a statement and the options are the players. */
+  whoSaidIt?: boolean;
   /** Extra content rendered between status and answers. */
   children?: ReactNode;
 }
@@ -140,6 +142,7 @@ export function TvQuestion({
   status,
   reveal,
   crowd,
+  whoSaidIt,
   children,
 }: Props) {
   const { t, td } = useI18n();
@@ -169,6 +172,11 @@ export function TvQuestion({
       ) : null}
 
       <div className={cx(styles.question, explanation && styles.questionOut)} key={text}>
+        {whoSaidIt ? (
+          <div className={styles.prompt} data-testid="tv-who-said-it">
+            {t('whosaidit.prompt')}
+          </div>
+        ) : null}
         <div
           className={styles.questionText}
           style={{ fontSize: questionFontSize(text) }}
@@ -239,6 +247,15 @@ export function TvQuestion({
                   state={stateFor(option, reveal)}
                   textSize={answerFontSize(option.text, picked.length > 0)}
                 >
+                  {whoSaidIt && option.playerId && playersById.get(option.playerId) ? (
+                    <span className={styles.optionAvatar} data-testid="tv-option-avatar">
+                      <Avatar
+                        avatarId={playersById.get(option.playerId)!.avatarId}
+                        size={46}
+                        colorSlot={playersById.get(option.playerId)!.colorSlot}
+                      />
+                    </span>
+                  ) : null}
                   {picked.length > 0 ? <ChooserFaces players={picked} /> : null}
                   {crowd && reveal ? (
                     <CrowdBar percent={votePercent(countOf(option.optionId), votes)} />
