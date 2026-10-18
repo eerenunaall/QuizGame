@@ -7,7 +7,7 @@ What you need to play the game on a real TV and real phones, and what is honestl
 Aynı Wi-Fi'ye bağlı bir bilgisayar + bir TV (veya büyük ekran) + 2–8 telefon yeterli.
 
 1. Bilgisayarda: `pnpm install` → `pnpm playtest`
-   (PostgreSQL'i açar, migrasyonları uygular, 340 Türkçe soruyu yükler, web uygulamasını derler, sunucuyu başlatır.)
+   (PostgreSQL'i açar, migrasyonları uygular, 340 Türkçe soruyu ve 275 kült dizi/film sorusunu yükler, web uygulamasını derler, sunucuyu başlatır.)
 2. TV'nin tarayıcısında yazılan adresi açın: `http://<bilgisayarın-IP'si>:8080/tv` (tam ekran).
 3. Telefonlarla TV'deki QR kodu okutun, takma ad seçin. Lider telefondan (veya TV'den) **Başlat**.
 4. Telefonlar farklı ağdaysa: bir tünel açın (`cloudflared tunnel --url http://localhost:8080` gibi) ve
