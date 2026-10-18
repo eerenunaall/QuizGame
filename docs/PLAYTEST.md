@@ -21,7 +21,7 @@ sorun çıkarsa `docker compose logs app` çıktısını paylaşın.
 
 ```
 pnpm install
-pnpm playtest          # db + migrations + 340-question development bank + web build + server on :8080
+pnpm playtest          # db + migrations + 340-question development bank + 275-question cult demo bank (seed/demo) + web build + server on :8080
 ```
 
 - TV: open `http://<this machine's LAN address>:8080/tv` in a browser, full screen.

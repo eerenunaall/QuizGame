@@ -76,6 +76,20 @@ const seedCode = await run(
 );
 if (seedCode !== 0) fail('The development bank could not be loaded.');
 
+// The temporary demo bank (cult TV, films, comics) sits outside the launch pool; see seed/demo/README.md.
+const demoCode = await run(
+  [
+    'seed',
+    '--seed-file',
+    `${ROOT}seed/demo/questions.cult.tr.jsonl`,
+    '--categories-file',
+    `${ROOT}seed/demo/categories.json`,
+  ],
+  { ...env, NODE_ENV: 'development', DATABASE_URL: databaseUrl },
+  realIo,
+);
+if (demoCode !== 0) fail('The demo bank could not be loaded.');
+
 const rebuild = process.argv.includes('--rebuild');
 if (rebuild || !existsSync(`${ROOT}apps/web/dist/index.html`)) {
   console.log('building the web app …');
