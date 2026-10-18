@@ -172,6 +172,9 @@ export const tr = {
   'ctl.superseded': 'Başka bir cihazda oynuyorsun.',
   'ctl.closed': 'Oda kapandı.',
   'ctl.closed.returning': 'Katılma ekranına dönülüyor…',
+  'ctl.tvQuestion': "Soruya TV'den bak",
+  'ctl.peek.show': 'Soruyu göster',
+  'ctl.peek.hide': 'Soruyu gizle',
   'ctl.rejoin': 'Yeniden katıl',
 
   // Errors (by protocol code)

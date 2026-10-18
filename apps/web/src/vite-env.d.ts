@@ -13,6 +13,8 @@ interface ImportMetaEnv {
   readonly VITE_VENUE_NAME?: string;
   /** Optional second credit line (e.g. "by ..."). */
   readonly VITE_VENUE_CREDIT?: string;
+  /** "1" = phones show the question text by default (players can still toggle it); default off: the TV is the stage. */
+  readonly VITE_PHONE_SHOWS_QUESTION?: string;
 }
 
 interface ImportMeta {

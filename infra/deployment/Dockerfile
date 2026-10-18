@@ -15,7 +15,9 @@ RUN pnpm install --frozen-lockfile
 ARG VITE_DEFAULT_THEME=""
 ARG VITE_VENUE_NAME=""
 ARG VITE_VENUE_CREDIT=""
-ENV VITE_DEFAULT_THEME="$VITE_DEFAULT_THEME" VITE_VENUE_NAME="$VITE_VENUE_NAME" VITE_VENUE_CREDIT="$VITE_VENUE_CREDIT"
+# "1" = phones also show the question text (default: off, the TV is the stage; players can toggle it).
+ARG VITE_PHONE_SHOWS_QUESTION=""
+ENV VITE_DEFAULT_THEME="$VITE_DEFAULT_THEME" VITE_VENUE_NAME="$VITE_VENUE_NAME" VITE_VENUE_CREDIT="$VITE_VENUE_CREDIT" VITE_PHONE_SHOWS_QUESTION="$VITE_PHONE_SHOWS_QUESTION"
 RUN pnpm --filter @quizparty/web run build && pnpm --filter @quizparty/admin run build
 
 FROM node:22-bookworm-slim

@@ -34,3 +34,20 @@
   color: var(--qp-color-danger);
   animation: qp-pulse 0.5s ease-in-out infinite;
 }
+
+/* Phone: a fat bar and a big clock, readable at arm's length while the eyes are on the TV. */
+.timer[data-size='lg'] .label {
+  min-width: 92px;
+  font-size: 34px;
+  line-height: 1;
+}
+.timer[data-size='lg'] .track {
+  height: 22px;
+  border: 3px solid rgba(255, 255, 255, 0.22);
+  box-sizing: content-box;
+  background: rgba(var(--qp-deep-rgb), 0.7);
+}
+.timer[data-size='lg'][data-urgent='true'] .track {
+  border-color: var(--qp-color-danger);
+  box-shadow: 0 0 18px rgba(255, 90, 90, 0.55);
+}

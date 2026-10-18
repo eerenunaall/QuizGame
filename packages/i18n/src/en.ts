@@ -159,6 +159,9 @@ export const en: Record<MessageKey, string> = {
   'ctl.superseded': 'You are playing on another device.',
   'ctl.closed': 'The room is closed.',
   'ctl.closed.returning': 'Going back to the join screen…',
+  'ctl.tvQuestion': 'Look at the TV for the question',
+  'ctl.peek.show': 'Show question',
+  'ctl.peek.hide': 'Hide question',
   'ctl.rejoin': 'Join again',
 
   'error.INVALID_MESSAGE': 'Something went wrong. Please try again.',

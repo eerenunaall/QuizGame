@@ -57,6 +57,15 @@ describe('preferences', () => {
     expect(loadPreferences(storage)).toEqual({ volume: 0.25, muted: true, locale: 'en' });
   });
 
+  it('remembers whether the phone shows the question, and ignores anything that is not a boolean', () => {
+    const storage = createStorage(memoryBacking());
+    expect(loadPreferences(storage).phoneShowsQuestion).toBeUndefined();
+    savePreferences(storage, { ...loadPreferences(storage), phoneShowsQuestion: true });
+    expect(loadPreferences(storage).phoneShowsQuestion).toBe(true);
+    void storage.set('qp.prefs', JSON.stringify({ phoneShowsQuestion: 'yes' }));
+    expect(loadPreferences(storage).phoneShowsQuestion).toBeUndefined();
+  });
+
   it('falls back to defaults for missing, corrupt or out-of-range data', () => {
     const storage = createStorage(memoryBacking());
     expect(loadPreferences(storage)).toEqual(DEFAULT_PREFS);

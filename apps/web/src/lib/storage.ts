@@ -54,6 +54,11 @@ export interface Preferences {
   locale: 'tr' | 'en' | null;
   /** Chosen theme; absent = use the venue default (VITE_DEFAULT_THEME) or `party`. */
   theme?: ThemeId;
+  /**
+   * Phone shows the question text next to the answers (accessibility). Absent = the build default
+   * (VITE_PHONE_SHOWS_QUESTION, off): TV is the stage, the phone is the controller.
+   */
+  phoneShowsQuestion?: boolean;
 }
 
 const PREFS_KEY = 'qp.prefs';
@@ -72,6 +77,9 @@ export function loadPreferences(storage: KeyValueStorage): Preferences {
       muted: parsed.muted === true,
       locale: parsed.locale === 'tr' || parsed.locale === 'en' ? parsed.locale : null,
       ...(isThemeId(parsed.theme) ? { theme: parsed.theme } : {}),
+      ...(typeof parsed.phoneShowsQuestion === 'boolean'
+        ? { phoneShowsQuestion: parsed.phoneShowsQuestion }
+        : {}),
     };
   } catch {
     return DEFAULT_PREFS;

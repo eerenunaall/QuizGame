@@ -244,6 +244,7 @@ export function PlayApp({ code }: { code: string }) {
           busy={busy}
           error={error}
           actions={actions}
+          storage={storage}
         />
       </PhoneFrame>
     );

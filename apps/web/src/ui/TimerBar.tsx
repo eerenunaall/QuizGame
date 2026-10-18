@@ -6,6 +6,8 @@ interface Props {
   now: () => number;
   startAt: number;
   deadlineAt: number;
+  /** `lg`: the phone's answer and prep screens, where the clock is the thing to watch. */
+  size?: 'md' | 'lg';
 }
 
 export function formatClock(remainingMs: number): string {
@@ -14,7 +16,7 @@ export function formatClock(remainingMs: number): string {
 }
 
 /** Linear timer for phones: a bar that drains and a 00:08 label. DOM-driven like the TV ring. */
-export function TimerBar({ now, startAt, deadlineAt }: Props) {
+export function TimerBar({ now, startAt, deadlineAt, size = 'md' }: Props) {
   const fillRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -36,7 +38,7 @@ export function TimerBar({ now, startAt, deadlineAt }: Props) {
   });
 
   return (
-    <div ref={rootRef} className={styles.timer} role="timer" aria-live="off">
+    <div ref={rootRef} className={styles.timer} data-size={size} role="timer" aria-live="off">
       <span ref={textRef} className={styles.label}>
         {formatClock(deadlineAt - now())}
       </span>

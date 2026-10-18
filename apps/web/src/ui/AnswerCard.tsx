@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { AnswerShape } from './AnswerShape';
 import { Sticker } from './Sticker';
 import styles from './AnswerCard.module.css';
 import { cx } from '../lib/cx';
@@ -21,6 +22,8 @@ interface Props {
   textSize?: number;
   /** Trailing content, e.g. the faces of the players who picked this option. */
   children?: ReactNode;
+  /** Third cue besides colour and letter (a shape). On by default for phones; the TV keeps its own look. */
+  showShape?: boolean;
 }
 
 export function AnswerCard({
@@ -32,6 +35,7 @@ export function AnswerCard({
   disabled,
   textSize,
   children,
+  showShape = size === 'phone',
 }: Props) {
   const letter = LETTERS[index] ?? '?';
   const tone = COLOR_CLASSES[index] ?? 'a';
@@ -51,11 +55,19 @@ export function AnswerCard({
       <span className={styles.text} style={textSize ? { fontSize: textSize } : undefined}>
         {text}
       </span>
+      {state === 'locked' ? (
+        <Sticker id="lock" size={size === 'tv' ? 64 : 40} className={styles.mark} />
+      ) : null}
       {state === 'correct' ? (
         <Sticker id="check" size={size === 'tv' ? 64 : 40} className={styles.mark} />
       ) : null}
       {state === 'wrong' ? (
         <Sticker id="cross" size={size === 'tv' ? 64 : 40} className={styles.mark} />
+      ) : null}
+      {showShape && state !== 'locked' && state !== 'correct' && state !== 'wrong' ? (
+        <span className={styles.shape}>
+          <AnswerShape index={index} size={30} />
+        </span>
       ) : null}
       {children}
     </>
