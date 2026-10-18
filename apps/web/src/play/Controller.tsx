@@ -284,6 +284,18 @@ function LobbyScreen({
     actions.settings({ categories: next.length === 0 ? 'ALL' : next });
   };
 
+  const readyButton = (
+    <Button
+      size="lg"
+      block
+      variant={me?.ready ? 'success' : 'violet'}
+      onClick={() => actions.ready(!(me?.ready ?? false))}
+      data-testid="ctl-ready"
+    >
+      {me?.ready ? t('ctl.lobby.notReady') : t('ctl.lobby.ready')}
+    </Button>
+  );
+
   return (
     <div className={styles.lobby} data-testid="ctl-lobby">
       <div className={styles.lobbyHead}>
@@ -302,15 +314,8 @@ function LobbyScreen({
         <StatementForm saved={room.you?.myStatement ?? null} onSubmit={actions.submitStatement} />
       ) : null}
 
-      <Button
-        size="lg"
-        block
-        variant={me?.ready ? 'success' : 'violet'}
-        onClick={() => actions.ready(!(me?.ready ?? false))}
-        data-testid="ctl-ready"
-      >
-        {me?.ready ? t('ctl.lobby.notReady') : t('ctl.lobby.ready')}
-      </Button>
+      {/* The leader's big button is "start" (below); everybody else's is "ready", which lives in the thumb zone. */}
+      {isLeader ? readyButton : null}
 
       <div className={styles.roster} data-testid="ctl-roster">
         {room.players.map((player) => {
@@ -460,7 +465,9 @@ function LobbyScreen({
             </div>
           ) : null}
         </div>
-      ) : null}
+      ) : (
+        <div className={styles.startRow}>{readyButton}</div>
+      )}
     </div>
   );
 }

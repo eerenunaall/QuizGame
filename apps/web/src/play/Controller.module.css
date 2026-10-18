@@ -60,6 +60,7 @@
 /* lobby */
 .lobby {
   display: flex;
+  flex: 1;
   flex-direction: column;
   width: 100%;
   max-width: 480px;
@@ -174,13 +175,21 @@
   position: sticky;
   bottom: -18px;
   z-index: 5;
-  margin: 14px -16px -18px;
+  /* auto: on a short lobby the dock still sits at the bottom of the screen, in the thumb zone */
+  margin: auto -16px -18px;
   padding: 12px 16px calc(18px + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(
     180deg,
     rgba(var(--qp-deep-rgb), 0),
     rgba(var(--qp-deep-rgb), 0.96) 30%
   );
+}
+
+.startRow > button {
+  min-height: 84px;
+  padding: 10px 16px;
+  /* "OYUNU BAŞLAT" and its rocket must stay on one line on a 360 px phone */
+  font-size: clamp(24px, 7.2vw, 32px);
 }
 
 .need {
