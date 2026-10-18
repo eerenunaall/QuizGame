@@ -78,11 +78,11 @@ test('stakes, double down and 50/50 play out, and the last question demands a st
   const [ece, ahmet, merve] = phones as [Screen, Screen, Screen];
   await ece.page.getByTestId('ctl-start').click();
 
-  // ── Round 1: Ece goes HIGH and doubles down; the others stay safe.
+  // ── Round 1: Ece goes RISK and doubles down (HIGH / ALL_IN exclude Double Down, ADR-0021); the others stay safe.
   await expect(ece.page.getByTestId('ctl-prep')).toBeVisible();
   await expect(tv.page.getByTestId('tv-ladder')).toBeVisible();
   await expect(ece.page.getByTestId('stake-SAFE')).toHaveAttribute('aria-checked', 'true');
-  await ece.page.getByTestId('stake-HIGH').click();
+  await ece.page.getByTestId('stake-RISK').click();
   await ece.page.getByTestId('prep-double-down').click();
   await expect(ece.page.getByTestId('prep-double-down')).toHaveAttribute('aria-pressed', 'true');
   await shot(ece.page, '30-phone-prep');
@@ -104,7 +104,7 @@ test('stakes, double down and 50/50 play out, and the last question demands a st
 
   await expect(tv.page.getByTestId('tv-power')).toBeVisible();
   await expect(tv.page.getByTestId('power-item')).toHaveCount(2); // her stake and her double
-  await expect(tv.page.getByTestId('tv-power')).toContainText('Ece Yüksek oynadı');
+  await expect(tv.page.getByTestId('tv-power')).toContainText('Ece Risk oynadı');
   await expect(tv.page.getByTestId('tv-power')).toContainText('Ece ÇİFTE yaptı');
   await tv.page.waitForTimeout(1800);
   await shot(tv.page, '33-tv-power');
