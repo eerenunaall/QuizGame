@@ -95,3 +95,67 @@ describe('ATTACK 28 — invisible characters walk past the text moderation', () 
       expect(sanitizeUserText(text, { maxLength: 140 }), text).toEqual({ ok: true, text });
   });
 });
+
+describe('ATTACK 29 — suggest-decoys is a paid call anyone with an invite can repeat', () => {
+  let server: TestServer;
+  let model: ModelServer;
+  beforeAll(async () => {
+    model = await startModelServer(() => ({ text: JSON.stringify({ decoys: ['Pilot', 'Doktor', 'Aşçı'] }) }));
+    server = await startServer({
+      env: {
+        RATE_LIMIT_SCALE: '1',
+        AI_DECOYS_API_KEY: 'attack29-key-0123456789',
+        AI_DECOYS_MODEL: 'decoy-test-model',
+        AI_DECOYS_API_BASE: model.url,
+      },
+    });
+    await server.db.db
+      .updateTable('feature_flags')
+      .set({ enabled: true })
+      .where('key', 'in', ['mode.blind_quiz', 'ai.decoys'])
+      .execute();
+    server.built.flags.invalidate();
+  });
+  afterAll(async () => {
+    await server.dispose();
+    await model.close();
+  });
+
+  it('meters presses per invite: a flood reaches the model a handful of times, then answers 429', async () => {
+    const creator = await player(server, 'WEB');
+    const made = await call<{ id: string }>(server, 'POST', '/v1/quizzes', {
+      token: creator.token,
+      body: { kind: 'BLIND', title: 'Ece hakkında', language: 'tr' },
+    });
+    await call(server, 'POST', `/v1/quizzes/${made.body.id}/prompts`, {
+      token: creator.token,
+      body: { catalogKey: 'dreamJob' },
+    });
+    const target = await call<{ inviteUrl: string }>(server, 'POST', `/v1/quizzes/${made.body.id}/targets`, {
+      token: creator.token,
+      body: { displayName: 'Ece' },
+    });
+    const invite = target.body.inviteUrl.split('/blind/respond/')[1]!;
+    const jar: CookieJar = new Map();
+    const base = `/v1/blind/respond/${invite}`;
+    const view = await call<{ prompts: { promptId: string }[] }>(server, 'GET', base, { jar });
+    const promptId = view.body.prompts[0]!.promptId;
+    await call(server, 'POST', `${base}/consent`, { body: {}, jar });
+    await call(server, 'PUT', `${base}/prompts/${promptId}`, {
+      body: { answer: 'Veteriner', decoys: [] },
+      jar,
+    });
+
+    const statuses: number[] = [];
+    for (let i = 0; i < 30; i += 1)
+      statuses.push((await call(server, 'POST', `${base}/prompts/${promptId}/suggest-decoys`, { body: {}, jar })).status);
+    expect(model.requests.length).toBeLessThanOrEqual(6);
+    expect(statuses.filter((s) => s === 200).length).toBeLessThanOrEqual(6);
+    expect(statuses).toContain(429);
+    // the creator, who holds the same link but not the claim, cannot burn the target's allowance
+    const before = model.requests.length;
+    for (let i = 0; i < 5; i += 1)
+      await call(server, 'POST', `${base}/prompts/${promptId}/suggest-decoys`, { body: {}, cookies: false });
+    expect(model.requests.length).toBe(before);
+  });
+});

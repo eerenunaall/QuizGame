@@ -312,6 +312,8 @@ export class BlindVault {
     token: string,
     claim: string | null,
     promptId: string,
+    /** Asked once the caller is the claimed target and the answer exists, right before a paid call goes out. */
+    mayCallProvider: () => boolean = () => true,
   ): Promise<DecoySuggestion | 'NOT_FOUND' | { ok: false; code: ErrorCode }> {
     const sealer = this.requireSealer();
     const target = await this.targetFor(token);
@@ -339,6 +341,7 @@ export class BlindVault {
       .executeTakeFirst();
     if (!row) return 'NOT_FOUND';
     if (!this.suggester) return { decoys: [], source: 'NONE' };
+    if (!mayCallProvider()) return { ok: false, code: 'RATE_LIMITED' };
     const payload = JSON.parse(
       sealer.open(row.sealed, row.key_id, aadOf(row.response_id, promptId)),
     ) as Payload;

@@ -355,9 +355,15 @@ export function registerBlindRoutes(app: FastifyInstance, deps: BlindRouteDeps):
         params.data.token,
         claimOf(request, params.data.token),
         params.data.promptId,
+        () =>
+          limiter.take(`blindSuggest:${vault.inviteHash(params.data.token)}`, LIMITS.blindSuggest)
+            .allowed &&
+          limiter.take(`blindSuggestIp:${ipHashOf(request)}`, LIMITS.blindSuggestIp).allowed,
       );
       void reply.header('cache-control', 'no-store');
       if (result === 'NOT_FOUND') return notFound(reply);
+      if ('ok' in result && result.code === 'RATE_LIMITED')
+        return apiError(reply, 429, 'RATE_LIMITED', { retryAfterMs: 60_000 });
       return 'source' in result ? result : refuse(reply, result);
     },
   );

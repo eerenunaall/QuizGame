@@ -112,5 +112,11 @@ export const LIMITS = {
   quiz: { capacity: 60, refillPerSec: 1 },
   /** A person answering a Blind Quiz through an invite link (per address). */
   blindRespond: { capacity: 60, refillPerSec: 1 },
+  /**
+   * "Suggest alternatives": every press is a paid call to the remote model, so it is metered apart,
+   * per invite and per address (ATTACK 29). A person needs a handful of presses, not hundreds.
+   */
+  blindSuggest: { capacity: 6, refillPerSec: 6 / 600 },
+  blindSuggestIp: { capacity: 20, refillPerSec: 20 / 600 },
   invalidMessage: { capacity: 8, refillPerSec: 0.2 },
 } as const satisfies Record<string, BucketSpec>;
