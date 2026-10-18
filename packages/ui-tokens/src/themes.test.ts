@@ -91,3 +91,16 @@ describe.each(THEME_IDS)('theme %s', (id: ThemeId) => {
     for (const c of theme.confetti) expect(c).toMatch(/^#[0-9a-f]{6}$/u);
   });
 });
+
+describe('paper surface (question card)', () => {
+  it('only gusto has one, and dark text on it reads at 7:1', () => {
+    for (const id of THEME_IDS) {
+      const paper = THEMES[id].paper;
+      if (id !== 'gusto') expect(paper, id).toBeUndefined();
+      else {
+        expect(paper).toBeDefined();
+        expect(contrastRatio(paper!.text, paper!.background)).toBeGreaterThanOrEqual(7);
+      }
+    }
+  });
+});

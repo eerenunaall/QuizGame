@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createStorage, loadPreferences } from './storage';
-import { applyTheme, pickTheme, resolveVenueLogo, saveTheme } from './theme';
+import { applyTheme, pickTheme, resolveVenueInfo, resolveVenueLogo, saveTheme } from './theme';
 
 const memory = () => createStorage(null);
 
@@ -45,5 +45,30 @@ describe('theme selection', () => {
       '/a.exe',
     ])
       expect(resolveVenueLogo(bad)).toBeNull();
+  });
+  it('gusto is selectable by ?theme= and as the deployment default', () => {
+    expect(pickTheme('?theme=gusto', memory())).toBe('gusto');
+    expect(pickTheme('', memory(), { VITE_DEFAULT_THEME: 'gusto' })).toBe('gusto');
+    applyTheme(document, 'gusto');
+    expect(document.documentElement.dataset.theme).toBe('gusto');
+    applyTheme(document, 'party');
+  });
+  it('shows a venue credit only from env, or the Gusto default inside the gusto theme', () => {
+    expect(resolveVenueInfo('party', {})).toBeNull();
+    expect(resolveVenueInfo('venue-gold', { VITE_VENUE_NAME: '  ' })).toBeNull();
+    expect(resolveVenueInfo('gusto', {})).toEqual({
+      name: 'Gusto Board Game',
+      credit: 'by Eren Ünal',
+    });
+    expect(resolveVenueInfo('party', { VITE_VENUE_NAME: 'Cafe X' })).toEqual({
+      name: 'Cafe X',
+      credit: '',
+    });
+    // an env value, even for the gusto theme, wins over the default
+    expect(resolveVenueInfo('gusto', { VITE_VENUE_CREDIT: 'by Y' })).toEqual({
+      name: '',
+      credit: 'by Y',
+    });
+    expect(resolveVenueInfo('party', { VITE_VENUE_NAME: 'x'.repeat(500) })!.name).toHaveLength(60);
   });
 });

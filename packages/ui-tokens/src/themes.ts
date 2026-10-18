@@ -6,7 +6,7 @@ import { colors, paletteDeclarations, cssVariables, type Palette } from './token
  * `:root[data-theme='…']`. Fonts, radii and spacing are shared on purpose: a venue font is an owner
  * input that arrives later via `--qp-font-*`.
  */
-export const THEME_IDS = ['party', 'venue-gold', 'high-contrast'] as const;
+export const THEME_IDS = ['party', 'venue-gold', 'high-contrast', 'gusto'] as const;
 export type ThemeId = (typeof THEME_IDS)[number];
 
 export interface ThemeDef {
@@ -22,6 +22,8 @@ export interface ThemeDef {
   chrome: string;
   /** Confetti and burst colours follow the theme. */
   confetti: readonly string[];
+  /** Optional "paper" surface for the question card (dark text on cream); absent = the dark glass card. */
+  paper?: { background: string; text: string };
 }
 
 export const isThemeId = (value: unknown): value is ThemeId =>
@@ -135,7 +137,49 @@ export const highContrastTheme: ThemeDef = {
   confetti: ['#ffd400', '#7fd4ff', '#e8602c', '#1fb88a', '#ffffff'],
 };
 
+/**
+ * Gusto Board Game Cafe: near-black warm base, the antique gold of the round logo, a cream paper card
+ * for the question, and the shop's wall blue / wood orange / uniform red as secondary accents. The
+ * four answer colours stay the colour-blind-safe set (letters and shapes carry the meaning anyway).
+ */
+const gustoPalette: Palette = {
+  background: '#0b0a08',
+  backgroundDeep: '#050403',
+  surface: '#1b1713',
+  surfaceRaised: '#2a241c',
+  surfaceLine: '#8f7340',
+  text: '#f6f0e2',
+  mutedText: '#cdbfa0',
+  accentA: '#c9a45c',
+  accentB: '#3b6eb0',
+  accentC: '#e6cf9c',
+  success: '#3ddc84',
+  danger: '#d2453d',
+  warning: '#d9772b',
+  ...OKABE_ANSWERS,
+  player1: SAFE_CATEGORIES[0],
+  player2: SAFE_CATEGORIES[1],
+  player3: SAFE_CATEGORIES[2],
+  player4: SAFE_CATEGORIES[3],
+  player5: SAFE_CATEGORIES[4],
+  player6: SAFE_CATEGORIES[5],
+  player7: '#f4efe3',
+  player8: SAFE_CATEGORIES[7],
+};
+
+export const gustoTheme: ThemeDef = {
+  id: 'gusto',
+  palette: gustoPalette,
+  categories: [...SAFE_CATEGORIES.slice(0, 6), '#f4efe3', SAFE_CATEGORIES[7]],
+  onAnswer: '#0b0a08',
+  glow: '0 0 40px rgba(201, 164, 92, 0.5)',
+  chrome: gustoPalette.background,
+  confetti: ['#c9a45c', '#e6cf9c', '#f4efe3', '#d9772b', '#3b6eb0', '#d2453d'],
+  paper: { background: '#f4efe3', text: '#1d1812' },
+};
+
 export const THEMES: Record<ThemeId, ThemeDef> = {
+  gusto: gustoTheme,
   party: partyTheme,
   'venue-gold': venueGoldTheme,
   'high-contrast': highContrastTheme,
@@ -145,6 +189,9 @@ const extras = (theme: ThemeDef): Record<string, string> => ({
   ...Object.fromEntries(
     theme.categories.map((value, index) => [`color-category-${index + 1}`, value]),
   ),
+  ...(theme.paper
+    ? { 'color-paper': theme.paper.background, 'color-on-paper': theme.paper.text }
+    : {}),
   'color-on-answer': theme.onAnswer,
   'shadow-glow': theme.glow,
 });
@@ -157,7 +204,7 @@ export function themeCss(): string {
       .map(([name, value]) => `  --qp-${name}: ${value};`)
       .join('\n')}\n}\n`,
   ];
-  for (const theme of [venueGoldTheme, highContrastTheme])
+  for (const theme of [venueGoldTheme, highContrastTheme, gustoTheme])
     blocks.push(
       `:root[data-theme='${theme.id}'] {\n${paletteDeclarations(theme.palette, extras(theme)).join('\n')}\n}\n`,
     );

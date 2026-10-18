@@ -204,12 +204,14 @@
   flex: none;
   margin-bottom: 14px;
   padding: 14px 16px;
-  background: rgba(var(--qp-deep-rgb), 0.88);
+  background: var(--qp-color-paper, rgba(var(--qp-deep-rgb), 0.88));
+  border-color: var(--qp-color-paper-line, var(--qp-color-surface-line));
 }
 
 .questionText {
   font-size: 22px;
   font-weight: 800;
+  color: var(--qp-color-on-paper, inherit);
   line-height: 1.18;
   text-align: center;
 }

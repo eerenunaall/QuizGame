@@ -32,12 +32,43 @@
   z-index: 2;
 }
 
+.credit {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 18px;
+  padding: 8px 28px 8px 12px;
+  text-align: left;
+  background: rgba(var(--qp-deep-rgb), 0.6);
+  border: 3px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+}
+.creditLogo {
+  width: 72px;
+  height: 72px;
+  margin-right: 16px;
+  border-radius: 50%;
+}
+.creditName {
+  font-family: var(--qp-font-display);
+  font-size: 32px;
+  line-height: 1.15;
+  color: var(--qp-color-accent-a);
+}
+.creditLine {
+  font-size: 28px;
+  line-height: 1.15;
+  color: var(--qp-color-muted-text);
+}
+
 .menu {
   position: absolute;
   top: 400px;
   right: 190px;
   z-index: 3;
   width: 640px;
+}
+.menuLow {
+  top: 450px; /* clears the venue credit under the tagline */
 }
 .menu > button {
   margin-bottom: 34px;

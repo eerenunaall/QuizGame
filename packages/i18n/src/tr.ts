@@ -19,6 +19,7 @@ export const tr = {
   'theme.party': 'Parti',
   'theme.venueGold': 'Mekan altın',
   'theme.highContrast': 'Yüksek kontrast',
+  'theme.gusto': 'Gusto',
   'theme.logo.alt': 'Mekan logosu',
   'common.language': 'Dil',
 

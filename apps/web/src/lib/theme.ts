@@ -6,6 +6,8 @@ import { loadPreferences, savePreferences } from './storage';
 export interface ThemeEnv {
   VITE_DEFAULT_THEME?: string | undefined;
   VITE_VENUE_LOGO_URL?: string | undefined;
+  VITE_VENUE_NAME?: string | undefined;
+  VITE_VENUE_CREDIT?: string | undefined;
 }
 
 /**
@@ -45,4 +47,24 @@ export function resolveVenueLogo(raw: string | undefined): string | null {
   // credential/host trick: neither belongs in a logo address (ATTACK 30).
   if (!/^(\/(?!\/|\\)|https:\/\/)[^\s"'<>\\@]+\.(svg|png|webp)$/iu.test(value)) return null;
   return value;
+}
+
+export interface VenueInfo {
+  name: string;
+  credit: string;
+}
+
+/** Defaults for the Gusto Board Game Cafe deployment, used only when the env sets neither line. */
+const GUSTO_VENUE: VenueInfo = { name: 'Gusto Board Game', credit: 'by Eren Ünal' };
+const MAX_CREDIT = 60;
+
+/**
+ * The credit under the wordmark on the TV title: env wins, empty means hidden, except that the gusto
+ * theme falls back to its own venue when nothing is configured. Plain text only (React escapes it).
+ */
+export function resolveVenueInfo(theme: ThemeId, env: ThemeEnv = {}): VenueInfo | null {
+  const name = (env.VITE_VENUE_NAME ?? '').trim().slice(0, MAX_CREDIT);
+  const credit = (env.VITE_VENUE_CREDIT ?? '').trim().slice(0, MAX_CREDIT);
+  if (name || credit) return { name, credit };
+  return theme === 'gusto' ? GUSTO_VENUE : null;
 }

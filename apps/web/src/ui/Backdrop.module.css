@@ -95,3 +95,18 @@
 :global(:root[data-theme='high-contrast']) .glow {
   display: none;
 }
+
+/* Gusto: antique-gold beams, a touch of wall blue on the right, wood-orange glow. */
+:global(:root[data-theme='gusto']) .beamLeft {
+  background: linear-gradient(180deg, rgba(201, 164, 92, 0.28), rgba(201, 164, 92, 0));
+}
+:global(:root[data-theme='gusto']) .beamRight {
+  background: linear-gradient(180deg, rgba(47, 95, 158, 0.26), rgba(47, 95, 158, 0));
+}
+:global(:root[data-theme='gusto']) .glow {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(217, 119, 43, 0.14),
+    rgba(217, 119, 43, 0) 65%
+  );
+}

@@ -7,9 +7,13 @@ import { Panel, Pill } from '../../ui/Panel';
 import { Sticker } from '../../ui/Sticker';
 import { LetterParade } from '../../ui/LetterParade';
 import { Mascot } from '../../ui/Mascot';
+import { venueLogoFor } from '../../ui/VenueLogo';
+import { resolveVenueInfo } from '../../lib/theme';
+import { useDataTheme } from '../../lib/useDataTheme';
 import { useI18n } from '../../lib/i18n';
 import type { MessageKey } from '@quizparty/i18n';
 import styles from './TvTitle.module.css';
+import { cx } from '../../lib/cx';
 
 interface Props {
   creating: boolean;
@@ -28,6 +32,7 @@ const THEME_NAME_KEY = {
   party: 'theme.party',
   'venue-gold': 'theme.venueGold',
   'high-contrast': 'theme.highContrast',
+  gusto: 'theme.gusto',
 } as const satisfies Record<ThemeId, MessageKey>;
 
 type Dialog = null | 'howto' | 'settings';
@@ -55,6 +60,9 @@ export function TvTitle({
   const { t } = useI18n();
   const [dialog, setDialog] = useState<Dialog>(null);
   const startRef = useRef<HTMLButtonElement>(null);
+  const activeTheme = useDataTheme();
+  const venue = resolveVenueInfo(activeTheme, import.meta.env);
+  const venueLogo = venueLogoFor(activeTheme);
   useEffect(() => {
     startRef.current?.focus();
   }, []);
@@ -65,11 +73,24 @@ export function TvTitle({
       <div className={styles.hero}>
         <LetterParade height={190} />
         <div className={styles.tagline}>{t('brand.tagline.caps')}</div>
+        {venue || venueLogo ? (
+          <div className={styles.credit} data-testid="tv-venue-credit">
+            {venueLogo ? (
+              <img className={styles.creditLogo} src={venueLogo} alt="" aria-hidden="true" />
+            ) : null}
+            {venue ? (
+              <div className={styles.creditText}>
+                {venue.name ? <div className={styles.creditName}>{venue.name}</div> : null}
+                {venue.credit ? <div className={styles.creditLine}>{venue.credit}</div> : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
       <div className={styles.mascot}>
         <Mascot height={520} />
       </div>
-      <div className={styles.menu}>
+      <div className={cx(styles.menu, (venue || venueLogo) && styles.menuLow)}>
         <Button
           ref={startRef}
           size="xl"

@@ -43,8 +43,8 @@
   width: 1360px;
   height: 188px;
   padding: 0 56px;
-  background: rgba(var(--qp-deep-rgb), 0.88);
-  border: 4px solid rgba(255, 255, 255, 0.22);
+  background: var(--qp-color-paper, rgba(var(--qp-deep-rgb), 0.88));
+  border: 4px solid var(--qp-color-paper-line, rgba(255, 255, 255, 0.22));
   border-radius: 40px;
   box-shadow:
     0 10px 0 rgba(0, 0, 0, 0.32),
@@ -56,7 +56,8 @@
   font-weight: 800;
   line-height: 1.12;
   text-align: center;
-  text-shadow: 0 4px 0 rgba(0, 0, 0, 0.4);
+  color: var(--qp-color-on-paper, inherit); /* dark text on the cream paper card (gusto) */
+  text-shadow: var(--qp-paper-shadow, 0 4px 0 rgba(0, 0, 0, 0.4));
 }
 
 /* Reveal with an explanation: the question card hands over to the "did you know" card. */
@@ -243,7 +244,7 @@
   font-size: 40px;
   letter-spacing: 0.04em;
   text-align: center;
-  color: var(--qp-color-accent-a);
+  color: var(--qp-color-on-paper, var(--qp-color-accent-a));
 }
 
 .optionAvatar {

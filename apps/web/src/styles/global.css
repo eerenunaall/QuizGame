@@ -44,6 +44,18 @@ body,
   --qp-first-glow: 255, 212, 0;
 }
 
+/* Gusto: antique-gold first place, cream paper question card with a gold rim and no text shadow. */
+:root[data-theme='gusto'] {
+  --qp-deep-rgb: 11, 10, 8;
+  --qp-surface-rgb: 27, 23, 19;
+  --qp-first-a: #8a6a2c;
+  --qp-first-b: #5e451a;
+  --qp-first-line: #e6cf9c;
+  --qp-first-glow: 201, 164, 92;
+  --qp-color-paper-line: #c9a45c;
+  --qp-paper-shadow: none;
+}
+
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;

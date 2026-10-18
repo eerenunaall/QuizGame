@@ -15,6 +15,7 @@ export const en: Record<MessageKey, string> = {
   'theme.party': 'Party',
   'theme.venueGold': 'Venue gold',
   'theme.highContrast': 'High contrast',
+  'theme.gusto': 'Gusto',
   'theme.logo.alt': 'Venue logo',
   'common.language': 'Language',
 
