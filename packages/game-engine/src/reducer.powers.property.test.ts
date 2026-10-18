@@ -142,5 +142,6 @@ describe('powers: invariants for any play', () => {
       }),
       { numRuns: 40 },
     );
-  });
+    // 40 full games take ~4 s alone: the 5 s default expires under a loaded runner (a timeout, not a logic failure).
+  }, 60_000);
 });
