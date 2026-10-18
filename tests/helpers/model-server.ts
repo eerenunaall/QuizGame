@@ -34,7 +34,7 @@ const TASKS: [string, keyof typeof GOOD][] = [
  * request and returns the text of the model's reply (or a status to fail with).
  */
 export async function startModelServer(
-  answer: (request: ModelRequest) => { text: string } | { status: number },
+  answer: (request: ModelRequest) => { text: string; delayMs?: number } | { status: number },
 ): Promise<ModelServer> {
   const requests: ModelRequest[] = [];
   const server: Server = createServer((req, res) => {
@@ -47,7 +47,7 @@ export async function startModelServer(
         body: JSON.parse(Buffer.concat(chunks).toString('utf8')) as ModelRequest['body'],
       };
       requests.push(request);
-      let reply: { text: string } | { status: number };
+      let reply: { text: string; delayMs?: number } | { status: number };
       try {
         reply = answer(request);
       } catch {
@@ -58,16 +58,20 @@ export async function startModelServer(
         res.end(JSON.stringify({ error: { type: 'overloaded_error' } }));
         return;
       }
-      res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(
-        JSON.stringify({
-          id: 'msg_test',
-          type: 'message',
-          role: 'assistant',
-          content: [{ type: 'text', text: reply.text }],
-          usage: { input_tokens: 120, output_tokens: 40 },
-        }),
-      );
+      const send = () => {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            id: 'msg_test',
+            type: 'message',
+            role: 'assistant',
+            content: [{ type: 'text', text: reply.text }],
+            usage: { input_tokens: 120, output_tokens: 40 },
+          }),
+        );
+      };
+      if (reply.delayMs) setTimeout(send, reply.delayMs).unref();
+      else send();
     });
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));

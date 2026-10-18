@@ -19,6 +19,7 @@ import { PersonalDecks } from './blind/decks';
 import { QuizService } from './blind/quizzes';
 import { registerBlindRoutes } from './blind/routes';
 import { Sealer } from './blind/sealer';
+import { DecoySuggester, HttpDecoyProvider } from './blind/decoys';
 import { BlindVault } from './blind/vault';
 import { ConsoleEmailSender, WebhookEmailSender, type EmailSender } from './auth/email';
 import { installAuthGuard } from './auth/guard';
@@ -77,6 +78,8 @@ export interface BuildOptions {
   clock?: Clock;
   /** Replaces the configured mail delivery (tests read codes from a mailbox double). */
   emailSender?: EmailSender;
+  /** Where log lines go instead of stdout (canary tests read exactly what an operator would). */
+  logStream?: { write(line: string): void };
 }
 
 /** Wires every component. Does not listen; callers use `app.listen` (see main.ts) or `app.inject`. */
@@ -95,6 +98,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   const app = Fastify({
     logger: {
       level: config.logLevel,
+      ...(options.logStream ? { stream: options.logStream } : {}),
       redact: [
         'req.headers.authorization',
         'req.headers.cookie',
@@ -191,7 +195,21 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
       if (report.ran) log.info(report, 'question maintenance');
     },
   );
+  const decoyProvider = config.aiDecoys
+    ? new HttpDecoyProvider({
+        apiKey: config.aiDecoys.apiKey,
+        model: config.aiDecoys.model,
+        baseUrl: config.aiDecoys.apiBase,
+        timeoutMs: config.aiDecoys.timeoutMs,
+        clock,
+      })
+    : null;
   const vault = new BlindVault({
+    suggester: new DecoySuggester({
+      provider: decoyProvider,
+      enabled: () => flags.isEnabled('ai.decoys'),
+      record: (result) => metrics.aiDecoys.inc({ result }),
+    }),
     db,
     sealer: config.blindKeys ? new Sealer(config.blindKeys) : null,
     clock,

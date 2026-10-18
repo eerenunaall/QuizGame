@@ -131,6 +131,17 @@ describe('scanForbiddenKeys', () => {
     expect(hits.map((h) => h.path).sort()).toEqual(['a[1].nested.correctOptionId', 'explanation']);
   });
 
+  it('knows the Blind Quiz secrets: sealed answers, claims, invites and raw decoys', () => {
+    const hits = scanForbiddenKeys({
+      room: { quiz: { sealed: 'x', claim: 'y' } },
+      links: [{ inviteUrl: 'u' }, { inviteToken: 't' }],
+      prompts: [{ rawAnswer: 'a', decoys: ['b'] }],
+    });
+    expect(hits.map((h) => h.key).sort()).toEqual(
+      ['claim', 'decoys', 'inviteToken', 'inviteUrl', 'rawAnswer', 'sealed'].sort(),
+    );
+  });
+
   it('passes clean payloads', () => {
     expect(scanForbiddenKeys({ options: [{ optionId: 'abc', text: 'Ankara' }] })).toEqual([]);
   });

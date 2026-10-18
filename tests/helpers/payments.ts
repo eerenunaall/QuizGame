@@ -67,21 +67,54 @@ export async function player(
   return { accountId: account.id, email, token: session.token, storeToken };
 }
 
+/**
+ * A browser's cookie jar for the one cookie the API sets (the Blind Quiz claim, ADR-0015): shared by
+ * every `call`, so a test plays the target's browser by default and the creator or a stranger by
+ * passing `cookies: false`, or a second browser with its own `jar`.
+ */
+export type CookieJar = Map<string, { value: string; path: string }>;
+const defaultJar: CookieJar = new Map();
+
 export async function call<T = Record<string, unknown>>(
   server: TestServer,
   method: string,
   path: string,
-  options: { token?: string; body?: unknown; headers?: Record<string, string> } = {},
+  options: {
+    token?: string;
+    body?: unknown;
+    headers?: Record<string, string>;
+    cookies?: boolean;
+    jar?: CookieJar;
+  } = {},
 ): Promise<{ status: number; body: T }> {
+  const jar = options.jar ?? defaultJar;
+  const cookie =
+    options.cookies === false
+      ? ''
+      : [...jar]
+          .filter(([, entry]) => path.startsWith(entry.path))
+          .map(([name, entry]) => `${name}=${entry.value}`)
+          .join('; ');
   const response = await fetch(`${server.httpUrl}${path}`, {
     method,
     headers: {
+      ...(cookie ? { cookie } : {}),
       ...(options.token ? { authorization: `Bearer ${options.token}` } : {}),
       ...(options.body !== undefined ? { 'content-type': 'application/json' } : {}),
       ...options.headers,
     },
     ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
   });
+  for (const line of response.headers.getSetCookie()) {
+    const [pair = '', ...attributes] = line.split(';').map((part) => part.trim());
+    const eq = pair.indexOf('=');
+    const attribute = attributes.find((a) => a.toLowerCase().startsWith('path='));
+    if (eq > 0)
+      jar.set(pair.slice(0, eq), {
+        value: pair.slice(eq + 1),
+        path: attribute ? attribute.slice(5) : '/',
+      });
+  }
   const text = await response.text();
   return { status: response.status, body: (text ? JSON.parse(text) : null) as T };
 }

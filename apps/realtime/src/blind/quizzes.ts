@@ -323,17 +323,27 @@ export class QuizService {
     accountId: string,
     quizId: string,
     targetId: string,
-  ): Promise<{ inviteUrl: string } | null> {
+  ): Promise<{ inviteUrl: string } | 'CLAIMED' | null> {
     if (!(await this.owned(accountId, quizId))) return null;
     const token = BlindVault.newToken();
+    // Never after the target took the invite: a fresh link in the creator's hands is exactly what
+    // the claim secret exists to make useless (ATTACK 10), and the old one is the target's way in.
     const row = await this.db
       .updateTable('blind_targets')
       .set({ invite_hash: this.vault.inviteHash(token) })
       .where('id', '=', targetId)
       .where('quiz_id', '=', quizId)
+      .where('claim_hash', 'is', null)
       .returning('id')
       .executeTakeFirst();
-    return row ? { inviteUrl: this.inviteUrl(token) } : null;
+    if (row) return { inviteUrl: this.inviteUrl(token) };
+    const exists = await this.db
+      .selectFrom('blind_targets')
+      .select('id')
+      .where('id', '=', targetId)
+      .where('quiz_id', '=', quizId)
+      .executeTakeFirst();
+    return exists ? 'CLAIMED' : null;
   }
 
   async removeTarget(accountId: string, quizId: string, targetId: string): Promise<boolean> {

@@ -79,6 +79,11 @@ const EnvSchema = z.object({
    * seals, all can open (rotation). Without it a production server serves no personal quizzes.
    */
   BLIND_DATA_KEYS: z.string().optional(),
+  /** AI decoy suggestions for Blind Quiz targets (ADR-0015); also needs the `ai.decoys` flag. */
+  AI_DECOYS_API_KEY: z.string().min(8).optional(),
+  AI_DECOYS_MODEL: z.string().min(1).max(100).optional(),
+  AI_DECOYS_API_BASE: z.string().url().optional(),
+  AI_DECOYS_TIMEOUT_MS: int(4_000, 200, 30_000),
   AUDIT_API_KEY: z.string().min(8).optional(),
   AUDIT_MODEL_FAST: z.string().min(1).max(100).optional(),
   AUDIT_MODEL_STRONG: z.string().min(1).max(100).optional(),
@@ -221,6 +226,7 @@ export interface AppConfig {
   payments: PaymentsConfig;
   /** Sealing keys for personal answers; the first is the active one. Null = personal quizzes are off. */
   blindKeys: { id: string; key: Buffer }[] | null;
+  aiDecoys: { apiKey: string; apiBase: string | null; model: string; timeoutMs: number } | null;
   audit: { apiKey: string; apiBase: string | null; modelFast: string; modelStrong: string } | null;
   embeddings: { baseUrl: string; model: string; apiKey: string | null } | null;
 }
@@ -264,6 +270,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     }
   }
 
+  if (e.AI_DECOYS_API_KEY && !e.AI_DECOYS_MODEL)
+    throw new Error('Invalid configuration: AI_DECOYS_API_KEY needs AI_DECOYS_MODEL');
   if (e.AUDIT_API_KEY && !e.AUDIT_MODEL_FAST)
     throw new Error('Invalid configuration: AUDIT_API_KEY needs AUDIT_MODEL_FAST');
 
@@ -306,6 +314,15 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       : null,
     payments: paymentsConfig(e, production),
     blindKeys: blindKeys(e.BLIND_DATA_KEYS, e.SERVER_SECRET ?? DEV_SECRET, production),
+    aiDecoys:
+      e.AI_DECOYS_API_KEY && e.AI_DECOYS_MODEL
+        ? {
+            apiKey: e.AI_DECOYS_API_KEY,
+            apiBase: e.AI_DECOYS_API_BASE ?? null,
+            model: e.AI_DECOYS_MODEL,
+            timeoutMs: e.AI_DECOYS_TIMEOUT_MS,
+          }
+        : null,
     audit:
       e.AUDIT_API_KEY && e.AUDIT_MODEL_FAST
         ? {

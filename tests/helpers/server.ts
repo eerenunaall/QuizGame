@@ -54,6 +54,7 @@ export interface StartOptions {
   seed?: boolean;
   /** Where sign-in mail goes (a mailbox double that tests read like a user would). */
   emailSender?: EmailSender;
+  logStream?: { write(line: string): void };
 }
 
 export async function startServer(options: StartOptions = {}): Promise<TestServer> {
@@ -78,6 +79,7 @@ export async function startServer(options: StartOptions = {}): Promise<TestServe
   const built = await buildApp({
     config,
     ...(options.emailSender ? { emailSender: options.emailSender } : {}),
+    ...(options.logStream ? { logStream: options.logStream } : {}),
   });
   await built.app.listen({ port: options.port ?? 0, host: '127.0.0.1' });
   const { port } = built.app.server.address() as AddressInfo;

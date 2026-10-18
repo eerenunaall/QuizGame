@@ -394,7 +394,3 @@ describe('ATTACK 12 — join from another network', () => {
     await closeParty(party);
   });
 });
-
-describe('Attacks that need features from later milestones', () => {
-  it.todo('ATTACK 10 — creator requests Blind Quiz raw answers (needs Blind Quiz, M5)');
-});

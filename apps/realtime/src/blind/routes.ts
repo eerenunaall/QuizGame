@@ -88,7 +88,13 @@ export function registerBlindRoutes(app: FastifyInstance, deps: BlindRouteDeps):
   ) =>
     apiError(
       reply,
-      outcome.code === 'LIMIT_REACHED' ? 409 : outcome.code === 'NOT_READY' ? 409 : 422,
+      outcome.code === 'LIMIT_REACHED'
+        ? 409
+        : outcome.code === 'NOT_READY'
+          ? 409
+          : outcome.code === 'FORBIDDEN'
+            ? 403
+            : 422,
       outcome.code,
       outcome.params,
     );
@@ -197,6 +203,7 @@ export function registerBlindRoutes(app: FastifyInstance, deps: BlindRouteDeps):
       const invite = params.success
         ? await quizzes.rotateInvite(accountId, params.data.id, params.data.sub)
         : null;
+      if (invite === 'CLAIMED') return apiError(reply, 409, 'NOT_READY');
       return invite ?? notFound(reply);
     },
   );
@@ -251,6 +258,15 @@ export function registerBlindRoutes(app: FastifyInstance, deps: BlindRouteDeps):
   );
 
   // ───────────── the person who answers (no account, just the invite) ─────────────
+  /** The claim secret the target's browser sends back (set at consent; HttpOnly, so scripts never see it). */
+  const claimOf = (request: FastifyRequest, token: string): string | null => {
+    const name = vault.claimCookieName(token);
+    for (const part of (request.headers.cookie ?? '').split(';')) {
+      const eq = part.indexOf('=');
+      if (eq > 0 && part.slice(0, eq).trim() === name) return part.slice(eq + 1).trim();
+    }
+    return null;
+  };
   const targetGate = async (request: FastifyRequest, reply: FastifyReply): Promise<boolean> => {
     const limit = limiter.take(`blindRespond:${ipHashOf(request)}`, LIMITS.blindRespond);
     if (!limit.allowed) {
@@ -270,8 +286,11 @@ export function registerBlindRoutes(app: FastifyInstance, deps: BlindRouteDeps):
     async (request, reply) => {
       if (!(await targetGate(request, reply))) return reply;
       const params = Token.safeParse(request.params);
-      const view = params.success ? await vault.view(params.data.token) : null;
+      const view = params.success
+        ? await vault.view(params.data.token, claimOf(request, params.data.token))
+        : null;
       void reply.header('cache-control', 'no-store');
+      if (view === 'FORBIDDEN') return apiError(reply, 403, 'FORBIDDEN');
       return view ?? notFound(reply);
     },
   );
@@ -282,7 +301,22 @@ export function registerBlindRoutes(app: FastifyInstance, deps: BlindRouteDeps):
     async (request, reply) => {
       if (!(await targetGate(request, reply))) return reply;
       const params = Token.safeParse(request.params);
-      if (!params.success || !(await vault.consent(params.data.token))) return notFound(reply);
+      if (!params.success) return notFound(reply);
+      const consent = await vault.consent(params.data.token, claimOf(request, params.data.token));
+      if (consent === 'NOT_FOUND') return notFound(reply);
+      if (consent === 'FORBIDDEN') return apiError(reply, 403, 'FORBIDDEN');
+      if (consent.claim)
+        void reply.header(
+          'set-cookie',
+          [
+            `${vault.claimCookieName(params.data.token)}=${consent.claim}`,
+            `Path=/v1/blind/respond/${params.data.token}`,
+            'HttpOnly',
+            'SameSite=Strict',
+            `Max-Age=${30 * 86_400}`,
+            ...(config.env === 'production' ? ['Secure'] : []),
+          ].join('; '),
+        );
       return { ok: true };
     },
   );
@@ -296,9 +330,35 @@ export function registerBlindRoutes(app: FastifyInstance, deps: BlindRouteDeps):
       const body = Answer.safeParse(request.body);
       if (!params.success) return notFound(reply);
       if (!body.success) return bad(reply);
-      const result = await vault.put(params.data.token, params.data.promptId, body.data);
+      const result = await vault.put(
+        params.data.token,
+        claimOf(request, params.data.token),
+        params.data.promptId,
+        body.data,
+      );
       if (result === 'NOT_FOUND') return notFound(reply);
       return result.ok ? { ok: true } : refuse(reply, result);
+    },
+  );
+
+  // The target asks for suggestions for an answer they already stored; the result is shown to them
+  // only, and they still choose, edit and approve (ADR-0015).
+  app.post(
+    '/v1/blind/respond/:token/prompts/:promptId/suggest-decoys',
+    { config: { auth: 'public', limit: 'blindRespond' } },
+    async (request, reply) => {
+      if (!(await targetGate(request, reply))) return reply;
+      const params = TokenPrompt.safeParse(request.params);
+      if (!params.success) return notFound(reply);
+      if (!z.strictObject({}).safeParse(request.body ?? {}).success) return bad(reply);
+      const result = await vault.suggestDecoys(
+        params.data.token,
+        claimOf(request, params.data.token),
+        params.data.promptId,
+      );
+      void reply.header('cache-control', 'no-store');
+      if (result === 'NOT_FOUND') return notFound(reply);
+      return 'source' in result ? result : refuse(reply, result);
     },
   );
 
@@ -313,6 +373,7 @@ export function registerBlindRoutes(app: FastifyInstance, deps: BlindRouteDeps):
       if (!body.success) return bad(reply);
       const result = await vault.approve(
         params.data.token,
+        claimOf(request, params.data.token),
         params.data.promptId,
         body.data.approved,
       );
@@ -327,8 +388,13 @@ export function registerBlindRoutes(app: FastifyInstance, deps: BlindRouteDeps):
     async (request, reply) => {
       if (!(await targetGate(request, reply))) return reply;
       const params = Token.safeParse(request.params);
-      if (!params.success || !(await vault.deleteTarget(params.data.token))) return notFound(reply);
-      return { ok: true };
+      if (!params.success) return notFound(reply);
+      const deleted = await vault.deleteTarget(
+        params.data.token,
+        claimOf(request, params.data.token),
+      );
+      if (deleted === 'FORBIDDEN') return apiError(reply, 403, 'FORBIDDEN');
+      return deleted ? { ok: true } : notFound(reply);
     },
   );
 }

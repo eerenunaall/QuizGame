@@ -37,7 +37,13 @@ export function createMetrics() {
     labelNames: ['kind'],
     registers: [registry],
   });
-  return { registry, wsConnections, rooms, messages, inputDuration, errors, security };
+  const aiDecoys = new Counter({
+    name: 'qp_ai_decoys_total',
+    help: 'AI decoy suggestion requests by result (never any content)',
+    labelNames: ['result'],
+    registers: [registry],
+  });
+  return { registry, wsConnections, rooms, messages, inputDuration, errors, security, aiDecoys };
 }
 
 export type Metrics = ReturnType<typeof createMetrics>;

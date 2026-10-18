@@ -24,6 +24,15 @@ export const FORBIDDEN_PRE_REVEAL_KEYS: readonly string[] = [
   'authorPlayerId',
   'authorId',
   'statements',
+  // Blind Quiz (ADR-0015): a personal answer, its alternatives and the secrets that open them are
+  // never part of any game or room frame; the question text is the only way words reach a screen.
+  'sealed',
+  'claim',
+  'claimHash',
+  'inviteToken',
+  'inviteUrl',
+  'rawAnswer',
+  'decoys',
 ];
 
 export interface ForbiddenHit {

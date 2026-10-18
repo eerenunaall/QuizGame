@@ -108,6 +108,7 @@ export interface BlindResponses {
 }
 
 export interface BlindTargets {
+  claim_hash: string | null;
   consented_at: Timestamp | null;
   created_at: Generated<Timestamp>;
   display_name: string;

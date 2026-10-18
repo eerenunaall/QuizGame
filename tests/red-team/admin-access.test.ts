@@ -74,6 +74,7 @@ describe('ATTACK 18 — the route table is the access policy', () => {
         'GET /v1/quizzes/:id [session]',
         'POST /v1/blind/respond/:token/consent [public]',
         'POST /v1/blind/respond/:token/prompts/:promptId/approval [public]',
+        'POST /v1/blind/respond/:token/prompts/:promptId/suggest-decoys [public]',
         'POST /v1/quizzes [session]',
         'POST /v1/quizzes/:id/prompts [session]',
         'POST /v1/quizzes/:id/questions [session]',

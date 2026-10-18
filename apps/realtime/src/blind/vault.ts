@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import type { Database } from '@quizparty/db';
 import type { DeckQuestion } from '@quizparty/game-engine';
 import { translate, type Locale } from '@quizparty/i18n';
@@ -7,6 +7,7 @@ import { sanitizeUserText } from '@quizparty/validation';
 import { foldCase } from '@quizparty/validation';
 import { hmacHex } from '../security/crypto';
 import type { Clock } from '../util/clock';
+import type { DecoySuggester, DecoySuggestion } from './decoys';
 import type { Sealer } from './sealer';
 
 export const RETENTION_MS = 30 * 86_400_000;
@@ -49,8 +50,16 @@ export class BlindVault {
   private readonly sealer: Sealer | null;
   private readonly clock: Clock;
   private readonly secret: string;
+  private readonly suggester: DecoySuggester | null;
 
-  constructor(deps: { db: Database; sealer: Sealer | null; clock: Clock; secret: string }) {
+  constructor(deps: {
+    db: Database;
+    sealer: Sealer | null;
+    clock: Clock;
+    secret: string;
+    suggester?: DecoySuggester;
+  }) {
+    this.suggester = deps.suggester ?? null;
     this.db = deps.db;
     this.sealer = deps.sealer;
     this.clock = deps.clock;
@@ -70,6 +79,30 @@ export class BlindVault {
     return hmacHex(this.secret, 'blind-invite', token);
   }
 
+  /** Name of the cookie that carries a target's claim; derived from the invite so one browser can hold several. */
+  claimCookieName(token: string): string {
+    return `qp_blind_${this.inviteHash(token).slice(0, 16)}`;
+  }
+
+  private claimHashOf(claim: string): string {
+    return hmacHex(this.secret, 'blind-claim', claim);
+  }
+
+  /**
+   * ADR-0015 / ATTACK 10: the invite link is also in the creator's hands, so it only opens the consent
+   * step. Everything after it needs the claim secret minted at consent and kept by the target's browser.
+   */
+  private gate(
+    target: { claimHash: string | null },
+    claim: string | null,
+  ): 'OK' | 'UNCLAIMED' | 'FORBIDDEN' {
+    if (target.claimHash === null) return 'UNCLAIMED';
+    if (claim === null || !/^[A-Za-z0-9_-]{43}$/u.test(claim)) return 'FORBIDDEN';
+    const given = Buffer.from(this.claimHashOf(claim), 'hex');
+    const stored = Buffer.from(target.claimHash, 'hex');
+    return given.length === stored.length && timingSafeEqual(given, stored) ? 'OK' : 'FORBIDDEN';
+  }
+
   /** A fresh 256-bit invite token; it exists only in the link the creator shares. */
   static newToken(): string {
     return randomBytes(32).toString('base64url');
@@ -84,6 +117,7 @@ export class BlindVault {
     quizId: string;
     displayName: string;
     consentedAt: Date | null;
+    claimHash: string | null;
     title: string;
     language: Locale;
   } | null> {
@@ -96,6 +130,7 @@ export class BlindVault {
         'blind_targets.quiz_id as quiz_id',
         'blind_targets.display_name as display_name',
         'blind_targets.consented_at as consented_at',
+        'blind_targets.claim_hash as claim_hash',
         'personal_quizzes.title as title',
         'personal_quizzes.language as language',
         'personal_quizzes.kind as kind',
@@ -109,15 +144,18 @@ export class BlindVault {
       quizId: row.quiz_id,
       displayName: row.display_name,
       consentedAt: row.consented_at,
+      claimHash: row.claim_hash,
       title: row.title,
       language: row.language as Locale,
     };
   }
 
-  async view(token: string): Promise<TargetView | null> {
+  async view(token: string, claim: string | null): Promise<TargetView | null | 'FORBIDDEN'> {
     const sealer = this.requireSealer();
     const target = await this.targetFor(token);
     if (!target) return null;
+    // Unclaimed means nobody has consented, so there is nothing stored to show yet.
+    if (this.gate(target, claim) === 'FORBIDDEN') return 'FORBIDDEN';
     const prompts = await this.db
       .selectFrom('blind_prompts')
       .leftJoin('blind_responses', (join) =>
@@ -162,28 +200,43 @@ export class BlindVault {
     };
   }
 
-  async consent(token: string): Promise<boolean> {
+  /**
+   * The first consent claims the invite and hands back the claim secret (once; only its hash is kept).
+   * Later calls need that secret. Whoever consents first owns the invite: if that is not the target,
+   * the target is refused and tells the creator; the creator gains no access to anyone's answers.
+   */
+  async consent(
+    token: string,
+    claim: string | null,
+  ): Promise<{ claim: string | null } | 'NOT_FOUND' | 'FORBIDDEN'> {
     const target = await this.targetFor(token);
-    if (!target) return false;
-    await this.db
+    if (!target) return 'NOT_FOUND';
+    if (target.claimHash !== null)
+      return this.gate(target, claim) === 'OK' ? { claim: null } : 'FORBIDDEN';
+    const fresh = randomBytes(32).toString('base64url');
+    const row = await this.db
       .updateTable('blind_targets')
-      .set({ consented_at: new Date(this.clock.now()) })
+      .set({ claim_hash: this.claimHashOf(fresh), consented_at: new Date(this.clock.now()) })
       .where('id', '=', target.id)
-      .where('consented_at', 'is', null)
-      .execute();
-    return true;
+      .where('claim_hash', 'is', null)
+      .returning('id')
+      .executeTakeFirst();
+    return row ? { claim: fresh } : 'FORBIDDEN';
   }
 
   /** Stores (or replaces) the target's answer to one prompt; a replaced answer must be approved again. */
   async put(
     token: string,
+    claim: string | null,
     promptId: string,
     input: { answer: unknown; decoys: unknown },
   ): Promise<VaultResult | 'NOT_FOUND'> {
     const sealer = this.requireSealer();
     const target = await this.targetFor(token);
     if (!target) return 'NOT_FOUND';
-    if (!target.consentedAt) return { ok: false, code: 'CONSENT_REQUIRED' };
+    const access = this.gate(target, claim);
+    if (access === 'UNCLAIMED') return { ok: false, code: 'CONSENT_REQUIRED' };
+    if (access === 'FORBIDDEN') return { ok: false, code: 'FORBIDDEN' };
     const prompt = await this.db
       .selectFrom('blind_prompts')
       .select('id')
@@ -246,14 +299,68 @@ export class BlindVault {
     return { ok: true };
   }
 
+  /**
+   * "Suggest alternatives for me" (ADR-0015 Bounded AI): the one place a stored answer is handed to
+   * a remote system, and only the question wording (without the target's name) and that one answer.
+   * The suggestions go back to the target to review; nothing is stored here. Off / failing / not
+   * configured all answer with no suggestions, i.e. the target writes their own.
+   */
+  async suggestDecoys(
+    token: string,
+    claim: string | null,
+    promptId: string,
+  ): Promise<DecoySuggestion | 'NOT_FOUND' | { ok: false; code: ErrorCode }> {
+    const sealer = this.requireSealer();
+    const target = await this.targetFor(token);
+    if (!target) return 'NOT_FOUND';
+    const access = this.gate(target, claim);
+    if (access === 'UNCLAIMED') return { ok: false, code: 'CONSENT_REQUIRED' };
+    if (access === 'FORBIDDEN') return { ok: false, code: 'FORBIDDEN' };
+    const row = await this.db
+      .selectFrom('blind_prompts')
+      .innerJoin('blind_responses', (join) =>
+        join
+          .onRef('blind_responses.prompt_id', '=', 'blind_prompts.id')
+          .on('blind_responses.target_id', '=', target.id),
+      )
+      .select([
+        'blind_responses.id as response_id',
+        'blind_responses.sealed as sealed',
+        'blind_responses.key_id as key_id',
+        'blind_prompts.source as source',
+        'blind_prompts.catalog_key as catalog_key',
+        'blind_prompts.text as text',
+      ])
+      .where('blind_prompts.id', '=', promptId)
+      .where('blind_prompts.quiz_id', '=', target.quizId)
+      .executeTakeFirst();
+    if (!row) return 'NOT_FOUND';
+    if (!this.suggester) return { decoys: [], source: 'NONE' };
+    const payload = JSON.parse(
+      sealer.open(row.sealed, row.key_id, aadOf(row.response_id, promptId)),
+    ) as Payload;
+    const wording =
+      row.source === 'CATALOG'
+        ? translate(target.language, `blind.catalog.${row.catalog_key}.prompt`)
+        : (row.text ?? '');
+    // A custom prompt may name the target; the model never needs to know who they are.
+    const prompt = wording.replace(
+      new RegExp(target.displayName.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'), 'giu'),
+      target.language === 'tr' ? 'biri' : 'someone',
+    );
+    return this.suggester.suggest({ language: target.language, prompt, answer: payload.answer });
+  }
+
   /** The target looked at the finished question privately and says yes (or takes it back). */
   async approve(
     token: string,
+    claim: string | null,
     promptId: string,
     approved: boolean,
   ): Promise<VaultResult | 'NOT_FOUND'> {
     const target = await this.targetFor(token);
     if (!target) return 'NOT_FOUND';
+    if (this.gate(target, claim) !== 'OK') return { ok: false, code: 'FORBIDDEN' };
     const row = await this.db
       .selectFrom('blind_responses')
       .select(['id'])
@@ -287,9 +394,11 @@ export class BlindVault {
   }
 
   /** Immediate deletion on the target's request: the answers and the invite itself. */
-  async deleteTarget(token: string): Promise<boolean> {
+  async deleteTarget(token: string, claim: string | null): Promise<boolean | 'FORBIDDEN'> {
     const target = await this.targetFor(token);
     if (!target) return false;
+    // Before anyone consented there are no answers to protect; after, only the claim holder deletes.
+    if (this.gate(target, claim) === 'FORBIDDEN') return 'FORBIDDEN';
     await this.db.deleteFrom('blind_targets').where('id', '=', target.id).execute();
     return true;
   }
