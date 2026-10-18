@@ -35,7 +35,8 @@ export function sanitizeUserText(
   if (text.length === 0) return { ok: false, reason: 'EMPTY' };
   if (/[\p{Cc}\p{Cf}\p{Co}\p{Cs}\p{Cn}\p{Zl}\p{Zp}]/u.test(text))
     return { ok: false, reason: 'FORBIDDEN_CHARACTER' };
-  if (INVISIBLE.test(text) || MARK_STACK.test(text)) return { ok: false, reason: 'FORBIDDEN_CHARACTER' };
+  if (INVISIBLE.test(text) || MARK_STACK.test(text))
+    return { ok: false, reason: 'FORBIDDEN_CHARACTER' };
   if ([...text].length > options.maxLength) return { ok: false, reason: 'TOO_LONG' };
   if (!options.allowLinks && URL_LIKE.test(text)) return { ok: false, reason: 'LINK' };
   if (containsProfanity(text)) return { ok: false, reason: 'PROFANITY' };
