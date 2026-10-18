@@ -21,9 +21,10 @@ fi
 
 if [ "${QP_SEED_DEMO:-0}" = "1" ]; then
   # Temporary cult TV/film demo bank (seed/demo/README.md); same production refusal as above.
+  # Optional extra: a problem here must not keep the demo from starting.
   pnpm --filter @quizparty/scripts run question seed \
     --seed-file /app/seed/demo/questions.cult.tr.jsonl \
-    --categories-file /app/seed/demo/categories.json
+    --categories-file /app/seed/demo/categories.json || echo "demo bank not loaded (continuing)"
 fi
 
 exec pnpm --filter @quizparty/realtime run start
