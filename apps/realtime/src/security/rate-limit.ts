@@ -85,6 +85,8 @@ export const LIMITS = {
   answer: { capacity: 6, refillPerSec: 1 },
   /** COMMIT_PREP, USE_FIFTY_FIFTY, SET_PREFERENCES: a handful a round, never a flood. */
   power: { capacity: 8, refillPerSec: 0.5 },
+  /** Who Said It statements: a few edits in the lobby, never a flood. */
+  statement: { capacity: 5, refillPerSec: 1 / 12 },
   /** A player flagging questions: a few per game, never a flood. */
   report: { capacity: 4, refillPerSec: 1 / 30 },
   reportIp: { capacity: 30, refillPerSec: 30 / 3600 },

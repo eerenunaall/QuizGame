@@ -231,6 +231,13 @@ export class Gateway {
       connection.error('RATE_LIMITED', message.messageId, { retryAfterMs: 1000 });
       return;
     }
+    if (
+      message.type === 'SUBMIT_STATEMENT' &&
+      !this.deps.limiter.take(`statement:${connection.sessionId}`, LIMITS.statement).allowed
+    ) {
+      connection.error('RATE_LIMITED', message.messageId, { retryAfterMs: 10_000 });
+      return;
+    }
     if (message.type === 'REPORT_QUESTION') {
       const mine = this.deps.limiter.take(`report:${connection.sessionId}`, LIMITS.report);
       const theirs = this.deps.limiter.take(`reportIp:${connection.ipHash}`, LIMITS.reportIp);

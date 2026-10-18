@@ -2,13 +2,22 @@ import { randomBytes } from 'node:crypto';
 import type { Database } from '@quizparty/db';
 import {
   buildDeckIndex,
+  buildWhoSaidItDeck,
   type Deck,
   type DeckQuestion,
   type DeckRequest,
 } from '@quizparty/game-engine';
 import { translate } from '@quizparty/i18n';
+import type { FeatureFlags } from '../flags/service';
 import { NotEnoughQuestionsError } from '../rooms/deck-builder';
 import type { BlindVault } from './vault';
+
+/** The mode's feature flag was switched off between selecting it and starting. */
+export class FeatureDisabledError extends Error {
+  constructor() {
+    super('feature disabled');
+  }
+}
 
 function shuffle<T>(items: T[]): T[] {
   const out = [...items];
@@ -27,13 +36,16 @@ function shuffle<T>(items: T[]): T[] {
 export class PersonalDecks {
   private readonly db: Database;
   private readonly vault: BlindVault;
+  private readonly flags: FeatureFlags;
 
-  constructor(deps: { db: Database; vault: BlindVault }) {
+  constructor(deps: { db: Database; vault: BlindVault; flags: FeatureFlags }) {
     this.db = deps.db;
     this.vault = deps.vault;
+    this.flags = deps.flags;
   }
 
   async build(request: DeckRequest): Promise<Deck> {
+    if (request.mode === 'WHO_SAID_IT') return this.whoSaidIt(request);
     if (!request.contentRef) throw new NotEnoughQuestionsError(0, request.rounds);
     let questions: DeckQuestion[];
     if (request.mode === 'BLIND') {
@@ -47,6 +59,25 @@ export class PersonalDecks {
     if (questions.length < request.rounds)
       throw new NotEnoughQuestionsError(questions.length, request.rounds);
     return buildDeckIndex(shuffle(questions));
+  }
+
+  /**
+   * Who Said It: the statements come from the room itself (never stored in a table of their own), so
+   * the only server-side rules left are the flag and a fresh opaque id per question.
+   */
+  private async whoSaidIt(request: DeckRequest): Promise<Deck> {
+    if (!(await this.flags.isEnabled('mode.who_said_it'))) throw new FeatureDisabledError();
+    const input = request.whoSaidIt;
+    if (!input) throw new NotEnoughQuestionsError(0, request.rounds);
+    const deck = buildWhoSaidItDeck({
+      players: input.players,
+      statements: shuffle(input.statements),
+      categoryLabel: translate(request.language, 'whosaidit.category'),
+      newQuestionId: () => `wsi-${randomBytes(9).toString('base64url')}`,
+    });
+    if (Object.keys(deck.questions).length < Math.min(2, request.rounds))
+      throw new NotEnoughQuestionsError(Object.keys(deck.questions).length, request.rounds);
+    return deck;
   }
 
   private async custom(quizId: string): Promise<DeckQuestion[]> {

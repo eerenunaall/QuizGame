@@ -2,6 +2,7 @@ import type { FastifyBaseLogger } from 'fastify';
 import { randomToken, randomUuid } from '@quizparty/shared';
 import {
   HOST_COMMANDS,
+  MAX_STATEMENT_LENGTH,
   type AvatarId,
   type ClientMessage,
   type ErrorCode,
@@ -21,10 +22,10 @@ import {
   type RoomState,
   type Viewer,
 } from '@quizparty/game-engine';
-import { validateNickname } from '@quizparty/validation';
+import { sanitizeUserText, validateNickname } from '@quizparty/validation';
 import type { AppConfig } from '../config';
 import type { QuestionReports } from '../moderation/reports';
-import type { PersonalDecks } from '../blind/decks';
+import { FeatureDisabledError, type PersonalDecks } from '../blind/decks';
 import type { LinkService } from '../payments/links';
 import type { SecurityLog } from '../security/events';
 import type { TelemetrySink } from '../telemetry/sink';
@@ -323,7 +324,11 @@ export class LiveRoom {
         });
       } catch (error) {
         const code: ErrorCode =
-          error instanceof NotEnoughQuestionsError ? 'NOT_ENOUGH_QUESTIONS' : 'INTERNAL';
+          error instanceof NotEnoughQuestionsError
+            ? 'NOT_ENOUGH_QUESTIONS'
+            : error instanceof FeatureDisabledError
+              ? 'FEATURE_DISABLED'
+              : 'INTERNAL';
         if (code === 'INTERNAL') this.fail('deck_build', error);
         this.notifyActor(effect.requestedBy, code);
       } finally {
@@ -687,6 +692,15 @@ export class LiveRoom {
         }
         nicknameKey = checked.key;
         command = { type: 'SET_NICKNAME', payload: { nickname: checked.nickname } };
+      }
+      if (message.type === 'SUBMIT_STATEMENT') {
+        // The same moderation as every other player-written text (ADR-0018); the engine only ever sees clean words.
+        const checked = sanitizeUserText(message.payload.text, { maxLength: MAX_STATEMENT_LENGTH });
+        if (!checked.ok) {
+          connection.error('TEXT_REJECTED', message.messageId, { reason: checked.reason });
+          return;
+        }
+        command = { type: 'SUBMIT_STATEMENT', payload: { text: checked.text } };
       }
 
       const result = await this.apply({

@@ -159,9 +159,10 @@ export function registerPaymentRoutes(app: FastifyInstance, deps: PaymentRouteDe
       const room = link ? deps.manager.get(link.roomId) : undefined;
       // One answer for unknown, used by someone else, expired and closed: a link says nothing about why it is dead.
       if (!room) return apiError(reply, 404, 'NOT_FOUND');
-      const [blind, custom] = await Promise.all([
+      const [blind, custom, whoSaidIt] = await Promise.all([
         deps.blindEnabled ? deps.flags.isEnabled('mode.blind_quiz') : false,
         deps.flags.isEnabled('mode.custom_quiz'),
+        deps.flags.isEnabled('mode.who_said_it'),
       ]);
       const quizzes = (await deps.quizzes.list(accountId)).filter((q) =>
         q.kind === 'BLIND' ? blind : custom,
@@ -170,6 +171,8 @@ export function registerPaymentRoutes(app: FastifyInstance, deps: PaymentRouteDe
         roomCode: room.code,
         tier: await entitlements.tierOf(accountId),
         mode: room.mode(),
+        // Who Said It needs no quiz of the account's: the room's own players write it.
+        whoSaidIt,
         quizzes: quizzes.map((q) => ({ id: q.id, kind: q.kind, title: q.title, ready: q.ready })),
       };
     },
@@ -200,6 +203,7 @@ export function registerPaymentRoutes(app: FastifyInstance, deps: PaymentRouteDe
    * Puts one of the signed-in account's personal quizzes into the room behind a link (or takes it out
    * again with `quizId: null`). The link proves the caller is at the TV; the account proves the quiz
    * is theirs; the room must be on the full game (an owner's account unlocks it on the way).
+   * `{ mode: 'WHO_SAID_IT' }` selects the party mode instead: no quiz, same link, same tier rule, own flag.
    */
   app.post(
     '/v1/link-intents/:token/quiz',
@@ -207,7 +211,12 @@ export function registerPaymentRoutes(app: FastifyInstance, deps: PaymentRouteDe
     async (request, reply) => {
       if (!player(request, reply)) return reply;
       const params = LinkToken.safeParse(request.params);
-      const body = z.strictObject({ quizId: z.uuid().nullable() }).safeParse(request.body);
+      const body = z
+        .union([
+          z.strictObject({ quizId: z.uuid().nullable() }),
+          z.strictObject({ mode: z.literal('WHO_SAID_IT') }),
+        ])
+        .safeParse(request.body);
       if (!params.success) return apiError(reply, 404, 'NOT_FOUND');
       if (!body.success) return apiError(reply, 400, 'INVALID_MESSAGE');
       const accountId = request.auth!.account.id;
@@ -217,6 +226,17 @@ export function registerPaymentRoutes(app: FastifyInstance, deps: PaymentRouteDe
 
       const fail = (result: { ok: false; code: string }) =>
         apiError(reply, STATUS[result.code] ?? 409, result.code as ErrorCode);
+      if ('mode' in body.data) {
+        if (!(await deps.flags.isEnabled('mode.who_said_it')))
+          return apiError(reply, 404, 'FEATURE_DISABLED');
+        if (room.tier() !== 'FULL') {
+          if ((await entitlements.tierOf(accountId)) !== 'FULL')
+            return apiError(reply, 403, 'TIER_REQUIRED');
+          await room.applyEntitlement('FULL', accountId, 'LINKED');
+        }
+        const result = await room.setContent('WHO_SAID_IT', null, null, null);
+        return result.ok ? { mode: 'WHO_SAID_IT', title: null } : fail(result);
+      }
       if (body.data.quizId === null) {
         const result = await room.setContent('CLASSIC', null, null, null);
         return result.ok ? { mode: 'CLASSIC', title: null } : fail(result);

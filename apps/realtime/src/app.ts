@@ -197,7 +197,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     clock,
     secret: config.serverSecret,
   });
-  const personalDecks = new PersonalDecks({ db, vault });
+  const personalDecks = new PersonalDecks({ db, vault, flags });
   const quizzes = new QuizService({ db, clock, vault, publicWebUrl: config.publicWebUrl });
   const links = new LinkService({
     db,
