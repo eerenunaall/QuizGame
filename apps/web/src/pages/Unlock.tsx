@@ -1,59 +1,48 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button } from '../ui/Button';
 import { Wordmark } from '../ui/Wordmark';
-import { AccountApiError, accountApi, type AccountView } from '../lib/account';
+import { AccountApiError, accountApi, type AccountView, type QuizKind } from '../lib/account';
 import { useI18n } from '../lib/i18n';
+import { Link } from '../lib/router';
 import styles from './CodeEntry.module.css';
+import { SignInForm, useAccount } from './useAccount';
+
+interface Peek {
+  roomCode: string;
+  tier: 'FREE' | 'FULL';
+  mode: string;
+  quizzes: { id: string; kind: QuizKind; title: string; ready: boolean }[];
+}
 
 type Step =
-  | { kind: 'loading' }
-  | { kind: 'signIn' }
-  | { kind: 'ready'; account: AccountView; roomCode: string }
+  | { kind: 'ready'; peek: Peek }
   | { kind: 'done'; roomCode: string; tier: 'FREE' | 'FULL' }
+  | { kind: 'attached'; title: string | null }
   | { kind: 'dead' };
 
 /**
- * The page a TV's "unlock" QR code opens on a phone: sign in with the account that owns the game,
- * then attach it to the room. A purchase is never made here (web checkout is off, ADR-0013).
+ * The page a TV's QR code opens on a phone: sign in with the account that owns the game, then attach
+ * that account to the room (unlock the full game) and/or put one of its personal quizzes in the room.
+ * A purchase is never made here (web checkout is off, ADR-0013).
  */
 export function UnlockPage({ token }: { token: string }) {
-  const { t, locale } = useI18n();
-  const [step, setStep] = useState<Step>({ kind: 'loading' });
-  const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
-  const [sent, setSent] = useState(false);
+  const { t } = useI18n();
+  const { state, signedIn, signOut } = useAccount();
+  const [step, setStep] = useState<Step | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  /** Whoever is signed in sees what the link is for; a dead link says so without saying why. */
-  const proceed = useCallback(
-    async (account: AccountView): Promise<void> => {
-      try {
-        const link = await accountApi.peekLink(token);
-        setStep({ kind: 'ready', account, roomCode: link.roomCode });
-      } catch {
-        setStep({ kind: 'dead' });
-      }
-    },
-    [token],
-  );
+  const load = useCallback(async (): Promise<void> => {
+    try {
+      setStep({ kind: 'ready', peek: await accountApi.peekLink(token) });
+    } catch {
+      setStep({ kind: 'dead' });
+    }
+  }, [token]);
 
   useEffect(() => {
-    accountApi.me().then(
-      (account) =>
-        account.sessionKind === 'ADMIN' ? setStep({ kind: 'signIn' }) : proceed(account),
-      () => setStep({ kind: 'signIn' }),
-    );
-  }, [proceed]);
-
-  const refusal = (error: unknown): string => {
-    if (error instanceof AccountApiError) {
-      if (error.status === 429) return t('unlock.throttled');
-      if (error.status === 404) return t('unlock.disabled');
-      if (error.status === 400) return t('unlock.invalidEmail');
-    }
-    return t('unlock.refused');
-  };
+    if (state.kind === 'in') void load();
+  }, [state, load]);
 
   const run = async (work: () => Promise<void>): Promise<void> => {
     if (busy) return;
@@ -62,35 +51,27 @@ export function UnlockPage({ token }: { token: string }) {
     try {
       await work();
     } catch (error) {
-      setMessage(refusal(error));
+      if (error instanceof AccountApiError && error.status === 404) setStep({ kind: 'dead' });
+      else if (error instanceof AccountApiError && error.code === 'NOT_READY')
+        setMessage(t('unlock.quiz.notReady'));
+      else if (error instanceof AccountApiError && error.code === 'TIER_REQUIRED')
+        setMessage(t('unlock.quiz.needFull'));
+      else setMessage(t('unlock.refused'));
     } finally {
       setBusy(false);
     }
   };
 
-  const sendCode = (event: FormEvent): void => {
-    event.preventDefault();
-    void run(async () => {
-      await accountApi.requestCode(email, locale);
-      setSent(true);
-    });
-  };
-  const verify = (event: FormEvent): void => {
-    event.preventDefault();
-    void run(async () => {
-      const account = await accountApi.verifyCode(email, code);
-      await proceed(account);
-    });
-  };
   const claim = (): void => {
     void run(async () => {
-      try {
-        const result = await accountApi.claimLink(token);
-        setStep({ kind: 'done', roomCode: result.roomCode, tier: result.tier });
-      } catch (error) {
-        if (error instanceof AccountApiError && error.status === 404) setStep({ kind: 'dead' });
-        else throw error;
-      }
+      const result = await accountApi.claimLink(token);
+      setStep({ kind: 'done', roomCode: result.roomCode, tier: result.tier });
+    });
+  };
+  const attach = (quizId: string | null): void => {
+    void run(async () => {
+      const result = await accountApi.attachQuiz(token, quizId);
+      setStep({ kind: 'attached', title: result.title });
     });
   };
 
@@ -99,89 +80,76 @@ export function UnlockPage({ token }: { token: string }) {
       <Wordmark scale={0.62} />
       <div className={styles.card} data-testid="unlock-page">
         <h1 className={styles.label}>{t('unlock.title')}</h1>
-        {step.kind === 'loading' ? <p className={styles.hint}>…</p> : null}
-        {step.kind === 'dead' ? (
+        {state.kind === 'loading' ? <p className={styles.hint}>…</p> : null}
+        {state.kind === 'out' ? (
+          <SignInForm
+            intro={t('unlock.intro')}
+            onSignedIn={(account: AccountView) => signedIn(account)}
+          />
+        ) : null}
+        {state.kind === 'in' && step === null ? <p className={styles.hint}>…</p> : null}
+        {step?.kind === 'dead' ? (
           <p role="alert" data-testid="unlock-dead">
             {t('unlock.dead')}
           </p>
         ) : null}
-        {step.kind === 'signIn' ? (
-          <form onSubmit={sent ? verify : sendCode}>
-            <p className={styles.label}>{t('unlock.intro')}</p>
-            {sent ? (
-              <>
-                <p role="status">{t('unlock.sent')}</p>
-                <label className={styles.label} htmlFor="unlock-code">
-                  {t('unlock.code')}
-                </label>
-                <input
-                  id="unlock-code"
-                  className={styles.input}
-                  data-testid="unlock-code"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  maxLength={6}
-                  value={code}
-                  onChange={(event) => setCode(event.target.value.replace(/\D/gu, ''))}
-                />
-              </>
-            ) : (
-              <>
-                <label className={styles.label} htmlFor="unlock-email">
-                  {t('unlock.email')}
-                </label>
-                <input
-                  id="unlock-email"
-                  className={styles.input}
-                  style={{ fontSize: 22, letterSpacing: 0, textIndent: 0 }}
-                  data-testid="unlock-email"
-                  type="email"
-                  autoComplete="username"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                />
-              </>
-            )}
-            <div className={styles.hint} role="alert" data-testid="unlock-error">
-              {message ?? ''}
-            </div>
-            <Button
-              type="submit"
-              size="lg"
-              block
-              disabled={busy || (sent ? code.length !== 6 : email.length < 3)}
-              data-testid={sent ? 'unlock-verify' : 'unlock-send'}
-            >
-              {sent ? t('unlock.verify') : t('unlock.sendCode')}
-            </Button>
-          </form>
-        ) : null}
-        {step.kind === 'ready' ? (
+        {state.kind === 'in' && step?.kind === 'ready' ? (
           <div>
-            <p>{t('unlock.room', { code: step.roomCode })}</p>
+            <p>{t('unlock.room', { code: step.peek.roomCode })}</p>
             <p className={styles.label}>
-              {t('unlock.signedIn', { email: step.account.email ?? '' })}
+              {t('unlock.signedIn', { email: state.account.email ?? '' })}
             </p>
             <div className={styles.hint} role="alert" data-testid="unlock-error">
               {message ?? ''}
             </div>
-            <Button size="lg" block disabled={busy} onClick={claim} data-testid="unlock-claim">
-              {t('unlock.link')}
-            </Button>
-            <Button
-              variant="ghost"
-              size="md"
-              block
-              style={{ marginTop: 14 }}
-              onClick={() => void accountApi.logout().finally(() => setStep({ kind: 'signIn' }))}
-            >
+            {step.peek.tier === 'FREE' ? (
+              <Button size="lg" block disabled={busy} onClick={claim} data-testid="unlock-claim">
+                {t('unlock.link')}
+              </Button>
+            ) : null}
+            <h2 className={styles.label} style={{ marginTop: 18 }}>
+              {t('unlock.quiz.title')}
+            </h2>
+            {step.peek.quizzes.length === 0 ? (
+              <p>{t('unlock.quiz.none')}</p>
+            ) : (
+              step.peek.quizzes.map((quiz) => (
+                <Button
+                  key={quiz.id}
+                  variant="violet"
+                  size="md"
+                  block
+                  disabled={busy || !quiz.ready}
+                  onClick={() => attach(quiz.id)}
+                  data-testid={`attach-${quiz.id}`}
+                  style={{ marginBottom: 10 }}
+                >
+                  {quiz.title}
+                  {quiz.ready ? '' : ` · ${t('quiz.notReady')}`}
+                </Button>
+              ))
+            )}
+            {step.peek.mode !== 'CLASSIC' ? (
+              <Button variant="ghost" size="md" block disabled={busy} onClick={() => attach(null)}>
+                {t('unlock.quiz.classic')}
+              </Button>
+            ) : null}
+            <p style={{ marginTop: 14 }}>
+              <Link to="/quizzes">{t('unlock.quiz.manage')}</Link>
+            </p>
+            <Button variant="ghost" size="md" block onClick={signOut} style={{ marginTop: 10 }}>
               {t('unlock.signOut')}
             </Button>
           </div>
         ) : null}
-        {step.kind === 'done' ? (
+        {step?.kind === 'done' ? (
           <p role="status" data-testid="unlock-result" data-tier={step.tier}>
             {step.tier === 'FULL' ? t('unlock.success') : t('unlock.notOwned')}
+          </p>
+        ) : null}
+        {step?.kind === 'attached' ? (
+          <p role="status" data-testid="unlock-attached">
+            {t('unlock.quiz.attached')}
           </p>
         ) : null}
       </div>

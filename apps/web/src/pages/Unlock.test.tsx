@@ -52,7 +52,7 @@ describe('the page behind the TV unlock QR code', () => {
       if (call.path === '/v1/me') return { json: { account } };
       if (call.path.endsWith('/claim')) return { json: { tier: 'FULL', roomCode: 'ABC234' } };
       if (call.path.startsWith('/v1/link-intents/'))
-        return { json: { roomCode: 'ABC234', tier: 'FULL' } };
+        return { json: { roomCode: 'ABC234', tier: 'FREE', mode: 'CLASSIC', quizzes: [] } };
       return undefined;
     });
     mount();
@@ -70,7 +70,7 @@ describe('the page behind the TV unlock QR code', () => {
     network((call) => {
       if (call.path === '/v1/me') return { json: { account } };
       if (call.path.endsWith('/claim')) return { json: { tier: 'FREE', roomCode: 'ABC234' } };
-      return { json: { roomCode: 'ABC234', tier: 'FREE' } };
+      return { json: { roomCode: 'ABC234', tier: 'FREE', mode: 'CLASSIC', quizzes: [] } };
     });
     mount();
     await waitFor(() => screen.getByTestId('unlock-claim'));
@@ -91,7 +91,7 @@ describe('the page behind the TV unlock QR code', () => {
         signedIn = true;
         return { json: { account } };
       }
-      return { json: { roomCode: 'ABC234', tier: 'FREE' } };
+      return { json: { roomCode: 'ABC234', tier: 'FREE', mode: 'CLASSIC', quizzes: [] } };
     });
     mount();
     await waitFor(() => screen.getByTestId('unlock-email'));

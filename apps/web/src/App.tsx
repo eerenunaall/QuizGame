@@ -8,6 +8,9 @@ import { createStorage, loadPreferences, savePreferences } from './lib/storage';
 import { CodeEntry } from './pages/CodeEntry';
 import { Home } from './pages/Home';
 import { CreditsPage, NotFoundPage, PurchasePage } from './pages/StaticPages';
+import { QuizEditorPage } from './pages/QuizEditor';
+import { QuizzesPage } from './pages/Quizzes';
+import { RespondPage } from './pages/Respond';
 import { UnlockPage } from './pages/Unlock';
 
 // Phones never download the TV screens (and the QR code library); TVs never download the controller.
@@ -53,6 +56,12 @@ export function App() {
     },
     { path: '/join/:code?', render: (params) => <PlayRoute code={params.code} /> },
     { path: '/play/:code?', render: (params) => <PlayRoute code={params.code} /> },
+    { path: '/quizzes', render: () => <QuizzesPage /> },
+    { path: '/quizzes/:id', render: (params) => <QuizEditorPage id={params.id ?? ''} /> },
+    {
+      path: '/blind/respond/:token',
+      render: (params) => <RespondPage token={params.token ?? ''} />,
+    },
     { path: '/unlock/:token', render: (params) => <UnlockPage token={params.token ?? ''} /> },
     { path: '/purchase', render: () => <PurchasePage /> },
     { path: '/credits', render: () => <CreditsPage /> },
