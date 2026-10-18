@@ -10,6 +10,20 @@ a client author needs that is not obvious from the types. ADR-0008 explains the 
   round, and only in REVEAL, POWER_RESOLUTION, SCORE_UPDATE or MICRO_INTERMISSION. `reason` is one of
   `QUESTION_REPORT_REASONS` (no free text). Answers: `ack`, or an error (`NOT_ALLOWED`, `RATE_LIMITED`,
   `BANNED`, …). Reporting the same question again only updates the reason.
+- `SUBMIT_STATEMENT { text }` (Who Said It, player only, LOBBY of a `WHO_SAID_IT` room): one statement per player, a
+  second send replaces the first, editable until the game starts. The server runs `sanitizeUserText` (140 characters, no
+  links, no profanity); a refusal is `TEXT_REJECTED` with `params.reason` (`EMPTY`, `TOO_LONG`, `FORBIDDEN_CHARACTER`,
+  `PROFANITY`, `LINK`). Other errors: `INVALID_STATE` (wrong mode or phase), `FORBIDDEN` (TV), `RATE_LIMITED` (5 burst,
+  one per 12 s). Answer: `ACK`. `STATEMENTS_CHANGED { playerIds }` tells every screen who has handed one in (never the
+  words; the LOBBY `phaseData.statementPlayerIds` carries the same for late joiners). A player's own words come back only in
+  their own `you.myStatement` (lobby). Starting needs at least two statements (`NOT_ENOUGH_QUESTIONS`); the game plays one
+  round per statement, capped by the room's round setting.
+- Who Said It questions: the statement is the question `text`; the options are all players (`options[].playerId`, text =
+  nickname); the correct option is the author, revealed only in REVEAL. The author gets `you.authorOfRound = true` (nobody else
+  is ever told) and their `SUBMIT_ANSWER`, `COMMIT_PREP` and `USE_FIFTY_FIFTY` are refused (`ANSWER_NOT_ALLOWED` /
+  `POWER_UNAVAILABLE`); they are not waited for, have no result row, and keep score and streak. Selecting the mode:
+  `POST /v1/link-intents/:token/quiz` with `{ mode: 'WHO_SAID_IT' }` (flag `mode.who_said_it`, full game only).
+  Statements are never persisted outside the room's event log and snapshot, which are erased when the room closes.
 - `REQUEST_UNLOCK_LINK` (display only, FREE room in LOBBY/RESULTS): answered with `UNLOCK_LINK { url, expiresAt }` to that
   connection only, then `ACK`. Errors: `FORBIDDEN`, `INVALID_STATE`, `RATE_LIMITED` (five open links per room).
 - `ENTITLEMENT_CHANGED { tier, reason }` goes to every screen of the room when its host account's tier changes.

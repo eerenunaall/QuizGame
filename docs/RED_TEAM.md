@@ -31,6 +31,7 @@ it builds on). The attacker plays against the real server over real sockets; the
 | 23 Keep a session that should be dead | immediate | › ATTACK 23 | ✅ revoked, suspended, signed-out tokens and removed roles stop at once |
 | 24 Hammer the console | limited per account | › ATTACK 24 | ✅ reads and writes limited apart without hurting others |
 | 25 Abuse the TV unlock link | no entitlement from the QR alone | `red-team/payments.test.ts` › ATTACK 25 | ✅ a stranger who claims the link without owning the game unlocks nothing; token guessing is 404/429 with one identical answer; no claim without a sign-in |
+| 26 Read a Who Said It statement early / answer for yourself | statement hidden until its question, author exempt | `red-team/who-said-it.test.ts` › ATTACK 26 | ✅ no frame of any client carries a statement before its question is on screen (checked per frame, the TV did get each at its question); no author id anywhere; the author's answer, stake and 50/50 are refused and score/streak do not move; text is moderated, TV/classic room/late sends refused, flood limited |
 
 Findings from running these attacks that changed the code:
 

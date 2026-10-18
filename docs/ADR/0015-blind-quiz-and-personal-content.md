@@ -56,7 +56,7 @@ retention window.
 
 ### Who Said It
 Players submit short statements from their phones in the lobby (`SUBMIT_STATEMENT`, ≤ 140 chars,
-moderated, max 3 each). The engine builds questions whose options are the players (opaque ids) and whose
+moderated, one per player and editable until the start as built in M5-d). The engine builds questions whose options are the players (opaque ids) and whose
 correct option is the author; the author's own phone shows "this one is yours" and scores nothing for
 that round. Statements live in room-scoped storage with `expires_at` = room close + 24 h.
 
