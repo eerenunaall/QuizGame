@@ -40,3 +40,28 @@ export function exemptPlayerId(game: Pick<GameState, 'deck' | 'round'> | null): 
   if (!game || !round) return null;
   return game.deck.questions[round.questionId]?.authorPlayerId ?? null;
 }
+
+/**
+ * Who has answered, as the strip every screen shows (ADR-0015, ATTACK 27). The author never answers,
+ * so naming the real answerers would let a guesser who waits spot the one seat that never ticks.
+ * In a Who Said It round the strip therefore carries only the *count*: it ticks the first seats in
+ * seating order, which depends on nothing the players did. Other modes list the real answerers.
+ */
+export function progressTicks(
+  state: { playerOrder: readonly string[]; game: Pick<GameState, 'deck' | 'round'> | null },
+  answeredIds: readonly string[],
+): string[] {
+  const set = new Set(answeredIds);
+  if (exemptPlayerId(state.game) === null) return state.playerOrder.filter((id) => set.has(id));
+  return state.playerOrder.slice(0, set.size);
+}
+
+/** The seat the strip ticks for a freshly accepted answer; matches `progressTicks` one answer at a time. */
+export function tickFor(
+  state: { playerOrder: readonly string[]; game: Pick<GameState, 'deck' | 'round'> | null },
+  answers: Readonly<Record<string, unknown>>,
+  answererId: string,
+): string {
+  if (exemptPlayerId(state.game) === null) return answererId;
+  return state.playerOrder[Object.keys(answers).length - 1] ?? answererId;
+}

@@ -34,7 +34,7 @@ import {
 import { rankPlayers } from './rank';
 import { computeScore } from './scoring';
 import { isInGamePhase } from './timers';
-import { exemptPlayerId } from './who-said-it';
+import { exemptPlayerId, tickFor } from './who-said-it';
 import type {
   Actor,
   Audience,
@@ -886,7 +886,8 @@ function submitAnswer(
     {
       type: 'ANSWER_LOCKED',
       payload: {
-        playerId,
+        // Who Said It: the tick is the next seat in line, not the answerer (ATTACK 27).
+        playerId: tickFor(d, round.answers, playerId),
         answeredCount: Object.keys(round.answers).length,
         eligibleCount: Math.max(eligible.length, Object.keys(round.answers).length),
       },

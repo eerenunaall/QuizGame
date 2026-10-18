@@ -15,7 +15,7 @@ import {
   sabotageOpen,
 } from './powers';
 import { rankPlayers } from './rank';
-import { exemptPlayerId } from './who-said-it';
+import { exemptPlayerId, progressTicks } from './who-said-it';
 import type { Actor, RoomState } from './types';
 
 /**
@@ -200,7 +200,7 @@ export function phaseDataFor(state: RoomState): PhaseData {
         questionStartedAt: round!.questionStartedAt!,
         answerOpensAt: round!.answerOpensAt!,
         answerDeadlineAt: round!.answerDeadlineAt!,
-        answeredPlayerIds: orderedIds(state, Object.keys(round!.answers)),
+        answeredPlayerIds: progressTicks(state, Object.keys(round!.answers)),
       };
     }
     case 'LOCKED':
@@ -208,7 +208,7 @@ export function phaseDataFor(state: RoomState): PhaseData {
         phase: 'LOCKED',
         round: roundPublic(state),
         questionId: round!.question!.questionId,
-        answeredPlayerIds: orderedIds(state, Object.keys(round!.answers)),
+        answeredPlayerIds: progressTicks(state, Object.keys(round!.answers)),
       };
     case 'REVEAL': {
       const question = round!.question!;
