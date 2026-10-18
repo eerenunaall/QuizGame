@@ -15,7 +15,7 @@ it builds on). The attacker plays against the real server over real sockets; the
 | 7 Enumerate room codes | rate limited, hard | `identity-and-network.test.ts` › ATTACK 7 | ✅ misses cost 4 tokens, identical answers, > 30 days per IP for one hit among 1 000 rooms |
 | 8 Steal reconnect token | minimal blast radius, secure invalidation | › ATTACK 8 | ✅ thief = one ordinary slot; victim's return after the grace window revokes the session; nothing else touched |
 | 9 Fake purchase | no entitlement | `red-team/payments.test.ts` › ATTACK 9 | ✅ forged receipts of 14 shapes (alg none, stripped/short/foreign chains, swapped payloads, junk) give nothing; the client cannot assert price/product/tier/account; a genuine receipt replayed by another account never entitles it; 25 concurrent redemptions end in one transaction and one entitlement and two accounts racing for one transaction id have one winner; Google purchases for another account/product or pending give nothing; forged refund notices change nothing; guessing is rate limited |
-| 10 Creator requests Blind Quiz raw answers | authorization failure | (todo) | ⏳ needs Blind Quiz (M5) |
+| 10 Creator requests Blind Quiz raw answers | authorization failure | `red-team/blind-quiz.test.ts` › ATTACK 10 (+ `integration/blind-canary.test.ts`) | ✅ the invite link, which the creator holds, opens only the consent step: after it every read, write, approval, suggestion and delete needs the claim cookie the target's browser got at consent (403 otherwise, forged cookies included); rotating the invite after the claim is refused; a creator who claims first only locks themselves in and reads nothing; every registered route replayed as creator, another player, nobody and each staff role carries no answer; planted answer/decoy/statement are in no log line (trace level), metric, error body, header or database cell (plain, hex, base64) |
 | 11 Malicious deep-link parameters | safe rejection | › ATTACK 11 + `packages/validation` link tests | ✅ links, HTTP params, WS params and nicknames |
 | 12 Join from another network | success | › ATTACK 12 | ✅ phones bound to different source addresses join and roam mid-game |
 | 13 Drop connection mid-question | restore state | `websocket/reconnect.test.ts`, `websocket/client.test.ts` | ✅ answer preserved, token rotated |
@@ -34,6 +34,14 @@ it builds on). The attacker plays against the real server over real sockets; the
 | 26 Read a Who Said It statement early / answer for yourself | statement hidden until its question, author exempt | `red-team/who-said-it.test.ts` › ATTACK 26 | ✅ no frame of any client carries a statement before its question is on screen (checked per frame, the TV did get each at its question); no author id anywhere; the author's answer, stake and 50/50 are refused and score/streak do not move; text is moderated, TV/classic room/late sends refused, flood limited |
 
 Findings from running these attacks that changed the code:
+
+- ATTACK 10 found a real hole in M5-a..c: the creator receives the invite link (to pass it on), and
+  the target routes accepted the link alone, so the creator could read every answer through it, or
+  rotate the invite after the target answered and read through the fresh link. Fix (migration 0007):
+  the first consent mints a claim secret that only the target's browser keeps (HttpOnly,
+  SameSite=Strict cookie; keyed hash in `blind_targets.claim_hash`); everything after consent needs it,
+  and rotation is refused once claimed. Cost: a target who loses the cookie (new device) is locked out;
+  the creator removes and re-adds them, which destroys the answers instead of exposing them.
 
 - A NUL byte in a query or body reached PostgreSQL and became a 500; a `preValidation` hygiene hook now
   refuses it for every route (`http/hygiene.ts`).

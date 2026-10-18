@@ -65,6 +65,31 @@ Profanity/hate filter at write time (ADR-0018), per-room report button (`REPORT`
 question, block-list per account, moderation cases with a content snapshot visible only to
 `MODERATOR`/`ADMIN` roles (disclosed in the consent text), deletion paths above.
 
+## Addendum (M5-e/f, 2026-10)
+**Invite claim (ATTACK 10).** The creator hands out the invite link, so the link cannot be the only
+credential for reading answers. The first `consent` on an invite mints a 256-bit claim secret, returned
+once as an HttpOnly, SameSite=Strict cookie scoped to that invite's API path (`blind_targets.claim_hash`
+keeps only its keyed hash). Before the claim the invite opens the consent step and nothing else exists
+to read; after it, view/put/approve/suggest/delete need the cookie (`FORBIDDEN` otherwise) and
+`rotateInvite` is refused. Whoever consents first owns the invite: a creator who does so gains no
+access to anything the target writes later and the target is simply refused. A target who loses the
+cookie is re-invited by removing and re-adding them (their answers are destroyed, never shown).
+
+**AI decoys, exactly what is sent.** Route `POST /v1/blind/respond/:token/prompts/:promptId/suggest-decoys`
+(claim required, one explicit press by the target, only for an answer they already stored), flag
+`ai.decoys` (default off) plus `AI_DECOYS_API_KEY`/`AI_DECOYS_MODEL` (`AI_DECOYS_API_BASE`,
+`AI_DECOYS_TIMEOUT_MS`). The only wire payload besides fixed instructions is
+`{language, question, answer}`: the question is the catalogue prompt or custom prompt text with the
+target's name removed, the answer is the target's own text. The ADR allows the answer (a wrong option is
+defined against it); nothing else leaves: no name, quiz title, ids, invite, other answers or the
+target's earlier alternatives. The key travels only in the request header and is never logged or put
+in an error. One attempt inside a deadline (default 4 s), circuit breaker (3 failures, 30 s), reply
+must be strict `{decoys: 1..3 strings}`, each sanitised like user text and dropped when it equals,
+contains or resembles the answer or another suggestion. Suggestions are returned to the target only,
+stored nowhere by this path and still need the target's own review and approval. Off, unconfigured,
+failing or unusable output all answer `{decoys: [], source: 'NONE'}`: the target writes their own
+alternatives, which is the non-AI path. Counters `qp_ai_decoys_total{result}` carry no content.
+
 ## Verification
 Canary test (above), approval-gate test (unapproved questions never reach a deck), retention-job test,
 encryption round-trip + AAD tamper test, AI adapter test against an HTTP double asserting that only
