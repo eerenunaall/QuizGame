@@ -44,6 +44,14 @@ export function doubleDownState(data: PrepData, you: YouView | null): Unavailabl
   return you.powers.doubleDown > 0 ? null : 'NONE_LEFT';
 }
 
+/**
+ * "One big gamble per question" (ADR-0021): the server refuses Double Down with the top stakes. The
+ * phone mirrors that so neither button invites an illegal pair; absent list = nothing excluded.
+ */
+export function stakeExcludesDoubleDown(data: PrepData, stake: RiskTier): boolean {
+  return data.doubleDownExcludedStakes?.includes(stake) ?? false;
+}
+
 export function sabotageState(data: PrepData, you: YouView | null): Unavailable {
   if (!data.sabotageEnabled || !you?.powers) return 'CLOSED';
   return you.powers.sabotageTokens > 0 ? null : 'NO_TOKEN';

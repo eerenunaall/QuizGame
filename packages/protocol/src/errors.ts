@@ -35,6 +35,8 @@ export const ERROR_CODES = {
   POWER_UNAVAILABLE: { retryable: false },
   /** A sabotage "lockout" from another player blocks that joker this round. */
   POWER_LOCKED_OUT: { retryable: false },
+  /** Double Down cannot be combined with the top stake tiers ("one big gamble per question"). */
+  DOUBLE_DOWN_STAKE_CONFLICT: { retryable: false },
   STAKE_INVALID: { retryable: false },
   TARGET_INVALID: { retryable: false },
   /** Sabotage cooldown, per-round, per-target or per-game cap reached. */

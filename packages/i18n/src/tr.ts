@@ -196,6 +196,8 @@ export const tr = {
   'error.POWER_UNAVAILABLE': 'Bu güç şu an kullanılamaz.',
   'error.POWER_LOCKED_OUT': 'Bu joker bu tur kilitli.',
   'error.STAKE_INVALID': 'Bu bahis seçilemez.',
+  'error.DOUBLE_DOWN_STAKE_CONFLICT':
+    'Soru başına tek büyük kumar: Çifte Hak bu bahisle birlikte kullanılamaz.',
   'error.TARGET_INVALID': 'Bu oyuncuya sabotaj yapılamaz.',
   'error.SABOTAGE_LIMIT': 'Sabotaj sınırına ulaştın. Biraz bekle.',
   'error.ALREADY_COMMITTED': 'Seçimini zaten yaptın.',
@@ -310,6 +312,8 @@ export const tr = {
   'ctl.prep.mandatory': 'Son soru! Bahis zorunlu.',
   'ctl.prep.doubleDown': 'Çifte Hak',
   'ctl.prep.doubleDown.hint': 'Doğruysa puan 2 katı, yanlışsa ekstra ceza.',
+  'ctl.prep.doubleDown.conflict': 'Soru başına tek büyük kumar: bu bahisle olmaz.',
+  'ctl.prep.stake.conflict': 'Çifte Hak ile birlikte olmaz.',
   'ctl.prep.left': '{count} hak',
   'ctl.prep.none': 'Hakkın bitti',
   'ctl.prep.locked': 'Bu tur kilitli',

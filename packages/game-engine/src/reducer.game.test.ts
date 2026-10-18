@@ -357,7 +357,7 @@ describe('scoring flow', () => {
     h.answer(ids[0]!, 'correct');
     h.runUntil('SCORE_UPDATE');
     const persisted = h.effects.flatMap((e) => (e.kind === 'persist' ? [e.record] : []));
-    expect(persisted[0]).toMatchObject({ type: 'GAME_STARTED', totalRounds: 10, configVersion: 1 });
+    expect(persisted[0]).toMatchObject({ type: 'GAME_STARTED', totalRounds: 10, configVersion: 2 });
     const round = persisted.find((r) => r.type === 'ROUND_COMPLETED');
     expect(round).toMatchObject({ type: 'ROUND_COMPLETED', roundIndex: 0 });
     if (round?.type === 'ROUND_COMPLETED') {

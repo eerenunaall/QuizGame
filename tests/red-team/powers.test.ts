@@ -262,7 +262,7 @@ describe("what an attacker can learn about other players' powers", () => {
     await toRoundPrep(party, 2);
     const [attacker, victim, third] = party.players as [TestClient, TestClient, TestClient];
     victim.send('COMMIT_PREP', {
-      stake: 'HIGH',
+      stake: 'RISK',
       doubleDown: true,
       sabotage: { targetId: third.playerId, effect: 'POINT_TAX' },
     });

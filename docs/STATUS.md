@@ -31,6 +31,11 @@ Branch: `claude/cloud-session-infrastructure-ln57mp` · Last updated: 2026-10-18
 The local gate is `format → lint → typecheck → unit → web → integration → websocket → red-team`,
 then `pnpm run build:web && pnpm run build:admin && pnpm test:e2e`.
 
+## Recent balance change
+ADR-0021 (power limits): Double Down is refused with HIGH / ALL_IN (`DOUBLE_DOWN_STAKE_CONFLICT`), gains
+after stake and Double Down are capped at 3x (FINAL 5x) of base + speed, Double Down extra loss 100 → 200,
+config version 2. Phone prep screens (web + mobile) disable the conflicting button with a hint.
+
 ## Next actions
 1. Read the CI result of the latest push (`mcp__github__actions_list`) and fix anything red.
 2. M5: Blind-Quiz reports (acceptance AC rest); a "suggest alternatives" button and a "link already used" message on the respond page (server route and 403 exist; web not wired); browser E2E for the respond page.

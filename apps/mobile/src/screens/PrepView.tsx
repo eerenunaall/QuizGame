@@ -6,6 +6,7 @@ import {
   SABOTAGE_ORDER,
   defaultStake,
   doubleDownState,
+  stakeExcludesDoubleDown,
   sabotageState,
   sabotageTargets,
   type PrepChoice,
@@ -43,6 +44,8 @@ export function PrepView({
   const [error, setError] = useState<string | null>(null);
 
   const ddBlock = doubleDownState(data, you);
+  // One big gamble per question: Double Down and the top stakes exclude each other (ADR-0021).
+  const ddConflict = stakeExcludesDoubleDown(data, stake);
   const sabBlock = sabotageState(data, you);
   const byId = new Map(room.players.map((player) => [player.playerId, player]));
 
@@ -105,7 +108,7 @@ export function PrepView({
     setError(null);
     actions.haptic?.('tap');
     actions
-      .commit({ stake, doubleDown: doubleDown && ddBlock === null, sabotage })
+      .commit({ stake, doubleDown: doubleDown && ddBlock === null && !ddConflict, sabotage })
       .catch((cause: unknown) => {
         setError(td(`error.${(cause as { code?: string } | undefined)?.code ?? 'INTERNAL'}`));
       })
@@ -130,6 +133,7 @@ export function PrepView({
                   ? t('ctl.prep.stake.loss', { loss: rung.loss })
                   : t('ctl.prep.stake.noLoss')
               }`}
+              disabled={doubleDown && ddBlock === null && stakeExcludesDoubleDown(data, rung.tier)}
               onPress={() => setStake(rung.tier)}
             />
           );
@@ -145,13 +149,15 @@ export function PrepView({
               ? t('ctl.prep.none')
               : ddBlock === 'CLOSED'
                 ? t('ctl.prep.sabotage.closed')
-                : t('ctl.prep.doubleDown.hint')}
+                : ddConflict
+                  ? t('ctl.prep.doubleDown.conflict')
+                  : t('ctl.prep.doubleDown.hint')}
         </Body>
         <Button
           testID="double-down"
-          variant={doubleDown ? 'violet' : 'ghost'}
+          variant={doubleDown && !ddConflict ? 'violet' : 'ghost'}
           label={`${td('joker.DOUBLE_DOWN')} · ${t('ctl.prep.left', { count: you?.powers?.doubleDown ?? 0 })}`}
-          disabled={ddBlock !== null}
+          disabled={ddBlock !== null || ddConflict}
           onPress={() => setDoubleDown(!doubleDown)}
         />
       </Panel>

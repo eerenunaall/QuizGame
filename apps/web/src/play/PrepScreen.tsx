@@ -20,6 +20,7 @@ import {
   doubleDownState,
   sabotageState,
   sabotageTargets,
+  stakeExcludesDoubleDown,
   type PrepChoice,
 } from './powers';
 import styles from './PrepScreen.module.css';
@@ -51,6 +52,9 @@ export function PrepScreen({ room, data, now, onCommit }: Props) {
 
   const ddBlock = doubleDownState(data, you);
   const sabBlock = sabotageState(data, you);
+  // One big gamble per question: Double Down and the top stakes exclude each other (ADR-0021).
+  const ddConflict = stakeExcludesDoubleDown(data, stake);
+  const ddOn = doubleDown && ddBlock === null && !ddConflict;
   const playersById = new Map(room.players.map((player) => [player.playerId, player]));
 
   const commit = (): void => {
@@ -58,7 +62,7 @@ export function PrepScreen({ room, data, now, onCommit }: Props) {
     setSending(true);
     setError(null);
     sfx.play('tap');
-    onCommit({ stake, doubleDown: doubleDown && ddBlock === null, sabotage })
+    onCommit({ stake, doubleDown: ddOn, sabotage })
       .catch((cause: unknown) => {
         const code = (cause as ClientRequestError | undefined)?.code ?? 'INTERNAL';
         setError(td(`error.${code}`));
@@ -143,43 +147,51 @@ export function PrepScreen({ room, data, now, onCommit }: Props) {
           <div className={styles.mandatory}>{t('ctl.prep.mandatory')}</div>
         ) : null}
         <div className={styles.ladder} role="radiogroup" aria-label={t('ctl.prep.title')}>
-          {data.riskLadder.map((rung) => (
-            <button
-              key={rung.tier}
-              type="button"
-              role="radio"
-              aria-checked={stake === rung.tier}
-              className={cx(
-                styles.rung,
-                styles[`rung${rung.tier}`],
-                stake === rung.tier && styles.picked,
-              )}
-              onClick={() => {
-                sfx.play('tap');
-                setStake(rung.tier);
-              }}
-              data-testid={`stake-${rung.tier}`}
-              data-focusable
-            >
-              <Sticker id={STAKE_STICKER[rung.tier]} size={44} />
-              <span className={styles.rungName}>{td(`ctl.prep.stake.${rung.tier}`)}</span>
-              <span className={styles.rungMult}>×{rung.multiplier}</span>
-              <span className={styles.rungLoss}>
-                {rung.loss > 0
-                  ? t('ctl.prep.stake.loss', { loss: rung.loss })
-                  : t('ctl.prep.stake.noLoss')}
-              </span>
-            </button>
-          ))}
+          {data.riskLadder.map((rung) => {
+            const blocked =
+              doubleDown && ddBlock === null && stakeExcludesDoubleDown(data, rung.tier);
+            return (
+              <button
+                key={rung.tier}
+                type="button"
+                role="radio"
+                aria-checked={stake === rung.tier}
+                disabled={blocked}
+                className={cx(
+                  styles.rung,
+                  styles[`rung${rung.tier}`],
+                  stake === rung.tier && styles.picked,
+                )}
+                onClick={() => {
+                  sfx.play('tap');
+                  setStake(rung.tier);
+                }}
+                data-testid={`stake-${rung.tier}`}
+                data-focusable
+              >
+                <Sticker id={STAKE_STICKER[rung.tier]} size={44} />
+                <span className={styles.rungName}>{td(`ctl.prep.stake.${rung.tier}`)}</span>
+                <span className={styles.rungMult}>×{rung.multiplier}</span>
+                <span className={styles.rungLoss}>
+                  {rung.loss > 0
+                    ? t('ctl.prep.stake.loss', { loss: rung.loss })
+                    : t('ctl.prep.stake.noLoss')}
+                </span>
+                {blocked ? (
+                  <span className={styles.rungLoss}>{t('ctl.prep.stake.conflict')}</span>
+                ) : null}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {data.doubleDownEnabled ? (
         <button
           type="button"
-          className={cx(styles.power, doubleDown && ddBlock === null && styles.powerOn)}
-          aria-pressed={doubleDown && ddBlock === null}
-          disabled={ddBlock !== null}
+          className={cx(styles.power, ddOn && styles.powerOn)}
+          aria-pressed={ddOn}
+          disabled={ddBlock !== null || ddConflict}
           onClick={() => {
             sfx.play('tap');
             setDoubleDown(!doubleDown);
@@ -195,7 +207,9 @@ export function PrepScreen({ room, data, now, onCommit }: Props) {
                 ? t('ctl.prep.locked')
                 : ddBlock === 'NONE_LEFT'
                   ? t('ctl.prep.none')
-                  : t('ctl.prep.doubleDown.hint')}
+                  : ddConflict
+                    ? t('ctl.prep.doubleDown.conflict')
+                    : t('ctl.prep.doubleDown.hint')}
             </span>
           </span>
           <span className={styles.powerCount}>

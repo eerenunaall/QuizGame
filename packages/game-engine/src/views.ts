@@ -6,7 +6,7 @@ import type {
   ScoreboardEntry,
   YouView,
 } from '@quizparty/protocol';
-import { maxRoundsFor } from './config';
+import { doubleDownExcludedStakes, maxRoundsFor } from './config';
 import {
   doubleDownOffered,
   jokerLockedOut,
@@ -168,6 +168,7 @@ export function phaseDataFor(state: RoomState): PhaseData {
         riskLadder: ladder.rungs.map((rung) => ({ ...rung })),
         stakeMandatory: ladder.mandatory,
         doubleDownEnabled: doubleDownOffered(state.config),
+        doubleDownExcludedStakes: [...doubleDownExcludedStakes(state.config)],
         sabotageEnabled: sabotageOpen(state.config, round!),
         ...prepCounts(state),
       };

@@ -56,5 +56,7 @@ show server text.
 | `POST /v1/link-intents/:token/claim` | player session | `{ tier, roomCode }` or 404 |
 | `GET /v1/me/export`, `DELETE /v1/me` (`{confirm:'DELETE'}`), `DELETE /v1/me/sessions` | session | data-subject rights |
 
+`COMMIT_PREP` is refused with `DOUBLE_DOWN_STAKE_CONFLICT` when Double Down is combined with a stake listed in the prep view's `doubleDownExcludedStakes` (default HIGH, ALL_IN; ADR-0021). Nothing is spent and the player may commit again.
+
 Purchase errors: `PURCHASE_INVALID` (422), `PURCHASE_ACCOUNT_MISMATCH` (403), `TRANSACTION_ALREADY_BOUND` (409),
 `PURCHASE_PENDING` (409), `PURCHASE_REFUNDED` (410), `STORE_UNAVAILABLE` (503, retry).

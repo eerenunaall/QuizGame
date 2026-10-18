@@ -164,9 +164,9 @@ describe('COMMIT_PREP', () => {
   it('keeps choices private: others see counts, never the choices', () => {
     const { h, ids } = setup();
     h.runUntil('QUESTION_PREP');
-    commit(h, ids[0]!, { stake: 'HIGH', doubleDown: true });
+    commit(h, ids[0]!, { stake: 'RISK', doubleDown: true });
     expect(youOf(h, ids[0]!).commitment).toEqual({
-      stake: 'HIGH',
+      stake: 'RISK',
       doubleDown: true,
       sabotage: null,
     });
@@ -266,8 +266,8 @@ describe('stakes and Double Down in the score', () => {
     h.runUntil('ANSWERING');
     h.answer(ids[0]!, 'wrong');
     h.runUntil('SCORE_UPDATE');
-    // Default extra loss 100 (the base of a standard question).
-    expect(h.state.game!.players[ids[0]!]!.score).toBe(before - 100);
+    // Default extra loss 200 (two standard bases; ADR-0021).
+    expect(h.state.game!.players[ids[0]!]!.score).toBe(before - 200);
     expect(youOf(h, ids[0]!).powers!.doubleDown).toBe(1);
   });
 
@@ -281,16 +281,66 @@ describe('stakes and Double Down in the score', () => {
     }
   });
 
-  it('stake and Double Down stack: the cap still holds', () => {
+  it('RISK stake and Double Down stack, but never beyond 3x (base + speed)', () => {
     const { h, ids } = setup(2, FINAL_FREE);
     h.runUntil('QUESTION_PREP');
-    commit(h, ids[0]!, { stake: 'HIGH', doubleDown: true });
+    expect(refusal(commit(h, ids[0]!, { stake: 'RISK', doubleDown: true }))).toBe('OK');
     h.runUntil('ANSWERING');
     h.answer(ids[0]!, 'correct');
     h.runUntil('SCORE_UPDATE');
-    const delta = h.state.game!.players[ids[0]!]!.score;
-    expect(delta).toBeLessThanOrEqual(1500); // maxGainPerQuestion
-    expect(delta).toBeGreaterThan(600); // (3 × 100 + speed) × 2
+    const gain = h.state.game!.players[ids[0]!]!.score;
+    expect(gain).toBeLessThanOrEqual(3 * (100 + 100)); // ceiling × (base + max speed)
+    expect(gain).toBeGreaterThan(300);
+  });
+});
+
+describe('one big gamble per question (ADR-0021)', () => {
+  const FINAL_FREE = { director: { maxRiskRounds: 0 } };
+
+  it('offers the excluded stakes in the prep view so phones can disable the right button', () => {
+    const { h } = setup(2, FINAL_FREE);
+    h.runUntil('QUESTION_PREP');
+    expect(prepData(h).doubleDownExcludedStakes).toEqual(['HIGH', 'ALL_IN']);
+  });
+
+  it('refuses HIGH + Double Down, spends nothing, and lets the player commit again', () => {
+    const { h, ids } = setup(2, FINAL_FREE);
+    h.runUntil('QUESTION_PREP');
+    const result = commit(h, ids[0]!, { stake: 'HIGH', doubleDown: true });
+    expect(refusal(result)).toBe('DOUBLE_DOWN_STAKE_CONFLICT');
+    expect(youOf(h, ids[0]!).powers!.doubleDown).toBe(2);
+    expect(youOf(h, ids[0]!).commitment).toBeNull();
+    expect(refusal(commit(h, ids[0]!, { stake: 'HIGH' }))).toBe('OK');
+  });
+
+  it('allows Double Down with SAFE and RISK', () => {
+    const { h, ids } = setup(3, FINAL_FREE);
+    h.runUntil('QUESTION_PREP');
+    expect(refusal(commit(h, ids[0]!, { stake: 'SAFE', doubleDown: true }))).toBe('OK');
+    expect(refusal(commit(h, ids[1]!, { stake: 'RISK', doubleDown: true }))).toBe('OK');
+  });
+
+  it('refuses ALL_IN + Double Down on the last question', () => {
+    const { h, ids } = setup(2, { ...FINAL_FREE });
+    for (let guard = 0; guard < 40; guard++) {
+      h.runUntil('QUESTION_PREP');
+      if (h.round().index === h.state.game!.totalRounds - 1) break;
+      h.runUntil('SCORE_UPDATE');
+    }
+    expect(prepData(h).stakeMandatory).toBe(true);
+    expect(refusal(commit(h, ids[0]!, { stake: 'ALL_IN', doubleDown: true }))).toBe(
+      'DOUBLE_DOWN_STAKE_CONFLICT',
+    );
+    expect(refusal(commit(h, ids[0]!, { stake: 'RISK', doubleDown: true }))).toBe('OK');
+  });
+
+  it('is config-driven: an empty list allows every combination again', () => {
+    const { h, ids } = setup(2, {
+      ...FINAL_FREE,
+      powers: { doubleDownExcludedStakes: [] },
+    });
+    h.runUntil('QUESTION_PREP');
+    expect(refusal(commit(h, ids[0]!, { stake: 'HIGH', doubleDown: true }))).toBe('OK');
   });
 });
 
@@ -699,7 +749,7 @@ describe('POWER_RESOLUTION', () => {
   it('names stakes, doubles, lifelines and sabotage with their outcomes, after the reveal', () => {
     const { h, ids } = setup(3);
     toPrep(h, 2);
-    commit(h, ids[0]!, { stake: 'HIGH', doubleDown: true });
+    commit(h, ids[0]!, { stake: 'RISK', doubleDown: true });
     commit(h, ids[1]!, { sabotage: { targetId: ids[2]!, effect: 'JAM' } });
     h.runUntil('ANSWERING');
     h.answer(ids[0]!, 'correct');
@@ -710,7 +760,7 @@ describe('POWER_RESOLUTION', () => {
     expect(data.phase).toBe('POWER_RESOLUTION');
     if (data.phase !== 'POWER_RESOLUTION') return;
     expect(data.items).toEqual([
-      { kind: 'STAKE', playerId: ids[0]!, tier: 'HIGH', outcome: 'CORRECT' },
+      { kind: 'STAKE', playerId: ids[0]!, tier: 'RISK', outcome: 'CORRECT' },
       { kind: 'DOUBLE_DOWN', playerId: ids[0]!, outcome: 'CORRECT' },
       { kind: 'FIFTY_FIFTY', playerId: ids[1]!, outcome: 'INCORRECT' },
       { kind: 'SABOTAGE', actorId: ids[1]!, targetId: ids[2]!, effect: 'JAM', blocked: true },

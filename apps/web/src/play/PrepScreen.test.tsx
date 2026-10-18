@@ -86,6 +86,18 @@ describe('PrepScreen', () => {
     expect(onCommit).toHaveBeenCalledWith({ stake: 'RISK', doubleDown: true, sabotage: null });
   });
 
+  it('one big gamble per question: HIGH disables Double Down, and Double Down disables HIGH', () => {
+    const data = prep({ doubleDownExcludedStakes: ['HIGH', 'ALL_IN'] });
+    mount({ data });
+    fireEvent.click(screen.getByTestId('stake-HIGH'));
+    expect(screen.getByTestId<HTMLButtonElement>('prep-double-down').disabled).toBe(true);
+    fireEvent.click(screen.getByTestId('stake-RISK'));
+    expect(screen.getByTestId<HTMLButtonElement>('prep-double-down').disabled).toBe(false);
+    fireEvent.click(screen.getByTestId('prep-double-down'));
+    expect(screen.getByTestId<HTMLButtonElement>('stake-HIGH').disabled).toBe(true);
+    expect(screen.getByTestId<HTMLButtonElement>('stake-RISK').disabled).toBe(false);
+  });
+
   it('cannot double down when none are left or the joker is locked out', () => {
     mount({ me: you('p1', { powers: powers({ doubleDown: 0 }) }) });
     expect(screen.getByTestId<HTMLButtonElement>('prep-double-down').disabled).toBe(true);

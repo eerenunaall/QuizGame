@@ -88,7 +88,10 @@ describe('computeScore — gains', () => {
       answerMs: 12_000,
       remainingMs: 12_000,
     });
-    expect(result.delta).toBe((200 * 5 + 200) * 2);
+    // (1000 + 200) × 2 = 2400 would be 6× the base+speed of 400; the 5× ceiling holds it at 2000.
+    expect(result.delta).toBe(5 * (200 + 200));
+    expect(result.components.map((c) => c.kind)).toContain('CAP');
+    expect(sumComponents(result.components)).toBe(result.delta);
     expect(result.delta).toBeLessThanOrEqual(config.scoring.maxGainPerQuestion.FINAL);
   });
 
@@ -97,13 +100,46 @@ describe('computeScore — gains', () => {
   });
 });
 
+describe('computeScore — total multiplier ceiling (ADR-0021)', () => {
+  it('leaves combinations under the ceiling untouched', () => {
+    // SAFE + Double Down at full speed: 2 × 200 = 400, ceiling 3 × 200 = 600.
+    const result = score({ doubleDown: true });
+    expect(result.delta).toBe(400);
+    expect(result.components.map((c) => c.kind)).not.toContain('CAP');
+  });
+
+  it('holds RISK + Double Down at 3x (base + speed) and records the CAP component', () => {
+    // (200 + 100) × 2 = 600 at full speed is under 3 × 200; with no speed, 400 > 3 × 100.
+    expect(score({ stake: 'RISK', doubleDown: true, remainingMs: 15_000 }).delta).toBe(600);
+    const slow = score({ stake: 'RISK', doubleDown: true, remainingMs: 0 });
+    expect(slow.delta).toBe(300);
+    expect(slow.components.at(-1)).toEqual({ kind: 'CAP', points: -100 });
+    expect(sumComponents(slow.components)).toBe(300);
+  });
+
+  it('the owner example: HIGH 3x + Double Down no longer pays 800', () => {
+    const result = score({ stake: 'HIGH', doubleDown: true, remainingMs: 15_000 });
+    expect(result.delta).toBe(600);
+    expect(result.delta).toBeLessThan(800);
+  });
+
+  it('is config-driven and falls back to the defaults when an old snapshot has no ceiling', () => {
+    const tight = resolveGameConfig({ scoring: { maxTotalMultiplier: { STANDARD: 2 } } });
+    expect(score({ stake: 'HIGH', remainingMs: 15_000 }, tight).delta).toBe(400);
+    const legacy = JSON.parse(JSON.stringify(config)) as typeof config;
+    delete (legacy.scoring as { maxTotalMultiplier?: unknown }).maxTotalMultiplier;
+    expect(score({ stake: 'RISK', doubleDown: true, remainingMs: 0 }, legacy).delta).toBe(300);
+  });
+});
+
 describe('computeScore — losses', () => {
   it.each([
     ['SAFE costs nothing', { stake: 'SAFE' as const }, 0, 500],
     ['RISK loses 100', { stake: 'RISK' as const }, -100, 500],
     ['HIGH loses 200', { stake: 'HIGH' as const }, -200, 500],
-    ['double down adds 100', { doubleDown: true }, -100, 500],
-    ['HIGH + double down loses 300', { stake: 'HIGH' as const, doubleDown: true }, -300, 500],
+    ['double down adds 200', { doubleDown: true }, -200, 500],
+    ['RISK + double down loses 300', { stake: 'RISK' as const, doubleDown: true }, -300, 500],
+    ['HIGH + double down loses 400', { stake: 'HIGH' as const, doubleDown: true }, -400, 500],
     ['loss never takes the score below zero', { stake: 'HIGH' as const }, -50, 50],
     ['zero score loses nothing', { stake: 'HIGH' as const }, 0, 0],
   ])('wrong answer: %s', (_name, override, expected, currentScore) => {
@@ -203,6 +239,49 @@ describe('computeScore — properties', () => {
       ),
       { numRuns: 300 },
     );
+  });
+
+  it('no gain ever exceeds ceiling x (base + speed), for any input', () => {
+    fc.assert(
+      fc.property(arbitraryInput, (input) => {
+        const result = computeScore({ ...input, answered: true, correct: true }, config);
+        const speed = speedBonus(
+          config.scoring.speedMax[input.roundKind],
+          input.remainingMs,
+          input.answerMs,
+        );
+        const ceiling = config.scoring.maxTotalMultiplier![input.roundKind];
+        expect(result.delta).toBeLessThanOrEqual(
+          ceiling * (config.scoring.basePoints[input.roundKind] + speed),
+        );
+        expect(sumComponents(result.components)).toBe(result.delta);
+      }),
+      { numRuns: 1000 },
+    );
+  });
+
+  it('Double Down alone breaks even at 40 % accuracy on SAFE and RISK (ADR-0021)', () => {
+    // Expected value of a question with Double Down at accuracy p, over uniform speed, vs. the same
+    // question without it: the joker must not be a free roll, nor a trap.
+    const avg = (stake: 'SAFE' | 'RISK', doubleDown: boolean, correct: boolean): number => {
+      let total = 0;
+      const steps = 100;
+      for (let i = 0; i <= steps; i++) {
+        const r = computeScore(
+          { ...base, stake, doubleDown, correct, remainingMs: (15_000 * i) / steps },
+          config,
+        );
+        total += r.delta;
+      }
+      return total / (steps + 1);
+    };
+    for (const stake of ['SAFE', 'RISK'] as const) {
+      const win = avg(stake, true, true);
+      const loss = -avg(stake, true, false);
+      const breakEven = loss / (win + loss);
+      expect(breakEven).toBeGreaterThanOrEqual(0.38);
+      expect(breakEven).toBeLessThanOrEqual(0.45);
+    }
   });
 
   it('50/50 never increases a gain under the default rule', () => {

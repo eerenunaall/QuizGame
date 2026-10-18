@@ -182,6 +182,8 @@ export const en: Record<MessageKey, string> = {
   'error.POWER_UNAVAILABLE': 'That power cannot be used right now.',
   'error.POWER_LOCKED_OUT': 'That joker is locked this round.',
   'error.STAKE_INVALID': 'That stake is not available.',
+  'error.DOUBLE_DOWN_STAKE_CONFLICT':
+    'One big gamble per question: Double Down cannot go with this stake.',
   'error.TARGET_INVALID': 'You cannot sabotage that player.',
   'error.SABOTAGE_LIMIT': 'Sabotage limit reached. Wait a bit.',
   'error.ALREADY_COMMITTED': 'You have already made your choice.',
@@ -295,6 +297,8 @@ export const en: Record<MessageKey, string> = {
   'ctl.prep.mandatory': 'Last question! A stake is a must.',
   'ctl.prep.doubleDown': 'Double Down',
   'ctl.prep.doubleDown.hint': 'Right: points doubled. Wrong: an extra penalty.',
+  'ctl.prep.doubleDown.conflict': 'One big gamble per question: not with this stake.',
+  'ctl.prep.stake.conflict': 'Not with Double Down.',
   'ctl.prep.left': '{count} left',
   'ctl.prep.none': 'None left',
   'ctl.prep.locked': 'Locked this round',

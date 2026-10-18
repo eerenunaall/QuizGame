@@ -96,7 +96,7 @@ describe('a powered game over real WebSockets', () => {
       });
     };
 
-    // ── Round 1: p0 goes HIGH and doubles down; the others play safe.
+    // ── Round 1: p0 goes RISK and doubles down; the others play safe.
     await everyone(party, (client) => client.waitForPhase('QUESTION_PREP'));
     const prep = await party.display.waitForPhase('QUESTION_PREP');
     expect(dataOf(prep)).toMatchObject({
@@ -110,8 +110,11 @@ describe('a powered game over real WebSockets', () => {
       committedCount: 0,
       eligibleCount: 3,
     });
+    // One big gamble per question (ADR-0021): HIGH + Double Down is refused and costs nothing.
     commit(p0, { stake: 'HIGH', doubleDown: true });
-    await nextPlayerState(p0, (s) => s.commitment?.stake === 'HIGH');
+    expect((await p0.nextOfType('ERROR')).payload.code).toBe('DOUBLE_DOWN_STAKE_CONFLICT');
+    commit(p0, { stake: 'RISK', doubleDown: true });
+    await nextPlayerState(p0, (s) => s.commitment?.stake === 'RISK');
     expect(you(p0).powers).toMatchObject({ doubleDown: 1 });
     commit(p1);
     commit(p2);
@@ -120,7 +123,7 @@ describe('a powered game over real WebSockets', () => {
     const resolution = await party.display.waitForPhase('POWER_RESOLUTION', 8_000);
     expect(dataOf(resolution)).toMatchObject({
       items: [
-        { kind: 'STAKE', playerId: p0.playerId, tier: 'HIGH', outcome: 'CORRECT' },
+        { kind: 'STAKE', playerId: p0.playerId, tier: 'RISK', outcome: 'CORRECT' },
         { kind: 'DOUBLE_DOWN', playerId: p0.playerId, outcome: 'CORRECT' },
       ],
     });
@@ -131,9 +134,10 @@ describe('a powered game over real WebSockets', () => {
     expect(mine.components.map((c) => c.kind)).toEqual(
       expect.arrayContaining(['BASE', 'STAKE', 'DOUBLE_DOWN']),
     );
-    expect(mine.delta).toBeGreaterThan(
-      scoreData.deltas.find((d) => d.playerId === p2.playerId)!.delta * 3,
-    );
+    // RISK 2x doubled would be 4x, but the 3x ceiling holds it: more than a safe answer, never 4x.
+    const safe = scoreData.deltas.find((d) => d.playerId === p2.playerId)!.delta;
+    expect(mine.delta).toBeGreaterThan(safe);
+    expect(mine.delta).toBeLessThanOrEqual(3 * (100 + 100));
 
     // ── Round 2: p1 uses 50/50; nobody else is told.
     await everyone(party, (client) => client.waitForPhase('QUESTION_PREP'));
@@ -240,7 +244,7 @@ describe('a powered game over real WebSockets', () => {
       .execute();
     const row = (index: number, player: TestClient) =>
       answers.find((a) => a.round_index === index && a.player_id === player.playerId)!;
-    expect(row(0, p0)).toMatchObject({ stake: 'HIGH', double_down: true, fifty_fifty: false });
+    expect(row(0, p0)).toMatchObject({ stake: 'RISK', double_down: true, fifty_fifty: false });
     expect(row(1, p1)).toMatchObject({ stake: 'SAFE', fifty_fifty: true, double_down: false });
     expect(row(5, p2).stake).toBe('RISK');
     const sabotages = await server.db.db

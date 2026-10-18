@@ -9,7 +9,7 @@ import type {
   RiskTier,
   RoundKind,
 } from '@quizparty/protocol';
-import { defaultTier, ladderKindFor, type GameConfig } from './config';
+import { defaultTier, doubleDownExcludedStakes, ladderKindFor, type GameConfig } from './config';
 import type { PowerLedger, PresentedOption, RoomState, RoundState, TargetEffects } from './types';
 import { exemptPlayerId } from './who-said-it';
 
@@ -116,6 +116,9 @@ export function checkCommit(d: Room, playerId: string, payload: CommitPayload): 
   if (payload.doubleDown) {
     if (!doubleDownOffered(d.config) || me.powers.doubleDown <= 0) return 'POWER_UNAVAILABLE';
     if (jokerLockedOut(me.powers, 'DOUBLE_DOWN', round.index)) return 'POWER_LOCKED_OUT';
+    // One big gamble per question (ADR-0021): checked after availability so the hint matches.
+    if (doubleDownExcludedStakes(d.config).includes(payload.stake))
+      return 'DOUBLE_DOWN_STAKE_CONFLICT';
   }
 
   const sabotage = payload.sabotage;

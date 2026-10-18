@@ -165,6 +165,8 @@ export const PhaseDataSchema = z.discriminatedUnion('phase', [
     /** True when the ladder has no SAFE rung (the last question): a stake must be taken. */
     stakeMandatory: z.boolean(),
     doubleDownEnabled: z.boolean(),
+    /** Stakes that cannot be combined with Double Down; absent from older servers (ADR-0021). */
+    doubleDownExcludedStakes: z.array(RiskTierSchema).max(4).optional(),
     sabotageEnabled: z.boolean(),
     /** Players who have made their choices / players who are expected to. */
     committedCount: z.int().nonnegative(),

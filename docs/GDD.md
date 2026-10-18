@@ -691,6 +691,10 @@ penalty according to mode rules
 
 This power should be visibly dramatic on TV.
 
+Limits (ADR-0021): "one big gamble per question". Double Down cannot be combined with the top stakes
+(HIGH, FINAL ALL_IN), no stake and Double Down stack may pay more than 3× (5× in the final) the base
+plus speed points, and a wrong Double Down costs an extra 200. All values are config-driven.
+
 ## 7.5 50/50
 
 Two incorrect options are removed.

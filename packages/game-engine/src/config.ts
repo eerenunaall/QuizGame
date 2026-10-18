@@ -87,6 +87,7 @@ export const GameConfigSchema = z.strictObject({
     ladders: perKind(LadderSchema),
     doubleDown: z.strictObject({
       multiplier: z.int().min(1).max(5),
+      /** Added to the stake's loss when wrong (ADR-0021: 200 puts break-even accuracy near 40 %). */
       extraLoss: z.int().min(0).max(5000),
     }),
     fiftyFifty: z.strictObject({
@@ -95,11 +96,21 @@ export const GameConfigSchema = z.strictObject({
     }),
     pointTax: z.strictObject({ permille: z.int().min(0).max(1000) }),
     maxGainPerQuestion: perKind(z.int().min(1).max(100_000)),
+    /**
+     * Ceiling on the gain after stake and Double Down, as a multiple of (base + speed) (ADR-0021).
+     * Optional so snapshots stored before it existed still parse; read it via `maxTotalMultiplierFor`.
+     */
+    maxTotalMultiplier: perKind(z.int().min(1).max(20)).optional(),
   }),
   powers: z.strictObject({
     fiftyFiftyPerGame: z.int().min(0).max(5),
     doubleDownPerGame: z.int().min(0).max(5),
     shieldPerGame: z.int().min(0).max(3),
+    /**
+     * Stakes that cannot be combined with Double Down: "one big gamble per question" (ADR-0021).
+     * Optional for old snapshots; read it via `doubleDownExcludedStakes`.
+     */
+    doubleDownExcludedStakes: z.array(z.enum(RISK_TIERS)).max(4).optional(),
     sabotage: z.strictObject({
       enabled: z.boolean(),
       startTokens: z.int().min(0).max(3),
@@ -166,7 +177,7 @@ const STANDARD_LADDER: Ladder = {
 };
 
 export const DEFAULT_GAME_CONFIG: GameConfig = {
-  version: 1,
+  version: 2,
   maxPlayers: 8,
   minPlayersToStart: 2,
   defaultRounds: 10,
@@ -224,16 +235,18 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
         ALL_IN: { multiplier: 5, loss: 400 },
       },
     },
-    doubleDown: { multiplier: 2, extraLoss: 100 },
+    doubleDown: { multiplier: 2, extraLoss: 200 },
     // Default 1/2: the lifeline halves variance at constant EV. See ADR-0007 for the "2x" contradiction.
     fiftyFifty: { numerator: 1, denominator: 2 },
     pointTax: { permille: 250 },
     maxGainPerQuestion: { STANDARD: 1500, SPEED: 1500, RISK: 1500, CROWD: 1500, FINAL: 2500 },
+    maxTotalMultiplier: { STANDARD: 3, SPEED: 3, RISK: 3, CROWD: 3, FINAL: 5 },
   },
   powers: {
     fiftyFiftyPerGame: 1,
     doubleDownPerGame: 2,
     shieldPerGame: 1,
+    doubleDownExcludedStakes: ['HIGH', 'ALL_IN'],
     sabotage: {
       enabled: true,
       startTokens: 1,
@@ -339,6 +352,21 @@ function deepMerge(base: unknown, override: unknown): unknown {
  */
 export function ladderKindFor(kind: RoundKind, isLastRound: boolean): RoundKind {
   return kind === 'FINAL' && !isLastRound ? 'STANDARD' : kind;
+}
+
+/** Ceiling for `kind`: gain after stake and Double Down never exceeds this × (base + speed). */
+export function maxTotalMultiplierFor(config: GameConfig, kind: RoundKind): number {
+  return (
+    config.scoring.maxTotalMultiplier?.[kind] ??
+    DEFAULT_GAME_CONFIG.scoring.maxTotalMultiplier![kind]
+  );
+}
+
+/** Stakes that Double Down may not be combined with (old snapshots fall back to the defaults). */
+export function doubleDownExcludedStakes(config: GameConfig): readonly RiskTier[] {
+  return (
+    config.powers.doubleDownExcludedStakes ?? DEFAULT_GAME_CONFIG.powers.doubleDownExcludedStakes!
+  );
 }
 
 /** Tier that applies when a player has not chosen one: the lowest tier the ladder offers. */

@@ -1,6 +1,6 @@
 import { clamp } from '@quizparty/shared';
 import type { Outcome, RiskTier, RoundKind, ScoreComponent } from '@quizparty/protocol';
-import { defaultTier, type GameConfig } from './config';
+import { defaultTier, maxTotalMultiplierFor, type GameConfig } from './config';
 
 /**
  * Pure integer scoring (ADR-0007). Every intermediate value is a safe integer; every rounding is a
@@ -63,6 +63,13 @@ export function computeScore(input: ScoreInput, config: GameConfig): ScoreResult
       const doubled = gain * scoring.doubleDown.multiplier;
       components.push({ kind: 'DOUBLE_DOWN', points: doubled - gain });
       gain = doubled;
+      // Backstop of "one big gamble per question": no stack of stake and Double Down may pay more
+      // than ceiling × (base + speed), whatever the config allows (ADR-0021).
+      const ceiling = maxTotalMultiplierFor(config, kind) * (base + speed);
+      if (gain > ceiling) {
+        components.push({ kind: 'CAP', points: ceiling - gain });
+        gain = ceiling;
+      }
     }
     if (input.fiftyFifty) {
       const reduced = Math.floor(
