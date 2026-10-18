@@ -18,6 +18,7 @@
     "test:ws": "vitest run --project websocket",
     "test:red-team": "vitest run --project red-team",
     "test:web": "vitest run --project web",
+    "test:mobile": "pnpm --filter @quizparty/mobile run test",
     "test:e2e": "pnpm run build:web && pnpm run build:admin && playwright test",
     "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run test:web",
     "dev:db": "bash scripts/dev/db-up.sh",

@@ -61,7 +61,19 @@ export default tseslint.config(
     },
   },
   {
-    files: ['apps/realtime/**/*.ts', 'scripts/**/*.ts', 'tests/**/*.ts', 'packages/db/**/*.ts'],
+    // Metro / Babel / Jest read these as CommonJS.
+    files: ['apps/mobile/*.js'],
+    languageOptions: { globals: { ...globals.node } },
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
+  {
+    files: [
+      'apps/realtime/**/*.ts',
+      'scripts/**/*.ts',
+      'tests/**/*.ts',
+      'packages/db/**/*.ts',
+      'apps/mobile/scripts/**/*.ts',
+    ],
     languageOptions: { globals: { ...globals.node } },
   },
   {
