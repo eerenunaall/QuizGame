@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { LAUNCH_CATEGORIES } from '@quizparty/question-schema';
+import demoCategories from '../../../../seed/demo/categories.json';
 import { categoryIcon, stickerUrl } from './assets';
 
 describe('category icons', () => {
@@ -23,5 +24,14 @@ describe('category icons', () => {
 
   it('never leave a hole for a category added later', () => {
     expect(stickerUrl(categoryIcon('added-next-year'))).not.toBe('');
+  });
+
+  it('give every seeded demo category its own icon, distinct from the fallback and each other', () => {
+    const demo: { id: string }[] = demoCategories;
+    const fallback = categoryIcon('no-such-category');
+    const icons = demo.map((category) => categoryIcon(category.id));
+    expect(icons).not.toContain(fallback);
+    expect(new Set(icons).size).toBe(demo.length);
+    for (const icon of icons) expect(stickerUrl(icon)).not.toBe('');
   });
 });

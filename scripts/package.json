@@ -7,6 +7,7 @@
     "typecheck": "tsc --noEmit",
     "assets:build": "node assets/build.ts",
     "assets:brand": "node assets/brand.ts",
+    "assets:category-icons": "node assets/category-icons.ts",
     "question": "tsx question/main.ts",
     "playtest": "tsx dev/playtest.ts"
   },

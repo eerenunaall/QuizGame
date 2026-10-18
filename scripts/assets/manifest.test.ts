@@ -2,6 +2,7 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { AVATAR_IDS } from '@quizparty/protocol/constants';
+import { CATEGORY_BADGES } from './category-badges.ts';
 import { ANIMATIONS, AVATARS, STICKERS, fluentUrl, notoUrl } from './manifest.ts';
 
 const ASSETS = fileURLToPath(new URL('../../apps/web/src/assets/', import.meta.url));
@@ -34,7 +35,7 @@ describe('asset manifest', () => {
   it('has every committed output file, and no strays', () => {
     for (const [group, assets] of [
       ['avatars', AVATARS],
-      ['stickers', STICKERS],
+      ['stickers', [...STICKERS, ...CATEGORY_BADGES]],
       ['animated', ANIMATIONS],
     ] as const) {
       const directory = `${ASSETS}${group}`;
@@ -44,6 +45,20 @@ describe('asset manifest', () => {
       for (const file of files)
         expect(statSync(`${directory}/${file}`).size).toBeGreaterThan(1_000);
     }
+  });
+
+  it('keeps the original category badges legible: white glyph contrast, distinct colours', () => {
+    const luminance = (hex: string): number => {
+      const [r, g, b] = [1, 3, 5].map((i) => {
+        const c = Number.parseInt(hex.slice(i, i + 2), 16) / 255;
+        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0);
+    };
+    for (const badge of CATEGORY_BADGES)
+      expect(1.05 / (luminance(badge.color) + 0.05), badge.id).toBeGreaterThanOrEqual(4.5);
+    expect(new Set(CATEGORY_BADGES.map((b) => b.color)).size).toBe(CATEGORY_BADGES.length);
+    expect(new Set(CATEGORY_BADGES.map((b) => b.glyph)).size).toBe(CATEGORY_BADGES.length);
   });
 
   it('keeps the animated pack within its size budget', () => {

@@ -95,7 +95,18 @@ export type StickerId =
   | 'cat-myth'
   | 'cat-language'
   | 'cat-business'
-  | 'cat-math';
+  | 'cat-math'
+  | 'cat-got'
+  | 'cat-wizard'
+  | 'cat-wargame'
+  | 'cat-chemistry'
+  | 'cat-law'
+  | 'cat-office'
+  | 'cat-sitcom'
+  | 'cat-hero-mask'
+  | 'cat-skyline'
+  | 'cat-hollywood'
+  | 'cat-reel';
 
 export type AnimationId =
   | 'party-popper'
@@ -166,6 +177,18 @@ const CATEGORY_ICONS: Record<string, StickerId> = {
   y2000s: 'cat-2000s',
   mixed: 'cat-mixed',
   custom: 'cat-custom',
+  // demo categories (seed/demo): original badges from scripts/assets/category-badges.ts
+  'game-of-thrones': 'cat-got',
+  'harry-potter': 'cat-wizard',
+  warhammer: 'cat-wargame',
+  'breaking-bad': 'cat-chemistry',
+  'better-call-saul': 'cat-law',
+  'the-office': 'cat-office',
+  'how-i-met-your-mother': 'cat-sitcom',
+  marvel: 'cat-hero-mask',
+  dc: 'cat-skyline',
+  hollywood: 'cat-hollywood',
+  'cult-films': 'cat-reel',
 };
 
 export function categoryIcon(categoryId: string): StickerId {
