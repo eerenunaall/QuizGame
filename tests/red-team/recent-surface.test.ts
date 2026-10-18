@@ -72,3 +72,26 @@ describe('ATTACK 27 — Who Said It: the progress strip names the author', () =>
     await closeParty(party);
   });
 });
+
+describe('ATTACK 28 — invisible characters walk past the text moderation', () => {
+  // Default-ignorable and blank-looking letters: invisible on the TV, but not "format" characters, so
+  // the control/format ban let them through. Between letters they defeat the profanity and link filters.
+  const FILLERS = ['ㅤ', 'ᅟ', 'ᅠ', 'ﾠ', '⠀', '឴', '឵', '͏', '⁢'];
+  it('refuses fillers inside words, links and on their own', () => {
+    for (const filler of FILLERS) {
+      const label = `U+${filler.codePointAt(0)!.toString(16)}`;
+      for (const text of [`a${filler}mk`, `evil${filler}.com`, `http${filler}://x.example`, filler, `${filler}${filler}`]) {
+        const result = sanitizeUserText(text, { maxLength: 140 });
+        expect(result.ok, `${label} ${JSON.stringify(text)}`).toBe(false);
+      }
+    }
+  });
+  it('refuses a stack of combining marks that paints over the neighbouring lines', () => {
+    const zalgo = `a${'̀́̂̃̄̅̆̇'}`;
+    expect(sanitizeUserText(zalgo, { maxLength: 140 }).ok).toBe(false);
+  });
+  it('still accepts ordinary party text: Turkish letters, accents, emoji with a presentation selector', () => {
+    for (const text of ['İstanbul’da çay içerim ğüşöç', 'café crème', '❤️ aşk', 'Zoë', '👍🏽 süper'])
+      expect(sanitizeUserText(text, { maxLength: 140 }), text).toEqual({ ok: true, text });
+  });
+});
