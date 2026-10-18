@@ -200,7 +200,7 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     readPerCharMs: 25,
     readMinMs: 2_000,
     readMaxMs: 5_000,
-    answerMs: { STANDARD: 15_000, SPEED: 8_000, RISK: 15_000, CROWD: 15_000, FINAL: 12_000 },
+    answerMs: { STANDARD: 25_000, SPEED: 12_000, RISK: 25_000, CROWD: 25_000, FINAL: 20_000 },
     lockedMs: 1_000,
     revealMs: 4_500,
     revealPerCharMs: 35,

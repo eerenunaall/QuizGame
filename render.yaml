@@ -32,9 +32,6 @@ services:
         value: '1'
       - key: LOG_LEVEL
         value: warn
-      # Answer time per round kind in ms (defaults are 15000/8000/15000/15000/12000).
-      - key: GAME_CONFIG_OVERRIDE
-        value: '{"timings":{"answerMs":{"STANDARD":25000,"SPEED":12000,"RISK":25000,"CROWD":25000,"FINAL":20000}}}'
       # Gusto Board Game look (build-time; remove these three lines for the standard QuizNight look).
       - key: VITE_DEFAULT_THEME
         value: gusto

@@ -291,12 +291,12 @@ describe('scoring flow', () => {
   it('awards speed-weighted points, no penalty for wrong/no answer, and ranks with ties', () => {
     const { h, ids } = answeringHarness(3);
     const [a, b, c] = ids as [string, string, string];
-    h.answer(a, 'correct', h.round().answerOpensAt! + 3_000); // 12 s left → +80 speed
+    h.answer(a, 'correct', h.round().answerOpensAt! + 3_000); // 22 s of 25 left → +88 speed
     h.answer(b, 'wrong');
     h.runUntil('SCORE_UPDATE');
 
     const game = h.state.game!;
-    expect(game.players[a]!.score).toBe(100 + 80);
+    expect(game.players[a]!.score).toBe(100 + 88);
     expect(game.players[b]!.score).toBe(0);
     expect(game.players[c]!.score).toBe(0);
     expect(game.players[a]!.streak).toBe(1);
@@ -305,8 +305,8 @@ describe('scoring flow', () => {
     expect(view.phase).toBe('SCORE_UPDATE');
     if (view.phase !== 'SCORE_UPDATE') return;
     expect(view.deltas.find((d) => d.playerId === a)).toMatchObject({
-      delta: 180,
-      total: 180,
+      delta: 188,
+      total: 188,
       rank: 1,
       previousRank: 1,
     });
@@ -380,7 +380,7 @@ describe('final round, results and rematch', () => {
       kind: 'FINAL',
       isFinal: true,
       basePoints: 200,
-      answerMs: 12_000,
+      answerMs: 20_000,
     });
     h.runUntil('ANSWERING');
     h.answer('p1', 'correct');
