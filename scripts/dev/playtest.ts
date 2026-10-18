@@ -12,7 +12,7 @@
  * To play across networks, expose the port with a tunnel and pass its https URL as PUBLIC_WEB_URL.
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createPool, runMigrations } from '@quizparty/db';
@@ -77,18 +77,22 @@ const seedCode = await run(
 if (seedCode !== 0) fail('The development bank could not be loaded.');
 
 // The temporary demo bank (cult TV, films, comics) sits outside the launch pool; see seed/demo/README.md.
-const demoCode = await run(
-  [
-    'seed',
-    '--seed-file',
-    `${ROOT}seed/demo/questions.cult.tr.jsonl`,
-    '--categories-file',
-    `${ROOT}seed/demo/categories.json`,
-  ],
-  { ...env, NODE_ENV: 'development', DATABASE_URL: databaseUrl },
-  realIo,
-);
-if (demoCode !== 0) fail('The demo bank could not be loaded.');
+for (const file of readdirSync(`${ROOT}seed/demo`).filter((n) =>
+  /^questions\..+\.jsonl$/u.test(n),
+)) {
+  const demoCode = await run(
+    [
+      'seed',
+      '--seed-file',
+      `${ROOT}seed/demo/${file}`,
+      '--categories-file',
+      `${ROOT}seed/demo/categories.json`,
+    ],
+    { ...env, NODE_ENV: 'development', DATABASE_URL: databaseUrl },
+    realIo,
+  );
+  if (demoCode !== 0) fail(`The demo bank ${file} could not be loaded.`);
+}
 
 const rebuild = process.argv.includes('--rebuild');
 if (rebuild || !existsSync(`${ROOT}apps/web/dist/index.html`)) {
