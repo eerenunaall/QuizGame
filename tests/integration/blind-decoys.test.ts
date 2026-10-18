@@ -249,3 +249,27 @@ describe('when the remote side fails', () => {
     expect(model.requests).toHaveLength(0);
   });
 });
+
+describe('the respond page learns whether suggestions exist', () => {
+  const features = async (s: TestServer, q: Ready) =>
+    (await call<{ features: unknown }>(s, 'GET', `/v1/blind/respond/${q.token}`)).body.features;
+  it('reports a boolean that follows the flag, and exposes nothing else', async () => {
+    const q = await quiz(server);
+    await setAi(server, false);
+    expect(await features(server, q)).toEqual({ suggestDecoys: false });
+    await setAi(server, true);
+    expect(await features(server, q)).toEqual({ suggestDecoys: true });
+  });
+  it('is false when no provider is configured even with the flag on', async () => {
+    const bare = await startServer({});
+    servers.push(bare);
+    await bare.db.db
+      .updateTable('feature_flags')
+      .set({ enabled: true })
+      .where('key', 'in', ['mode.blind_quiz', 'ai.decoys'])
+      .execute();
+    bare.built.flags.invalidate();
+    const q = await quiz(bare);
+    expect(await features(bare, q)).toEqual({ suggestDecoys: false });
+  });
+});

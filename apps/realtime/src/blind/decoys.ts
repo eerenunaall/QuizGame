@@ -216,6 +216,11 @@ export class DecoySuggester {
     return this.deps.provider !== null;
   }
 
+  /** Whether a press of "suggest" could reach a provider right now; lets the page show the button only then. */
+  async available(): Promise<boolean> {
+    return this.deps.provider !== null && (await this.deps.enabled());
+  }
+
   async suggest(request: DecoyRequest): Promise<DecoySuggestion> {
     const none: DecoySuggestion = { decoys: [], source: 'NONE' };
     if (!this.deps.provider || !(await this.deps.enabled())) {

@@ -29,6 +29,8 @@ export interface TargetView {
   quiz: { title: string; language: Locale };
   target: { name: string; consented: boolean };
   prompts: TargetPrompt[];
+  /** Allow-listed capability hints for the page; booleans only, never configuration. */
+  features: { suggestDecoys: boolean };
 }
 
 interface Payload {
@@ -178,6 +180,7 @@ export class BlindVault {
       .orderBy('blind_prompts.position')
       .execute();
     return {
+      features: { suggestDecoys: (await this.suggester?.available()) ?? false },
       quiz: { title: target.title, language: target.language },
       target: { name: target.displayName, consented: target.consentedAt !== null },
       prompts: prompts.map((row) => {
