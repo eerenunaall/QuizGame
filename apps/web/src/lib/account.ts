@@ -121,6 +121,12 @@ export const accountApi = {
     call<{ ok: true }>(`/v1/blind/respond/${token}/prompts/${promptId}/approval`, 'POST', {
       approved,
     }),
+  respondSuggest: (token: string, promptId: string) =>
+    call<{ decoys: string[]; source: 'AI' | 'NONE' }>(
+      `/v1/blind/respond/${token}/prompts/${promptId}/suggest-decoys`,
+      'POST',
+      {},
+    ),
   respondDelete: (token: string) => call<{ ok: true }>(`/v1/blind/respond/${token}`, 'DELETE'),
 };
 
@@ -153,6 +159,8 @@ export interface QuizDetail extends QuizSummary {
   }[];
 }
 export interface RespondView {
+  /** Server-reported: the "suggest wrong answers" button exists only when this is true. */
+  features?: { suggestDecoys: boolean };
   quiz: { title: string; language: 'tr' | 'en' };
   target: { name: string; consented: boolean };
   prompts: {

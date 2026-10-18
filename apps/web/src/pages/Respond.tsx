@@ -5,6 +5,7 @@ import { AccountApiError, accountApi, type RespondView } from '../lib/account';
 import { useI18n } from '../lib/i18n';
 import styles from './Quiz.module.css';
 
+type Gone = 'dead' | 'claimed' | 'unavailable' | 'deleted';
 type Prompt = RespondView['prompts'][number];
 
 function PromptCard({
@@ -12,12 +13,15 @@ function PromptCard({
   prompt,
   name,
   language,
+  suggest,
   onChange,
 }: {
   token: string;
   prompt: Prompt;
   name: string;
   language: 'tr' | 'en';
+  /** Server says the optional "suggest wrong answers" feature is on. */
+  suggest: boolean;
   onChange: () => void;
 }): ReactNode {
   const { t, td } = useI18n();
@@ -48,6 +52,24 @@ function PromptCard({
       setNote({ tone: 'ok', text: t('respond.saved') });
       onChange();
     }, fail);
+  };
+  // Optional help only: any failure or empty answer leaves the manual fields exactly as they were.
+  const suggestDecoys = (): void => {
+    accountApi.respondSuggest(token, prompt.promptId).then(
+      (result) => {
+        const fresh = result.decoys.filter((d) => !decoys.includes(d));
+        if (fresh.length === 0) return;
+        const next = [...decoys];
+        for (const text of fresh) {
+          const slot = next.findIndex((d) => d.trim() === '');
+          if (slot < 0) break;
+          next[slot] = text;
+        }
+        setDecoys(next);
+        setNote({ tone: 'ok', text: t('respond.suggested') });
+      },
+      () => undefined,
+    );
   };
   const approve = (value: boolean): void => {
     accountApi.respondApproval(token, prompt.promptId, value).then(onChange, (error: unknown) => {
@@ -82,6 +104,16 @@ function PromptCard({
           data-testid={`decoy-${prompt.position}-${index}`}
         />
       ))}
+      {suggest && saved ? (
+        <Button
+          variant="ghost"
+          size="md"
+          onClick={suggestDecoys}
+          data-testid={`suggest-${prompt.position}`}
+        >
+          {t('respond.suggest')}
+        </Button>
+      ) : null}
       {note ? (
         <p
           role={note.tone === 'bad' ? 'alert' : 'status'}
@@ -136,25 +168,31 @@ function PromptCard({
 /** What the person being quizzed sees: consent first, then each question with a private preview and approval. */
 export function RespondPage({ token }: { token: string }): ReactNode {
   const { t } = useI18n();
-  const [view, setView] = useState<RespondView | 'dead' | 'deleted' | null>(null);
+  const [view, setView] = useState<RespondView | Gone | null>(null);
 
   const load = useCallback(() => {
-    accountApi.respondView(token).then(setView, () => setView('dead'));
+    accountApi.respondView(token).then(setView, (error: unknown) => {
+      // 403: another browser consented first and owns the invite. 404: unknown, replaced, expired
+      // or deleted (the server answers all alike on purpose). Anything else is a hiccup.
+      if (error instanceof AccountApiError && error.status === 403) setView('claimed');
+      else if (error instanceof AccountApiError && error.status === 404) setView('dead');
+      else setView('unavailable');
+    });
   }, [token]);
   useEffect(load, [load]);
 
   if (view === null) return <div className={styles.page} />;
-  if (view === 'dead' || view === 'deleted')
+  if (typeof view === 'string')
     return (
       <div className={styles.page}>
         <Wordmark scale={0.5} />
-        <main
-          className={styles.card}
-          data-testid={view === 'dead' ? 'respond-dead' : 'respond-deleted'}
-        >
-          <p role={view === 'dead' ? 'alert' : 'status'}>
-            {view === 'dead' ? t('respond.dead') : t('respond.deleted')}
-          </p>
+        <main className={styles.card} data-testid={`respond-${view}`}>
+          <p role={view === 'deleted' ? 'status' : 'alert'}>{t(`respond.${view}`)}</p>
+          {view === 'unavailable' ? (
+            <Button size="md" onClick={load} data-testid="respond-retry">
+              {t('respond.retry')}
+            </Button>
+          ) : null}
         </main>
       </div>
     );
@@ -191,6 +229,7 @@ export function RespondPage({ token }: { token: string }): ReactNode {
                 prompt={prompt}
                 name={view.target.name}
                 language={view.quiz.language}
+                suggest={view.features?.suggestDecoys === true}
                 onChange={load}
               />
             ))}

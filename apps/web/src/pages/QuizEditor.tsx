@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from
 import { BLIND_CATALOG_KEYS } from '@quizparty/protocol';
 import { Button } from '../ui/Button';
 import { Wordmark } from '../ui/Wordmark';
-import { accountApi, type QuizDetail } from '../lib/account';
+import { AccountApiError, accountApi, type QuizDetail } from '../lib/account';
 import { useI18n } from '../lib/i18n';
 import { Link, useNavigate } from '../lib/router';
 import styles from './Quiz.module.css';
@@ -92,7 +92,11 @@ export function QuizEditorPage({ id }: { id: string }): ReactNode {
           </span>
         </p>
         <p className={styles.fine}>{t('quiz.use')}</p>
-        {error ? <p role="alert">{error}</p> : null}
+        {error ? (
+          <p role="alert" data-testid="quiz-error">
+            {error}
+          </p>
+        ) : null}
 
         {quiz.kind === 'BLIND' ? (
           <>
@@ -156,11 +160,19 @@ export function QuizEditorPage({ id }: { id: string }): ReactNode {
                   </span>{' '}
                   <button
                     type="button"
-                    onClick={() =>
-                      void accountApi
-                        .rotateInvite(id, target.id)
-                        .then((r) => setInvite(r.inviteUrl))
-                    }
+                    onClick={() => {
+                      setError(null);
+                      accountApi.rotateInvite(id, target.id).then(
+                        (r) => setInvite(r.inviteUrl),
+                        (failure: unknown) =>
+                          // 409: the target already claimed the invite (ADR-0015 addendum).
+                          setError(
+                            failure instanceof AccountApiError && failure.status === 409
+                              ? t('quiz.targets.rotateRefused', { name: target.displayName })
+                              : t('error.TEXT_REJECTED'),
+                          ),
+                      );
+                    }}
                   >
                     {t('quiz.targets.rotate')}
                   </button>{' '}
