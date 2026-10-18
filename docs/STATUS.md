@@ -24,7 +24,7 @@ Branch: `claude/cloud-session-infrastructure-ln57mp` · Last updated: 2026-10-18
 | web (jsdom: web app screens, unlock page, admin console client, sign-in, question editor) | `pnpm test:web` | 110 |
 | integration (PostgreSQL) | `pnpm test:integration` | 261 |
 | websocket (real server, real sockets, static serving of both apps, TV unlock, the phone app runtime) | `pnpm test:ws` | 95 |
-| red team (ATTACK 1–26 map in `docs/RED_TEAM.md`) | `pnpm test:red-team` | 80 |
+| red team (ATTACK 1–34 map in `docs/RED_TEAM.md`) | `pnpm test:red-team` | 80 |
 | mobile (Jest + Testing Library: logic, state→UI mapping, purchase flows) | `pnpm test:mobile` | 132 |
 | browser E2E (real Chromium: TV + phones, reloads, drops, QR, remote keys, every power, report → console loop, TV unlock by phone) | `pnpm test:e2e` | 17 |
 

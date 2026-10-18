@@ -43,6 +43,6 @@ export function resolveVenueLogo(raw: string | undefined): string | null {
   const value = (raw ?? '').trim();
   // A backslash after the first slash reads as "//" in browsers (host switch) and `user@` is a
   // credential/host trick: neither belongs in a logo address (ATTACK 30).
-  if (!/^(\/(?![\/\\])|https:\/\/)[^\s"'<>\\@]+\.(svg|png|webp)$/iu.test(value)) return null;
+  if (!/^(\/(?!\/|\\)|https:\/\/)[^\s"'<>\\@]+\.(svg|png|webp)$/iu.test(value)) return null;
   return value;
 }

@@ -192,9 +192,9 @@ describe('ATTACK 30 — hostile theme and venue-logo values', () => {
     const { pickTheme, themeFromQuery } = await import('../../apps/web/src/lib/theme');
     const memory = new Map<string, string>();
     const storage = {
-      getItem: (k: string) => memory.get(k) ?? null,
-      setItem: (k: string, v: string) => void memory.set(k, v),
-      removeItem: (k: string) => void memory.delete(k),
+      get: (k: string) => memory.get(k) ?? null,
+      set: (k: string, v: string) => void memory.set(k, v),
+      remove: (k: string) => void memory.delete(k),
     };
     for (const search of [
       '?theme=%3Cscript%3Ealert(1)%3C/script%3E',
