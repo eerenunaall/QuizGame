@@ -11,13 +11,14 @@ interface Peek {
   roomCode: string;
   tier: 'FREE' | 'FULL';
   mode: string;
+  whoSaidIt?: boolean;
   quizzes: { id: string; kind: QuizKind; title: string; ready: boolean }[];
 }
 
 type Step =
   | { kind: 'ready'; peek: Peek }
   | { kind: 'done'; roomCode: string; tier: 'FREE' | 'FULL' }
-  | { kind: 'attached'; title: string | null }
+  | { kind: 'attached'; title: string | null; mode?: string }
   | { kind: 'dead' };
 
 /**
@@ -75,6 +76,13 @@ export function UnlockPage({ token }: { token: string }) {
     });
   };
 
+  const attachWhoSaidIt = (): void => {
+    void run(async () => {
+      const result = await accountApi.attachWhoSaidIt(token);
+      setStep({ kind: 'attached', title: result.title, mode: result.mode });
+    });
+  };
+
   return (
     <div className={styles.screen}>
       <Wordmark scale={0.62} />
@@ -102,11 +110,10 @@ export function UnlockPage({ token }: { token: string }) {
             <div className={styles.hint} role="alert" data-testid="unlock-error">
               {message ?? ''}
             </div>
-            {step.peek.tier === 'FREE' ? (
-              <Button size="lg" block disabled={busy} onClick={claim} data-testid="unlock-claim">
-                {t('unlock.link')}
-              </Button>
-            ) : null}
+            {/* peek.tier is the signed-in account's tier, not the room's: linking is how the room learns it. */}
+            <Button size="lg" block disabled={busy} onClick={claim} data-testid="unlock-claim">
+              {t('unlock.link')}
+            </Button>
             <h2 className={styles.label} style={{ marginTop: 18 }}>
               {t('unlock.quiz.title')}
             </h2>
@@ -129,6 +136,24 @@ export function UnlockPage({ token }: { token: string }) {
                 </Button>
               ))
             )}
+            {step.peek.whoSaidIt ? (
+              <>
+                <Button
+                  variant="violet"
+                  size="md"
+                  block
+                  disabled={busy}
+                  onClick={attachWhoSaidIt}
+                  data-testid="attach-who-said-it"
+                  style={{ marginBottom: 4 }}
+                >
+                  {t('unlock.whosaidit')}
+                </Button>
+                <p className={styles.hint} style={{ marginBottom: 10 }}>
+                  {t('unlock.whosaidit.hint')}
+                </p>
+              </>
+            ) : null}
             {step.peek.mode !== 'CLASSIC' ? (
               <Button variant="ghost" size="md" block disabled={busy} onClick={() => attach(null)}>
                 {t('unlock.quiz.classic')}
@@ -149,7 +174,9 @@ export function UnlockPage({ token }: { token: string }) {
         ) : null}
         {step?.kind === 'attached' ? (
           <p role="status" data-testid="unlock-attached">
-            {t('unlock.quiz.attached')}
+            {step.mode === 'WHO_SAID_IT'
+              ? t('unlock.whosaidit.attached')
+              : t('unlock.quiz.attached')}
           </p>
         ) : null}
       </div>

@@ -87,10 +87,11 @@ test('the TV shows a QR code, the owner scans it and signs in, and the room unlo
   await phone.page.getByTestId('unlock-claim').click();
   await expect(phone.page.getByTestId('unlock-result')).toHaveAttribute('data-tier', 'FULL');
 
-  // The TV and the other phone learned it without reloading; the unlock button is gone.
+  // The TV and the other phone learned it without reloading; the purchase dialog closes.
   await expect(tv.page.getByTestId('tv-unlock')).toContainText(/açıldı/u);
   await expect(tv.page.getByTestId('tv-unlock')).toHaveCount(0, { timeout: 8000 });
-  await expect(tv.page.getByTestId('lobby-unlock')).toHaveCount(0);
+  // A full room no longer offers the purchase, only adding a personal quiz.
+  await expect(tv.page.getByTestId('lobby-unlock')).toHaveText(/Kişisel quiz ekle/u);
   expect(env.server.built.manager.getByCode(code)!.state.tier).toBe('FULL');
   await expect(friend.page.getByTestId('ctl-lobby')).toBeVisible();
 
