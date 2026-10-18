@@ -24,7 +24,7 @@
   font-weight: 700;
   color: #fff;
   resize: none;
-  background: rgba(6, 13, 46, 0.85);
+  background: rgba(var(--qp-deep-rgb), 0.85);
   border: 3px solid var(--qp-color-surface-line);
   border-radius: 18px;
   -webkit-appearance: none;

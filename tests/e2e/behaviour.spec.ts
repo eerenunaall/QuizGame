@@ -90,7 +90,7 @@ test('the TV reloads in the middle of a game and picks the room back up', async 
   await ahmet.page.locator(`[data-answer-index="${correct}"]`).click();
   // Everyone answered: the reloaded TV follows the game into round 2 (the score screen itself is
   // only on for a moment with these test timings).
-  await expect(tv.page.getByText('TUR 2 / 3')).toBeVisible();
+  await expect(tv.page.getByText('TUR 2 / 3').first()).toBeVisible();
   await expect(tv.page.getByTestId('tv-options')).toBeVisible();
   await closeAll(ece, ahmet, tv);
 });

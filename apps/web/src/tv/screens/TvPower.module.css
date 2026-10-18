@@ -43,7 +43,7 @@
   margin: 0 10px 22px;
   padding: 0 24px 0 20px;
   color: #fff;
-  background: rgba(15, 29, 82, 0.94);
+  background: rgba(var(--qp-surface-rgb), 0.94);
   border: 4px solid var(--qp-color-surface-line);
   border-radius: 40px;
   box-shadow: 0 8px 0 rgba(0, 0, 0, 0.32);

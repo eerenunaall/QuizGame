@@ -10,12 +10,12 @@
 }
 
 .glass {
-  background: rgba(15, 29, 82, 0.62);
+  background: rgba(var(--qp-surface-rgb), 0.62);
   border-color: rgba(255, 255, 255, 0.14);
 }
 
 .violet {
-  background: linear-gradient(180deg, #9d54ff, #6a24d9);
+  background: linear-gradient(180deg, var(--qp-first-a), var(--qp-first-b));
   border-color: #c9a2ff;
 }
 
@@ -25,7 +25,7 @@
   justify-content: center;
   font-family: var(--qp-font-display);
   color: #dfe6ff;
-  background: rgba(15, 29, 82, 0.9);
+  background: rgba(var(--qp-surface-rgb), 0.9);
   border: 3px solid var(--qp-color-surface-line);
   border-radius: 999px;
   transition:

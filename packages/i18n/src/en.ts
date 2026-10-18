@@ -111,6 +111,8 @@ export const en: Record<MessageKey, string> = {
   'join.avatar': 'Pick your character',
   'join.submit': 'JOIN',
   'join.joining': 'Joining…',
+  'join.howto':
+    'Type a nickname, pick a character, tap JOIN. Questions are on the TV, answers are here!',
   'join.getApp': 'Get the app',
   'join.continueBrowser': 'Continue in browser',
   'join.preview.full': 'This room is full.',
@@ -246,6 +248,7 @@ export const en: Record<MessageKey, string> = {
   'tv.menu.howto': 'How to play',
   'tv.menu.settings': 'Settings',
   'tv.menu.hint': 'Use the arrow keys to move, OK / ENTER to select',
+  'tv.menu.firstTime': 'Press Start, scan the QR code with your phone, pick a nickname and play!',
   'tv.settings.sound': 'Sound',
   'tv.audioHint': 'Press any key on the remote for sound',
   'tv.howto.step1': 'Start the game on the TV and scan the QR code with your phone',

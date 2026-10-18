@@ -70,6 +70,10 @@ export function JoinForm({
         </div>
       </div>
 
+      <p className={styles.howto} data-testid="join-howto">
+        {t('join.howto')}
+      </p>
+
       {previewMessage ? (
         <div className={styles.banner}>
           <Banner tone="danger">{previewMessage}</Banner>
@@ -113,7 +117,7 @@ export function JoinForm({
             onClick={() => setAvatarId(id)}
             data-testid={`avatar-${id}`}
           >
-            <Avatar avatarId={id} size={56} />
+            <Avatar avatarId={id} size={48} />
           </button>
         ))}
       </div>

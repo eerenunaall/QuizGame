@@ -32,6 +32,8 @@
   font-size: 22px;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* room for the cedilla of Ş and the dot of İ, which overflow:hidden would clip */
+  padding: 0.12em 0 0.22em;
 }
 
 .room {
@@ -47,7 +49,7 @@
   font-family: var(--qp-font-display);
   font-size: 22px;
   color: var(--qp-color-accent-a);
-  background: rgba(15, 29, 82, 0.9);
+  background: rgba(var(--qp-surface-rgb), 0.9);
   border-radius: 999px;
 }
 .score > span {
@@ -71,4 +73,13 @@
   padding: 8px 16px 18px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .header {
+    padding-top: 8px;
+  }
+  .main {
+    padding-bottom: 8px;
+  }
 }

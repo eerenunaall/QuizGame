@@ -16,6 +16,34 @@ body,
   padding: 0;
 }
 
+/* The deep-navy panels and pills are tinted per theme (rgb triplets so they can take an alpha): party keeps
+   its navy, venue-gold uses the warm charcoal and high-contrast pure black, instead of a blue box on black. */
+:root {
+  --qp-deep-rgb: 6, 13, 46;
+  --qp-surface-rgb: 15, 29, 82;
+  /* the "first place" highlight (score row, violet panel) */
+  --qp-first-a: #9d54ff;
+  --qp-first-b: #6a24d9;
+  --qp-first-line: #cfa8ff;
+  --qp-first-glow: 143, 61, 255;
+}
+:root[data-theme='venue-gold'] {
+  --qp-deep-rgb: 12, 11, 9;
+  --qp-surface-rgb: 26, 24, 20;
+  --qp-first-a: #94722a;
+  --qp-first-b: #644816;
+  --qp-first-line: #f1d98a;
+  --qp-first-glow: 212, 175, 55;
+}
+:root[data-theme='high-contrast'] {
+  --qp-deep-rgb: 0, 0, 0;
+  --qp-surface-rgb: 18, 18, 18;
+  --qp-first-a: #5b43b8;
+  --qp-first-b: #3f2c8a;
+  --qp-first-line: #ffffff;
+  --qp-first-glow: 255, 212, 0;
+}
+
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
@@ -325,6 +353,34 @@ html[data-input='keyboard'] button:focus {
   100% {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+/* A short squash-and-pop for "you tapped it" (answer select) and, scaled up, for the right answer. */
+@keyframes qp-bloop {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(0.93, 0.9);
+  }
+  70% {
+    transform: scale(1.06, 1.08);
+  }
+  100% {
+    transform: scale(1.02);
+  }
+}
+
+@keyframes qp-correct-pop {
+  0% {
+    transform: scale(0.96);
+  }
+  45% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1.04);
   }
 }
 

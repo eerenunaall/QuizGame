@@ -3,6 +3,7 @@ import type { Difficulty, PublicOption, PublicPlayer, RoomView } from '@quizpart
 import { AnswerCard, type AnswerState } from '../../ui/AnswerCard';
 import { Avatar } from '../../ui/Avatar';
 import { CountdownRing } from '../../ui/CountdownRing';
+import { LetterCheer } from '../../ui/LetterCheer';
 import { Sticker } from '../../ui/Sticker';
 import { categoryIcon } from '../../lib/assets';
 import { useI18n } from '../../lib/i18n';
@@ -225,6 +226,12 @@ export function TvQuestion({
             />
           ) : null}
           <span>{status.text}</span>
+        </div>
+      ) : null}
+
+      {reveal && status?.tone === 'success' ? (
+        <div className={styles.cheer} data-testid="tv-cheer">
+          <LetterCheer seed={text} height={112} />
         </div>
       ) : null}
 

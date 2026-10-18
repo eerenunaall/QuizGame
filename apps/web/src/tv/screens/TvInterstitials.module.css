@@ -81,7 +81,7 @@
 .finalBox {
   margin-top: 40px;
   padding: 24px 90px 30px;
-  background: rgba(6, 13, 46, 0.86);
+  background: rgba(var(--qp-deep-rgb), 0.86);
   border: 5px solid var(--qp-color-accent-a);
   border-radius: 40px;
   box-shadow: 0 0 60px rgba(255, 201, 40, 0.4);
@@ -133,7 +133,7 @@
   font-weight: 800;
   letter-spacing: 0.06em;
   color: var(--qp-color-muted-text);
-  background: rgba(6, 13, 46, 0.75);
+  background: rgba(var(--qp-deep-rgb), 0.75);
   border-radius: 999px;
 }
 
@@ -156,7 +156,7 @@
   margin: 0 14px;
   padding: 14px 10px 12px;
   color: #fff;
-  background: rgba(15, 29, 82, 0.92);
+  background: rgba(var(--qp-surface-rgb), 0.92);
   border: 4px solid var(--qp-color-surface-line);
   border-radius: 28px;
   box-shadow: 0 8px 0 rgba(0, 0, 0, 0.32);
@@ -212,7 +212,7 @@
   font-size: 36px;
   font-weight: 800;
   color: #fff;
-  background: rgba(15, 29, 82, 0.92);
+  background: rgba(var(--qp-surface-rgb), 0.92);
   border: 3px solid var(--qp-color-surface-line);
   border-radius: 999px;
 }

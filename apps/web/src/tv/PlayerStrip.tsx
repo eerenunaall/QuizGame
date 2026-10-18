@@ -29,7 +29,7 @@ export function PlayerStrip({ players, scoreOf, answered, results }: Props) {
             <div className={styles.face}>
               <Avatar
                 avatarId={player.avatarId}
-                size={92}
+                size={72}
                 colorSlot={player.colorSlot}
                 leader={player.isLeader}
                 dim={player.connection === 'DISCONNECTED'}
@@ -37,11 +37,11 @@ export function PlayerStrip({ players, scoreOf, answered, results }: Props) {
                 playerId={player.playerId}
               />
               {result === 'CORRECT' ? (
-                <Sticker id="check" size={48} className={styles.badge} />
+                <Sticker id="check" size={42} className={styles.badge} />
               ) : result === 'INCORRECT' || result === 'NO_ANSWER' ? (
-                <Sticker id="cross" size={48} className={styles.badge} />
+                <Sticker id="cross" size={42} className={styles.badge} />
               ) : done ? (
-                <Sticker id="check" size={44} className={cx(styles.badge, styles.pending)} />
+                <Sticker id="check" size={38} className={cx(styles.badge, styles.pending)} />
               ) : null}
             </div>
             <div className={styles.name}>{player.nickname}</div>

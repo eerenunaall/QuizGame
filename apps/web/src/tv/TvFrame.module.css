@@ -9,7 +9,7 @@
 
 .top {
   position: absolute;
-  top: 34px;
+  top: 44px; /* text boxes stay inside the 5% overscan-safe area (54 px) */
   left: 70px;
   right: 70px;
   z-index: 5;
@@ -31,7 +31,7 @@
   font-size: 36px;
   letter-spacing: 0.04em;
   color: #fff;
-  background: rgba(6, 13, 46, 0.78);
+  background: rgba(var(--qp-deep-rgb), 0.78);
   border: 3px solid rgba(255, 255, 255, 0.2);
   border-radius: 999px;
   box-shadow: 0 6px 0 rgba(0, 0, 0, 0.3);
@@ -48,7 +48,7 @@
   display: flex;
   align-items: center;
   padding: 6px 26px;
-  background: rgba(6, 13, 46, 0.72);
+  background: rgba(var(--qp-deep-rgb), 0.72);
   border: 3px solid rgba(255, 255, 255, 0.16);
   border-radius: 999px;
 }

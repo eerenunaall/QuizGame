@@ -6,6 +6,7 @@ export * from './Button';
 export * from './ConfettiLayer';
 export * from './CountUp';
 export * from './CountdownRing';
+export * from './LetterCheer';
 export * from './Panel';
 export * from './QrCode';
 export * from './Spinner';

@@ -3,6 +3,7 @@ import type { PhaseDataOf, PublicPlayer, RoomView } from '@quizparty/protocol';
 import { Avatar } from '../../ui/Avatar';
 import { Button } from '../../ui/Button';
 import { CountUp } from '../../ui/CountUp';
+import { Mascot } from '../../ui/Mascot';
 import { AnimatedSticker, Sticker } from '../../ui/Sticker';
 import { cannons, shower } from '../../lib/confetti';
 import { useI18n } from '../../lib/i18n';
@@ -120,6 +121,10 @@ export function TvResults({ room, data, onRematch, onLobby, onEnd, busy }: Props
             })}
           </div>
         ) : null}
+      </div>
+
+      <div className={styles.mascot} data-testid="tv-results-mascot">
+        <Mascot height={190} mood="cheer" />
       </div>
 
       <div className={styles.actions}>

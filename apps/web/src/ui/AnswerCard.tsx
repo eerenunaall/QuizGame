@@ -35,7 +35,14 @@ export function AnswerCard({
 }: Props) {
   const letter = LETTERS[index] ?? '?';
   const tone = COLOR_CLASSES[index] ?? 'a';
-  const classes = cx(styles.card, styles[tone], styles[size], styles[state]);
+  // `qp-deco`: the pop is decoration, so low-motion TVs skip it (the state itself still shows).
+  const classes = cx(
+    styles.card,
+    styles[tone],
+    styles[size],
+    styles[state],
+    (state === 'selected' || state === 'correct') && 'qp-deco',
+  );
   const body = (
     <>
       <span className={styles.badge} aria-hidden="true">

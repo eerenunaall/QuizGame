@@ -5,7 +5,11 @@
   justify-content: center;
   flex: none;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(6, 13, 46, 0.92) 55%, rgba(6, 13, 46, 0.55) 100%);
+  background: radial-gradient(
+    circle,
+    rgba(var(--qp-deep-rgb), 0.92) 55%,
+    rgba(var(--qp-deep-rgb), 0.55) 100%
+  );
   box-shadow:
     0 8px 0 rgba(0, 0, 0, 0.3),
     0 14px 30px rgba(0, 0, 0, 0.4);

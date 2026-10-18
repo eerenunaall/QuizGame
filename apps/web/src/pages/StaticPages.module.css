@@ -17,7 +17,7 @@
 .block {
   margin-bottom: 18px;
   padding: 14px 18px;
-  background: rgba(15, 29, 82, 0.8);
+  background: rgba(var(--qp-surface-rgb), 0.8);
   border-radius: 18px;
 }
 

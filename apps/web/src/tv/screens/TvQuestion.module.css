@@ -29,7 +29,7 @@
   font-weight: 800;
   letter-spacing: 0.08em;
   color: var(--qp-color-muted-text);
-  background: rgba(6, 13, 46, 0.7);
+  background: rgba(var(--qp-deep-rgb), 0.7);
   border-radius: 999px;
 }
 
@@ -43,7 +43,7 @@
   width: 1360px;
   height: 188px;
   padding: 0 56px;
-  background: rgba(6, 13, 46, 0.88);
+  background: rgba(var(--qp-deep-rgb), 0.88);
   border: 4px solid rgba(255, 255, 255, 0.22);
   border-radius: 40px;
   box-shadow:
@@ -141,7 +141,7 @@
 
 .info > span {
   color: #fff;
-  background: rgba(6, 13, 46, 0.7);
+  background: rgba(var(--qp-deep-rgb), 0.7);
 }
 .gold > span {
   color: #1b1200;
@@ -150,6 +150,14 @@
 .success > span {
   color: #052b12;
   background: var(--qp-gradient-success);
+}
+
+/* A letter character hops in beside the "correct answer" pill (the pill is centred at 960). */
+.cheer {
+  position: absolute;
+  top: 380px;
+  left: 1250px;
+  z-index: 3;
 }
 
 .grid {

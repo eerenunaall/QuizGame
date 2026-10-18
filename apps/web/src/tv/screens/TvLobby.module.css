@@ -47,7 +47,7 @@
   letter-spacing: 0.12em;
   line-height: 1.15;
   color: #fff;
-  background: rgba(6, 13, 46, 0.8);
+  background: rgba(var(--qp-deep-rgb), 0.8);
   border: 5px solid var(--qp-color-answer-b);
   border-radius: 26px;
   box-shadow: 0 0 36px rgba(47, 139, 255, 0.5);
@@ -56,7 +56,7 @@
 
 .fine {
   margin-top: 20px;
-  font-size: 26px;
+  font-size: 28px;
   color: var(--qp-color-muted-text);
 }
 
@@ -81,7 +81,7 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  margin-top: 56px;
+  margin-top: 28px;
 }
 
 .slot {
@@ -90,9 +90,9 @@
   flex-direction: column;
   align-items: center;
   width: 270px;
-  height: 250px;
-  margin: 0 0 14px;
-  padding-top: 26px;
+  height: 232px;
+  margin: 0 0 4px;
+  padding-top: 20px;
   animation: qp-pop-in 480ms ease-out 1;
 }
 
@@ -105,6 +105,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   text-shadow: 0 3px 0 rgba(0, 0, 0, 0.5);
+  /* room for the cedilla of Ş and the dot of İ, which overflow:hidden would clip */
+  padding: 0.12em 0 0.22em;
 }
 
 .badge {
@@ -135,14 +137,14 @@
   font-family: var(--qp-font-display);
   font-size: 64px;
   color: rgba(255, 255, 255, 0.4);
-  background: rgba(15, 29, 82, 0.6);
+  background: rgba(var(--qp-surface-rgb), 0.6);
   border: 5px dashed rgba(255, 255, 255, 0.22);
   border-radius: 50%;
 }
 
 .waitingName {
   margin-top: 12px;
-  font-size: 26px;
+  font-size: 28px;
   color: var(--qp-color-muted-text);
 }
 
@@ -150,7 +152,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 40px;
+  margin-top: 22px;
 }
 .actions > button:first-child {
   margin-right: 34px;
@@ -160,7 +162,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 30px;
+  margin-top: 14px;
   font-size: 32px;
   font-weight: 700;
   color: #fff;

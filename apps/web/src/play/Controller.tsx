@@ -12,6 +12,8 @@ import { AnswerCard, type AnswerState } from '../ui/AnswerCard';
 import { Avatar } from '../ui/Avatar';
 import { Button } from '../ui/Button';
 import { CountUp } from '../ui/CountUp';
+import { LetterCheer } from '../ui/LetterCheer';
+import { Mascot } from '../ui/Mascot';
 import { Panel, Pill } from '../ui/Panel';
 import { AnimatedSticker, Sticker } from '../ui/Sticker';
 import { TimerBar } from '../ui/TimerBar';
@@ -696,7 +698,9 @@ function RevealScreen({
   return (
     <Center testId="ctl-reveal">
       {outcome === 'CORRECT' ? (
-        <AnimatedSticker id="party-popper" size={150} />
+        <div className={styles.outcomeMascot}>
+          <Mascot height={170} mood="cheer" />
+        </div>
       ) : (
         <Sticker id={outcome === 'INCORRECT' ? 'cross' : 'hourglass'} size={130} />
       )}
@@ -808,6 +812,13 @@ function ResultsScreen({
   }, [mine]);
   return (
     <Center testId="ctl-results">
+      <div className={styles.resultCheer}>
+        {mine?.rank === 1 ? (
+          <Mascot height={130} mood="cheer" />
+        ) : (
+          <LetterCheer seed={myId} height={96} />
+        )}
+      </div>
       <div className={styles.kicker}>{t('ctl.results.you')}</div>
       {me ? (
         <div className={styles.resultFace}>

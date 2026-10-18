@@ -38,7 +38,7 @@
   font-weight: 800;
   letter-spacing: 0.08em;
   color: var(--qp-color-muted-text);
-  background: rgba(6, 13, 46, 0.7);
+  background: rgba(var(--qp-deep-rgb), 0.7);
   border-radius: 999px;
 }
 
@@ -79,7 +79,7 @@
   font: inherit;
   color: #fff;
   cursor: pointer;
-  background: rgba(15, 29, 82, 0.9);
+  background: rgba(var(--qp-surface-rgb), 0.9);
   border: 3px solid var(--qp-color-surface-line);
   border-radius: 20px;
   box-shadow: 0 5px 0 rgba(0, 0, 0, 0.3);
@@ -149,7 +149,7 @@
   color: #fff;
   text-align: left;
   cursor: pointer;
-  background: rgba(15, 29, 82, 0.9);
+  background: rgba(var(--qp-surface-rgb), 0.9);
   border: 3px solid var(--qp-color-surface-line);
   border-radius: 20px;
   box-shadow: 0 5px 0 rgba(0, 0, 0, 0.3);
@@ -244,7 +244,7 @@
   padding: 3px 14px 3px 8px;
   font-size: 16px;
   font-weight: 800;
-  background: rgba(6, 13, 46, 0.8);
+  background: rgba(var(--qp-deep-rgb), 0.8);
   border: 2px solid var(--qp-color-surface-line);
   border-radius: 999px;
 }
@@ -303,7 +303,7 @@
   color: #fff;
   text-align: left;
   cursor: pointer;
-  background: rgba(6, 13, 46, 0.8);
+  background: rgba(var(--qp-deep-rgb), 0.8);
   border: 2px solid var(--qp-color-surface-line);
   border-radius: 16px;
 }

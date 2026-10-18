@@ -74,3 +74,24 @@
   opacity: 0.85;
   animation: qp-float 5.5s ease-in-out infinite;
 }
+
+/* Themes other than party must not be tinted violet: warm beams for venue-gold, none for high-contrast
+   (pure black is the point there: glare, old panels, low vision). */
+:global(:root[data-theme='venue-gold']) .beamLeft {
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.3), rgba(212, 175, 55, 0));
+}
+:global(:root[data-theme='venue-gold']) .beamRight {
+  background: linear-gradient(180deg, rgba(241, 217, 138, 0.2), rgba(241, 217, 138, 0));
+}
+:global(:root[data-theme='venue-gold']) .glow {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(212, 175, 55, 0.14),
+    rgba(212, 175, 55, 0) 65%
+  );
+}
+:global(:root[data-theme='high-contrast']) .beamLeft,
+:global(:root[data-theme='high-contrast']) .beamRight,
+:global(:root[data-theme='high-contrast']) .glow {
+  display: none;
+}
