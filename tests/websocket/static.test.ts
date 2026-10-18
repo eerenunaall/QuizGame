@@ -20,6 +20,11 @@ beforeAll(async () => {
   await writeFile(join(dist, 'assets', 'index-AbCd1234.js'), 'console.log("app")');
   await writeFile(join(dist, 'assets', 'plain.css'), 'body{margin:0}');
   await writeFile(join(dist, '.env'), 'SECRET=1');
+  // Domain association for the native app (ADR-0017): the only dot-directory that may be served.
+  await mkdir(join(dist, '.well-known'));
+  await writeFile(join(dist, '.well-known', 'apple-app-site-association'), '{"applinks":{}}');
+  await writeFile(join(dist, '.well-known', 'assetlinks.json'), '[]');
+  await writeFile(join(dist, '.well-known', 'secret.txt'), 'SECRET=2');
   server = await startServer({ env: { SERVE_WEB: '1', WEB_DIST: dist } });
 });
 afterAll(async () => {
@@ -117,6 +122,27 @@ describe('serving the web app', () => {
     }
   });
 
+  it('serves the app-link association files as JSON, and nothing else under .well-known', async () => {
+    const apple = await get('/.well-known/apple-app-site-association');
+    expect(apple.status).toBe(200);
+    expect(apple.headers.get('content-type')).toContain('application/json');
+    expect(await apple.text()).toBe('{"applinks":{}}');
+    const google = await get('/.well-known/assetlinks.json');
+    expect(google.status).toBe(200);
+    expect(google.headers.get('content-type')).toContain('application/json');
+    for (const path of [
+      '/.well-known/secret.txt',
+      '/.well-known/',
+      '/.well-known/../.env',
+      '/.well-known/%2e%2e/.env',
+      '/x/.well-known/assetlinks.json',
+    ]) {
+      const response = await get(path);
+      expect(await response.text(), path).not.toContain('SECRET=');
+    }
+    expect((await get('/.well-known/secret.txt')).status).toBe(404);
+  });
+
   it('keeps the strict API headers on API responses', async () => {
     const response = await get('/healthz');
     expect(response.headers.get('content-security-policy')).toBe(
@@ -131,6 +157,12 @@ describe('resolveSafe', () => {
   it('keeps every result inside the root', () => {
     expect(resolveSafe(root, '/assets/app.js')).toBe('/srv/web/assets/app.js');
     expect(resolveSafe(root, '/')).toBe('/srv/web');
+    expect(resolveSafe(root, '/.well-known/assetlinks.json')).toBe(
+      '/srv/web/.well-known/assetlinks.json',
+    );
+    expect(resolveSafe(root, '/.well-known/apple-app-site-association')).toBe(
+      '/srv/web/.well-known/apple-app-site-association',
+    );
     for (const bad of [
       '/../x',
       '/a/../../x',
@@ -140,6 +172,9 @@ describe('resolveSafe', () => {
       '/a/.hidden',
       '/a%00b',
       '/%E0%A4%A',
+      '/.well-known/secret.txt',
+      '/.well-known/assetlinks.json/x',
+      '/a/.well-known/assetlinks.json',
     ]) {
       expect(resolveSafe(root, bad), bad).toBeNull();
     }

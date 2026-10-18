@@ -23,12 +23,20 @@ const CONTENT_TYPES: Record<string, string> = {
   '.webmanifest': 'application/manifest+json',
 };
 
+/**
+ * The only files served from a dot-directory: the domain-association files that let https links
+ * open the native app (ADR-0017). Apple's has no extension and must be served as JSON.
+ */
+const WELL_KNOWN = new Set(['apple-app-site-association', 'assetlinks.json']);
+const isWellKnown = (segments: readonly string[]): boolean =>
+  segments.length === 2 && segments[0] === '.well-known' && WELL_KNOWN.has(segments[1] ?? '');
+
 /** Prefixes that belong to the API: they never fall back to the single-page app. */
 const API_PREFIXES = ['/v1/', '/ws', '/metrics', '/healthz', '/readyz'];
 
 /**
  * Maps a request path to a file under `root`, or null when the path is unsafe: undecodable, NUL
- * bytes, backslashes, dot segments, dotfiles. The resolved path is re-checked to stay inside root.
+ * bytes, backslashes, dot segments, dotfiles (but for the two association files). The resolved path is re-checked to stay inside root.
  */
 export function resolveSafe(root: string, urlPath: string): string | null {
   let decoded: string;
@@ -39,7 +47,7 @@ export function resolveSafe(root: string, urlPath: string): string | null {
   }
   if (decoded.includes('\0') || decoded.includes('\\')) return null;
   const segments = decoded.split('/').filter((segment) => segment.length > 0);
-  if (segments.some((segment) => segment.startsWith('.'))) return null; // .., ., .env, .git …
+  if (!isWellKnown(segments) && segments.some((segment) => segment.startsWith('.'))) return null; // .., ., .env, .git …
   const target = join(root, ...segments);
   return target === root || target.startsWith(root + sep) ? target : null;
 }
@@ -125,7 +133,8 @@ export class StaticWeb {
       file = join(file, 'index.html');
       info = await stat(file).catch(() => null);
     }
-    const asksForAsset = extname(path) !== '';
+    // A missing association file must not turn into the HTML shell (the store would cache that).
+    const asksForAsset = extname(path) !== '' || path.startsWith('/.well-known/');
     if (!info?.isFile()) {
       if (asksForAsset) return apiError(reply, 404, 'NOT_FOUND'); // a missing .js must not become HTML
       file = join(this.options.root, 'index.html');
@@ -133,7 +142,9 @@ export class StaticWeb {
       if (!info?.isFile()) return apiError(reply, 404, 'NOT_FOUND');
     }
 
-    const type = CONTENT_TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream';
+    const type = path.startsWith('/.well-known/')
+      ? 'application/json; charset=utf-8'
+      : (CONTENT_TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream');
     const isHtml = type.startsWith('text/html');
     const hashed = /[./-][A-Za-z0-9_-]{8}\.[a-z0-9]+$/u.test(file) && path.startsWith('/assets/');
     const etag = `W/"${info.size.toString(16)}-${Math.floor(info.mtimeMs).toString(16)}"`;
