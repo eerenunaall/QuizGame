@@ -1,0 +1,166 @@
+{
+  "steady": {
+    "rooms": 20,
+    "playersPerRoom": 8,
+    "clients": 180,
+    "roomsAndJoinsSetupMs": 1818,
+    "joinMs": {
+      "n": 160,
+      "min": 17.3,
+      "p50": 155.2,
+      "p95": 335.5,
+      "p99": 370.7,
+      "max": 390.8,
+      "mean": 178.3
+    },
+    "gameWallClockMs": 11418,
+    "finished": 20,
+    "answerAckMs": {
+      "n": 640,
+      "min": 2.8,
+      "p50": 6.5,
+      "p95": 51.6,
+      "p99": 87,
+      "max": 101.8,
+      "mean": 12.4
+    },
+    "lastAnswerToLockedOnTvMs": {
+      "n": 80,
+      "min": 3.3,
+      "p50": 6.9,
+      "p95": 29.8,
+      "p99": 101.9,
+      "max": 101.9,
+      "mean": 11.2
+    },
+    "lastAnswerToRevealOnTvMs": {
+      "n": 80,
+      "min": 103.6,
+      "p50": 107.5,
+      "p95": 143.1,
+      "p99": 365.9,
+      "max": 365.9,
+      "mean": 123.2
+    },
+    "lockedFanOutSpreadAcrossPhonesMs": {
+      "n": 80,
+      "min": 0.2,
+      "p50": 0.6,
+      "p95": 1.7,
+      "p99": 5.3,
+      "max": 5.3,
+      "mean": 0.8
+    },
+    "answerSendFailures": 0,
+    "protocolViolations": 0,
+    "roomsFinished": 20,
+    "roomsStarted": 20
+  },
+  "rssAfterSetupMb": 186,
+  "reconnectStorm": {
+    "clientsCut": 180,
+    "recoveredWithin30s": 180,
+    "reconnectMs": {
+      "n": 180,
+      "min": 225.1,
+      "p50": 614.3,
+      "p95": 1333.8,
+      "p99": 1406.4,
+      "max": 1408.9,
+      "mean": 694.3
+    },
+    "gamesFinishedAfterStorm": 20,
+    "answerAckMs": {
+      "n": 640,
+      "min": 2.4,
+      "p50": 6,
+      "p95": 30.6,
+      "p99": 71.8,
+      "max": 85.3,
+      "mean": 10.6
+    },
+    "lastAnswerToLockedOnTvMs": {
+      "n": 80,
+      "min": 3.8,
+      "p50": 7.4,
+      "p95": 57.1,
+      "p99": 80.7,
+      "max": 80.7,
+      "mean": 13
+    },
+    "lastAnswerToRevealOnTvMs": {
+      "n": 80,
+      "min": 103,
+      "p50": 106.5,
+      "p95": 178.4,
+      "p99": 363.1,
+      "max": 363.1,
+      "mean": 122.8
+    },
+    "lockedFanOutSpreadAcrossPhonesMs": {
+      "n": 80,
+      "min": 0.2,
+      "p50": 0.7,
+      "p95": 2.4,
+      "p99": 9.5,
+      "max": 9.5,
+      "mean": 1
+    },
+    "answerSendFailures": 96,
+    "protocolViolations": 0,
+    "roomsFinished": 20,
+    "roomsStarted": 20
+  },
+  "server": {
+    "rssIdleMb": 183,
+    "rssBeforeFirstCloseMb": 190,
+    "rssPeakMb": 198,
+    "rssEndMb": 198,
+    "cpuSecondsTotal": 12.2,
+    "cpuAverageCorePercent": 42.6,
+    "inputProcessing": {
+      "inputs": 3437,
+      "p50": "<= 10 ms",
+      "p95": "<= 50 ms",
+      "p99": "<= 100 ms"
+    }
+  },
+  "database": {
+    "name": "throw-away database, dropped after the run",
+    "commits": 6162,
+    "rollbacks": 0,
+    "inserted": 9146,
+    "updated": 5850,
+    "deleted": 1234,
+    "fetched": 39846,
+    "blksRead": 23,
+    "blksHit": 149531,
+    "commitsPerSecond": 215,
+    "cacheHitRatio": 100,
+    "maxConnections": 12,
+    "poolMax": 12
+  },
+  "loadGenerator": {
+    "eventLoopDelayMs": {
+      "p50": 10.22,
+      "p99": 23.23,
+      "max": 49.02
+    },
+    "note": "Latency numbers include this process event-loop delay; read them together."
+  },
+  "serverLogWarningsOrErrors": 0,
+  "machine": {
+    "cpuModel": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+    "logicalCpus": 4,
+    "totalMemoryGb": 15.7,
+    "kernel": "6.18.44-fc-v139",
+    "node": "v22.22.0",
+    "note": "server, database and load generator share this machine (loopback); not a production sizing"
+  },
+  "config": {
+    "rooms": 20,
+    "playersPerRoom": 8,
+    "rounds": 4,
+    "startedAt": "2026-10-18T16:50:00.739Z"
+  }
+}
