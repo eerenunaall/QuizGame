@@ -8,7 +8,9 @@ import { PNG } from 'pngjs';
 import type { EmailSender } from '../../apps/realtime/src/auth/email';
 import { FAST_GAME_CONFIG, startServer, type TestServer } from '../helpers/server';
 
-export const WEB_DIST = fileURLToPath(new URL('../../apps/web/dist', import.meta.url));
+/** `QP_WEB_DIST` points the specs at another build (a private one while a teammate's run uses `dist`). */
+export const WEB_DIST =
+  process.env.QP_WEB_DIST ?? fileURLToPath(new URL('../../apps/web/dist', import.meta.url));
 export const ADMIN_DIST = fileURLToPath(new URL('../../apps/admin/dist', import.meta.url));
 export const SHOTS = fileURLToPath(new URL('../../test-results/screenshots', import.meta.url));
 

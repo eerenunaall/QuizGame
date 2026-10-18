@@ -21,12 +21,12 @@ Branch: `claude/cloud-session-infrastructure-ln57mp` · Last updated: 2026-10-18
 | Layer | Command | Count |
 |---|---|---|
 | unit (packages, realtime, scripts) | `pnpm test` | 684 |
-| web (jsdom: web app screens, unlock page, admin console client, sign-in, question editor) | `pnpm test:web` | 110 |
+| web (jsdom: web app screens, unlock page, admin console client, sign-in, question editor) | `pnpm test:web` | 154 |
 | integration (PostgreSQL) | `pnpm test:integration` | 261 |
 | websocket (real server, real sockets, static serving of both apps, TV unlock, the phone app runtime) | `pnpm test:ws` | 95 |
 | red team (ATTACK 1–34 map in `docs/RED_TEAM.md`) | `pnpm test:red-team` | 80 |
 | mobile (Jest + Testing Library: logic, state→UI mapping, purchase flows) | `pnpm test:mobile` | 132 |
-| browser E2E (real Chromium: TV + phones, reloads, drops, QR, remote keys, every power, report → console loop, TV unlock by phone) | `pnpm test:e2e` | 17 |
+| browser E2E (real Chromium: TV + phones, reloads, drops, QR, remote keys, every power, report → console loop, TV unlock by phone, phone controller measurements) | `pnpm test:e2e` | 32 |
 
 The local gate is `format → lint → typecheck → unit → web → integration → websocket → red-team`,
 then `pnpm run build:web && pnpm run build:admin && pnpm test:e2e`.
@@ -35,6 +35,19 @@ then `pnpm run build:web && pnpm run build:admin && pnpm test:e2e`.
 ADR-0021 (power limits): Double Down is refused with HIGH / ALL_IN (`DOUBLE_DOWN_STAKE_CONFLICT`), gains
 after stake and Double Down are capped at 3x (FINAL 5x) of base + speed, Double Down extra loss 100 → 200,
 config version 2. Phone prep screens (web + mobile) disable the conflicting button with a hint.
+
+## Phone controller after the first owner play-test (web only)
+TV = stage, phone = controller: while a question runs (`QUESTION`, `ANSWERING`) the browser phone no longer
+shows the question text. It shows the four answers (colour, letter and a shape: triangle, diamond,
+circle, square), a TV icon with "Soruya TV'den bak" and a small "Soruyu göster" switch that reveals the text
+in place; the choice is kept per device in `qp.prefs` (`phoneShowsQuestion`). Build default
+`VITE_PHONE_SHOWS_QUESTION=1` turns it on for everybody (Dockerfile build arg too); the reveal is unchanged.
+A locked answer stays on screen as a framed card with a lock, the clock is a fat bar at the top.
+Sabotage is chip (token count) → two-column faces → the five real types as cards → one "Sabotajı gönder"
+button. The server takes the whole prep as one final `COMMIT_PREP`, so "send" is that commit: it goes out
+after a 2 s undo window (immediately when under ~3 s of prep are left). Why a chip is grey (no token, closed
+round, final stage) is one line on it; the attacker cooldown is not in the room view, so it is shown only
+after the server refuses with `SABOTAGE_LIMIT`. `apps/mobile` still shows the question text (parity pending).
 
 ## Next actions
 1. Read the CI result of the latest push (`mcp__github__actions_list`) and fix anything red.
