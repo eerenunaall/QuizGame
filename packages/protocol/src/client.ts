@@ -17,7 +17,7 @@ import {
   SequenceSchema,
   UuidSchema,
 } from './common';
-import { MAX_ROUNDS, MIN_ROUNDS } from './constants';
+import { MAX_ROUNDS, MAX_STATEMENT_LENGTH, MIN_ROUNDS } from './constants';
 
 /** Envelope fields shared by every client → server message (GDD §16, ADR-0008). */
 export const clientEnvelopeShape = {
@@ -80,6 +80,16 @@ export const CLIENT_PAYLOADS = {
   REPORT_QUESTION: z.strictObject({
     questionId: QuestionIdSchema,
     reason: QuestionReportReasonSchema,
+  }),
+  /**
+   * Who Said It, lobby only: the player's one statement (a second send replaces the first). The server
+   * moderates it (`sanitizeUserText`) before the engine sees it; the schema cap only bounds the frame.
+   */
+  SUBMIT_STATEMENT: z.strictObject({
+    text: z
+      .string()
+      .min(1)
+      .max(MAX_STATEMENT_LENGTH * 3),
   }),
   /** The TV asks for a one-time link (shown as a QR code) that attaches a phone owner's full game to this room. */
   REQUEST_UNLOCK_LINK: empty,

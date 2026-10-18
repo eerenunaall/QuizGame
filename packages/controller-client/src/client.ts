@@ -465,6 +465,7 @@ export class GameClient {
       case 'PHASE_ENTERED':
       case 'ANSWER_LOCKED':
       case 'PREP_PROGRESS':
+      case 'STATEMENTS_CHANGED':
       case 'PLAYER_STATE':
       case 'ENTITLEMENT_CHANGED':
       case 'UNLOCK_LINK':
@@ -695,6 +696,11 @@ export class GameClient {
       optionId,
       clientSentAt: this.now(),
     });
+  }
+
+  /** Who Said It, lobby: the player's one statement (sending again replaces it). Rejects with TEXT_REJECTED + reason. */
+  submitStatement(text: string): Promise<void> {
+    return this.request('SUBMIT_STATEMENT', { text });
   }
 
   setReady(ready: boolean): Promise<void> {

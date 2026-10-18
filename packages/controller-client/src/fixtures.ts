@@ -37,6 +37,8 @@ export function you(playerId: string, patch: Partial<YouView> = {}): YouView {
     effects: null,
     hits: [],
     reducedEffects: false,
+    myStatement: null,
+    authorOfRound: false,
     ...patch,
   };
 }

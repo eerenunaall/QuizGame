@@ -77,6 +77,8 @@ export const SERVER_PAYLOADS = {
     committedCount: z.int().nonnegative(),
     eligibleCount: z.int().nonnegative(),
   }),
+  /** Who Said It lobby: which players have handed in a statement (never the words). */
+  STATEMENTS_CHANGED: z.strictObject({ playerIds: z.array(PlayerIdSchema).max(8) }),
   ANSWER_LOCKED: z.strictObject({
     playerId: PlayerIdSchema,
     answeredCount: z.int().nonnegative(),

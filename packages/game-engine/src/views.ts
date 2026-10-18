@@ -15,6 +15,7 @@ import {
   sabotageOpen,
 } from './powers';
 import { rankPlayers } from './rank';
+import { exemptPlayerId } from './who-said-it';
 import type { Actor, RoomState } from './types';
 
 /**
@@ -46,6 +47,11 @@ export function toPublicPlayer(state: RoomState, playerId: string): PublicPlayer
     ready: player.ready,
     isLeader: state.leaderPlayerId === player.playerId,
   };
+}
+
+/** Who has handed in a Who Said It statement, in join order. Only the fact, never the words. */
+export function statementPlayerIds(state: Pick<RoomState, 'statements' | 'playerOrder'>): string[] {
+  return state.playerOrder.filter((id) => state.statements[id] !== undefined);
 }
 
 export function isHostActor(state: RoomState, actor: Actor): boolean {
@@ -103,10 +109,16 @@ export function scoreboard(state: RoomState): ScoreboardEntry[] {
 
 /** Players QUESTION_PREP waits for: in the game and online right now. */
 export function prepEligibleIds(state: RoomState): string[] {
+  const exempt = exemptPlayerId(state.game);
   return Object.entries(state.game?.players ?? {})
     .filter(([playerId, gp]) => {
       const player = state.players[playerId];
-      return !gp.removed && player?.status === 'ACTIVE' && player.connection === 'CONNECTED';
+      return (
+        playerId !== exempt &&
+        !gp.removed &&
+        player?.status === 'ACTIVE' &&
+        player.connection === 'CONNECTED'
+      );
     })
     .map(([playerId]) => playerId);
 }
@@ -136,7 +148,9 @@ export function phaseDataFor(state: RoomState): PhaseData {
     case 'WAITING':
       return { phase: 'WAITING' };
     case 'LOBBY':
-      return { phase: 'LOBBY' };
+      return state.settings.mode === 'WHO_SAID_IT'
+        ? { phase: 'LOBBY', statementPlayerIds: statementPlayerIds(state) }
+        : { phase: 'LOBBY' };
     case 'COUNTDOWN':
       return { phase: 'COUNTDOWN' };
     case 'ROUND_INTRO':
@@ -179,6 +193,7 @@ export function phaseDataFor(state: RoomState): PhaseData {
         options: question.options.map((option) => ({
           optionId: option.optionId,
           text: option.text,
+          ...(option.playerId !== undefined ? { playerId: option.playerId } : {}),
         })),
         category: { id: question.category.id, label: question.category.label },
         difficulty: question.difficulty,
@@ -206,6 +221,7 @@ export function phaseDataFor(state: RoomState): PhaseData {
         options: question.options.map((option) => ({
           optionId: option.optionId,
           text: option.text,
+          ...(option.playerId !== undefined ? { playerId: option.playerId } : {}),
         })),
         correctOptionId: question.correctOptionId,
         explanation: question.explanation,
@@ -326,6 +342,13 @@ export function youView(state: RoomState, playerId: string): YouView | null {
         : null,
     hits: effects && questionLive ? effects.hits.map((hit) => ({ ...hit })) : [],
     reducedEffects: player.reducedEffects,
+    // Only ever the player's own words, and only to that player's own phone.
+    myStatement:
+      state.phase === 'LOBBY' || state.phase === 'WAITING'
+        ? (state.statements[playerId] ?? null)
+        : null,
+    // Known to the server from the moment the round is planned; told to that one player only.
+    authorOfRound: roundIsLive && exemptPlayerId(game ?? null) === playerId,
   };
 }
 

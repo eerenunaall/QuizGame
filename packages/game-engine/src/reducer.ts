@@ -1,6 +1,7 @@
 import { produce, type Draft } from 'immer';
 import { Rng, clamp, rngStateFromSeed } from '@quizparty/shared';
 import {
+  MAX_STATEMENT_LENGTH,
   MIN_ROUNDS,
   type CloseReason,
   type ErrorCode,
@@ -33,6 +34,7 @@ import {
 import { rankPlayers } from './rank';
 import { computeScore } from './scoring';
 import { isInGamePhase } from './timers';
+import { exemptPlayerId } from './who-said-it';
 import type {
   Actor,
   Audience,
@@ -50,7 +52,14 @@ import type {
   RoundOutcome,
   UpcomingRound,
 } from './types';
-import { isHostActor, phaseDataFor, prepCounts, toPublicPlayer, youView } from './views';
+import {
+  isHostActor,
+  phaseDataFor,
+  prepCounts,
+  statementPlayerIds,
+  toPublicPlayer,
+  youView,
+} from './views';
 
 type Room = Draft<RoomState>;
 
@@ -99,6 +108,7 @@ export function createRoom(params: CreateRoomParams): RoomState {
       categories: 'ALL',
     },
     contentRef: null,
+    statements: {},
     sensitiveContent: false,
     config,
     display: { sessionId: params.displaySessionId, connected: false, disconnectedAt: params.now },
@@ -256,6 +266,7 @@ function removePlayer(
   if (!player || player.status !== 'ACTIVE') return;
   player.status = reason;
   player.ready = false;
+  delete d.statements[playerId];
   d.playerOrder = d.playerOrder.filter((id) => id !== playerId);
   if (d.game?.players[playerId]) d.game.players[playerId].removed = true;
   emit(ctx, { to: 'ALL' }, { type: 'PLAYER_LEFT', payload: { playerId, reason } });
@@ -452,6 +463,24 @@ function onCommand(
       );
       return;
     }
+    case 'SUBMIT_STATEMENT': {
+      if (!playerId) return reject(ctx, 'FORBIDDEN');
+      // Collected in the lobby of a Who Said It room only; editable until the game starts.
+      if (d.phase !== 'LOBBY' || d.settings.mode !== 'WHO_SAID_IT')
+        return reject(ctx, 'INVALID_STATE');
+      // The server moderated and normalized the text before this input existed; this is the invariant check.
+      const text = command.payload.text;
+      if (text.length === 0 || text.length > MAX_STATEMENT_LENGTH || text !== text.trim())
+        return reject(ctx, 'TEXT_REJECTED');
+      if (d.statements[playerId] === text) return;
+      d.statements[playerId] = text;
+      // From here on words sit in this room's durable log: the room erases it when it closes (ADR-0015).
+      d.sensitiveContent = true;
+      touch(d, at);
+      emitPlayerState(d, ctx, playerId);
+      emitStatementProgress(d, ctx);
+      return;
+    }
     case 'SET_NICKNAME': {
       if (!playerId) return reject(ctx, 'FORBIDDEN');
       if (d.phase !== 'LOBBY' && d.phase !== 'WAITING') return reject(ctx, 'INVALID_STATE');
@@ -575,6 +604,14 @@ function structuredSettings(d: Room) {
   };
 }
 
+function emitStatementProgress(d: Room, ctx: Ctx): void {
+  emit(
+    ctx,
+    { to: 'ALL' },
+    { type: 'STATEMENTS_CHANGED', payload: { playerIds: statementPlayerIds(d) } },
+  );
+}
+
 function connectedPlayerCount(d: Room): number {
   return activePlayerList(d).filter((p) => p.connection === 'CONNECTED').length;
 }
@@ -583,16 +620,31 @@ function requestDeck(d: Room, ctx: Ctx, purpose: 'START' | 'REMATCH', actor: Act
   if (connectedPlayerCount(d) < d.config.minPlayersToStart)
     return reject(ctx, 'NOT_ENOUGH_PLAYERS');
   const maxRounds = maxRoundsFor(d.config, d.tier);
+  const players = activePlayerList(d);
+  const statements = players
+    .filter((p) => d.statements[p.playerId] !== undefined)
+    .map((p) => ({ playerId: p.playerId, text: d.statements[p.playerId]! }));
+  const whoSaidIt = d.settings.mode === 'WHO_SAID_IT';
+  // Every question needs a guesser besides its author: one statement alone is no game.
+  if (whoSaidIt && statements.length < 2) return reject(ctx, 'NOT_ENOUGH_QUESTIONS');
   const request: DeckRequest = {
     roomId: d.roomId,
     mode: d.settings.mode,
     contentRef: d.contentRef,
-    rounds: Math.min(d.settings.rounds, maxRounds),
+    rounds: Math.min(d.settings.rounds, maxRounds, whoSaidIt ? statements.length : maxRounds),
     categories: d.settings.categories === 'ALL' ? 'ALL' : [...d.settings.categories],
     language: d.contentLanguage,
     tier: d.tier,
     hostAccountId: d.hostAccountId,
     playerCount: connectedPlayerCount(d),
+    ...(whoSaidIt
+      ? {
+          whoSaidIt: {
+            players: players.map((p) => ({ playerId: p.playerId, nickname: p.nickname })),
+            statements,
+          },
+        }
+      : {}),
   };
   ctx.effects.push({ kind: 'needDeck', purpose, request, requestedBy: actor });
 }
@@ -608,12 +660,22 @@ function onBeginGame(d: Room, ctx: Ctx, input: Extract<EngineInput, { kind: 'BEG
     return reject(ctx, 'NOT_ENOUGH_PLAYERS');
 
   const maxRounds = maxRoundsFor(d.config, d.tier);
-  const totalRounds = Math.min(d.settings.rounds, maxRounds);
-  if (deckSize(input.deck) < totalRounds) return reject(ctx, 'NOT_ENOUGH_QUESTIONS');
+  // Who Said It plays one round per statement, however few: the deck is the game's length.
+  const totalRounds = Math.min(
+    d.settings.rounds,
+    maxRounds,
+    d.settings.mode === 'WHO_SAID_IT' ? deckSize(input.deck) : maxRounds,
+  );
+  if (deckSize(input.deck) < totalRounds || totalRounds < 1)
+    return reject(ctx, 'NOT_ENOUGH_QUESTIONS');
 
   if (input.config) d.config = input.config;
   // Personal answers will sit in this room's durable log from here on; the room erases them when it closes.
-  if (Object.values(input.deck.questions).some((q) => q.source === 'BLIND'))
+  if (
+    Object.values(input.deck.questions).some(
+      (q) => q.source === 'BLIND' || q.source === 'WHO_SAID_IT',
+    )
+  )
     d.sensitiveContent = true;
   const participants = activePlayerList(d);
   const levelOffset = presetOffset(d.config, d.settings.difficulty);
@@ -734,6 +796,7 @@ function useFiftyFifty(d: Room, ctx: Ctx, at: number, playerId: string): void {
   const me = game.players[playerId];
   if (!me || me.removed) return reject(ctx, 'POWER_UNAVAILABLE');
   if (round.answers[playerId]) return reject(ctx, 'INVALID_STATE');
+  if (exemptPlayerId(game) === playerId) return reject(ctx, 'POWER_UNAVAILABLE');
   if (round.fiftyFiftyUsers[playerId] || me.powers.fiftyFifty <= 0)
     return reject(ctx, 'POWER_UNAVAILABLE');
   if (jokerLockedOut(me.powers, 'FIFTY_FIFTY', round.index)) return reject(ctx, 'POWER_LOCKED_OUT');
@@ -780,6 +843,8 @@ function submitAnswer(
   if (!game || !round) return reject(ctx, 'INVALID_STATE');
   const gamePlayer = game.players[playerId];
   if (!gamePlayer || gamePlayer.removed) return reject(ctx, 'ANSWER_NOT_ALLOWED');
+  // Who Said It: nobody answers for their own statement (GDD §7.9); legality is the server's call.
+  if (exemptPlayerId(game) === playerId) return reject(ctx, 'ANSWER_NOT_ALLOWED');
 
   if (d.phase !== 'ANSWERING') {
     const early = ['COUNTDOWN', 'ROUND_INTRO', 'FINAL', 'QUESTION_PREP', 'QUESTION'].includes(
@@ -836,9 +901,10 @@ function eligiblePlayerIds(d: Room, at: number): string[] {
   const game = d.game;
   if (!game) return [];
   const grace = d.config.timings.earlyLockGraceMs;
+  const exempt = exemptPlayerId(game);
   return Object.entries(game.players)
     .filter(([playerId, gamePlayer]) => {
-      if (gamePlayer.removed) return false;
+      if (gamePlayer.removed || playerId === exempt) return false;
       const player = d.players[playerId];
       if (!player || player.status !== 'ACTIVE') return false;
       if (player.connection === 'CONNECTED') return true;
@@ -869,8 +935,10 @@ function lockRound(d: Room, _ctx: Ctx, at: number): void {
   };
   for (const option of question.options) outcome.distribution[option.optionId] = 0;
 
+  const exempt = exemptPlayerId(game);
   for (const [playerId, gamePlayer] of Object.entries(game.players)) {
-    if (gamePlayer.removed) continue;
+    // The author of a Who Said It statement has no outcome at all: no points, no streak reset, no stake lost.
+    if (gamePlayer.removed || playerId === exempt) continue;
     const player = d.players[playerId];
     if (!player || player.status !== 'ACTIVE') continue;
     const answer = round.answers[playerId];
@@ -1152,6 +1220,8 @@ function presentQuestion(d: Room, ctx: Ctx): void {
     optionId: opaqueId(rng, taken),
     key: o.key,
     text: o.text,
+    // Who Said It options are the players themselves (key = player id).
+    ...(source.source === 'WHO_SAID_IT' ? { playerId: o.key } : {}),
     correct: o.correct,
   }));
   const question: PresentedQuestion = {
@@ -1392,6 +1462,7 @@ function onSetContent(
 ): void {
   if (d.phase !== 'LOBBY' && d.phase !== 'WAITING') return reject(ctx, 'INVALID_STATE');
   if (input.mode !== 'CLASSIC' && d.tier !== 'FULL') return reject(ctx, 'TIER_REQUIRED');
+  if (input.mode !== 'WHO_SAID_IT') d.statements = {};
   if (input.mode === 'CLASSIC') {
     d.settings.mode = 'CLASSIC';
     d.settings.contentTitle = null;
@@ -1437,6 +1508,7 @@ function onEntitlement(
     );
     // Personal quizzes belong to the full game: without it the room goes back to the classic one.
     if (tier === 'FREE' && d.settings.mode !== 'CLASSIC') {
+      d.statements = {};
       d.settings.mode = 'CLASSIC';
       d.settings.contentTitle = null;
       d.contentRef = null;

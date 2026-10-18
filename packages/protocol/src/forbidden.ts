@@ -20,6 +20,10 @@ export const FORBIDDEN_PRE_REVEAL_KEYS: readonly string[] = [
   'deltas',
   'delta',
   'components',
+  // Who Said It: the author of a statement is the answer; the words are the question text.
+  'authorPlayerId',
+  'authorId',
+  'statements',
 ];
 
 export interface ForbiddenHit {

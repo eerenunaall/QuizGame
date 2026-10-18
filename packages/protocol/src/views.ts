@@ -19,7 +19,7 @@ import {
   TierSchema,
   UuidSchema,
 } from './common';
-import { MAX_ROUNDS, MIN_ROUNDS } from './constants';
+import { MAX_ROUNDS, MAX_STATEMENT_LENGTH, MIN_ROUNDS } from './constants';
 
 /**
  * Views are what clients may see. Every schema is `strictObject`: the server builds views from
@@ -80,6 +80,8 @@ export type ScoreboardEntry = z.infer<typeof ScoreboardEntrySchema>;
 export const PublicOptionSchema = z.strictObject({
   optionId: OptionIdSchema,
   text: z.string().max(240),
+  /** Who Said It: the option is this player (the TV draws their avatar). Every player is an option, so it says nothing about the author. */
+  playerId: PlayerIdSchema.optional(),
 });
 export type PublicOption = z.infer<typeof PublicOptionSchema>;
 
@@ -147,7 +149,11 @@ const answeredIds = z.array(PlayerIdSchema).max(8);
 
 export const PhaseDataSchema = z.discriminatedUnion('phase', [
   z.strictObject({ phase: z.literal('WAITING') }),
-  z.strictObject({ phase: z.literal('LOBBY') }),
+  z.strictObject({
+    phase: z.literal('LOBBY'),
+    /** Who Said It only: who has handed in a statement (never the words). */
+    statementPlayerIds: z.array(PlayerIdSchema).max(8).optional(),
+  }),
   z.strictObject({ phase: z.literal('COUNTDOWN') }),
   z.strictObject({ phase: z.literal('ROUND_INTRO'), round }),
   z.strictObject({
@@ -321,6 +327,10 @@ export const YouViewSchema = z.strictObject({
   effects: EffectsViewSchema.nullable(),
   hits: z.array(HitViewSchema).max(8),
   reducedEffects: z.boolean(),
+  /** Who Said It: this player's own statement (lobby), so they can edit it; null for everyone else's. */
+  myStatement: z.string().max(MAX_STATEMENT_LENGTH).nullable(),
+  /** Who Said It: the current round's statement is this player's, so they sit it out. Only that player is told. */
+  authorOfRound: z.boolean(),
 });
 export type YouView = z.infer<typeof YouViewSchema>;
 

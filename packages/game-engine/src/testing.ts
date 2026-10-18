@@ -2,8 +2,17 @@ import { PHASES, type Phase, type ServerEvent } from '@quizparty/protocol';
 import { resolveGameConfig, type GameConfig } from './config';
 import { buildDeckIndex, type Deck, type DeckQuestion } from './deck';
 import { createRoom, reduce } from './reducer';
+import { buildWhoSaidItDeck } from './who-said-it';
 import { nextWakeAt } from './timers';
-import type { Actor, CommandResult, Effect, EngineCommand, EngineInput, RoomState } from './types';
+import type {
+  Actor,
+  CommandResult,
+  DeckRequest,
+  Effect,
+  EngineCommand,
+  EngineInput,
+  RoomState,
+} from './types';
 import { roomView, type Viewer } from './views';
 
 /** Deterministic test deck: `count` questions spread over the four difficulty buckets and 6 categories. */
@@ -166,7 +175,7 @@ export class Harness {
   }
 
   /** Answers every `needDeck` effect produced since the last call, like the server's deck builder. */
-  fulfilDeckRequests(deck: Deck = makeDeck()): void {
+  fulfilDeckRequests(deck?: Deck): void {
     const pending = this.effects.filter((e) => e.kind === 'needDeck');
     this.effects.splice(
       0,
@@ -180,9 +189,20 @@ export class Harness {
         requestedBy: effect.requestedBy,
         purpose: effect.purpose,
         gameId: this.nextGameId(),
-        deck,
+        deck: deck ?? this.deckFor(effect.request),
       });
     }
+  }
+
+  /** What the server's deck builder would answer: the players' statements for Who Said It, else a stock deck. */
+  deckFor(request: DeckRequest): Deck {
+    if (!request.whoSaidIt) return makeDeck();
+    let n = 0;
+    return buildWhoSaidItDeck({
+      ...request.whoSaidIt,
+      categoryLabel: 'Bunu kim dedi?',
+      newQuestionId: () => `wsi-${(n += 1)}`,
+    });
   }
 
   start(deck?: Deck): CommandResult {

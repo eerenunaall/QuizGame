@@ -15,6 +15,8 @@ export interface DeckQuestion {
   explanation: string | null;
   /** `key` is a stable internal key (never sent); exactly one option is correct. */
   options: { key: string; text: string; correct: boolean }[];
+  /** Who Said It, PRIVATE: whose statement this is. That player sits the question out. */
+  authorPlayerId?: string;
 }
 
 export interface Deck {

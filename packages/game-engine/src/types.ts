@@ -56,6 +56,8 @@ export interface PresentedOption {
   /** PRIVATE stable key of the underlying bank option (for analytics); never copied into a view. */
   key: string;
   text: string;
+  /** Who Said It: the player this option stands for (public: every player is an option). */
+  playerId?: string;
   /** PRIVATE. Never copied into any view. */
   correct: boolean;
 }
@@ -252,6 +254,11 @@ export interface RoomState {
   settings: LobbySettings;
   /** Server-only handle of the personal quiz in use (never in any view). */
   contentRef: string | null;
+  /**
+   * Who Said It: the statement each player handed in, by player id. PRIVATE: it feeds the deck and is
+   * never copied into a view (only a player's own text reaches their own phone).
+   */
+  statements: Record<string, string>;
   /** A game in this room has used a personal quiz: its durable traces are erased when the room closes (ADR-0015). */
   sensitiveContent: boolean;
   config: GameConfig;
@@ -274,6 +281,7 @@ export type EngineCommandType =
   | 'COMMIT_PREP'
   | 'USE_FIFTY_FIFTY'
   | 'SET_PREFERENCES'
+  | 'SUBMIT_STATEMENT'
   | 'LEAVE_ROOM'
   | 'SET_SETTINGS'
   | 'KICK_PLAYER'
@@ -356,6 +364,11 @@ export interface DeckRequest {
   tier: Tier;
   hostAccountId: string | null;
   playerCount: number;
+  /** Who Said It: who is in the room and what each handed in (server-side only, never sent anywhere). */
+  whoSaidIt?: {
+    players: { playerId: string; nickname: string }[];
+    statements: { playerId: string; text: string }[];
+  };
 }
 
 export type PersistRecord =

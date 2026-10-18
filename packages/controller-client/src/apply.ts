@@ -158,6 +158,16 @@ export function applyServerMessage(
         };
       });
 
+    case 'STATEMENTS_CHANGED':
+      return withRoom(state, (room) =>
+        room.phaseData.phase === 'LOBBY'
+          ? {
+              ...room,
+              phaseData: { ...room.phaseData, statementPlayerIds: message.payload.playerIds },
+            }
+          : room,
+      );
+
     case 'ANSWER_LOCKED':
       return withRoom(state, (room) => {
         const data = room.phaseData;

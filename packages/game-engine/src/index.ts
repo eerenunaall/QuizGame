@@ -5,5 +5,6 @@ export * from './rank';
 export * from './reducer';
 export * from './scoring';
 export * from './timers';
+export * from './who-said-it';
 export * from './types';
 export * from './views';

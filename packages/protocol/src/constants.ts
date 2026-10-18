@@ -7,6 +7,8 @@ export const MAX_CLIENT_MESSAGE_BYTES = 16 * 1024;
 export const MAX_NICKNAME_LENGTH = 16;
 export const MIN_NICKNAME_LENGTH = 2;
 export const MAX_PLAYERS_LIMIT = 8;
+/** Who Said It (ADR-0015): one short statement per player, collected in the lobby. */
+export const MAX_STATEMENT_LENGTH = 140;
 export const MIN_ROUNDS = 3;
 export const MAX_ROUNDS = 20;
 

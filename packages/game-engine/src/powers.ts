@@ -11,6 +11,7 @@ import type {
 } from '@quizparty/protocol';
 import { defaultTier, ladderKindFor, type GameConfig } from './config';
 import type { PowerLedger, PresentedOption, RoomState, RoundState, TargetEffects } from './types';
+import { exemptPlayerId } from './who-said-it';
 
 /**
  * Powers, stakes and sabotage (ADR-0007, ADR-0010). Pure helpers over the engine state: the
@@ -106,6 +107,8 @@ export function checkCommit(d: Room, playerId: string, payload: CommitPayload): 
   const player = d.players[playerId];
   if (!me || me.removed || !player || player.status !== 'ACTIVE') return 'POWER_UNAVAILABLE';
   if (round.commitments[playerId]) return 'ALREADY_COMMITTED';
+  // Who Said It: the author of this round's statement has nothing to stake on.
+  if (exemptPlayerId(game) === playerId) return 'ANSWER_NOT_ALLOWED';
 
   const ladder = roundLadder(d.config, round, game.totalRounds);
   if (!ladder.rungs.some((rung) => rung.tier === payload.stake)) return 'STAKE_INVALID';
