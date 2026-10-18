@@ -159,3 +159,60 @@ describe('ATTACK 29 — suggest-decoys is a paid call anyone with an invite can 
     expect(model.requests.length).toBe(before);
   });
 });
+
+describe('ATTACK 30 — hostile theme and venue-logo values', () => {
+  it('turns only the allow-listed theme ids into a theme; nothing else reaches the page', async () => {
+    const { pickTheme, themeFromQuery } = await import('../../apps/web/src/lib/theme');
+    const memory = new Map<string, string>();
+    const storage = {
+      getItem: (k: string) => memory.get(k) ?? null,
+      setItem: (k: string, v: string) => void memory.set(k, v),
+      removeItem: (k: string) => void memory.delete(k),
+    };
+    for (const search of [
+      '?theme=%3Cscript%3Ealert(1)%3C/script%3E',
+      '?theme="><img src=x onerror=alert(1)>',
+      '?theme=party%22%20onload%3D%22x',
+      '?theme=__proto__',
+      '?theme=constructor',
+      '?theme=toString',
+      '?theme[]=party',
+      '?theme=party&theme=evil',
+      '?theme=PARTY',
+      '?theme=%00',
+      `?theme=${'a'.repeat(100_000)}`,
+    ]) {
+      expect(['party', 'venue-gold', 'high-contrast'], search).toContain(pickTheme(search, storage));
+      if (!/^\?theme=party&/u.test(search)) expect(themeFromQuery(search), search).not.toBe('toString');
+    }
+    expect(themeFromQuery('?theme=__proto__')).toBeNull();
+    expect(themeFromQuery('?theme=constructor')).toBeNull();
+  });
+
+  it('accepts a venue logo only as a same-origin path or https URL to an image, never a host switch', () => {
+    const hostile = [
+      'javascript:alert(1)//x.svg',
+      'data:image/svg+xml,<svg onload=alert(1)>.svg',
+      '//evil.example/x.svg',
+      '/\\evil.example/x.svg', // browsers read "/\" as "//"
+      '/\t/evil.example/x.svg',
+      '/%5Cevil.example/x.svg',
+      'https://evil.example/x.svg"onerror="alert(1)',
+      'https://user:pw@evil.example/x.svg',
+      'https://evil.example\\@good.example/x.svg',
+      'http://evil.example/x.svg',
+      '/x.svg?\n',
+      '/../../x.svg',
+    ];
+    for (const value of hostile) {
+      const logo = resolveVenueLogo(value);
+      if (logo === null) continue;
+      // a path stays on the page's own origin; an absolute address is plain https without credentials
+      const resolved = new URL(logo, 'https://quiz.example');
+      if (logo.startsWith('/')) expect(resolved.origin, value).toBe('https://quiz.example');
+      else expect([resolved.protocol, resolved.username, resolved.password], value).toEqual(['https:', '', '']);
+    }
+    expect(resolveVenueLogo('/venue/logo.svg')).toBe('/venue/logo.svg');
+    expect(resolveVenueLogo('https://cdn.venue.example/logo.png')).toBe('https://cdn.venue.example/logo.png');
+  });
+});

@@ -41,6 +41,8 @@ export function saveTheme(storage: KeyValueStorage, id: ThemeId): void {
 /** Accepts only a same-origin path or https URL to an image; anything else means "no logo". */
 export function resolveVenueLogo(raw: string | undefined): string | null {
   const value = (raw ?? '').trim();
-  if (!/^(\/(?!\/)|https:\/\/)[^\s"'<>]+\.(svg|png|webp)$/iu.test(value)) return null;
+  // A backslash after the first slash reads as "//" in browsers (host switch) and `user@` is a
+  // credential/host trick: neither belongs in a logo address (ATTACK 30).
+  if (!/^(\/(?![\/\\])|https:\/\/)[^\s"'<>\\@]+\.(svg|png|webp)$/iu.test(value)) return null;
   return value;
 }
