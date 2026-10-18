@@ -1,0 +1,75 @@
+# Production stack: Caddy (HTTPS) -> game server -> PostgreSQL. Follow docs/DEPLOYMENT.md.
+#
+#   cp env.production.example .env   # then fill it in (docs/DEPLOYMENT.md)
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Only Caddy publishes ports (80, 443). The database and the game server are reachable on the private
+# compose network only. Every ${VAR:?} line makes compose refuse to start when the value is missing.
+# NOT verified in the build sandbox (no Docker daemon): the first start on your server is the first test.
+name: quizparty
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: quizparty
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: quizparty
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U quizparty -d quizparty']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build:
+      context: ../..
+      dockerfile: infra/deployment/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://quizparty:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/quizparty
+      PUBLIC_WEB_URL: https://${DOMAIN:?set DOMAIN in .env}
+      ALLOWED_ORIGINS: https://${DOMAIN}
+      SERVER_SECRET: ${SERVER_SECRET:?set SERVER_SECRET in .env}
+      METRICS_TOKEN: ${METRICS_TOKEN:?set METRICS_TOKEN in .env}
+      ADMIN_BOOTSTRAP_EMAILS: ${ADMIN_BOOTSTRAP_EMAILS:?set ADMIN_BOOTSTRAP_EMAILS in .env}
+      EMAIL_WEBHOOK_URL: ${EMAIL_WEBHOOK_URL:-}
+      EMAIL_WEBHOOK_TOKEN: ${EMAIL_WEBHOOK_TOKEN:-}
+      BLIND_DATA_KEYS: ${BLIND_DATA_KEYS:-}
+      SERVE_WEB: '1'
+      SERVE_ADMIN: '1'
+      # Exactly one reverse proxy (Caddy) sits in front of the app.
+      TRUST_PROXY_HOPS: '1'
+      QP_ALLOW_DEV_SEED: '0'
+      QP_SEED_DEV: '0'
+      LOG_LEVEL: info
+    expose:
+      - '8080'
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates live here: keep this volume, or Caddy asks Let's Encrypt again (rate limits apply).
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:

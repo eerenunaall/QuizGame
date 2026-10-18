@@ -9,17 +9,25 @@
     "assets:brand": "node assets/brand.ts",
     "assets:category-icons": "node assets/category-icons.ts",
     "question": "tsx question/main.ts",
-    "playtest": "tsx dev/playtest.ts"
+    "playtest": "tsx dev/playtest.ts",
+    "perf": "tsx perf/load.ts",
+    "release:audit": "tsx release-audit/main.ts",
+    "ops:delete-account": "tsx ops/delete-account.ts"
   },
   "devDependencies": {
     "@types/node": "22.20.5",
-    "sharp": "0.35.5"
+    "sharp": "0.35.5",
+    "@types/ws": "8.18.2",
+    "@types/pg": "8.23.1"
   },
   "dependencies": {
     "@quizparty/protocol": "workspace:*",
     "@quizparty/db": "workspace:*",
     "@quizparty/question-bank": "workspace:*",
-    "@quizparty/question-schema": "workspace:*"
+    "@quizparty/question-schema": "workspace:*",
+    "@quizparty/controller-client": "workspace:*",
+    "ws": "8.22.0",
+    "pg": "8.23.1"
   },
   "exports": {
     "./question/cli": "./question/cli.ts"

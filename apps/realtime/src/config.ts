@@ -236,7 +236,9 @@ export interface AppConfig {
  * plain-http public URLs or an empty origin allow-list (ADR-0003: fail closed).
  */
 export function loadConfig(env: Record<string, string | undefined> = process.env): AppConfig {
-  const parsed = EnvSchema.safeParse(env);
+  // Compose passes unset optional variables as empty strings; an empty value means "not set".
+  const present = Object.fromEntries(Object.entries(env).filter(([, value]) => value !== ''));
+  const parsed = EnvSchema.safeParse(present);
   if (!parsed.success) {
     const detail = parsed.error.issues
       .map((issue) => `${issue.path.join('.')}: ${issue.message}`)

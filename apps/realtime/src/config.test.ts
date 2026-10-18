@@ -71,3 +71,17 @@ describe('store settings fail closed', () => {
     expect(loadConfig({}).payments).toMatchObject({ enabled: false, apple: null, google: null });
   });
 });
+
+describe('empty variables', () => {
+  it('treat an empty optional value (docker compose passes unset ones that way) as not set', () => {
+    const config = loadConfig({
+      NODE_ENV: 'test',
+      EMAIL_WEBHOOK_URL: '',
+      EMAIL_WEBHOOK_TOKEN: '',
+      BLIND_DATA_KEYS: '',
+      METRICS_TOKEN: '',
+    });
+    expect(config.emailWebhook).toBeNull();
+    expect(config.metricsToken).toBeNull();
+  });
+});

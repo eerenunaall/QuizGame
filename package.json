@@ -31,7 +31,10 @@
     "assets:category-icons": "pnpm --filter @quizparty/scripts run assets:category-icons",
     "build:web": "pnpm --filter @quizparty/web run build",
     "build:admin": "pnpm --filter @quizparty/admin run build",
-    "playtest": "pnpm --filter @quizparty/scripts run playtest"
+    "playtest": "pnpm --filter @quizparty/scripts run playtest",
+    "perf": "pnpm --filter @quizparty/scripts run perf",
+    "release:audit": "pnpm --filter @quizparty/scripts run release:audit",
+    "ops:delete-account": "pnpm --filter @quizparty/scripts run ops:delete-account"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
