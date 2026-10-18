@@ -43,16 +43,45 @@ export function decodeFrame(data: RawData): string {
   return data.toString('utf8');
 }
 
+/**
+ * The unit a limit is charged to. One subscriber (or one hosting plan) owns a whole IPv6 /64, i.e.
+ * 2^64 addresses, so limiting single addresses would be no limit at all (ATTACK 34): an IPv6 address
+ * is reduced to its /64 prefix. IPv4-mapped forms count as the IPv4 address; anything else is kept.
+ */
+export function limitKey(address: string): string {
+  const bare = address.split('%')[0]!.toLowerCase();
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/u.exec(bare);
+  if (mapped) return mapped[1]!;
+  if (!bare.includes(':') || !/^[0-9a-f:.]+$/u.test(bare)) return address;
+  const [head = '', tail] = bare.split('::', 2);
+  const front = head === '' ? [] : head.split(':');
+  const back = tail === undefined || tail === '' ? [] : tail.split(':');
+  if (tail === undefined && front.length !== 8) return address;
+  const groups =
+    tail === undefined
+      ? front
+      : [
+          ...front,
+          ...Array<string>(Math.max(0, 8 - front.length - back.length)).fill('0'),
+          ...back,
+        ];
+  if (groups.length !== 8 || groups.some((g) => !/^[0-9a-f]{1,4}$/u.test(g))) return address;
+  return `${groups
+    .slice(0, 4)
+    .map((g) => g.replace(/^0+(?=.)/u, ''))
+    .join(':')}::/64`;
+}
+
 /** Extracts the client address, trusting `X-Forwarded-For` only for the configured proxy depth. */
 export function clientIp(request: IncomingMessage, trustedHops: number): string {
-  const direct = request.socket.remoteAddress ?? 'unknown';
+  const direct = limitKey(request.socket.remoteAddress ?? 'unknown');
   if (trustedHops <= 0) return direct;
   const header = request.headers['x-forwarded-for'];
   const chain = (Array.isArray(header) ? header.join(',') : (header ?? ''))
     .split(',')
     .map((part) => part.trim())
     .filter(Boolean);
-  return chain.length >= trustedHops ? chain[chain.length - trustedHops]! : direct;
+  return chain.length >= trustedHops ? limitKey(chain[chain.length - trustedHops]!) : direct;
 }
 
 /** WebSocket endpoint: upgrade policy, connection lifecycle, rate limits and message routing. */
