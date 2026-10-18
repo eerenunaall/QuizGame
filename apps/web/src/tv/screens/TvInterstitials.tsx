@@ -189,19 +189,62 @@ export function TvIntermission({ next }: { next: { index: number; kind: RoundKin
 
 const CLOSE_STICKER = 'hourglass' as const;
 
-export function TvClosed({ message, onNew }: { message: string; onNew: () => void }) {
+/** How long the closed message stays before the TV goes back to its title menu. */
+export const CLOSED_RETURN_MS = 4_000;
+
+/**
+ * "Room closed". With `onMenu` the TV announces that it is returning to the title menu and does so
+ * by itself after `returnAfterMs`; the "Ana menü" button goes at once. Starting a new game cancels
+ * the automatic return so it can never tear down the room that is being created.
+ */
+export function TvClosed({
+  message,
+  onNew,
+  onMenu,
+  returnAfterMs = CLOSED_RETURN_MS,
+}: {
+  message: string;
+  onNew: () => void;
+  onMenu?: () => void;
+  returnAfterMs?: number;
+}) {
   const { t } = useI18n();
   const ref = useRef<HTMLButtonElement>(null);
+  const [starting, setStarting] = useState(false);
   useEffect(() => {
     ref.current?.focus();
   }, []);
+  useEffect(() => {
+    if (!onMenu || starting) return undefined;
+    const timer = window.setTimeout(onMenu, returnAfterMs);
+    return () => window.clearTimeout(timer);
+  }, [onMenu, starting, returnAfterMs]);
   return (
     <div className={styles.center} data-testid="tv-closed">
       <Sticker id={CLOSE_STICKER} size={200} className={styles.pop} />
       <div className={styles.introTitle}>{t('closed.title')}</div>
       <div className={styles.worth}>{message}</div>
+      {onMenu && !starting ? (
+        <div className={styles.worth} role="status" data-testid="tv-closed-returning">
+          {t('closed.returning')}
+        </div>
+      ) : null}
       <div className={styles.cta}>
-        <Button ref={ref} size="xl" onClick={onNew}>
+        {onMenu ? (
+          <Button ref={ref} size="xl" onClick={onMenu} data-testid="tv-closed-menu">
+            {t('closed.mainMenu')}
+          </Button>
+        ) : null}
+        <Button
+          ref={onMenu ? undefined : ref}
+          size="xl"
+          variant={onMenu ? 'violet' : 'gold'}
+          onClick={() => {
+            setStarting(true);
+            onNew();
+          }}
+          data-testid="tv-closed-new"
+        >
           {t('closed.newGame')}
         </Button>
       </div>

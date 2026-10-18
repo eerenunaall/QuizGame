@@ -117,6 +117,12 @@ export const tr = {
   'closed.FINISHED': 'Oyun bitti.',
   'closed.ADMIN': 'Oda yönetici tarafından kapatıldı.',
   'closed.newGame': 'Yeni oyun',
+  'closed.mainMenu': 'Ana menü',
+  'closed.returning': 'Ana menüye dönülüyor…',
+  'tv.exit': 'Çıkış',
+  'tv.exit.confirm': 'Odayı kapat ve ana menüye dön?',
+  'tv.exit.yes': 'Evet',
+  'tv.exit.no': 'Hayır',
 
   // Controller (phone)
   'join.title': 'Oyuna katıl',

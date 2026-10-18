@@ -102,6 +102,9 @@
 }
 
 .cta {
+  display: flex;
+  gap: 32px;
+  justify-content: center;
   margin-top: 56px;
 }
 

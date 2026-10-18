@@ -18,6 +18,7 @@ import {
   TvPrep,
   TvRoundIntro,
 } from './screens/TvInterstitials';
+import { TvExitButton, TvExitDialog } from './screens/TvExit';
 import { TvLobby } from './screens/TvLobby';
 import { TvPowerResolution } from './screens/TvPower';
 import { TvQuestion, crowdSummary } from './screens/TvQuestion';
@@ -30,6 +31,14 @@ import { TvUnlock } from './screens/TvUnlock';
 import styles from './TvApp.module.css';
 
 const JOIN_KEY = 'qp.tv.join';
+
+/** Closings after which nobody is left to act on the screen: it goes back to the title menu by itself. */
+const AUTO_MENU_REASONS: ReadonlySet<string> = new Set([
+  'ABANDONED',
+  'HOST_ENDED',
+  'IDLE',
+  'LIFETIME',
+]);
 
 interface Remembered {
   questionId: string;
@@ -85,6 +94,9 @@ export function TvApp({
   const [error, setError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showUnlock, setShowUnlock] = useState(false);
+  const [confirmExit, setConfirmExit] = useState(false);
+  const [exiting, setExiting] = useState(false);
+  const [exitError, setExitError] = useState<string | null>(null);
   const [unlockError, setUnlockError] = useState<string | null>(null);
   const [catalog, setCatalog] = useState<CategoryCatalog | null>(null);
   const [joinUrl, setJoinUrl] = useState<string | null>(null);
@@ -124,14 +136,12 @@ export function TvApp({
     };
   }, [audioLocked]);
 
-  // Remote control: arrows move focus, Back closes dialogs.
+  // Remote control: arrows move focus; Back/Escape closes a dialog, or else asks to leave the room.
+  const backRef = useRef<() => void>(() => undefined);
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return undefined;
-    return installRemoteNavigation(root, () => {
-      setShowSettings(false);
-      setShowUnlock(false);
-    });
+    return installRemoteNavigation(root, () => backRef.current());
   }, []);
 
   // Join link: remembered at creation; derived from the page origin after a resume.
@@ -249,6 +259,33 @@ export function TvApp({
     setPrefs(updated);
     savePreferences(storage, updated);
     onLocale(next);
+  };
+
+  const roomOpen = room !== null && room.phase !== 'ROOM_CLOSED' && !state.closedReason;
+  const closeExit = (): void => {
+    setConfirmExit(false);
+    setExitError(null);
+  };
+  backRef.current = () => {
+    if (showSettings || showUnlock) {
+      setShowSettings(false);
+      setShowUnlock(false);
+    } else if (confirmExit) closeExit();
+    else if (roomOpen) setConfirmExit(true);
+  };
+  // "Evet": close the room for everybody (the display may END_ROOM), then show the title menu.
+  const exitRoom = async (): Promise<void> => {
+    setExiting(true);
+    setExitError(null);
+    try {
+      await client.endRoom();
+      await client.forget();
+      setConfirmExit(false);
+    } catch (cause) {
+      setExitError(describe(cause));
+    } finally {
+      setExiting(false);
+    }
   };
 
   const reconnecting = state.transport === 'RECONNECTING';
@@ -501,7 +538,13 @@ export function TvApp({
       case 'ROOM_CLOSED':
         return (
           <TvFrame {...base} strip={false}>
-            <TvClosed message={td(`closed.${data.reason}`)} onNew={() => void startRoom()} />
+            <TvClosed
+              message={td(`closed.${data.reason}`)}
+              onNew={() => void startRoom()}
+              {...(AUTO_MENU_REASONS.has(data.reason)
+                ? { onMenu: () => void client.forget() }
+                : {})}
+            />
           </TvFrame>
         );
     }
@@ -520,7 +563,18 @@ export function TvApp({
 
   return (
     <div ref={rootRef} className={styles.root}>
-      <Stage>{content}</Stage>
+      <Stage>
+        {content}
+        {roomOpen ? <TvExitButton onClick={() => setConfirmExit(true)} /> : null}
+        {roomOpen && confirmExit ? (
+          <TvExitDialog
+            busy={exiting}
+            error={exitError}
+            onYes={() => void exitRoom()}
+            onNo={closeExit}
+          />
+        ) : null}
+      </Stage>
     </div>
   );
 }

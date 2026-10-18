@@ -104,6 +104,12 @@ export const en: Record<MessageKey, string> = {
   'closed.FINISHED': 'The game is over.',
   'closed.ADMIN': 'The room was closed by an administrator.',
   'closed.newGame': 'New game',
+  'closed.mainMenu': 'Main menu',
+  'closed.returning': 'Returning to the main menu…',
+  'tv.exit': 'Exit',
+  'tv.exit.confirm': 'Close the room and return to the main menu?',
+  'tv.exit.yes': 'Yes',
+  'tv.exit.no': 'No',
 
   'join.title': 'Join the game',
   'join.room': 'Room',
