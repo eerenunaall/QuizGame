@@ -19,8 +19,7 @@ const FLOATERS: Record<BackdropTheme, Floater[]> = {
     { id: 'party-popper', x: 1.5, y: 1, size: 120, tilt: -10, delay: 0 },
     { id: 'star', x: 95, y: 22, size: 96, tilt: 12, delay: 1.4 },
     { id: 'balloon', x: 94.5, y: 68, size: 120, tilt: 8, delay: 0.6 },
-    // Right edge, between the star and the balloon: the bottom middle is where the title hint and the lobby start button sit.
-    { id: 'sparkles', x: 96, y: 46, size: 80, tilt: -6, delay: 2.1 },
+    { id: 'sparkles', x: 35, y: 88, size: 96, tilt: -6, delay: 2.1 },
   ],
   game: [
     { id: 'light-bulb', x: 2, y: 86, size: 96, tilt: -8, delay: 0.4 },

@@ -86,9 +86,6 @@ export function TvTitle({
         <Button variant="ghost" size="lg" block onClick={() => setDialog('settings')}>
           {t('tv.menu.settings')}
         </Button>
-        <p className={styles.firstTime} data-testid="tv-first-time">
-          {t('tv.menu.firstTime')}
-        </p>
       </div>
       <div className={styles.hint}>{t('tv.menu.hint')}</div>
       {error ? (
