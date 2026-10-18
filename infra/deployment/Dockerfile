@@ -10,6 +10,12 @@ RUN corepack enable && corepack prepare pnpm@10.28.0 --activate
 WORKDIR /app
 COPY . .
 RUN pnpm install --frozen-lockfile
+# Build-time branding for the web app (Vite reads VITE_* while it builds). Hosting platforms pass the
+# service's environment variables as build arguments; empty values mean the standard QuizNight look.
+ARG VITE_DEFAULT_THEME=""
+ARG VITE_VENUE_NAME=""
+ARG VITE_VENUE_CREDIT=""
+ENV VITE_DEFAULT_THEME=$VITE_DEFAULT_THEME VITE_VENUE_NAME=$VITE_VENUE_NAME VITE_VENUE_CREDIT=$VITE_VENUE_CREDIT
 RUN pnpm --filter @quizparty/web run build && pnpm --filter @quizparty/admin run build
 
 FROM node:22-bookworm-slim

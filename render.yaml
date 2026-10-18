@@ -32,3 +32,10 @@ services:
         value: '1'
       - key: LOG_LEVEL
         value: warn
+      # Gusto Board Game look (build-time; remove these three lines for the standard QuizNight look).
+      - key: VITE_DEFAULT_THEME
+        value: gusto
+      - key: VITE_VENUE_NAME
+        value: Gusto Board Game
+      - key: VITE_VENUE_CREDIT
+        value: by Eren Ünal
