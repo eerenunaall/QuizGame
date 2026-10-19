@@ -118,5 +118,13 @@ export const LIMITS = {
    */
   blindSuggest: { capacity: 6, refillPerSec: 6 / 600 },
   blindSuggestIp: { capacity: 20, refillPerSec: 20 / 600 },
+  /** Venue staff using the table page (per account): a busy evening, never a script. */
+  venue: { capacity: 120, refillPerSec: 2 },
+  /**
+   * Checking a reward code (ATTACK 36): per account and, separately, per venue; a wrong code costs
+   * double. A code has ~40 bits, so even the per-venue cap leaves guessing hopeless.
+   */
+  venueRedeem: { capacity: 10, refillPerSec: 10 / 300 },
+  venueRedeemVenue: { capacity: 30, refillPerSec: 30 / 600 },
   invalidMessage: { capacity: 8, refillPerSec: 0.2 },
 } as const satisfies Record<string, BucketSpec>;

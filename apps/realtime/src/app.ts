@@ -47,6 +47,8 @@ import { DbTelemetrySink } from './telemetry/sink';
 import { systemClock, type Clock } from './util/clock';
 import { createMetrics } from './util/metrics';
 import { Gateway } from './ws/gateway';
+import { registerVenueRoutes } from './venue/routes';
+import { VenueService } from './venue/service';
 
 export const MIGRATIONS_DIR = fileURLToPath(
   new URL('../../../database/migrations', import.meta.url),
@@ -67,6 +69,7 @@ export interface BuiltApp {
   vault: BlindVault;
   quizzes: QuizService;
   maintenance: MaintenanceJob;
+  venues: VenueService;
   routes: RouteSpec[];
   /** Graceful shutdown: stop accepting, flush rooms, release leases, close the pool. */
   close(): Promise<void>;
@@ -261,6 +264,20 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     onSecurity: (kind, detail) => security.record(kind, { detail }),
     onError,
   });
+  const venues = new VenueService({
+    db,
+    clock,
+    manager,
+    links,
+    flags,
+    secret: config.serverSecret,
+    minuteMs: config.venueMinuteMs,
+    onError,
+    onSecurity: (kind, detail) => security.record(kind, { detail }),
+  });
+  manager.onGameFinished((room, gameId) => {
+    void venues.gameFinished(room, gameId).catch(onError);
+  });
   const gateway = new Gateway({
     config,
     clock,
@@ -359,7 +376,9 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     accountSessions,
     flags,
     engine: buildAuditEngine(config),
+    venues,
   });
+  registerVenueRoutes(app, { config, venues, limiter, security });
   registerBlindRoutes(app, { config, quizzes, vault, flags, limiter });
   registerPrivacyRoutes(app, {
     sessions: accountSessions,
@@ -404,6 +423,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
 
   const recovered = await manager.recoverAll();
   if (recovered > 0) log.info({ recovered }, 'recovered rooms from the durable log');
+  await venues.restore().catch(onError);
   manager.startHeartbeat();
   maintenance.start();
 
@@ -413,6 +433,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     closed = true;
     limiter.stop();
     maintenance.stop();
+    venues.stop();
     gateway.shutdown();
     if (graceful) await manager.stop();
     else manager.abandonForTest();
@@ -436,6 +457,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     vault,
     quizzes,
     maintenance,
+    venues,
     routes,
     close: () => shutdown(true),
     crash: () => shutdown(false),

@@ -12,7 +12,7 @@ import { LiveRoom, type RoomDeps } from './live-room';
 import type { PgRoomStore } from './store';
 import type { SessionService } from './sessions';
 
-export type ManagerDeps = Omit<RoomDeps, 'onClosed'> & { clock?: Clock };
+export type ManagerDeps = Omit<RoomDeps, 'onClosed' | 'onGameFinished'> & { clock?: Clock };
 
 export interface CreatedRoom {
   room: LiveRoom;
@@ -28,8 +28,14 @@ export class RoomManager {
   private beating = false;
   private beats = 0;
   private stopped = false;
+  private gameFinished: ((room: LiveRoom, gameId: string) => void) | null = null;
 
   constructor(private readonly deps: ManagerDeps) {}
+
+  /** One listener for "a game reached its results" in any room (venue rewards, ADR-0024). */
+  onGameFinished(listener: (room: LiveRoom, gameId: string) => void): void {
+    this.gameFinished = listener;
+  }
 
   private get config(): AppConfig {
     return this.deps.config;
@@ -48,6 +54,7 @@ export class RoomManager {
       ...this.deps,
       clock: this.deps.clock ?? systemClock,
       onClosed: (room) => this.remove(room),
+      onGameFinished: (room, gameId) => this.gameFinished?.(room, gameId),
     };
   }
 

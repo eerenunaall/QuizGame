@@ -6,11 +6,13 @@ import type { AppConfig } from '../config';
 import type { FeatureFlags } from '../flags/service';
 import type { RoomManager } from '../rooms/manager';
 import type { Clock } from '../util/clock';
+import type { VenueService } from '../venue/service';
 import { AdminAudit } from './audit';
 import type { AuditEngine } from './engine';
 import { registerModerationRoutes } from './moderation';
 import { registerQuestionRoutes } from './questions';
 import { registerSystemRoutes } from './system';
+import { registerVenueAdminRoutes } from './venues';
 
 export interface AdminDeps {
   config: AppConfig;
@@ -21,6 +23,7 @@ export interface AdminDeps {
   accountSessions: AccountSessionService;
   flags: FeatureFlags;
   engine: AuditEngine;
+  venues: VenueService;
 }
 
 /** The admin API (GDD §23). Every route here declares `auth: 'admin'` and the roles that may call it. */
@@ -48,4 +51,5 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminDeps): void
     manager: deps.manager,
     audit,
   });
+  registerVenueAdminRoutes(app, { venues: deps.venues, audit, now: () => deps.clock.now() });
 }

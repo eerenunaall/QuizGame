@@ -58,6 +58,8 @@ const EnvSchema = z.object({
   RETENTION_SECURITY_EVENT_DAYS: int(180, 1, 3650),
   RETENTION_TELEMETRY_DAYS: int(180, 1, 3650),
   RETENTION_CLOSED_ROOM_DAYS: int(30, 1, 3650),
+  /** Venue mode (ADR-0024): length of one metered minute. Tests and demos only; production refuses another value. */
+  VENUE_MINUTE_MS: int(60_000, 100, 60_000),
   /** Addresses that become ADMIN on their first sign-in (how the first administrator exists). */
   ADMIN_BOOTSTRAP_EMAILS: csv,
   /** Where sign-in mail goes: any service that takes a JSON POST `{to, subject, text}`. */
@@ -230,6 +232,8 @@ export interface AppConfig {
   maintenanceIntervalMs: number;
   retention: RetentionPolicy;
   adminBootstrapEmails: string[];
+  /** Venue mode: milliseconds in one metered minute (60 000 except in tests). */
+  venueMinuteMs: number;
   emailWebhook: { url: string; token: string | null } | null;
   payments: PaymentsConfig;
   /** Sealing keys for personal answers; the first is the active one. Null = personal quizzes are off. */
@@ -267,6 +271,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       problems.push('ALLOWED_ORIGINS must be https origins');
     if (e.QP_ALLOW_DEV_SEED) problems.push('QP_ALLOW_DEV_SEED must be 0 in production');
     if (e.RATE_LIMIT_SCALE !== 1) problems.push('RATE_LIMIT_SCALE must be 1 in production');
+    if (e.VENUE_MINUTE_MS !== 60_000) problems.push('VENUE_MINUTE_MS must be 60000 in production');
     if (problems.length > 0)
       throw new Error(`Unsafe production configuration: ${problems.join('; ')}`);
   }
@@ -325,6 +330,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       telemetryDays: e.RETENTION_TELEMETRY_DAYS,
       closedRoomDays: e.RETENTION_CLOSED_ROOM_DAYS,
     },
+    venueMinuteMs: e.VENUE_MINUTE_MS,
     adminBootstrapEmails: e.ADMIN_BOOTSTRAP_EMAILS.map((email) => email.trim().toLowerCase()),
     emailWebhook: e.EMAIL_WEBHOOK_URL
       ? { url: e.EMAIL_WEBHOOK_URL, token: e.EMAIL_WEBHOOK_TOKEN ?? null }

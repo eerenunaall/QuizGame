@@ -92,6 +92,20 @@ describe('ATTACK 18 — the route table is the access policy', () => {
         'POST /v1/link-intents/:token/quiz [session]',
         'POST /v1/webhooks/apple [public]',
         'POST /v1/webhooks/google/:secret [public]',
+        // venue mode (ADR-0024): staff of a venue, checked per venue inside each route
+        'GET /v1/venue/me [session]',
+        'GET /v1/venues/:venueId/sessions [session]',
+        'POST /v1/venues/:venueId/sessions [session]',
+        'POST /v1/venues/:venueId/sessions/:sessionId/extend [session]',
+        'POST /v1/venues/:venueId/sessions/:sessionId/pause [session]',
+        'POST /v1/venues/:venueId/sessions/:sessionId/resume [session]',
+        'POST /v1/venues/:venueId/sessions/:sessionId/end [session]',
+        'POST /v1/venues/:venueId/rewards/redeem [session]',
+        'GET /v1/venues/:venueId/settings [session]',
+        'POST /v1/venues/:venueId/settings [session]',
+        'GET /v1/venues/:venueId/staff [session]',
+        'POST /v1/venues/:venueId/staff [session]',
+        'POST /v1/venues/:venueId/staff/:accountId/remove [session]',
       ].sort(),
     );
   });

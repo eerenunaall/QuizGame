@@ -20,6 +20,7 @@ import {
   type EngineCommand,
   type EngineInput,
   type RoomState,
+  type VenueMeter,
   type Viewer,
 } from '@quizparty/game-engine';
 import { sanitizeUserText, validateNickname } from '@quizparty/validation';
@@ -51,6 +52,15 @@ export interface RoomDeps {
   metrics: Metrics;
   log: FastifyBaseLogger;
   onClosed(room: LiveRoom): void;
+  /** A game reached its results (venue rewards listen here, ADR-0024). Called outside the room queue. */
+  onGameFinished?: (room: LiveRoom, gameId: string) => void;
+}
+
+/** Venue reward of the results on screen; kept in memory only (never in the engine, its log or snapshots). */
+interface HeldReward {
+  gameId: string;
+  playerId: string;
+  payload: { code: string; text: string; expiresAt: number };
 }
 
 interface SessionMeta {
@@ -94,6 +104,7 @@ export class LiveRoom {
   private lastTickWasNoop = false;
   private lost = false;
   private closing = false;
+  private venueReward: HeldReward | null = null;
 
   constructor(
     private readonly deps: RoomDeps,
@@ -240,11 +251,19 @@ export class LiveRoom {
         case 'needDeck':
           this.startDeckBuild(effect);
           break;
-        case 'persist':
+        case 'persist': {
+          const record = effect.record;
           this.persistChain = this.persistChain
-            .then(() => this.deps.store.persistGameRecord(this.id, effect.record))
+            .then(() => this.deps.store.persistGameRecord(this.id, record))
             .catch((error: unknown) => this.fail('persist', error));
+          if (record.type === 'GAME_STARTED') this.venueReward = null;
+          if (record.type === 'GAME_FINISHED' && this.deps.onGameFinished) {
+            const listener = this.deps.onGameFinished;
+            // Not inside the queue: the listener reads the database and comes back through enqueue.
+            queueMicrotask(() => listener(this, record.gameId));
+          }
           break;
+        }
         case 'telemetry':
           this.deps.telemetry.record(effect.name, effect.props);
           break;
@@ -474,6 +493,7 @@ export class LiveRoom {
         },
       });
       connection.ready = true;
+      this.resendVenueReward(connection);
       return { ok: true };
     });
   }
@@ -897,6 +917,57 @@ export class LiveRoom {
         .saveEntitlement(this.id, this.state.tier, this.state.hostAccountId)
         .catch((error: unknown) => this.fail('entitlement', error));
     });
+  }
+
+  // ───────────── venue mode (ADR-0024) ─────────────
+
+  /** The table's meter as the room holds it (null for every room that is not a metered café table). */
+  venueMeter(): VenueMeter | null {
+    return this.state.venue ?? null;
+  }
+
+  /** Staff changed the table (or its time ran out): the engine stores the meter and tells every screen. */
+  applyVenueMeter(meter: VenueMeter | null): Promise<void> {
+    return this.enqueue(async () => {
+      await this.apply({
+        kind: 'VENUE_METER',
+        at: this.deps.clock.now(),
+        entropy: this.entropy(),
+        meter,
+      });
+    });
+  }
+
+  /**
+   * A reward was issued for the results of `gameId`: the code goes to the winner's phone only, the
+   * display hears who won (for its banner). Nothing is sent when the room has moved on.
+   */
+  deliverVenueReward(
+    gameId: string,
+    playerId: string,
+    payload: { code: string; text: string; expiresAt: number },
+  ): Promise<boolean> {
+    return this.enqueue(() => {
+      if (this.state.phase !== 'RESULTS' || this.state.game?.gameId !== gameId)
+        return Promise.resolve(false);
+      this.venueReward = { gameId, playerId, payload };
+      this.deliver({ to: 'PLAYER', playerId }, { type: 'VENUE_REWARD', payload });
+      this.deliver({ to: 'DISPLAY' }, { type: 'VENUE_REWARD_ISSUED', payload: { playerId } });
+      return Promise.resolve(true);
+    });
+  }
+
+  /** A phone or TV that reconnects while the same results are on screen hears about the reward again. */
+  private resendVenueReward(connection: Connection): void {
+    const held = this.venueReward;
+    if (!held || this.state.phase !== 'RESULTS' || this.state.game?.gameId !== held.gameId) return;
+    if (connection.role === 'DISPLAY')
+      this.send(connection, {
+        type: 'VENUE_REWARD_ISSUED',
+        payload: { playerId: held.playerId },
+      });
+    else if (connection.playerId === held.playerId)
+      this.send(connection, { type: 'VENUE_REWARD', payload: held.payload });
   }
 
   /** Attaches a personal quiz (or returns to the classic game); the engine decides if the room may. */

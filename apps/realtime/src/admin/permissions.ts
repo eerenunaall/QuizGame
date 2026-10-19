@@ -33,6 +33,9 @@ export const CAN = {
   securityRead: ['ADMIN', 'MODERATOR'],
   auditLogRead: ['ADMIN'],
   statsRead: ['ADMIN', 'EDITOR', 'MODERATOR', 'SUPPORT'],
+  /** Venue mode (ADR-0024): who may see venues and their day reports, and who creates them. */
+  venuesRead: ['ADMIN', 'SUPPORT'],
+  venuesWrite: ['ADMIN'],
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Capability = keyof typeof CAN;
