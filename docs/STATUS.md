@@ -31,6 +31,23 @@ Branch: `claude/cloud-session-infrastructure-ln57mp` · Last updated: 2026-10-19
 The local gate is `format → lint → typecheck → unit → web → integration → websocket → red-team`,
 then `pnpm run build:web && pnpm run build:admin && pnpm test:e2e`.
 
+## Venue mode (ADR-0024, flag `venue.sessions`, off by default)
+"Version 1 - Venue mode" for board-game cafés (first customer Gusto Board Game Cafe); owner/staff guide in Turkish:
+`docs/VENUE.md`. The system meters time and never handles money. Migration 0009 (venues, venue_staff, venue_sessions,
+append-only venue_session_events, venue_rewards with hashed codes). Engine: pure meter (`venue.ts`, injected clock),
+`VENUE_METER` input; `START_GAME`/`REMATCH` refused with `VENUE_TIME_UP` / `VENUE_PAUSED`; a round in progress always
+finishes, then results (`cutShort`); the room is FULL through the existing `ENTITLEMENT` input while time runs and back to
+FREE at time-up/end unless a guest account is linked. Server: `apps/realtime/src/venue` (service with one timer per running
+table, restored after a restart; staff routes with per-venue membership; rewards: single winner, ties get nothing, min
+players, daily cap in the venue's time zone, rematch cool-down, code only to the winner's phone, redeem by one conditional
+UPDATE). Web: `/staff` desk (Masalar, Yeni masa by room code or the TV's unlock QR, Ödül doğrula, owner Ayarlar + staff by
+email), TV chip next to the room code (amber ≤ 5 min, red ≤ 1 min), "Süre doldu" screen, reward banner, winner's code card.
+Admin console: Mekanlar (create, owner, per-day report + CSV). Tests: engine `venue`, `reducer.venue`; realtime
+`venue/settings`; integration, ws, red-team ATTACK 36 and e2e `venue.*`; web `venue.test.tsx`; admin `Venues.test.tsx`.
+Not built: moving a table to another TV, multi-instance rooms (single instance like entitlements), a camera QR reader inside
+`/staff` (staff use the phone camera on the TV's unlock QR), the native app's chip/time-up screen (it ignores the fields).
+Not verified: a real café evening, real TVs, the gusto theme's logo on the time-up screen at distance.
+
 ## Risk time and Sabotage time (ADR-0022)
 `QUESTION_PREP` is retired. Each round now runs `RISK_PICK` (stake + Double Down) then `SABOTAGE_PICK`
 (sabotage or pass), each with its own timer (`riskPickMs` 12 s, `riskPickDecisionMs` 16 s for RISK/FINAL

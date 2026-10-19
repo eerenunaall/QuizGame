@@ -76,5 +76,13 @@ Each round runs `ROUND_INTRO` (or `FINAL`) → `RISK_PICK` → `SABOTAGE_PICK` �
 - `POWER_RESOLUTION` items: `COVER { playerId, outcome, fee, saved }`, `POT { playerIds, winnerIds, size, refunded }`, `DUEL { challengerId, rivalId, accepted, winnerId, points }`, `CUT { actorId, targetId, points }` (the points a paid Cut moved). Their content is public only here, after the reveal.
 - A `RISK_PICK` waits for a connected challenged player to reply; `PREP_PROGRESS` stays a bare count (a challenged player is "not done" until they reply). Switches and numbers: `GameConfig.powers.{cover,duel,pot,stakeCap,cut,blindClock}`, each with `enabled` (all optional, default on).
 
+### Venue mode (ADR-0024, flag `venue.sessions`)
+- `RoomView.venue?: { state: 'RUNNING' | 'PAUSED' | 'ENDED', endsAt: EpochMs | null, remainingMs }` (optional, strict; only on a metered café table). `endsAt` is server time while RUNNING; `remainingMs` is what is left at the frame's server time. Nothing else of a venue is in any room frame.
+- `VENUE_METER_CHANGED { venue }` to every screen when staff open, extend, pause or end the table and when its time runs out.
+- `VENUE_REWARD { code, text, expiresAt }` to the winner's phone only (and again when it reconnects on the same results); `VENUE_REWARD_ISSUED { playerId }` to the display only (results banner). Neither enters the engine, its log or snapshots.
+- `START_GAME` / `REMATCH`: `VENUE_TIME_UP` (no time left, or the table was ended) or `VENUE_PAUSED`. A running game is never cut: when a round ends on a closed meter the game goes to `RESULTS`.
+- HTTP (all `session` auth, rate-limited per account, CSRF for cookies; a non-member and an unknown venue both get `404`, a STAFF member on an owner action `403`, everything `404 FEATURE_DISABLED` while the flag is off): `GET /v1/venue/me`; under `/v1/venues/:venueId`: `GET|POST sessions` (open `{ minutes, roomCode } | { minutes, link }`), `POST sessions/:sessionId/extend { minutes }`, `.../pause`, `.../resume`, `.../end`, `POST rewards/redeem { code }` (`409 REWARD_ALREADY_REDEEMED`, `410 REWARD_EXPIRED`, `404`), `GET|POST settings` (owner writes), `GET|POST staff`, `POST staff/:accountId/remove`. Open errors: `ROOM_NOT_FOUND`, `GAME_IN_PROGRESS`, `INVALID_STATE` (TV already has a table), `LIMIT_REACHED` (more than 24 h on one table).
+- Admin: `GET|POST /v1/admin/venues`, `POST /v1/admin/venues/:id/owner`, `GET /v1/admin/venues/:id/report?from&to&format=json|csv`.
+
 Purchase errors: `PURCHASE_INVALID` (422), `PURCHASE_ACCOUNT_MISMATCH` (403), `TRANSACTION_ALREADY_BOUND` (409),
 `PURCHASE_PENDING` (409), `PURCHASE_REFUNDED` (410), `STORE_UNAVAILABLE` (503, retry).

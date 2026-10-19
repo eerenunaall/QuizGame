@@ -39,3 +39,10 @@ services:
         value: Gusto Board Game
       - key: VITE_VENUE_CREDIT
         value: by Eren Ünal
+      # Venue mode (ADR-0024, docs/VENUE.md): metered café tables, the /staff desk, winner rewards.
+      # It is NOT an environment variable: switch the database flag `venue.sessions` on in the admin
+      # console (/admin -> Bayraklar) after creating the venue under /admin -> Mekanlar. Off by default.
+      # VENUE_MINUTE_MS only shortens a metered minute for tests and demos (production refuses it);
+      # leave it unset for real tables.
+      # - key: VENUE_MINUTE_MS
+      #   value: '60000'
