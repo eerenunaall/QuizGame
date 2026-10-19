@@ -27,7 +27,7 @@ export function VenueChip({
         : formatLeft(meterLeftMs(venue, time));
   return (
     <span className={`${styles.chip} ${styles[tone]}`} data-testid="venue-chip" data-tone={tone}>
-      <span className={styles.label}>{t('venue.chip.label')}</span>
+      {tone === 'up' ? null : <span className={styles.label}>{t('venue.chip.label')}</span>}
       <span className={styles.value}>{text}</span>
     </span>
   );

@@ -3,17 +3,16 @@ import { useI18n } from '../lib/i18n';
 import { meterBlocked, useTicker } from './meter';
 import styles from './PhoneVenue.module.css';
 
-/** The winner's reward (ADR-0024 §8): the code big enough to show across a counter, what it is, until when. */
+/**
+ * The winner's reward (ADR-0024 §8): the code big enough to show across a counter, what it is, and that
+ * it lasts until the venue's midnight (the phone does not know the venue's time zone, so no clock time).
+ */
 export function PhoneReward({
   reward,
 }: {
   reward: { code: string; text: string; expiresAt: number };
 }) {
-  const { t, locale } = useI18n();
-  const time = new Intl.DateTimeFormat(locale === 'tr' ? 'tr-TR' : 'en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(reward.expiresAt));
+  const { t } = useI18n();
   return (
     <div className={styles.reward} data-testid="ctl-venue-reward" role="status">
       <div className={styles.rewardTitle}>{t('venue.reward.title')}</div>
@@ -26,7 +25,7 @@ export function PhoneReward({
         {reward.code.slice(0, 4)}-{reward.code.slice(4)}
       </div>
       <div className={styles.hint}>{t('venue.reward.show')}</div>
-      <div className={styles.hint}>{t('venue.reward.expires', { time })}</div>
+      <div className={styles.hint}>{t('venue.reward.expires')}</div>
     </div>
   );
 }

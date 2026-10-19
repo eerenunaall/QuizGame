@@ -715,7 +715,7 @@ export const tr = {
   'venue.reward.tv': '{name} ödül kazandı! Kodu telefonunda.',
   'venue.reward.title': 'Tebrikler, ödül kazandın!',
   'venue.reward.show': 'Bu kodu kasada görevliye göster.',
-  'venue.reward.expires': 'Bugün {time} saatine kadar geçerli.',
+  'venue.reward.expires': 'Bu gece yarısına kadar geçerli.',
   'staff.title': 'Mekan paneli',
   'staff.signin.intro': 'Mekan görevlisi olarak e-posta adresinle giriş yap.',
   'staff.none': 'Bu hesap hiçbir mekana bağlı değil. Mekan sahibinden seni eklemesini iste.',

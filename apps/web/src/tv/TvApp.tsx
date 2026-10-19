@@ -553,10 +553,10 @@ export function TvApp({
           </TvFrame>
         );
       case 'RESULTS': {
+        // Below the podium, above the buttons: never over the title or the ranking.
         const venueBanners =
           rewardWinner || venueBlock ? (
             <div className={styles.venueBanners}>
-              {overlay}
               {rewardWinner ? (
                 <Banner tone="success" size="tv" testId="tv-venue-reward">
                   {t('venue.reward.tv', { name: rewardWinner.nickname })}
@@ -568,11 +568,9 @@ export function TvApp({
                 </Banner>
               ) : null}
             </div>
-          ) : (
-            overlay
-          );
+          ) : null;
         return (
-          <TvFrame {...base} overlay={venueBanners} theme="results" strip={false} celebrate>
+          <TvFrame {...base} theme="results" strip={false} celebrate>
             <TvResults
               room={room}
               data={data}
@@ -581,6 +579,7 @@ export function TvApp({
               onLobby={() => void hostCommand(() => client.backToLobby())}
               onEnd={() => void hostCommand(() => client.endRoom())}
             />
+            {venueBanners}
           </TvFrame>
         );
       }

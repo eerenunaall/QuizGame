@@ -703,7 +703,7 @@ export const en: Record<MessageKey, string> = {
   'venue.reward.tv': '{name} won a reward! The code is on their phone.',
   'venue.reward.title': 'Congratulations, you won a reward!',
   'venue.reward.show': 'Show this code to the staff at the counter.',
-  'venue.reward.expires': 'Valid today until {time}.',
+  'venue.reward.expires': 'Valid until midnight tonight.',
   'staff.title': 'Venue desk',
   'staff.signin.intro': 'Sign in with your email address as venue staff.',
   'staff.none': 'This account is not linked to any venue. Ask the venue owner to add you.',

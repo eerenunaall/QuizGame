@@ -1,4 +1,6 @@
 .reward {
+  position: relative;
+  z-index: 3;
   width: 100%;
   margin: 0 0 16px;
   padding: 18px 16px 14px;
