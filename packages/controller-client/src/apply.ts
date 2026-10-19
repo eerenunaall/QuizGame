@@ -50,8 +50,11 @@ export function applyServerMessage(
         return state;
       const { data, phaseEnteredAt, phaseDeadlineAt } = message.payload;
       const resetReady = data.phase === 'LOBBY' || data.phase === 'COUNTDOWN';
+      const keepReward = data.phase === 'RESULTS';
       return {
         ...state,
+        venueReward: keepReward ? state.venueReward : null,
+        venueRewardWinner: keepReward ? state.venueRewardWinner : null,
         pendingAnswer: data.phase === 'ANSWERING' ? null : state.pendingAnswer,
         answerRejection: data.phase === 'ANSWERING' ? null : state.answerRejection,
         room: {
@@ -143,6 +146,16 @@ export function applyServerMessage(
 
     case 'UNLOCK_LINK':
       return { ...state, unlockLink: message.payload };
+
+    case 'VENUE_METER_CHANGED':
+      return withRoom(state, (room) => ({ ...room, venue: message.payload.venue }));
+
+    // A reward belongs to the results it was issued on; leaving them (PHASE_ENTERED) clears it.
+    case 'VENUE_REWARD':
+      return { ...state, venueReward: message.payload };
+
+    case 'VENUE_REWARD_ISSUED':
+      return { ...state, venueRewardWinner: { playerId: message.payload.playerId } };
 
     case 'PREP_PROGRESS':
       return withRoom(state, (room) => {

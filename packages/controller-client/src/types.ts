@@ -87,6 +87,10 @@ export interface ClientState {
   unlockLink: { url: string; expiresAt: number } | null;
   /** The last tier change, so a screen can celebrate an unlock or explain a refund once. */
   entitlement: { tier: 'FREE' | 'FULL'; reason: string; at: number } | null;
+  /** Venue mode (ADR-0024), player only: this phone's winner code; cleared when the results end. */
+  venueReward: { code: string; text: string; expiresAt: number } | null;
+  /** Venue mode, display only: who won a reward in the results on screen. */
+  venueRewardWinner: { playerId: string } | null;
 }
 
 export const INITIAL_CLIENT_STATE: ClientState = {
@@ -101,6 +105,8 @@ export const INITIAL_CLIENT_STATE: ClientState = {
   rttMs: null,
   unlockLink: null,
   entitlement: null,
+  venueReward: null,
+  venueRewardWinner: null,
 };
 
 export type CreatedRoom = CreateRoomResponse;
