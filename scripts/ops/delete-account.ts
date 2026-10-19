@@ -51,6 +51,8 @@ try {
       clock: systemClock,
       secret,
       sessions: new AccountSessionService(db, accounts, secret, systemClock),
+      // This tool only deletes; the export (which lists personal quizzes) is never called from here.
+      personalQuizzes: () => Promise.resolve([]),
       // `forget` only deletes the pending codes for the address; nothing is ever sent from here.
       otp: new OtpService(
         db,
