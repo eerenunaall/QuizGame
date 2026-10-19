@@ -20,13 +20,13 @@ Branch: `claude/cloud-session-infrastructure-ln57mp` · Last updated: 2026-10-19
 ## Test inventory (all run locally and in CI)
 | Layer | Command | Count |
 |---|---|---|
-| unit (packages, realtime, scripts) | `pnpm test` | 684 |
-| web (jsdom: web app screens, unlock page, admin console client, sign-in, question editor) | `pnpm test:web` | 154 |
-| integration (PostgreSQL) | `pnpm test:integration` | 261 |
-| websocket (real server, real sockets, static serving of both apps, TV unlock, the phone app runtime) | `pnpm test:ws` | 95 |
-| red team (ATTACK 1–34 map in `docs/RED_TEAM.md`) | `pnpm test:red-team` | 80 |
-| mobile (Jest + Testing Library: logic, state→UI mapping, purchase flows) | `pnpm test:mobile` | 132 |
-| browser E2E (real Chromium: TV + phones, reloads, drops, QR, remote keys, every power, report → console loop, TV unlock by phone, phone controller measurements) | `pnpm test:e2e` | 32 |
+| unit (packages, realtime, scripts) | `pnpm test` | 888 |
+| web (jsdom: web app screens, unlock page, admin console client, sign-in, question editor) | `pnpm test:web` | 190 |
+| integration (PostgreSQL) | `pnpm test:integration` | 263 |
+| websocket (real server, real sockets, static serving of both apps, TV unlock, the phone app runtime) | `pnpm test:ws` | 102 |
+| red team (ATTACK 1–35 map in `docs/RED_TEAM.md`) | `pnpm test:red-team` | 114 |
+| mobile (Jest + Testing Library: logic, state→UI mapping, purchase flows) | `pnpm test:mobile` | 147 |
+| browser E2E (real Chromium: TV + phones, reloads, drops, QR, remote keys, every power, report → console loop, TV unlock by phone, phone controller measurements) | `pnpm test:e2e` | 37 |
 
 The local gate is `format → lint → typecheck → unit → web → integration → websocket → red-team`,
 then `pnpm run build:web && pnpm run build:admin && pnpm test:e2e`.
