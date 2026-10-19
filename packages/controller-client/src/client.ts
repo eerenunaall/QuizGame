@@ -471,6 +471,9 @@ export class GameClient {
       case 'UNLOCK_LINK':
       case 'DISPLAY_STATUS':
       case 'ROOM_CLOSING':
+      case 'VENUE_METER_CHANGED':
+      case 'VENUE_REWARD':
+      case 'VENUE_REWARD_ISSUED':
         break;
     }
 
