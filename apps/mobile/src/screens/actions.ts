@@ -12,6 +12,8 @@ export interface ControllerActions {
   leave: () => void;
   /** RISK_PICK: stake and Double Down in one final message. Rejects with the server's code. */
   commitRisk: (choice: RiskChoice) => Promise<void>;
+  /** RISK_PICK: accept or decline a Duel challenge (ADR-0023). Rejects with the server's code. */
+  respondDuel?: (challengerId: string, accept: boolean) => Promise<void>;
   /** SABOTAGE_PICK: one sabotage, or none (`null`), in one final message. Rejects with the server's code. */
   commitSabotage: (choice: SabotageChoice) => Promise<void>;
   fifty: () => void;

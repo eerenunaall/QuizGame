@@ -11,6 +11,7 @@ import {
 } from '@quizparty/controller-client';
 import { ANSWER_LETTERS } from '@quizparty/ui-tokens';
 import { Body, Button, Center, ErrorText, Panel, TimerBar, Title } from '../ui/components';
+import { SABOTAGE_EMOJI } from '../ui/powerIcons';
 import { useI18n } from '../ui/i18n';
 import { TARGET, theme } from '../ui/theme';
 import type { ControllerActions } from './actions';
@@ -128,12 +129,19 @@ export function AnswerView({
       ) : fiftyBlock === 'LOCKED' ? (
         <Body tone="muted">{t('ctl.fifty.locked')}</Body>
       ) : null}
-      <TimerBar
-        now={now}
-        startAt={data.answerOpensAt}
-        deadlineAt={personalDeadline(data.answerDeadlineAt, effects)}
-        testID="answer-timer"
-      />
+      {effects?.blindClock ? (
+        // BLIND_CLOCK (ADR-0023): the countdown is gone from this phone, the TV's clock stays.
+        <Body tone="muted" testID="blind-clock">
+          {SABOTAGE_EMOJI.BLIND_CLOCK} {t('ctl.blindClock')}
+        </Body>
+      ) : (
+        <TimerBar
+          now={now}
+          startAt={data.answerOpensAt}
+          deadlineAt={personalDeadline(data.answerDeadlineAt, effects)}
+          testID="answer-timer"
+        />
+      )}
       <Text accessibilityLiveRegion="polite" style={styles.sr}>
         {pending ? t('ctl.answer.sending') : t('ctl.answer.pick')}
       </Text>

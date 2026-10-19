@@ -76,6 +76,7 @@ export function RoomContainer({ code }: { code: string }) {
         .then(() => router.replace('/'));
     },
     commitRisk: (choice) => client.commitRisk(choice),
+    respondDuel: (challengerId, accept) => client.respondDuel({ challengerId, accept }),
     commitSabotage: (choice) => client.commitSabotage(choice),
     fifty: () => void client.useFiftyFifty().catch(flash),
     submitStatement: (text) => client.submitStatement(text),

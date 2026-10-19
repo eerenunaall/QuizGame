@@ -442,7 +442,7 @@ export const tr = {
   'sabotage.STAKE_CAP': 'Bahis sınırı',
   'sabotage.STAKE_CAP.desc': 'Sonraki soruda en yüksek bahisleri Risk olur.',
   'sabotage.CUT': 'Kesme',
-  'sabotage.CUT.desc': 'Sonraki kazancının %{percent}’i sana geçer (en fazla {max}).',
+  'sabotage.CUT.desc': 'Sonraki kazancının %{percent} kadarı sana geçer (en fazla {max}).',
   'sabotage.BLIND_CLOCK': 'Kör saat',
   'sabotage.BLIND_CLOCK.desc': 'Telefonunda geri sayım gizlenir.',
   'ctl.hit.STAKE_CAP': 'Sonraki soruda en yüksek bahsin Risk!',

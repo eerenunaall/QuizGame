@@ -4,15 +4,28 @@ import type { Joker, PhaseDataOf, RiskTier, RoomView, SabotageKind } from '@quiz
 import {
   JOKER_ORDER,
   SABOTAGE_ORDER,
+  acceptBlock,
+  bigStake,
+  coverBlock,
+  coverFee,
+  cutBlock,
   defaultStake,
   doubleDownState,
+  duelBlock,
+  duelRivals,
+  potBlock,
+  sabotageKinds,
+  stakeCapOf,
+  stakeCapped,
   stakeExcludesDoubleDown,
   sabotageState,
   sabotageTargets,
+  type RiskChoice,
   type SabotageChoice,
 } from '@quizparty/controller-client';
 import { Body, Button, ErrorText, Panel, TimerBar, Title } from '../ui/components';
 import { useI18n } from '../ui/i18n';
+import { RISK_EMOJI, SABOTAGE_EMOJI } from '../ui/powerIcons';
 import { theme } from '../ui/theme';
 import type { ControllerActions } from './actions';
 
@@ -75,12 +88,36 @@ export function RiskView({
   const committed = you?.commitment ?? null;
   const [stake, setStake] = useState<RiskTier>(() => defaultStake(data));
   const [doubleDown, setDoubleDown] = useState(false);
+  const [cover, setCover] = useState(false);
+  const [pot, setPot] = useState(false);
+  const [rivalId, setRivalId] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const board = room.game?.scoreboard ?? [];
+  const playerCount = Math.max(board.length, room.players.length);
+  const myScore = board.find((entry) => entry.playerId === you?.playerId)?.score ?? 0;
+  const rivals = duelRivals(room.players, you?.playerId ?? '');
+  const accepted = (you?.duelInvites ?? []).some((invite) => invite.answer === 'ACCEPTED');
+  const playerName = (playerId: string): string =>
+    room.players.find((player) => player.playerId === playerId)?.nickname ?? '?';
+
   const ddBlock = doubleDownState(data, you);
-  // One big gamble per question: Double Down and the top stakes exclude each other (ADR-0021).
+  // One big gamble per question: Double Down, the top stakes and a Duel exclude each other (ADR-0021, ADR-0023).
   const ddConflict = stakeExcludesDoubleDown(data, stake);
+  const ddBase = doubleDown && ddBlock === null && !ddConflict && !accepted;
+  const duelReason =
+    duelBlock(data, you, { stake, doubleDown: ddBase }, rivals.length, playerCount) ??
+    (accepted ? 'BIG_GAMBLE' : null);
+  const rival = rivals.find((player) => player.playerId === rivalId);
+  const duelOn = rival !== undefined && duelReason === null;
+  const ddOn = ddBase && !duelOn;
+  const coverReason = coverBlock(data, you, { stake, doubleDown: ddOn });
+  const coverOn = cover && coverReason === null;
+  const potReason = potBlock(data, you, myScore, playerCount);
+  const potOn = pot && potReason === null;
+  const bigLocked = duelOn || accepted;
 
   const header = (
     <PickHeader
@@ -92,14 +129,83 @@ export function RiskView({
     />
   );
 
+  const respond = (challengerId: string, accept: boolean): void => {
+    actions.haptic?.('tap');
+    setError(null);
+    actions.respondDuel?.(challengerId, accept).catch((cause: unknown) => {
+      setError(td(`error.${(cause as { code?: string } | undefined)?.code ?? 'INTERNAL'}`));
+    });
+  };
+
+  const invites =
+    (you?.duelInvites ?? []).length > 0 && data.risks?.duel
+      ? (you?.duelInvites ?? []).map((invite) => {
+          const block = acceptBlock(data, you, committed);
+          return (
+            <Panel key={invite.challengerId}>
+              <Text style={styles.power} testID="duel-invite">
+                {RISK_EMOJI.duel} {t('ctl.duel.invite', { name: playerName(invite.challengerId) })}
+              </Text>
+              <Body tone="muted">
+                {invite.answer === 'ACCEPTED'
+                  ? t('ctl.duel.accepted')
+                  : invite.answer === 'DECLINED'
+                    ? t('ctl.duel.declined')
+                    : t('ctl.duel.inviteRule', {
+                        win: data.risks!.duel!.win,
+                        bothRight: data.risks!.duel!.bothRight,
+                      })}
+              </Body>
+              {invite.answer === null && block !== null && block !== 'OFF' ? (
+                <Body tone="muted">{td(`risk.block.${block}`)}</Body>
+              ) : null}
+              {invite.answer === null ? (
+                <View style={styles.row}>
+                  <Button
+                    testID="duel-accept"
+                    label={t('ctl.duel.accept')}
+                    disabled={block !== null}
+                    onPress={() => respond(invite.challengerId, true)}
+                  />
+                  <Button
+                    testID="duel-decline"
+                    variant="ghost"
+                    label={t('ctl.duel.decline')}
+                    onPress={() => respond(invite.challengerId, false)}
+                  />
+                </View>
+              ) : null}
+            </Panel>
+          );
+        })
+      : null;
+
   if (committed) {
     return (
       <View style={styles.screen} testID="ctl-risk-committed">
         {header}
+        {invites}
         <Panel>
           <Title>{t('ctl.prep.committed')}</Title>
           <Body>{td(`ctl.prep.stake.${committed.stake}`)}</Body>
           {committed.doubleDown ? <Body>{td('joker.DOUBLE_DOWN')}</Body> : null}
+          {committed.cover ? (
+            <Body>
+              {RISK_EMOJI.cover} {t('ctl.prep.cover.chip')}
+            </Body>
+          ) : null}
+          {committed.pot ? (
+            <Body>
+              {RISK_EMOJI.pot} {t('ctl.prep.pot.chip')}
+            </Body>
+          ) : null}
+          {committed.duel ? (
+            <Body>
+              {RISK_EMOJI.duel}{' '}
+              {t('ctl.prep.duel.chip', { name: playerName(committed.duel.targetId) })}
+            </Body>
+          ) : null}
+          {error ? <ErrorText testID="prep-error">{error}</ErrorText> : null}
           <Progress done={data.committedCount} total={data.eligibleCount} />
         </Panel>
       </View>
@@ -111,33 +217,78 @@ export function RiskView({
     setSending(true);
     setError(null);
     actions.haptic?.('tap');
+    const choice: RiskChoice = {
+      stake,
+      doubleDown: ddOn,
+      ...(coverOn ? { cover: true } : {}),
+      ...(potOn ? { pot: true } : {}),
+      ...(duelOn && rival ? { duel: { targetId: rival.playerId } } : {}),
+    };
     actions
-      .commitRisk({ stake, doubleDown: doubleDown && ddBlock === null && !ddConflict })
+      .commitRisk(choice)
       .catch((cause: unknown) => {
         setError(td(`error.${(cause as { code?: string } | undefined)?.code ?? 'INTERNAL'}`));
       })
       .finally(() => setSending(false));
   };
 
+  const cap = stakeCapOf(you);
+  const risks = data.risks;
+  const extra = (
+    id: 'cover' | 'pot' | 'duel',
+    on: boolean,
+    reason: string | null,
+    left: number,
+    hint: string,
+    onPress: () => void,
+  ) => (
+    <Panel key={id}>
+      <Text style={styles.power}>
+        {RISK_EMOJI[id]} {t(`risk.${id}`)}
+      </Text>
+      <Body tone="muted">{reason ?? hint}</Body>
+      <Button
+        testID={`risk-${id}`}
+        variant={on ? 'violet' : 'ghost'}
+        label={`${t(`risk.${id}`)} · ${t('ctl.prep.left', { count: left })}`}
+        disabled={reason !== null}
+        onPress={onPress}
+      />
+    </Panel>
+  );
+
   return (
     <ScrollView contentContainerStyle={styles.screen} testID="ctl-risk">
       {header}
+      {invites}
       <Title>{t('ctl.prep.title')}</Title>
       {data.stakeMandatory ? <Body tone="muted">{t('ctl.prep.mandatory')}</Body> : null}
+      {cap ? (
+        <Body tone="muted" testID="stake-cap-note">
+          {t('ctl.prep.stakeCap', { tier: td(`ctl.prep.stake.${cap}`) })}
+        </Body>
+      ) : null}
       <View accessibilityRole="radiogroup" style={styles.ladder}>
         {data.riskLadder.map((rung) => {
           const selected = rung.tier === stake;
+          const capped = stakeCapped(you, rung.tier);
           return (
             <Button
               key={rung.tier}
               testID={`stake-${rung.tier}`}
               variant={selected ? 'gold' : 'ghost'}
               label={`${td(`ctl.prep.stake.${rung.tier}`)} ×${rung.multiplier} · ${
-                rung.loss > 0
-                  ? t('ctl.prep.stake.loss', { loss: rung.loss })
-                  : t('ctl.prep.stake.noLoss')
+                capped
+                  ? t('ctl.prep.stake.capped')
+                  : rung.loss > 0
+                    ? t('ctl.prep.stake.loss', { loss: rung.loss })
+                    : t('ctl.prep.stake.noLoss')
               }`}
-              disabled={doubleDown && ddBlock === null && stakeExcludesDoubleDown(data, rung.tier)}
+              disabled={
+                capped ||
+                (ddOn && stakeExcludesDoubleDown(data, rung.tier)) ||
+                (bigLocked && bigStake(data, rung.tier))
+              }
               onPress={() => setStake(rung.tier)}
             />
           );
@@ -153,18 +304,81 @@ export function RiskView({
               ? t('ctl.prep.none')
               : ddBlock === 'CLOSED'
                 ? t('ctl.prep.sabotage.closed')
-                : ddConflict
-                  ? t('ctl.prep.doubleDown.conflict')
-                  : t('ctl.prep.doubleDown.hint')}
+                : bigLocked
+                  ? t('risk.block.BIG_GAMBLE')
+                  : ddConflict
+                    ? t('ctl.prep.doubleDown.conflict')
+                    : t('ctl.prep.doubleDown.hint')}
         </Body>
         <Button
           testID="double-down"
-          variant={doubleDown && !ddConflict ? 'violet' : 'ghost'}
+          variant={ddOn ? 'violet' : 'ghost'}
           label={`${td('joker.DOUBLE_DOWN')} · ${t('ctl.prep.left', { count: you?.powers?.doubleDown ?? 0 })}`}
-          disabled={ddBlock !== null || ddConflict}
+          disabled={ddBlock !== null || ddConflict || bigLocked}
           onPress={() => setDoubleDown(!doubleDown)}
         />
       </Panel>
+
+      {risks?.cover
+        ? extra(
+            'cover',
+            coverOn,
+            coverReason === null ? null : td(`risk.block.${coverReason}`),
+            you?.powers?.cover ?? 0,
+            t('risk.cover.hint', { fee: coverFee(data, { stake, doubleDown: ddOn }) }),
+            () => setCover(!cover),
+          )
+        : null}
+      {risks?.pot
+        ? extra(
+            'pot',
+            potOn,
+            potReason === null ? null : td(`risk.block.${potReason}`, { ante: risks.pot.ante }),
+            you?.powers?.pot ?? 0,
+            t('risk.pot.hint', { ante: risks.pot.ante }),
+            () => setPot(!pot),
+          )
+        : null}
+      {risks?.duel
+        ? extra(
+            'duel',
+            duelOn,
+            duelReason === null ? null : td(`risk.block.${duelReason}`),
+            you?.powers?.duel ?? 0,
+            duelOn && rival
+              ? t('ctl.duel.rival', { name: rival.nickname })
+              : t('risk.duel.hint', { win: risks.duel.win }),
+            () => setPicking(!picking),
+          )
+        : null}
+      {picking && risks?.duel ? (
+        <View style={styles.ladder} testID="duel-picker">
+          <Title>{t('ctl.duel.pick')}</Title>
+          {rivals.map((player) => (
+            <Button
+              key={player.playerId}
+              testID={`duel-rival-${player.nickname}`}
+              variant={rivalId === player.playerId ? 'gold' : 'ghost'}
+              label={player.nickname}
+              onPress={() => {
+                setRivalId(player.playerId);
+                setPicking(false);
+              }}
+            />
+          ))}
+          {rivalId ? (
+            <Button
+              testID="duel-clear"
+              variant="ghost"
+              label={t('ctl.sabotage.skip')}
+              onPress={() => {
+                setRivalId(null);
+                setPicking(false);
+              }}
+            />
+          ) : null}
+        </View>
+      ) : null}
 
       {error ? <ErrorText testID="prep-error">{error}</ErrorText> : null}
       <Button
@@ -258,6 +472,9 @@ export function SabotageView({
     return (
       <SabotagePicker
         players={sabotageTargets(room.players, you.playerId)}
+        kinds={sabotageKinds(data)}
+        cutRule={data.cutRule}
+        scoreboard={room.game?.scoreboard ?? []}
         current={sabotage}
         onPick={(choice) => {
           setSabotage(choice);
@@ -330,11 +547,17 @@ type Step = 'who' | 'what' | 'which';
 /** Who → what → (for LOCKOUT) which joker; the same three steps as the browser sheet. */
 export function SabotagePicker({
   players,
+  kinds,
+  cutRule,
+  scoreboard,
   current,
   onPick,
   onClose,
 }: {
   players: RoomView['players'];
+  kinds: readonly SabotageKind[];
+  cutRule: { permille: number; maxPoints: number } | undefined;
+  scoreboard: readonly { playerId: string; score: number; rank: number }[];
   current: SabotageChoice['sabotage'];
   onPick: (choice: SabotageChoice['sabotage']) => void;
   onClose: () => void;
@@ -373,21 +596,35 @@ export function SabotagePicker({
           ))
         : null}
       {step === 'what'
-        ? SABOTAGE_ORDER.map((kind) => (
-            <View key={kind} style={styles.option}>
-              <Button
-                testID={`sabotage-effect-${kind}`}
-                variant="ghost"
-                label={td(`sabotage.${kind}`)}
-                onPress={() => {
-                  setEffect(kind);
-                  if (kind === 'LOCKOUT') setStep('which');
-                  else onPick({ targetId: targetId ?? '', effect: kind });
-                }}
-              />
-              <Body tone="muted">{td(`sabotage.${kind}.desc`)}</Body>
-            </View>
-          ))
+        ? SABOTAGE_ORDER.filter((kind) => kinds.includes(kind)).map((kind) => {
+            // Cut never aims at the leader or at somebody with no points: the card says why.
+            const block = kind === 'CUT' && targetId ? cutBlock(scoreboard, targetId) : null;
+            return (
+              <View key={kind} style={styles.option}>
+                <Button
+                  testID={`sabotage-effect-${kind}`}
+                  variant="ghost"
+                  label={`${SABOTAGE_EMOJI[kind]} ${td(`sabotage.${kind}`)}`}
+                  disabled={block !== null}
+                  onPress={() => {
+                    setEffect(kind);
+                    if (kind === 'LOCKOUT') setStep('which');
+                    else onPick({ targetId: targetId ?? '', effect: kind });
+                  }}
+                />
+                <Body tone="muted">
+                  {block === 'LEADER'
+                    ? t('ctl.sabotage.cut.leader')
+                    : block === 'NO_POINTS'
+                      ? t('ctl.sabotage.cut.noPoints')
+                      : td(`sabotage.${kind}.desc`, {
+                          percent: Math.round((cutRule?.permille ?? 200) / 10),
+                          max: cutRule?.maxPoints ?? 30,
+                        })}
+                </Body>
+              </View>
+            );
+          })
         : null}
       {step === 'which'
         ? JOKER_ORDER.map((joker) => (
@@ -418,4 +655,5 @@ const styles = StyleSheet.create({
   ladder: { gap: spacing.sm },
   power: { color: theme.colors.text, fontSize: 20, fontWeight: '800' },
   option: { gap: spacing.xs },
+  row: { flexDirection: 'row', gap: spacing.sm },
 });
