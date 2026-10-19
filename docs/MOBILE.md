@@ -22,7 +22,7 @@ Root `pnpm check` also lints and typechecks the app (no Jest there; Jest runs in
 |---|---|
 | `app/` | expo-router routes (thin): `/`, `/join`, `/join/[code]`, `/j/[code]` (short link), `/room/[code]`, `/unlock/[id]`, `/purchase`, `/profile`, `+not-found`, `+native-intent.ts` (validates every system URL) |
 | `src/core/` | no React Native imports, so the protocol test runs it in Node: `runtime.ts` (wires `GameClient`), `links.ts`, `api.ts`, `auth.ts`, `purchases.ts` (`PurchaseProvider`, `PurchaseFlow`), `config.ts`, `association.ts`, `banner.ts` |
-| `src/screens/` | pure, prop-driven screens: Home, Join, Lobby, Prep (stake / Double Down / sabotage), Answer (50/50, SHUFFLE, FOG, JAM), Reveal / Score / Results, Reconnect banner, Purchase, Profile, SignIn, Unlock, Invalid link |
+| `src/screens/` | pure, prop-driven screens: Home, Join, Lobby, Prep (stake / Double Down / Cover / Pot / Duel invite and challenge / sabotage menu), Answer (50/50, SHUFFLE, FOG, JAM, Blind Clock), Reveal / Score / Results, Reconnect banner, Purchase, Profile, SignIn, Unlock, Invalid link |
 | `src/containers/`, `src/native/` | the only code that touches the router, SecureStore, haptics and `expo-iap` |
 | `app.config.ts` | env-driven (`QP_API_URL`, `QP_WS_URL`, `QP_WEB_URL`, `QP_BUNDLE_ID`, `QP_ANDROID_PACKAGE`, `QP_PRODUCT_ID`); production profile refuses cleartext URLs and placeholder ids |
 | `association/*.template.json` | shape of the two association files with `OWNER-TO-FILL` markers (the real ones are generated) |
@@ -34,7 +34,7 @@ No secrets live in the app: only public URLs and identifiers. Account token and 
 | Claim | Evidence |
 |---|---|
 | Phase → screen mapping, every phase | Jest `ControllerScreen.test.tsx`, `PickViews.test.tsx` (fixtures from `controller-client`) |
-| Stake / Double Down / sabotage commit exactly what the server accepts; 50/50, SHUFFLE, FOG, lockout states | Jest `PickViews.test.tsx`, `ControllerScreen.test.tsx` |
+| Stake / Double Down / sabotage commit exactly what the server accepts; 50/50, SHUFFLE, FOG, lockout states | Jest `PickViews.test.tsx`, `PickViews.risks.test.tsx` (ADR-0023), `ControllerScreen.test.tsx` |
 | Join form, reconnect banner states, purchase screen, profile (sign out, export, two-step delete), sign-in | Jest `screens.test.tsx` |
 | Link parsing incl. malicious URLs; `app.config.ts` links; association files | Jest `links.test.ts`, `config.test.ts`, `association.test.ts` |
 | Purchase flows A/B/C: bound to the server's account token, finished only after the server confirms, restore, crash recovery, refusal paths | Jest `purchases.test.ts` (scripted store, scripted HTTP) |

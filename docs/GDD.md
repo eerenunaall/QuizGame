@@ -736,6 +736,30 @@ Sabotage constraints:
 - accessibility mode can disable disorienting effects
 - all sabotage is presentation/decision manipulation, never fraudulent answer/result manipulation
 
+Added by ADR-0023 (each can be switched off in the venue config; one sabotage token for all):
+
+- Stake Cap (TR Bahis Sınırı): the target's highest stake in the next question is Risk. Never into the final stage.
+- Cut (TR Kesme): 20 % of the target's next gain, at most 30, goes to the attacker. Never aimed at the current
+  leader or at a player with no points; lapses after three rounds; not on a target who already carries a Tax.
+- Blind Clock (TR Kör Saat): the target's phone hides its countdown for one question; the TV's clock stays.
+
+## 7.6a More risks (ADR-0023)
+
+Chosen in RISK TIME together with the stake. Each is individually switchable. Rules and numbers in
+`docs/RISK_SABOTAGE_RESEARCH.md` R1, R2, R5; decisions and the interaction table in ADR-0023.
+
+- **Cover (Örtü)**: pay half of the stake's loss now; a wrong or missing answer then loses nothing else. One per
+  game, only on a stake with something to lose, not with Double Down.
+- **Duel (Düello)**: challenge one rival; they may accept or decline in the same phase, so it only happens when
+  both want it. Exactly one right: 80 points move. Both right: the faster takes 40. Both wrong: nothing. Two
+  challenges a game, never the same rival twice. Not with HIGH, ALL_IN or Double Down.
+- **Pot (Havuz)**: ante 30; everybody in the pot who is right splits it, the fastest gets the remainder. At
+  least three players; nobody right or too few: antes back. Two per game.
+
+"One big gamble per question" now reads: HIGH, ALL_IN, Double Down and a Duel are the big ones, and a player
+holds at most one. Pot, Cover and 50/50 are small and may join any of them. Duel, Pot and Cut only move points
+between players; Cover costs a fee. None of them can lift a gain over the 3x (final 5x) ceiling.
+
 ## 7.7 Crowd Question
 
 All players answer.
@@ -813,7 +837,9 @@ WAITING
 
 ### Risk time and Sabotage time (ADR-0022)
 Before each question the table gets two separate, clearly timed screens instead of one rushed window.
-**RISK TIME** (`RISK_PICK`, 12 s; 16 s in RISK and FINAL rounds): everyone picks a stake and may Double Down.
+**RISK TIME** (`RISK_PICK`, 12 s; 16 s in RISK and FINAL rounds): everyone picks a stake and may Double Down,
+take Cover, join the Pot or challenge a rival to a Duel (ADR-0023); a challenged player answers the invitation on
+the same screen.
 **SABOTAGE TIME** (`SABOTAGE_PICK`, 12 s): players with a token may hit a rival, or pass. Each has a loud TV title
 (TR "RİSK ZAMANI" / "SABOTAJ ZAMANI", EN "RISK TIME" / "SABOTAGE TIME"), a big countdown ring, a one-line rule and
 "who has locked in" shown only as a count of ticks, never which player chose what before the resolution screen. A

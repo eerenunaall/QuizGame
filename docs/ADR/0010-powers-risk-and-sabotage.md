@@ -82,3 +82,4 @@ sabotage sequence, every active player keeps â‰¥ 80 % of the answer window and â
   (blocked or not) is a row in `sabotage_events`.
 - **Director.** `recentRiskTakePermille` is now the share of the room that took a stake above the
   default or doubled down, which drives risk rounds.
+- **Extended by ADR-0023:** Cover, Duel, Pot (RISK_PICK) and Stake Cap, Cut, Blind Clock (SABOTAGE_PICK), each with its own config switch; "one big gamble per question" now includes Duel.

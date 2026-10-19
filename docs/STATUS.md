@@ -38,9 +38,25 @@ rounds, `sabotagePickMs` 12 s, all optional in the config), a dedicated TV scree
 rule, tick count only) and dedicated phone screens (`RiskScreen`, `SabotageScreen` with a calm wait screen for
 players who cannot act). Intents are `COMMIT_RISK` / `COMMIT_SABOTAGE`, legal only in their own phase
 (`INVALID_STATE` otherwise); a phase nobody can act in is skipped and early advance waits only for players who
-can act. `apps/mobile` renders both phases (`PickViews`); full parity of the sabotage cards is still open.
+can act. `apps/mobile` renders both phases (`PickViews`) and, since ADR-0023, the new risks and sabotages.
 Old data: `QUESTION_PREP` stays in the enum and is treated as `RISK_PICK`. Tests: `reducer.picks.test.ts`, ws/red-team
 `powers`, e2e `picks.spec.ts`.
+
+## New risks and sabotages (ADR-0023)
+The research shortlist is built and each item has its own config switch (`powers.<name>.enabled`, default on, all
+optional so old snapshots parse; config version 3): **Cover (Örtü)**, an opt-in **Duel (Düello)** (the rival accepts or
+declines in the same RISK_PICK via `RESPOND_DUEL`) and **Pot (Havuz)** in RISK_PICK, **Stake Cap (Bahis Sınırı)**, **Cut
+(Kesme)** (never the leader, never a player with no points) and **Blind Clock (Kör Saat)** in SABOTAGE_PICK. One big
+gamble per question now covers HIGH, ALL_IN, Double Down and Duel (interaction table in ADR-0023, enforced in
+`checkRisk` and asserted by a test over all 48 combinations). Pot, Duel and Cut only move points (property-tested to
+sum to zero); Cover costs a fee. TV: POWER_RESOLUTION shows Cover, Pot, Duel and paid Cuts; RISK TIME lists the extras;
+SABOTAGE TIME lists the menu. Phones (web and native): cards in the existing power-card style, disabled with a one-line
+reason, the Duel invite on the rival's phone, Cut greyed on the leader, a Blind Clock tile instead of the countdown. New
+original inline-SVG icons (web) and emoji (native). Migration 0008. Tests: engine `scoring.risks`, `risks`,
+`reducer.risks`, `reducer.sabotage-new`, `reducer.risks.property`; web `RiskExtras`, `SabotageNew`, `power`; mobile
+`PickViews.risks`; ws `risks`; red-team ATTACK 35 (`risks.test.ts`); e2e `risks.spec.ts`. Not built from the research:
+the second wave (Two-Step, Trim, Steam, Mirror, Spotlight, Backer, Herd, Rush). Not verified: balance in real play and
+the native app on a device.
 
 ## Recent balance change
 ADR-0021 (power limits): Double Down is refused with HIGH / ALL_IN (`DOUBLE_DOWN_STAKE_CONFLICT`), gains

@@ -4,7 +4,7 @@ The wire contract lives in `packages/protocol` (zod, `.strict()` outbound schema
 a client author needs that is not obvious from the types. ADR-0008 explains the design.
 
 ## WebSocket (`/ws`)
-- Inbound intents: `JOIN`, `HEARTBEAT`, host commands, `ANSWER`, `COMMIT_RISK`, `COMMIT_SABOTAGE`, `USE_FIFTY_FIFTY`,
+- Inbound intents: `JOIN`, `HEARTBEAT`, host commands, `ANSWER`, `COMMIT_RISK`, `RESPOND_DUEL`, `COMMIT_SABOTAGE`, `USE_FIFTY_FIFTY`,
   `SET_PREFERENCES`, and `REPORT_QUESTION { questionId, reason }`.
 - `REPORT_QUESTION` is accepted only from a **player** (not the TV), only for the question of the current
   round, and only in REVEAL, POWER_RESOLUTION, SCORE_UPDATE or MICRO_INTERMISSION. `reason` is one of
@@ -64,7 +64,17 @@ Each round runs `ROUND_INTRO` (or `FINAL`) → `RISK_PICK` → `SABOTAGE_PICK` �
 - Phase data: `RISK_PICK` carries the ladder and powers as `QUESTION_PREP` did; `SABOTAGE_PICK` carries `round`, `category`, `difficulty`, `committedCount`, `eligibleCount`. `PREP_PROGRESS { committedCount, eligibleCount }` follows whichever of the two is current. Counts only: never who committed or what (ATTACK 27); in `SABOTAGE_PICK` `eligibleCount` is everybody online, not only token holders.
 - `you.sabotage { ready, decided }` (optional, private): the player can sabotage right now (token, cooldown over, a legal target) and has/has not confirmed.
 - Timers: `timings.riskPickMs` (12 000), `riskPickDecisionMs` (16 000, RISK and FINAL rounds), `sabotagePickMs` (12 000); all optional in the config, with those defaults.
+- `you.sabotage { ready, decided }` (above) is unchanged. ADR-0023 adds, all optional and backwards compatible, the items below.
 - `QUESTION_PREP` is retired: still in the `PHASES` enum and its phase-data schema so stored data and old clients parse, never emitted; clients treat a received one as `RISK_PICK`.
+
+### New risks and sabotages (ADR-0023)
+- `COMMIT_RISK { stake, doubleDown, cover?, pot?, duel?: { targetId } | null }`: Cover (a fee for a waived stake loss), Pot (an ante into the question's pot) and a Duel challenge, committed with the stake and just as final and all-or-nothing. `RESPOND_DUEL { challengerId, accept }`: the challenged player's reply, only in `RISK_PICK` (`INVALID_STATE` elsewhere); `POWER_UNAVAILABLE` when that player did not challenge you (forged or replayed to a third party), `ALREADY_COMMITTED` for a second reply to the same challenge. No reply by the end of the phase = declined.
+- Errors: `BIG_GAMBLE_CONFLICT` (a Duel with HIGH/ALL_IN/Double Down, Cover with Double Down, accepting or taking a big gamble while holding another), `DUEL_LIMIT` (a rival already fought, or a second accepted Duel). `STAKE_INVALID` also covers Cover on a rung with nothing to lose and a stake above a Stake Cap. `TARGET_INVALID` also covers a Duel at yourself, a stranger or an offline player, and Cut at the leader or at a player with no points. `SABOTAGE_LIMIT` covers a Stake Cap that cannot bite (next question in the final stage) and a second economy hit (Cut / POINT_TAX) on one target. `POWER_UNAVAILABLE` covers a switched-off feature or a used-up counter.
+- `SabotageKind` += `STAKE_CAP`, `CUT`, `BLIND_CLOCK`. Score components += `COVER_FEE`, `POT`, `DUEL`, `CUT` (so the components of a delta still sum to it).
+- `RISK_PICK` phase data: `risks { cover: boolean, duel: { win, bothRight } | null, pot: { ante, minPlayers } | null }` (config, the same for everybody; absent from older servers) and `riskLadder[].coverFee`. `SABOTAGE_PICK` phase data: `offered` (the menu in display order: switched on and legal this round) and `cutRule { permille, maxPoints }`; absent = the five original sabotages.
+- `YouView` (private): `powers.{cover, duel, pot}` uses left, `powers.stakeCap` (the highest stake allowed this round), `commitment.{cover, pot, duel}`, `duelInvites [{ challengerId, answer: 'ACCEPTED' | 'DECLINED' | null }]` (only the challenged player), `effects.blindClock`. `hits` and POWER_RESOLUTION list the new effects like any other.
+- `POWER_RESOLUTION` items: `COVER { playerId, outcome, fee, saved }`, `POT { playerIds, winnerIds, size, refunded }`, `DUEL { challengerId, rivalId, accepted, winnerId, points }`, `CUT { actorId, targetId, points }` (the points a paid Cut moved). Their content is public only here, after the reveal.
+- A `RISK_PICK` waits for a connected challenged player to reply; `PREP_PROGRESS` stays a bare count (a challenged player is "not done" until they reply). Switches and numbers: `GameConfig.powers.{cover,duel,pot,stakeCap,cut,blindClock}`, each with `enabled` (all optional, default on).
 
 Purchase errors: `PURCHASE_INVALID` (422), `PURCHASE_ACCOUNT_MISMATCH` (403), `TRANSACTION_ALREADY_BOUND` (409),
 `PURCHASE_PENDING` (409), `PURCHASE_REFUNDED` (410), `STORE_UNAVAILABLE` (503, retry).

@@ -1,6 +1,6 @@
 # Risk and sabotage variety — research and proposal
 
-Status: proposal for owner review (no code changed) · Date: 2026-10-19
+Status: proposal for owner review · Date: 2026-10-19 · **Update:** the section 5 shortlist (Cover, Duel, Pot, Stake Cap, Cut, Blind Clock) is built; decisions on section 6 and deviations are in ADR-0023. The text below is the original proposal.
 Builds on: ADR-0007 (scoring), ADR-0010 (powers), ADR-0020 (visual direction), ADR-0021 (one big gamble),
 GDD §7.3-7.6 and §13. Engine facts below were read from `packages/game-engine/src/{config,powers,scoring}.ts`.
 
