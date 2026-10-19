@@ -396,7 +396,11 @@ describe('ATTACK 35 — what an attacker can learn', () => {
       'the invite on b',
     );
     for (const watcher of watchers) {
-      const seen = JSON.stringify(watcher.messages.slice(marks.get(watcher)).map((m) => m.payload));
+      // `risks` is what the phase offers (config, the same for everybody), not what anybody chose.
+      const seen = JSON.stringify(
+        watcher.messages.slice(marks.get(watcher)).map((m) => m.payload),
+        (key, value: unknown) => (key === 'risks' ? undefined : value),
+      );
       for (const secret of [
         'duelInvites',
         'challengerId',

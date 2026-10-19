@@ -151,7 +151,11 @@ describe('Cover and Pot over sockets', () => {
     await inPhase(server, party, 'ANSWERING', 1);
     expect(lastYou(p0).commitment).toMatchObject({ cover: true, pot: true });
     for (const client of [party.display, p1, p2]) {
-      const seen = JSON.stringify(client.messages.slice(before.get(client)).map((m) => m.payload));
+      // `risks` is what the phase offers (config, the same for everybody), not what anybody chose.
+      const seen = JSON.stringify(
+        client.messages.slice(before.get(client)).map((m) => m.payload),
+        (key, value: unknown) => (key === 'risks' ? undefined : value),
+      );
       expect(seen).not.toContain('"cover":true');
       expect(seen).not.toContain('"pot":true');
       expect(seen).not.toContain(p0.playerId!.concat('","answer'));

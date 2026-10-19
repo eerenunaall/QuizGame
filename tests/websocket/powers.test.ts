@@ -203,7 +203,10 @@ describe('a powered game over real WebSockets', () => {
       0,
       uninvolved.findIndex((m) => m.type === 'PHASE_ENTERED' && m.payload.data.phase === 'REVEAL'),
     );
-    expect(JSON.stringify(early)).not.toContain('JAM');
+    // `offered` is the menu of what may be picked (config, ADR-0023), the same for everybody: not a pick.
+    const withoutMenu = (value: unknown) =>
+      JSON.stringify(value, (key, entry: unknown) => (key === 'offered' ? undefined : entry));
+    expect(withoutMenu(early)).not.toContain('JAM');
     expect(JSON.stringify(early)).not.toContain(p1.playerId!.concat('"actor'));
 
     const attack = await party.display.waitForPhase('POWER_RESOLUTION', 8_000);

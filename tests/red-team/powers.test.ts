@@ -330,7 +330,11 @@ describe("what an attacker can learn about other players' powers", () => {
     const snapshot = await attacker.nextOfType('ROOM_STATE');
     expect(snapshot.payload.room.you?.playerId).toBe(attacker.playerId);
     expect(snapshot.payload.room.you?.commitment).toMatchObject({ stake: 'SAFE', sabotage: null });
-    const everything = JSON.stringify(attacker.frames);
+    // `offered` is the sabotage menu (config, ADR-0023), the same for everybody: not anybody's pick.
+    const everything = JSON.stringify(
+      attacker.frames.map((frame) => JSON.parse(frame) as unknown),
+      (key, entry: unknown) => (key === 'offered' ? undefined : entry),
+    );
     expect(everything).not.toContain('POINT_TAX');
     expect(everything).not.toContain('"stake":"HIGH"');
     for (const message of attacker.messages) {
