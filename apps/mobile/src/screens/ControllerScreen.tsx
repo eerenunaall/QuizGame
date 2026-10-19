@@ -2,7 +2,7 @@ import { Text } from 'react-native';
 import type { ClientState } from '@quizparty/controller-client';
 import { AnswerView } from './AnswerView';
 import { LobbyView } from './LobbyView';
-import { PrepView } from './PrepView';
+import { RiskView, SabotageView } from './PickViews';
 import { ResultsView, RevealView, ScoreView } from './ResultsViews';
 import type { ControllerActions } from './actions';
 import { Body, Button, Center, Title } from '../ui/components';
@@ -58,11 +58,22 @@ export function ControllerScreen({
       );
     case 'FINAL':
       return lookAtTv('ctl-final', t('game.final.title'));
-    case 'QUESTION_PREP':
+    case 'QUESTION_PREP': // retired phase (ADR-0022): a recovered room carries on as RISK_PICK
+    case 'RISK_PICK':
       return you?.authorOfRound ? (
         sitOut()
       ) : (
-        <PrepView key={data.round.index} room={room} data={data} now={now} actions={actions} />
+        <RiskView
+          key={data.round.index}
+          room={room}
+          data={{ ...data, phase: 'RISK_PICK' }}
+          now={now}
+          actions={actions}
+        />
+      );
+    case 'SABOTAGE_PICK':
+      return (
+        <SabotageView key={data.round.index} room={room} data={data} now={now} actions={actions} />
       );
     case 'QUESTION':
       return (

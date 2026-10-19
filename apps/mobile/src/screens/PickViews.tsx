@@ -9,27 +9,64 @@ import {
   stakeExcludesDoubleDown,
   sabotageState,
   sabotageTargets,
-  type PrepChoice,
+  type SabotageChoice,
 } from '@quizparty/controller-client';
 import { Body, Button, ErrorText, Panel, TimerBar, Title } from '../ui/components';
 import { useI18n } from '../ui/i18n';
 import { theme } from '../ui/theme';
 import type { ControllerActions } from './actions';
 
-type PrepData = PhaseDataOf<'QUESTION_PREP'>;
+type RiskData = PhaseDataOf<'RISK_PICK'>;
+type SabotageData = PhaseDataOf<'SABOTAGE_PICK'>;
+
+/** Category row, a loud title, the clock and a one-line rule: the top of both timed pick screens (ADR-0022). */
+function PickHeader({
+  room,
+  data,
+  now,
+  title,
+  rule,
+}: {
+  room: RoomView;
+  data: RiskData | SabotageData;
+  now: () => number;
+  title: string;
+  rule: string;
+}) {
+  const { t, td } = useI18n();
+  return (
+    <View>
+      <Body tone="muted">
+        {t('game.round.of', { n: data.round.index + 1, total: data.round.total })} ·{' '}
+        {td(`game.kind.${data.round.kind}`)} · {data.category.label}
+      </Body>
+      <Title testID="pick-title">{title}</Title>
+      <Body tone="muted">{rule}</Body>
+      {room.phaseDeadlineAt !== null ? (
+        <TimerBar now={now} startAt={room.phaseEnteredAt} deadlineAt={room.phaseDeadlineAt} />
+      ) : null}
+    </View>
+  );
+}
+
+/** One line: how many players have locked in. A count only, never who (ATTACK 27). */
+function Progress({ done, total }: { done: number; total: number }) {
+  const { t } = useI18n();
+  return <Body tone="muted">{t('ctl.prep.waiting', { done, total: Math.max(total, done) })}</Body>;
+}
 
 /**
- * QUESTION_PREP: stake (risk), Double Down and at most one sabotage, committed together and final
- * once sent (ADR-0010). The category is known, the question is not.
+ * RISK_PICK: stake (risk) and Double Down, committed together and final once sent (ADR-0010,
+ * ADR-0022). The category is known, the question is not.
  */
-export function PrepView({
+export function RiskView({
   room,
   data,
   now,
   actions,
 }: {
   room: RoomView;
-  data: PrepData;
+  data: RiskData;
   now: () => number;
   actions: ControllerActions;
 }) {
@@ -38,67 +75,34 @@ export function PrepView({
   const committed = you?.commitment ?? null;
   const [stake, setStake] = useState<RiskTier>(() => defaultStake(data));
   const [doubleDown, setDoubleDown] = useState(false);
-  const [sabotage, setSabotage] = useState<PrepChoice['sabotage']>(null);
-  const [picking, setPicking] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const ddBlock = doubleDownState(data, you);
   // One big gamble per question: Double Down and the top stakes exclude each other (ADR-0021).
   const ddConflict = stakeExcludesDoubleDown(data, stake);
-  const sabBlock = sabotageState(data, you);
-  const byId = new Map(room.players.map((player) => [player.playerId, player]));
 
   const header = (
-    <View>
-      <Body tone="muted">
-        {t('game.round.of', { n: data.round.index + 1, total: data.round.total })} ·{' '}
-        {td(`game.kind.${data.round.kind}`)}
-      </Body>
-      <Title>{data.category.label}</Title>
-      <Body tone="muted">{td(`game.difficulty.${data.difficulty}`)}</Body>
-    </View>
+    <PickHeader
+      room={room}
+      data={data}
+      now={now}
+      title={t('tv.risk.title')}
+      rule={t('ctl.risk.rule')}
+    />
   );
 
   if (committed) {
-    const target = committed.sabotage ? byId.get(committed.sabotage.targetId) : undefined;
     return (
-      <View style={styles.screen} testID="ctl-prep-committed">
+      <View style={styles.screen} testID="ctl-risk-committed">
         {header}
         <Panel>
           <Title>{t('ctl.prep.committed')}</Title>
           <Body>{td(`ctl.prep.stake.${committed.stake}`)}</Body>
           {committed.doubleDown ? <Body>{td('joker.DOUBLE_DOWN')}</Body> : null}
-          {committed.sabotage && target ? (
-            <Body>
-              {t('ctl.prep.sabotageTo', {
-                effect: td(`sabotage.${committed.sabotage.effect}`),
-                name: target.nickname,
-              })}
-            </Body>
-          ) : null}
-          <Body tone="muted">
-            {t('ctl.prep.waiting', {
-              done: data.committedCount,
-              total: Math.max(data.eligibleCount, data.committedCount),
-            })}
-          </Body>
+          <Progress done={data.committedCount} total={data.eligibleCount} />
         </Panel>
       </View>
-    );
-  }
-
-  if (picking) {
-    return (
-      <SabotagePicker
-        players={sabotageTargets(room.players, you?.playerId ?? '')}
-        current={sabotage}
-        onPick={(choice) => {
-          setSabotage(choice);
-          setPicking(false);
-        }}
-        onClose={() => setPicking(false)}
-      />
     );
   }
 
@@ -108,7 +112,7 @@ export function PrepView({
     setError(null);
     actions.haptic?.('tap');
     actions
-      .commit({ stake, doubleDown: doubleDown && ddBlock === null && !ddConflict, sabotage })
+      .commitRisk({ stake, doubleDown: doubleDown && ddBlock === null && !ddConflict })
       .catch((cause: unknown) => {
         setError(td(`error.${(cause as { code?: string } | undefined)?.code ?? 'INTERNAL'}`));
       })
@@ -116,7 +120,7 @@ export function PrepView({
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.screen} testID="ctl-prep">
+    <ScrollView contentContainerStyle={styles.screen} testID="ctl-risk">
       {header}
       <Title>{t('ctl.prep.title')}</Title>
       {data.stakeMandatory ? <Body tone="muted">{t('ctl.prep.mandatory')}</Body> : null}
@@ -162,31 +166,6 @@ export function PrepView({
         />
       </Panel>
 
-      <Panel>
-        <Text style={styles.power}>{t('ctl.prep.sabotage')}</Text>
-        <Body tone="muted">
-          {sabotage
-            ? t('ctl.prep.sabotageTo', {
-                effect: td(`sabotage.${sabotage.effect}`),
-                name: byId.get(sabotage.targetId)?.nickname ?? '',
-              })
-            : sabBlock === 'NO_TOKEN'
-              ? you?.powers?.nextTokenAtStreak
-                ? t('ctl.prep.sabotage.noToken', { streak: you.powers.nextTokenAtStreak })
-                : t('ctl.prep.sabotage.noTokenLeft')
-              : sabBlock === 'CLOSED'
-                ? t('ctl.prep.sabotage.closed')
-                : t('ctl.prep.sabotage.hint')}
-        </Body>
-        <Button
-          testID="sabotage-open"
-          variant={sabotage ? 'violet' : 'ghost'}
-          label={`${t('ctl.prep.sabotage')} · ${t('ctl.prep.sabotage.tokens', { count: you?.powers?.sabotageTokens ?? 0 })}`}
-          disabled={sabBlock !== null}
-          onPress={() => setPicking(true)}
-        />
-      </Panel>
-
       {error ? <ErrorText testID="prep-error">{error}</ErrorText> : null}
       <Button
         big
@@ -195,9 +174,153 @@ export function PrepView({
         busy={sending}
         onPress={commit}
       />
-      {room.phaseDeadlineAt !== null ? (
-        <TimerBar now={now} startAt={room.phaseEnteredAt} deadlineAt={room.phaseDeadlineAt} />
+    </ScrollView>
+  );
+}
+
+/**
+ * SABOTAGE_PICK: at most one sabotage, or none, final once sent (ADR-0022). A player who cannot
+ * sabotage this round (no token, cooldown, nobody to hit) gets a calm waiting screen.
+ */
+export function SabotageView({
+  room,
+  data,
+  now,
+  actions,
+}: {
+  room: RoomView;
+  data: SabotageData;
+  now: () => number;
+  actions: ControllerActions;
+}) {
+  const { t, td } = useI18n();
+  const you = room.you;
+  const [sabotage, setSabotage] = useState<SabotageChoice['sabotage']>(null);
+  const [picking, setPicking] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const byId = new Map(room.players.map((player) => [player.playerId, player]));
+
+  const header = (
+    <PickHeader
+      room={room}
+      data={data}
+      now={now}
+      title={t('tv.sabotage.title')}
+      rule={t('ctl.sabotage.rule')}
+    />
+  );
+
+  if (you?.sabotage?.decided) {
+    const sent = you.commitment?.sabotage ?? null;
+    return (
+      <View style={styles.screen} testID="ctl-sabotage-committed">
+        {header}
+        <Panel>
+          <Title>{t('ctl.prep.committed')}</Title>
+          <Body>
+            {sent
+              ? t('ctl.prep.sabotageTo', {
+                  effect: td(`sabotage.${sent.effect}`),
+                  name: byId.get(sent.targetId)?.nickname ?? '',
+                })
+              : t('ctl.sabotage.none')}
+          </Body>
+          <Progress done={data.committedCount} total={data.eligibleCount} />
+        </Panel>
+      </View>
+    );
+  }
+
+  const blocked = sabotageState(you);
+  if (!you || you.authorOfRound || blocked !== null) {
+    return (
+      <View style={styles.screen} testID="ctl-sabotage-wait">
+        {header}
+        <Panel>
+          <Title>{t('ctl.sabotage.waitTitle')}</Title>
+          <Body tone="muted">
+            {you?.authorOfRound
+              ? t('ctl.statement.mine')
+              : blocked === 'NO_TOKEN'
+                ? you?.powers?.nextTokenAtStreak
+                  ? t('ctl.prep.sabotage.noToken', { streak: you.powers.nextTokenAtStreak })
+                  : t('ctl.prep.sabotage.noTokenLeft')
+                : t('ctl.sabotage.cannot')}
+          </Body>
+          <Progress done={data.committedCount} total={data.eligibleCount} />
+        </Panel>
+      </View>
+    );
+  }
+
+  if (picking) {
+    return (
+      <SabotagePicker
+        players={sabotageTargets(room.players, you.playerId)}
+        current={sabotage}
+        onPick={(choice) => {
+          setSabotage(choice);
+          setPicking(false);
+        }}
+        onClose={() => setPicking(false)}
+      />
+    );
+  }
+
+  const send = (choice: SabotageChoice['sabotage']): void => {
+    if (sending) return;
+    setSending(true);
+    setError(null);
+    actions.haptic?.('tap');
+    actions
+      .commitSabotage({ sabotage: choice })
+      .catch((cause: unknown) => {
+        setSabotage(null);
+        setError(td(`error.${(cause as { code?: string } | undefined)?.code ?? 'INTERNAL'}`));
+      })
+      .finally(() => setSending(false));
+  };
+
+  return (
+    <ScrollView contentContainerStyle={styles.screen} testID="ctl-sabotage">
+      {header}
+      <Panel>
+        <Text style={styles.power}>{t('ctl.prep.sabotage')}</Text>
+        <Body tone="muted">
+          {sabotage
+            ? t('ctl.prep.sabotageTo', {
+                effect: td(`sabotage.${sabotage.effect}`),
+                name: byId.get(sabotage.targetId)?.nickname ?? '',
+              })
+            : t('ctl.prep.sabotage.hint')}
+        </Body>
+        <Button
+          testID="sabotage-open"
+          variant={sabotage ? 'violet' : 'ghost'}
+          label={`${t('ctl.prep.sabotage')} · ${t('ctl.prep.sabotage.tokens', { count: you.powers?.sabotageTokens ?? 0 })}`}
+          onPress={() => setPicking(true)}
+        />
+      </Panel>
+
+      {error ? <ErrorText testID="prep-error">{error}</ErrorText> : null}
+      {sabotage ? (
+        <Button
+          big
+          variant="danger"
+          testID="sabotage-send"
+          label={sending ? t('ctl.prep.sending') : t('ctl.prep.sabotage.send')}
+          busy={sending}
+          onPress={() => send(sabotage)}
+        />
       ) : null}
+      <Button
+        testID="sabotage-skip"
+        variant="ghost"
+        label={t('ctl.sabotage.skip')}
+        busy={sending}
+        onPress={() => send(null)}
+      />
     </ScrollView>
   );
 }
@@ -212,8 +335,8 @@ export function SabotagePicker({
   onClose,
 }: {
   players: RoomView['players'];
-  current: PrepChoice['sabotage'];
-  onPick: (choice: PrepChoice['sabotage']) => void;
+  current: SabotageChoice['sabotage'];
+  onPick: (choice: SabotageChoice['sabotage']) => void;
   onClose: () => void;
 }) {
   const { t, td } = useI18n();

@@ -75,7 +75,8 @@ export function RoomContainer({ code }: { code: string }) {
         .then(() => client.forget())
         .then(() => router.replace('/'));
     },
-    commit: (choice) => client.commitPrep(choice),
+    commitRisk: (choice) => client.commitRisk(choice),
+    commitSabotage: (choice) => client.commitSabotage(choice),
     fifty: () => void client.useFiftyFifty().catch(flash),
     submitStatement: (text) => client.submitStatement(text),
     haptic,

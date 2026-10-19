@@ -122,12 +122,12 @@ describe('applyServerMessage', () => {
     ).toBe(lobby.room);
   });
 
-  it('follows QUESTION_PREP progress and ignores it in any other phase', () => {
+  it('follows RISK_PICK progress and ignores it in any other phase', () => {
     const prep = stateWith(
       roomView({
-        phase: 'QUESTION_PREP',
+        phase: 'RISK_PICK',
         phaseData: {
-          phase: 'QUESTION_PREP',
+          phase: 'RISK_PICK',
           round: ROUND,
           category: { id: 'geography', label: 'Coğrafya' },
           difficulty: 'EASY',
@@ -147,6 +147,27 @@ describe('applyServerMessage', () => {
     );
     expect(next.room?.phaseData).toMatchObject({ committedCount: 2, eligibleCount: 3 });
     expect(prep.room?.phaseData).toMatchObject({ committedCount: 0 }); // immutable update
+
+    const sabotage = stateWith(
+      roomView({
+        phase: 'SABOTAGE_PICK',
+        phaseData: {
+          phase: 'SABOTAGE_PICK',
+          round: ROUND,
+          category: { id: 'geography', label: 'Coğrafya' },
+          difficulty: 'EASY',
+          committedCount: 0,
+          eligibleCount: 3,
+        },
+      }),
+    );
+    expect(
+      applyServerMessage(
+        sabotage,
+        message('PREP_PROGRESS', { committedCount: 1, eligibleCount: 3 }),
+        NOW,
+      ).room?.phaseData,
+    ).toMatchObject({ phase: 'SABOTAGE_PICK', committedCount: 1, eligibleCount: 3 });
 
     const answering = stateWith(roomView({ phase: 'ANSWERING', phaseData: answeringData() }));
     expect(

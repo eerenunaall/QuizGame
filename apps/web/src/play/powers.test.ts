@@ -14,8 +14,8 @@ import {
   sabotageTargets,
 } from './powers';
 
-const prep = (patch: Partial<PhaseDataOf<'QUESTION_PREP'>> = {}): PhaseDataOf<'QUESTION_PREP'> => ({
-  phase: 'QUESTION_PREP',
+const prep = (patch: Partial<PhaseDataOf<'RISK_PICK'>> = {}): PhaseDataOf<'RISK_PICK'> => ({
+  phase: 'RISK_PICK',
   round: ROUND,
   category: { id: 'sports', label: 'Spor' },
   difficulty: 'MEDIUM',
@@ -53,10 +53,14 @@ describe('what a player may use', () => {
     expect(doubleDownState(prep(), you('p1'))).toBe('CLOSED'); // no game state yet
   });
 
-  it('sabotage: open, no token, or closed this round', () => {
-    expect(sabotageState(prep(), holding())).toBeNull();
-    expect(sabotageState(prep(), holding({ sabotageTokens: 0 }))).toBe('NO_TOKEN');
-    expect(sabotageState(prep({ sabotageEnabled: false }), holding())).toBe('CLOSED');
+  it('sabotage: open, no token, or not possible right now (the server says so)', () => {
+    expect(sabotageState(holding())).toBeNull();
+    expect(sabotageState(holding({ sabotageTokens: 0 }))).toBe('NO_TOKEN');
+    expect(sabotageState(you('p1'))).toBe('CLOSED'); // no game state yet
+    expect(sabotageState({ ...holding(), sabotage: { ready: false, decided: false } })).toBe(
+      'CLOSED',
+    );
+    expect(sabotageState({ ...holding(), sabotage: { ready: true, decided: false } })).toBeNull();
   });
 
   it('50/50: open, used up, or locked out', () => {

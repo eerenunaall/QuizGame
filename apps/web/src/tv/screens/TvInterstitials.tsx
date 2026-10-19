@@ -3,9 +3,8 @@ import type { PhaseDataOf, RoundKind, RoundPublic } from '@quizparty/protocol';
 import { Button } from '../../ui/Button';
 import { CountdownRing } from '../../ui/CountdownRing';
 import { AnimatedSticker, Sticker } from '../../ui/Sticker';
-import { categoryIcon } from '../../lib/assets';
 import { useI18n } from '../../lib/i18n';
-import { STAKE_STICKER } from '../../play/powers';
+import { SABOTAGE_ORDER, SABOTAGE_STICKER, STAKE_STICKER } from '../../play/powers';
 import styles from './TvInterstitials.module.css';
 import { cx } from '../../lib/cx';
 
@@ -92,39 +91,68 @@ export function TvFinalSplash({ round }: { round: RoundPublic }) {
   );
 }
 
+/** One tick per player at the table, the first `done` filled: a count in seating order, never a name (ATTACK 27). */
+function PickTicks({ done, total }: { done: number; total: number }) {
+  const { t } = useI18n();
+  const count = Math.max(total, done);
+  return (
+    <div className={styles.pickProgress} data-testid="tv-pick-progress">
+      <div className={styles.ticks} aria-hidden="true">
+        {Array.from({ length: count }, (_, index) => (
+          <span key={index} className={cx(styles.tick, index < done && styles.tickOn)} />
+        ))}
+      </div>
+      <span className={styles.prepReady} data-testid="tv-prep-ready">
+        {t('tv.pick.locked', { done, total: count })}
+      </span>
+    </div>
+  );
+}
+
+function PickClock({
+  now,
+  startAt,
+  deadlineAt,
+}: {
+  now: () => number;
+  startAt: number;
+  deadlineAt: number | null;
+}) {
+  return deadlineAt !== null ? (
+    <div className={styles.pickClock} data-testid="tv-pick-clock">
+      <CountdownRing now={now} startAt={startAt} deadlineAt={deadlineAt} size={230} />
+    </div>
+  ) : null;
+}
+
 /**
- * QUESTION_PREP on the TV: the category, the stake ladder everyone is choosing from, which powers
- * are on, and how many players have decided (never what they decided).
+ * RISK_PICK on the TV (ADR-0022): a loud title, the stake ladder everyone is choosing from, a big
+ * countdown and how many players have locked in (never what or who).
  */
-export function TvPrep({
+export function TvRiskPick({
   data,
   now,
   startAt,
   deadlineAt,
 }: {
-  data: PhaseDataOf<'QUESTION_PREP'>;
+  data: PhaseDataOf<'RISK_PICK'>;
   now: () => number;
   startAt: number;
   deadlineAt: number | null;
 }) {
   const { t, td } = useI18n();
-  const total = Math.max(data.eligibleCount, data.committedCount);
   return (
-    <div className={styles.center} data-testid="tv-prep">
-      <div className={styles.prepHead}>
-        <Sticker id={categoryIcon(data.category.id)} size={190} className={styles.pop} />
-        <div className={styles.prepTitleBox}>
-          <div className={styles.prepCategory} key={data.category.id}>
-            {data.category.label}
-          </div>
-          <div className={styles.prepPills}>
-            <span className={styles.pill}>{td(`game.difficulty.${data.difficulty}`)}</span>
-            <span className={styles.pill}>{td(`game.kind.${data.round.kind}`)}</span>
-          </div>
-        </div>
+    <div className={styles.center} data-testid="tv-risk">
+      <div className={cx(styles.pickTitle, styles.pickRisk)} data-testid="tv-pick-title">
+        {t('tv.risk.title')}
+      </div>
+      <div className={styles.pickRule}>{t('tv.risk.rule')}</div>
+      <div className={styles.prepPills}>
+        <span className={styles.pill}>{data.category.label}</span>
+        <span className={styles.pill}>{td(`game.difficulty.${data.difficulty}`)}</span>
+        <span className={styles.pill}>{td(`game.kind.${data.round.kind}`)}</span>
       </div>
 
-      <div className={styles.ladderTitle}>{t('tv.prep.title')}</div>
       <div className={styles.ladder} data-testid="tv-ladder">
         {data.riskLadder.map((rung) => (
           <div key={rung.tier} className={cx(styles.rung, styles[`rung${rung.tier}`])}>
@@ -150,21 +178,58 @@ export function TvPrep({
             {t('tv.prep.doubleDownOpen')}
           </span>
         ) : null}
-        {data.sabotageEnabled ? (
-          <span className={styles.badge}>
-            <Sticker id="bomb" size={44} />
-            {t('tv.prep.sabotageOpen')}
-          </span>
-        ) : null}
       </div>
 
-      <div className={styles.prepFoot}>
-        <span className={styles.prepReady} data-testid="tv-prep-ready">
-          {t('tv.prep.ready', { done: data.committedCount, total })}
-        </span>
-        {deadlineAt !== null ? (
-          <CountdownRing now={now} startAt={startAt} deadlineAt={deadlineAt} size={120} />
-        ) : null}
+      <div className={styles.pickFoot}>
+        <PickClock now={now} startAt={startAt} deadlineAt={deadlineAt} />
+        <PickTicks done={data.committedCount} total={data.eligibleCount} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * SABOTAGE_PICK on the TV (ADR-0022). Only a count of players who are done: which of them hit whom,
+ * or whether anyone did, stays secret until POWER_RESOLUTION (ATTACK 27).
+ */
+export function TvSabotagePick({
+  data,
+  now,
+  startAt,
+  deadlineAt,
+}: {
+  data: PhaseDataOf<'SABOTAGE_PICK'>;
+  now: () => number;
+  startAt: number;
+  deadlineAt: number | null;
+}) {
+  const { t, td } = useI18n();
+  return (
+    <div className={styles.center} data-testid="tv-sabotage">
+      <div className={cx(styles.pickTitle, styles.pickSabotage)} data-testid="tv-pick-title">
+        {t('tv.sabotage.title')}
+      </div>
+      <div className={styles.pickRule}>{t('tv.sabotage.rule')}</div>
+      <div className={styles.prepPills}>
+        <span className={styles.pill}>{data.category.label}</span>
+        <span className={styles.pill}>{td(`game.kind.${data.round.kind}`)}</span>
+      </div>
+
+      <div className={styles.sabRow}>
+        <Sticker id="bomb" size={200} className={styles.pop} />
+        <div className={styles.sabKinds}>
+          {SABOTAGE_ORDER.map((kind) => (
+            <span key={kind} className={styles.badge}>
+              <Sticker id={SABOTAGE_STICKER[kind]} size={44} />
+              {td(`sabotage.${kind}`)}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className={styles.pickFoot}>
+        <PickClock now={now} startAt={startAt} deadlineAt={deadlineAt} />
+        <PickTicks done={data.committedCount} total={data.eligibleCount} />
       </div>
     </div>
   );

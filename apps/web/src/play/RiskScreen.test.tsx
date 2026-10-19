@@ -1,10 +1,10 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PhaseDataOf, RoomView } from '@quizparty/protocol';
 import { player, roomView, ROUND, you } from '@quizparty/controller-client/fixtures';
 import { I18nProvider } from '../lib/i18n';
-import { PrepScreen } from './PrepScreen';
-import type { PrepChoice } from './powers';
+import { RiskScreen } from './RiskScreen';
+import type { RiskChoice } from './powers';
 
 afterEach(() => {
   cleanup();
@@ -17,8 +17,8 @@ const LADDER = [
   { tier: 'HIGH', multiplier: 3, loss: 200 },
 ] as const;
 
-const prep = (patch: Partial<PhaseDataOf<'QUESTION_PREP'>> = {}): PhaseDataOf<'QUESTION_PREP'> => ({
-  phase: 'QUESTION_PREP',
+const prep = (patch: Partial<PhaseDataOf<'RISK_PICK'>> = {}): PhaseDataOf<'RISK_PICK'> => ({
+  phase: 'RISK_PICK',
   round: { ...ROUND, index: 3, total: 10 },
   category: { id: 'sports', label: 'Spor' },
   difficulty: 'HARD',
@@ -42,15 +42,15 @@ const powers = (patch: Record<string, unknown> = {}) => ({
 });
 
 function mount(options: {
-  data?: PhaseDataOf<'QUESTION_PREP'>;
+  data?: PhaseDataOf<'RISK_PICK'>;
   me?: ReturnType<typeof you>;
-  onCommit?: (choice: PrepChoice) => Promise<void>;
+  onCommit?: (choice: RiskChoice) => Promise<void>;
   /** The prep window ends at this server time (default 7000, i.e. 5 s after `now`). */
   deadlineAt?: number;
 }) {
   const data = options.data ?? prep();
   const room: RoomView = roomView({
-    phase: 'QUESTION_PREP',
+    phase: 'RISK_PICK',
     phaseData: data,
     phaseEnteredAt: 1000,
     phaseDeadlineAt: options.deadlineAt ?? 7000,
@@ -64,13 +64,13 @@ function mount(options: {
   const onCommit = options.onCommit ?? vi.fn(() => Promise.resolve());
   render(
     <I18nProvider locale="tr">
-      <PrepScreen room={room} data={data} now={() => 2000} onCommit={onCommit} />
+      <RiskScreen room={room} data={data} now={() => 2000} onCommit={onCommit} />
     </I18nProvider>,
   );
   return { onCommit };
 }
 
-describe('PrepScreen', () => {
+describe('RiskScreen', () => {
   it('shows the ladder with its rules and starts on the lowest rung', () => {
     mount({});
     expect(screen.getByTestId('stake-SAFE').getAttribute('aria-checked')).toBe('true');
@@ -82,13 +82,13 @@ describe('PrepScreen', () => {
     expect(screen.getByTestId('stake-SAFE').getAttribute('aria-checked')).toBe('false');
   });
 
-  it('commits the stake, the double down and no sabotage in one message', async () => {
+  it('commits the stake and the double down in one message', async () => {
     const { onCommit } = mount({});
     fireEvent.click(screen.getByTestId('stake-RISK'));
     fireEvent.click(screen.getByTestId('prep-double-down'));
     fireEvent.click(screen.getByTestId('prep-ready'));
     await waitFor(() => expect(onCommit).toHaveBeenCalledTimes(1));
-    expect(onCommit).toHaveBeenCalledWith({ stake: 'RISK', doubleDown: true, sabotage: null });
+    expect(onCommit).toHaveBeenCalledWith({ stake: 'RISK', doubleDown: true });
   });
 
   it('one big gamble per question: HIGH disables Double Down, and Double Down disables HIGH', () => {
@@ -113,203 +113,22 @@ describe('PrepScreen', () => {
     expect(screen.getByTestId('prep-double-down').textContent).toContain('Bu tur kilitli');
   });
 
-  it('sabotage: chip, a face, a card, one big button; the commit goes out after a 2 s undo window', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    const { onCommit } = mount({ deadlineAt: 30_000 });
-    const chip = screen.getByTestId('prep-sabotage');
-    expect(chip.textContent).toContain('Sabotaj');
-    expect(chip.textContent).toContain('1 jeton');
-    fireEvent.click(chip);
-    expect(screen.getByTestId('sabotage-sheet').getAttribute('data-step')).toBe('who');
-    expect(screen.queryByTestId('sabotage-target-Ahmet')).toBeNull(); // not myself
-    fireEvent.click(screen.getByTestId('sabotage-target-Merve'));
-    // all five real types, each with its one-line effect
-    for (const kind of ['JAM', 'SHUFFLE', 'FOG', 'LOCKOUT', 'POINT_TAX'])
-      expect(screen.getByTestId(`sabotage-effect-${kind}`)).toBeTruthy();
-    expect(screen.getByTestId('sabotage-effect-FOG').textContent).toContain('Sis');
-    expect(screen.getByTestId('sabotage-effect-FOG').textContent).toContain(
-      'Bir seçenek kısa süre gizlenir.',
-    );
-    // grey until a card is picked, and it says why
-    const confirm = screen.getByTestId<HTMLButtonElement>('sabotage-confirm');
-    expect(confirm.disabled).toBe(true);
-    expect(screen.getByTestId('sabotage-why').textContent).toBe('Önce bir sabotaj seç');
-    fireEvent.click(screen.getByTestId('sabotage-effect-FOG'));
-    expect(confirm.disabled).toBe(false);
-    expect(screen.getByTestId('sabotage-why').textContent).toContain(
-      'Bahsin de bununla kilitlenir',
-    );
-    fireEvent.click(confirm);
-
-    // the sheet is gone; the sabotage waits two seconds and can still be taken back
-    expect(screen.queryByTestId('sabotage-sheet')).toBeNull();
-    expect(screen.getByTestId('sabotage-going').textContent).toContain('Sis → Merve');
-    expect(onCommit).not.toHaveBeenCalled();
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1900);
-    });
-    expect(onCommit).not.toHaveBeenCalled();
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(200);
-    });
-    expect(onCommit).toHaveBeenCalledTimes(1);
-    expect(onCommit).toHaveBeenCalledWith({
-      stake: 'SAFE',
-      doubleDown: false,
-      sabotage: { targetId: 'p2', effect: 'FOG' },
-    });
-  });
-
-  it('undo during the window sends nothing and gives the chip back', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    const { onCommit } = mount({ deadlineAt: 30_000 });
-    fireEvent.click(screen.getByTestId('prep-sabotage'));
-    fireEvent.click(screen.getByTestId('sabotage-target-Merve'));
-    fireEvent.click(screen.getByTestId('sabotage-effect-JAM'));
-    fireEvent.click(screen.getByTestId('sabotage-confirm'));
-    fireEvent.click(screen.getByTestId('sabotage-undo'));
-    expect(screen.queryByTestId('sabotage-going')).toBeNull();
-    expect(screen.getByTestId('prep-sabotage').textContent).not.toContain('Merve');
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5000);
-    });
-    expect(onCommit).not.toHaveBeenCalled();
-  });
-
-  it('with almost no prep time left the sabotage goes out at once (an undo window would eat the commit)', async () => {
-    const { onCommit } = mount({ deadlineAt: 3000 }); // now() is 2000: one second left
-    fireEvent.click(screen.getByTestId('prep-sabotage'));
-    fireEvent.click(screen.getByTestId('sabotage-target-Ece'));
-    fireEvent.click(screen.getByTestId('sabotage-effect-POINT_TAX'));
-    fireEvent.click(screen.getByTestId('sabotage-confirm'));
-    await waitFor(() => expect(onCommit).toHaveBeenCalledTimes(1));
-    expect(onCommit).toHaveBeenCalledWith({
-      stake: 'SAFE',
-      doubleDown: false,
-      sabotage: { targetId: 'p0', effect: 'POINT_TAX' },
-    });
-  });
-
-  it('the sabotage carries the stake and Double Down chosen before it (one commit)', async () => {
-    const { onCommit } = mount({ deadlineAt: 3000 });
-    fireEvent.click(screen.getByTestId('stake-RISK'));
-    fireEvent.click(screen.getByTestId('prep-double-down'));
-    fireEvent.click(screen.getByTestId('prep-sabotage'));
-    fireEvent.click(screen.getByTestId('sabotage-target-Merve'));
-    fireEvent.click(screen.getByTestId('sabotage-effect-SHUFFLE'));
-    expect(screen.getByTestId('sabotage-why').textContent).toContain('Risk + Çifte Hak');
-    fireEvent.click(screen.getByTestId('sabotage-confirm'));
-    await waitFor(() => expect(onCommit).toHaveBeenCalled());
-    expect(onCommit).toHaveBeenCalledWith({
-      stake: 'RISK',
-      doubleDown: true,
-      sabotage: { targetId: 'p2', effect: 'SHUFFLE' },
-    });
-  });
-
-  it('asks which joker to lock for a lockout, and stays grey until one is picked', async () => {
-    const { onCommit } = mount({ deadlineAt: 3000 });
-    fireEvent.click(screen.getByTestId('prep-sabotage'));
-    fireEvent.click(screen.getByTestId('sabotage-target-Ece'));
-    fireEvent.click(screen.getByTestId('sabotage-effect-LOCKOUT'));
-    expect(screen.getByTestId<HTMLButtonElement>('sabotage-confirm').disabled).toBe(true);
-    expect(screen.getByTestId('sabotage-why').textContent).toBe('Kilitlenecek jokeri seç');
-    expect(screen.getByTestId('sabotage-joker-DOUBLE_DOWN')).toBeTruthy();
-    fireEvent.click(screen.getByTestId('sabotage-joker-FIFTY_FIFTY'));
-    expect(screen.getByTestId<HTMLButtonElement>('sabotage-confirm').disabled).toBe(false);
-    fireEvent.click(screen.getByTestId('sabotage-confirm'));
-    await waitFor(() => expect(onCommit).toHaveBeenCalled());
-    expect(onCommit).toHaveBeenCalledWith({
-      stake: 'SAFE',
-      doubleDown: false,
-      sabotage: { targetId: 'p0', effect: 'LOCKOUT', joker: 'FIFTY_FIFTY' },
-    });
-  });
-
-  it('a refused sabotage is dropped, explained, and the chip says it is cooling down', async () => {
-    const failure = Object.assign(new Error('refused'), { code: 'SABOTAGE_LIMIT' });
-    const onCommit = vi.fn().mockRejectedValueOnce(failure).mockResolvedValue(undefined);
-    mount({ onCommit, deadlineAt: 3000 });
-    fireEvent.click(screen.getByTestId('prep-sabotage'));
-    fireEvent.click(screen.getByTestId('sabotage-target-Merve'));
-    fireEvent.click(screen.getByTestId('sabotage-effect-JAM'));
-    fireEvent.click(screen.getByTestId('sabotage-confirm'));
-    await waitFor(() =>
-      expect(screen.getByTestId('prep-error').textContent).toBe(
-        'Sabotaj sınırına ulaştın. Biraz bekle.',
-      ),
-    );
-    const chip = screen.getByTestId<HTMLButtonElement>('prep-sabotage');
-    expect(chip.disabled).toBe(true);
-    expect(chip.textContent).toContain('Bekleme süresinde');
-    // the rest of the prep still goes out without it
-    const ready = screen.getByTestId<HTMLButtonElement>('prep-ready');
-    await waitFor(() => expect(ready.disabled).toBe(false));
-    fireEvent.click(ready);
-    await waitFor(() => expect(onCommit).toHaveBeenCalledTimes(2));
-    expect(onCommit).toHaveBeenLastCalledWith({ stake: 'SAFE', doubleDown: false, sabotage: null });
-  });
-
-  it('after a failure that is not about sabotage the choice stays armed and can be taken back', async () => {
-    const failure = Object.assign(new Error('offline'), { code: 'INTERNAL' });
-    const onCommit = vi.fn().mockRejectedValueOnce(failure).mockResolvedValue(undefined);
-    mount({ onCommit, deadlineAt: 3000 });
-    fireEvent.click(screen.getByTestId('prep-sabotage'));
-    fireEvent.click(screen.getByTestId('sabotage-target-Merve'));
-    fireEvent.click(screen.getByTestId('sabotage-effect-JAM'));
-    fireEvent.click(screen.getByTestId('sabotage-confirm'));
-    await waitFor(() => expect(screen.getByTestId('prep-error')).toBeTruthy());
-    expect(screen.getByTestId('prep-sabotage').textContent).toContain('Süre kes → Merve');
-    fireEvent.click(screen.getByTestId('prep-sabotage'));
-    expect(screen.getByTestId('sabotage-sheet').getAttribute('data-step')).toBe('what');
-    fireEvent.click(screen.getByTestId('sabotage-remove'));
-    expect(screen.queryByTestId('sabotage-sheet')).toBeNull();
-    expect(screen.getByTestId('prep-sabotage').textContent).not.toContain('Merve');
-  });
-
-  it('a back step lets the player change the face, and the chip stays when sabotage is closed', () => {
-    mount({});
-    fireEvent.click(screen.getByTestId('prep-sabotage'));
-    fireEvent.click(screen.getByTestId('sabotage-target-Merve'));
-    expect(screen.getByTestId('sabotage-target-chosen').textContent).toContain('Merve');
-    fireEvent.click(screen.getByTestId('sabotage-back'));
-    expect(screen.getByTestId('sabotage-sheet').getAttribute('data-step')).toBe('who');
-    fireEvent.click(screen.getByTestId('sabotage-close'));
-    expect(screen.queryByTestId('sabotage-sheet')).toBeNull();
-  });
-
-  it('explains in one line why sabotage is off: no token, a closed round, the final', () => {
-    mount({ me: you('p1', { powers: powers({ sabotageTokens: 0 }) }) });
-    let chip = screen.getByTestId<HTMLButtonElement>('prep-sabotage');
-    expect(chip.disabled).toBe(true);
-    expect(chip.textContent).toContain('3 doğru seriyle jeton kazan');
-    cleanup();
-    mount({ me: you('p1', { powers: powers({ sabotageTokens: 0, nextTokenAtStreak: null }) }) });
-    expect(screen.getByTestId('prep-sabotage').textContent).toContain('Jetonun yok');
-    cleanup();
-    mount({ data: prep({ sabotageEnabled: false }) });
-    chip = screen.getByTestId<HTMLButtonElement>('prep-sabotage');
-    expect(chip.disabled).toBe(true);
-    expect(chip.textContent).toContain('Bu turda kapalı');
-    cleanup();
-    mount({
-      data: prep({
-        sabotageEnabled: false,
-        round: { ...ROUND, index: 9, total: 10, kind: 'FINAL', isFinal: true },
-      }),
-    });
-    expect(screen.getByTestId('prep-sabotage').textContent).toContain('Final turunda sabotaj yok');
-  });
-
   it('shows what is still in the bag: 50/50 and the shield', () => {
     mount({});
     expect(screen.getByTestId('prep-stock').textContent).toContain('50/50 ×1');
     expect(screen.getByTestId('prep-stock').textContent).toContain('Kalkan ×1');
   });
 
+  it('has a loud title, a one-line rule and a clock, and no sabotage controls', () => {
+    mount({});
+    expect(screen.getByTestId('pick-title').textContent).toBe('RİSK ZAMANI');
+    expect(screen.getByTestId('pick-rule').textContent).toBeTruthy();
+    expect(screen.queryByTestId('prep-sabotage')).toBeNull();
+  });
+
   it('never shows the question on the prep screen (the category is all the phone knows)', () => {
     mount({});
-    expect(screen.getByTestId('ctl-prep').textContent).toContain('Spor');
+    expect(screen.getByTestId('ctl-risk').textContent).toContain('Spor');
     expect(screen.queryByTestId('peek-text')).toBeNull();
   });
 
@@ -347,17 +166,12 @@ describe('PrepScreen', () => {
     mount({
       me: you('p1', {
         powers: powers(),
-        commitment: {
-          stake: 'HIGH',
-          doubleDown: true,
-          sabotage: { targetId: 'p2', effect: 'POINT_TAX' },
-        },
+        commitment: { stake: 'HIGH', doubleDown: true, sabotage: null },
       }),
     });
-    expect(screen.getByTestId('ctl-prep-committed').textContent).toContain('Seçimin kilitlendi');
-    expect(screen.getByTestId('ctl-prep-committed').textContent).toContain('Yüksek');
-    expect(screen.getByTestId('ctl-prep-committed').textContent).toContain('Vergi → Merve');
-    expect(screen.getByTestId('ctl-prep-committed').textContent).toContain('1/3 oyuncu hazır');
+    expect(screen.getByTestId('ctl-risk-committed').textContent).toContain('Seçimin kilitlendi');
+    expect(screen.getByTestId('ctl-risk-committed').textContent).toContain('Yüksek');
+    expect(screen.getByTestId('ctl-risk-committed').textContent).toContain('1/3 oyuncu hazır');
     expect(screen.queryByTestId('prep-ready')).toBeNull();
   });
 });

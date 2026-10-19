@@ -15,7 +15,8 @@ import {
   TvCountdown,
   TvFinalSplash,
   TvIntermission,
-  TvPrep,
+  TvRiskPick,
+  TvSabotagePick,
   TvRoundIntro,
 } from './screens/TvInterstitials';
 import { TvExitButton, TvExitDialog } from './screens/TvExit';
@@ -385,10 +386,22 @@ export function TvApp({
             <TvFinalSplash round={data.round} />
           </TvFrame>
         );
-      case 'QUESTION_PREP':
+      case 'QUESTION_PREP': // retired phase (ADR-0022): shown as RISK_PICK
+      case 'RISK_PICK':
         return (
           <TvFrame {...base} strip={false}>
-            <TvPrep
+            <TvRiskPick
+              data={{ ...data, phase: 'RISK_PICK' }}
+              now={now}
+              startAt={room.phaseEnteredAt}
+              deadlineAt={room.phaseDeadlineAt}
+            />
+          </TvFrame>
+        );
+      case 'SABOTAGE_PICK':
+        return (
+          <TvFrame {...base} strip={false}>
+            <TvSabotagePick
               data={data}
               now={now}
               startAt={room.phaseEnteredAt}
@@ -396,6 +409,7 @@ export function TvApp({
             />
           </TvFrame>
         );
+
       case 'QUESTION':
         return (
           <TvFrame {...base}>

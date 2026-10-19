@@ -147,7 +147,7 @@ export function applyServerMessage(
     case 'PREP_PROGRESS':
       return withRoom(state, (room) => {
         const data = room.phaseData;
-        if (data.phase !== 'QUESTION_PREP') return room;
+        if (data.phase !== 'RISK_PICK' && data.phase !== 'SABOTAGE_PICK') return room;
         return {
           ...room,
           phaseData: {

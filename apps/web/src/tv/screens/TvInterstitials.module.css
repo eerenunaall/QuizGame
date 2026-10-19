@@ -108,7 +108,7 @@
   margin-top: 56px;
 }
 
-/* QUESTION_PREP */
+/* RISK_PICK and SABOTAGE_PICK */
 .prepHead {
   display: flex;
   align-items: center;
@@ -242,4 +242,73 @@
   font-size: 66px;
   color: #fff;
   text-shadow: 0 6px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* The loud title of a timed pick screen (ADR-0022). */
+.pickTitle {
+  font-family: var(--qp-font-display);
+  font-size: 150px;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  text-shadow: 0 9px 0 rgba(0, 0, 0, 0.42);
+  animation: qp-zoom-in 460ms ease-out 1;
+}
+.pickRisk {
+  color: var(--qp-color-accent-a);
+}
+.pickSabotage {
+  color: var(--qp-color-danger);
+}
+.pickRule {
+  margin: 4px 0 10px;
+  font-size: 44px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 4px 0 rgba(0, 0, 0, 0.4);
+}
+.pickFoot {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+}
+.pickClock {
+  margin-right: 56px;
+}
+.pickProgress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.ticks {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+.tick {
+  width: 54px;
+  height: 54px;
+  background: rgba(var(--qp-deep-rgb), 0.8);
+  border: 6px solid var(--qp-color-surface-line);
+  border-radius: 50%;
+  transition:
+    background 220ms ease,
+    border-color 220ms ease,
+    transform 220ms ease;
+}
+.tickOn {
+  background: var(--qp-color-success);
+  border-color: #fff;
+  transform: scale(1.12);
+}
+.sabRow {
+  display: flex;
+  align-items: center;
+  margin-top: 18px;
+}
+.sabKinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 0;
+  max-width: 1100px;
+  margin-left: 40px;
 }

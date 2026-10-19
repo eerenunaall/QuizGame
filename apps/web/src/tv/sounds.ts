@@ -29,6 +29,11 @@ export function useTvSounds(room: RoomView | null): void {
       case 'FINAL':
         sfx.play('final');
         break;
+      case 'RISK_PICK':
+      case 'SABOTAGE_PICK':
+        // Each timed screen announces itself (ADR-0022).
+        sfx.play('whoosh');
+        break;
       case 'QUESTION':
         sfx.play('question');
         break;

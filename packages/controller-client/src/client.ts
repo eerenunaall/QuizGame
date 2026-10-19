@@ -707,9 +707,13 @@ export class GameClient {
     return this.request('READY', { ready });
   }
 
-  /** QUESTION_PREP: stake, Double Down and at most one sabotage, committed at once and final. */
-  commitPrep(choice: ClientPayload<'COMMIT_PREP'>): Promise<void> {
-    return this.request('COMMIT_PREP', choice);
+  /** RISK_PICK: the stake and Double Down, committed at once and final. */
+  commitRisk(choice: ClientPayload<'COMMIT_RISK'>): Promise<void> {
+    return this.request('COMMIT_RISK', choice);
+  }
+  /** SABOTAGE_PICK: at most one sabotage, final; `{ sabotage: null }` confirms "none" so nobody waits. */
+  commitSabotage(choice: ClientPayload<'COMMIT_SABOTAGE'>): Promise<void> {
+    return this.request('COMMIT_SABOTAGE', choice);
   }
   /** ANSWERING: remove two wrong options (once a game). The kept options arrive in `you.fiftyFifty`. */
   useFiftyFifty(): Promise<void> {

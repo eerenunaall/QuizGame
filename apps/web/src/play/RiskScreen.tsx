@@ -1,94 +1,65 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { PhaseDataOf, RiskTier, RoomView } from '@quizparty/protocol';
 import type { ClientRequestError } from '@quizparty/controller-client';
 import { Button } from '../ui/Button';
 import { Panel } from '../ui/Panel';
 import { Sticker } from '../ui/Sticker';
-import { TimerBar } from '../ui/TimerBar';
-import { Spinner } from '../ui/Spinner';
-import { categoryIcon } from '../lib/assets';
 import { useI18n } from '../lib/i18n';
 import { sfx } from '../lib/audio';
-import { SabotageSheet } from './SabotageSheet';
+import { PickHeader, PickTicks } from './PickParts';
 import {
   JOKER_STICKER,
-  SABOTAGE_STICKER,
   STAKE_STICKER,
   defaultStake,
   doubleDownState,
-  sabotageState,
-  sabotageTargets,
   stakeExcludesDoubleDown,
-  type PrepChoice,
+  type RiskChoice,
 } from './powers';
-import styles from './PrepScreen.module.css';
+import styles from './PickScreen.module.css';
 import { cx } from '../lib/cx';
 
-type PrepData = PhaseDataOf<'QUESTION_PREP'>;
+type RiskData = PhaseDataOf<'RISK_PICK'>;
 
 interface Props {
   room: RoomView;
-  data: PrepData;
+  data: RiskData;
   now: () => number;
-  onCommit: (choice: PrepChoice) => Promise<void>;
+  onCommit: (choice: RiskChoice) => Promise<void>;
 }
 
-/** How long a sabotage can still be taken back before it goes out (the server's commit is final). */
-export const SABOTAGE_UNDO_MS = 2000;
-/** With less than this left of the prep window the sabotage goes out at once: an undo would eat the commit. */
-const UNDO_MIN_REMAINING_MS = SABOTAGE_UNDO_MS + 1200;
-/** Refusals that mean "this sabotage cannot go", not "something else is wrong". */
-const SABOTAGE_REFUSALS = new Set(['SABOTAGE_LIMIT', 'TARGET_INVALID', 'POWER_UNAVAILABLE']);
-
 /**
- * QUESTION_PREP on the phone: the category is known, the question is not. Stake, Double Down and one
- * sabotage are chosen here and committed together; after that they cannot be changed (ADR-0010).
+ * RISK_PICK on the phone (ADR-0022): the category is known, the question is not. The stake and
+ * Double Down are chosen here and committed together; after that they cannot be changed (ADR-0010).
+ * Sabotage has its own screen afterwards.
  */
-export function PrepScreen({ room, data, now, onCommit }: Props) {
+export function RiskScreen({ room, data, now, onCommit }: Props) {
   const { t, td } = useI18n();
   const you = room.you;
   const committed = you?.commitment ?? null;
   const [stake, setStake] = useState<RiskTier>(() => defaultStake(data));
   const [doubleDown, setDoubleDown] = useState(false);
-  const [sabotage, setSabotage] = useState<PrepChoice['sabotage']>(null);
-  const [sheet, setSheet] = useState(false);
-  // The sabotage was confirmed and is about to go out; "undo" is possible until it does.
-  const [undoable, setUndoable] = useState(false);
-  const [coolingDown, setCoolingDown] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const sendingRef = useRef(false);
 
   const ddBlock = doubleDownState(data, you);
-  const sabBlock = sabotageState(data, you);
   // One big gamble per question: Double Down and the top stakes exclude each other (ADR-0021).
   const ddConflict = stakeExcludesDoubleDown(data, stake);
   const ddOn = doubleDown && ddBlock === null && !ddConflict;
-  const playersById = new Map(room.players.map((player) => [player.playerId, player]));
 
-  // The latest choice, for the timer that sends a sabotage after its undo window.
-  const latest = useRef({ stake, ddOn, sabotage });
-  latest.current = { stake, ddOn, sabotage };
+  // The latest choice, read when the button is pressed.
+  const latest = useRef({ stake, ddOn });
+  latest.current = { stake, ddOn };
 
-  const send = (withSabotage: PrepChoice['sabotage']): void => {
+  const send = (): void => {
     if (sendingRef.current) return;
     sendingRef.current = true;
     setSending(true);
-    setUndoable(false);
     setError(null);
     sfx.play('tap');
-    onCommit({
-      stake: latest.current.stake,
-      doubleDown: latest.current.ddOn,
-      sabotage: withSabotage,
-    })
+    onCommit({ stake: latest.current.stake, doubleDown: latest.current.ddOn })
       .catch((cause: unknown) => {
         const code = (cause as ClientRequestError | undefined)?.code ?? 'INTERNAL';
-        // A refused sabotage must not hold the rest of the prep hostage: drop it, keep the rest.
-        if (withSabotage && SABOTAGE_REFUSALS.has(code)) {
-          setSabotage(null);
-          if (code === 'SABOTAGE_LIMIT') setCoolingDown(true);
-        }
         setError(td(`error.${code}`));
       })
       .finally(() => {
@@ -97,64 +68,22 @@ export function PrepScreen({ room, data, now, onCommit }: Props) {
       });
   };
 
-  // The undo window: the sabotage goes out by itself once it is over.
-  useEffect(() => {
-    if (!undoable) return undefined;
-    const timer = window.setTimeout(() => send(latest.current.sabotage), SABOTAGE_UNDO_MS);
-    return () => window.clearTimeout(timer);
-    // `send` only reads refs and stable setters; the timer must restart only with the window.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [undoable]);
-
-  const confirmSabotage = (choice: NonNullable<PrepChoice['sabotage']>): void => {
-    setSabotage(choice);
-    setSheet(false);
-    latest.current = { ...latest.current, sabotage: choice };
-    const remaining = room.phaseDeadlineAt === null ? Infinity : room.phaseDeadlineAt - now();
-    if (remaining < UNDO_MIN_REMAINING_MS) send(choice);
-    else setUndoable(true);
-  };
-
-  const undoSabotage = (): void => {
-    setUndoable(false);
-    setSabotage(null);
-  };
-
-  const stakeSummary = `${td(`ctl.prep.stake.${stake}`)}${ddOn ? ` + ${td('joker.DOUBLE_DOWN')}` : ''}`;
-
   const header = (
-    <div className={styles.head}>
-      <Sticker id={categoryIcon(data.category.id)} size={60} />
-      <div className={styles.headText}>
-        <div className={styles.kicker}>
-          {t('game.round.of', { n: data.round.index + 1, total: data.round.total })} ·{' '}
-          {td(`game.kind.${data.round.kind}`)}
-        </div>
-        <div className={styles.category}>{data.category.label}</div>
-      </div>
-      <div className={styles.difficulty}>{td(`game.difficulty.${data.difficulty}`)}</div>
-    </div>
+    <PickHeader
+      room={room}
+      data={data}
+      now={now}
+      title={t('tv.risk.title')}
+      rule={t('ctl.risk.rule')}
+      kind="risk"
+    />
   );
 
-  const timer =
-    room.phaseDeadlineAt !== null ? (
-      <div className={styles.timer}>
-        <TimerBar
-          size="lg"
-          now={now}
-          startAt={room.phaseEnteredAt}
-          deadlineAt={room.phaseDeadlineAt}
-        />
-      </div>
-    ) : null;
-
   if (committed) {
-    const target = committed.sabotage ? playersById.get(committed.sabotage.targetId) : undefined;
     return (
-      <div className={styles.screen} data-testid="ctl-prep">
+      <div className={styles.screen} data-testid="ctl-risk">
         {header}
-        {timer}
-        <Panel className={styles.done} tone="glass" data-testid="ctl-prep-committed">
+        <Panel className={styles.done} tone="glass" data-testid="ctl-risk-committed">
           <Sticker id="check" size={84} className={styles.doneIcon} />
           <div className={styles.doneTitle}>{t('ctl.prep.committed')}</div>
           <div className={styles.chips}>
@@ -168,51 +97,18 @@ export function PrepScreen({ room, data, now, onCommit }: Props) {
                 {td('joker.DOUBLE_DOWN')}
               </span>
             ) : null}
-            {committed.sabotage && target ? (
-              <span className={styles.chip}>
-                <Sticker id={SABOTAGE_STICKER[committed.sabotage.effect]} size={30} />
-                {t('ctl.prep.sabotageTo', {
-                  effect: td(`sabotage.${committed.sabotage.effect}`),
-                  name: target.nickname,
-                })}
-              </span>
-            ) : null}
           </div>
-          <div className={styles.waiting}>
-            <Spinner size={22} />
-            <span>
-              {t('ctl.prep.waiting', {
-                done: data.committedCount,
-                total: Math.max(data.eligibleCount, data.committedCount),
-              })}
-            </span>
-          </div>
+          <PickTicks done={data.committedCount} total={data.eligibleCount} />
         </Panel>
       </div>
     );
   }
 
-  const chosenTarget = sabotage ? playersById.get(sabotage.targetId) : undefined;
   const powers = you?.powers ?? null;
-  // Why the sabotage chip is grey, in one line (the server stays the judge of the rest).
-  const sabotageWhy =
-    sabBlock === 'CLOSED'
-      ? data.round.kind === 'FINAL'
-        ? t('ctl.prep.sabotage.final')
-        : t('ctl.prep.sabotage.closed')
-      : sabBlock === 'NO_TOKEN'
-        ? powers?.nextTokenAtStreak
-          ? t('ctl.prep.sabotage.noToken', { streak: powers.nextTokenAtStreak })
-          : t('ctl.prep.sabotage.noTokenLeft')
-        : coolingDown
-          ? t('ctl.prep.sabotage.cooldown')
-          : null;
-  const sabotageOff = sabotageWhy !== null;
 
   return (
-    <div className={styles.screen} data-testid="ctl-prep">
+    <div className={styles.screen} data-testid="ctl-risk">
       {header}
-      {timer}
 
       <div className={styles.section}>
         <div className={styles.titleRow}>
@@ -311,64 +207,6 @@ export function PrepScreen({ room, data, now, onCommit }: Props) {
         </button>
       ) : null}
 
-      {undoable && sabotage && chosenTarget ? (
-        <div className={styles.going} role="status" data-testid="sabotage-going">
-          <Sticker id={SABOTAGE_STICKER[sabotage.effect]} size={40} />
-          <span className={styles.goingText}>
-            {t('ctl.prep.sabotage.going', {
-              effect: td(`sabotage.${sabotage.effect}`),
-              name: chosenTarget.nickname,
-            })}
-          </span>
-          <Button
-            size="md"
-            variant="ghost"
-            onClick={undoSabotage}
-            className={styles.undo}
-            data-testid="sabotage-undo"
-          >
-            {t('ctl.prep.sabotage.undo')}
-          </Button>
-          <span
-            className={styles.goingBar}
-            style={{ animationDuration: `${SABOTAGE_UNDO_MS}ms` }}
-            aria-hidden="true"
-          />
-        </div>
-      ) : (
-        <button
-          type="button"
-          className={cx(styles.sab, sabotage && styles.sabArmed, sabotageOff && styles.sabOff)}
-          disabled={sabotageOff}
-          onClick={() => {
-            sfx.play('tap');
-            setSheet(true);
-          }}
-          data-testid="prep-sabotage"
-          data-focusable
-        >
-          <Sticker id="bomb" size={40} />
-          <span className={styles.powerText}>
-            <span className={styles.powerName}>{t('ctl.prep.sabotage')}</span>
-            <span className={cx(styles.powerHint, sabotageOff && styles.why)}>
-              {sabotage && chosenTarget
-                ? t('ctl.prep.sabotageTo', {
-                    effect: td(`sabotage.${sabotage.effect}`),
-                    name: chosenTarget.nickname,
-                  })
-                : (sabotageWhy ?? t('ctl.prep.sabotage.hint'))}
-            </span>
-          </span>
-          {sabBlock !== 'CLOSED' ? (
-            <span className={styles.tokens}>
-              {t('ctl.prep.sabotage.tokens', { count: powers?.sabotageTokens ?? 0 })}
-            </span>
-          ) : (
-            <Sticker id="lock" size={28} />
-          )}
-        </button>
-      )}
-
       {error ? (
         <div className={styles.error} role="alert" data-testid="prep-error">
           {error}
@@ -380,27 +218,13 @@ export function PrepScreen({ room, data, now, onCommit }: Props) {
           size="xl"
           block
           busy={sending}
-          onClick={() => send(latest.current.sabotage)}
+          onClick={send}
           icon="rocket"
           data-testid="prep-ready"
         >
           {sending ? t('ctl.prep.sending') : t('ctl.prep.ready')}
         </Button>
       </div>
-
-      {sheet ? (
-        <SabotageSheet
-          players={sabotageTargets(room.players, you?.playerId ?? '')}
-          current={sabotage}
-          recap={stakeSummary}
-          onClose={() => setSheet(false)}
-          onConfirm={confirmSabotage}
-          onRemove={() => {
-            setSabotage(null);
-            setSheet(false);
-          }}
-        />
-      ) : null}
     </div>
   );
 }

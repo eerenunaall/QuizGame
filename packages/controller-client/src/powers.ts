@@ -13,10 +13,14 @@ import type {
  * native app so both mirror the server's view of powers identically (GDD §10; the server decides).
  */
 
-/** What the phone sends for QUESTION_PREP: everything decided at once, final once sent. */
-export interface PrepChoice {
+/** What the phone sends for RISK_PICK: the stake and Double Down, final once sent. */
+export interface RiskChoice {
   stake: RiskTier;
   doubleDown: boolean;
+}
+
+/** What the phone sends for SABOTAGE_PICK: at most one sabotage; null confirms "none". Final once sent. */
+export interface SabotageChoice {
   sabotage: { targetId: string; effect: SabotageKind; joker?: Joker } | null;
 }
 
@@ -29,7 +33,7 @@ export const SABOTAGE_ORDER: readonly SabotageKind[] = [
 ];
 export const JOKER_ORDER: readonly Joker[] = ['FIFTY_FIFTY', 'DOUBLE_DOWN'];
 
-type PrepData = PhaseDataOf<'QUESTION_PREP'>;
+type PrepData = PhaseDataOf<'RISK_PICK'>;
 
 /** The tier that applies when the player does not choose: the lowest rung of the ladder. */
 export function defaultStake(data: PrepData): RiskTier {
@@ -52,9 +56,14 @@ export function stakeExcludesDoubleDown(data: PrepData, stake: RiskTier): boolea
   return data.doubleDownExcludedStakes?.includes(stake) ?? false;
 }
 
-export function sabotageState(data: PrepData, you: YouView | null): Unavailable {
-  if (!data.sabotageEnabled || !you?.powers) return 'CLOSED';
-  return you.powers.sabotageTokens > 0 ? null : 'NO_TOKEN';
+/**
+ * Why a player cannot sabotage right now. `ready` is the server's own verdict for SABOTAGE_PICK (token,
+ * cooldown, a legal target); older servers send none, so the token count decides then.
+ */
+export function sabotageState(you: YouView | null): Unavailable {
+  if (!you?.powers) return 'CLOSED';
+  if (you.powers.sabotageTokens <= 0) return 'NO_TOKEN';
+  return you.sabotage && !you.sabotage.ready ? 'CLOSED' : null;
 }
 
 export function fiftyFiftyState(you: YouView | null): Unavailable {

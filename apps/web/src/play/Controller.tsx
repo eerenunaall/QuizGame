@@ -24,7 +24,8 @@ import { createStorage } from '../lib/storage';
 import { HitNotices } from './HitNotices';
 import { PeekText, PeekToggle, QuestionPeek } from './QuestionPeek';
 import { useShowQuestion } from './questionPeek';
-import { PrepScreen } from './PrepScreen';
+import { RiskScreen } from './RiskScreen';
+import { SabotageScreen } from './SabotageScreen';
 import { ReportControl } from './ReportControl';
 import { StatementForm } from './StatementForm';
 import {
@@ -33,7 +34,8 @@ import {
   isRemoved,
   orderedOptions,
   personalDeadline,
-  type PrepChoice,
+  type RiskChoice,
+  type SabotageChoice,
 } from './powers';
 import styles from './Controller.module.css';
 import { cx } from '../lib/cx';
@@ -55,8 +57,10 @@ export interface ControllerActions {
   leave: () => void;
   kick: (playerId: string) => void;
   makeLeader: (playerId: string) => void;
-  /** QUESTION_PREP: stake, Double Down and sabotage in one final message. Rejects with the server's code. */
-  commit: (choice: PrepChoice) => Promise<void>;
+  /** RISK_PICK: stake and Double Down in one final message. Rejects with the server's code. */
+  commitRisk: (choice: RiskChoice) => Promise<void>;
+  /** SABOTAGE_PICK: one sabotage, or none, in one final message. Rejects with the server's code. */
+  commitSabotage: (choice: SabotageChoice) => Promise<void>;
   fifty: () => void;
   setReduced: (value: boolean) => void;
   /** Who Said It, lobby: the player's one statement. Rejects with the server's code (and the reason of a refused text). */
@@ -142,16 +146,27 @@ export function Controller({ room, state, now, catalog, busy, error, actions, st
           <div className={styles.sub}>{t('game.final.double')}</div>
         </Center>
       );
-    case 'QUESTION_PREP':
+    case 'QUESTION_PREP': // retired phase (ADR-0022): a server never sends it, an old one does
+    case 'RISK_PICK':
       // Who Said It: the author has nothing to stake on their own statement.
       if (you?.authorOfRound) return <SitOut />;
       return (
-        <PrepScreen
+        <RiskScreen
+          key={data.round.index}
+          room={room}
+          data={{ ...data, phase: 'RISK_PICK' }}
+          now={now}
+          onCommit={actions.commitRisk}
+        />
+      );
+    case 'SABOTAGE_PICK':
+      return (
+        <SabotageScreen
           key={data.round.index}
           room={room}
           data={data}
           now={now}
-          onCommit={actions.commit}
+          onCommit={actions.commitSabotage}
         />
       );
     case 'QUESTION':

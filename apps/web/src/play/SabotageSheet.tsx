@@ -10,20 +10,18 @@ import {
   JOKER_STICKER,
   SABOTAGE_ORDER,
   SABOTAGE_STICKER,
-  type PrepChoice,
+  type SabotageChoice,
 } from './powers';
 import styles from './SabotageSheet.module.css';
 import { cx } from '../lib/cx';
 
-type Choice = NonNullable<PrepChoice['sabotage']>;
+type Choice = NonNullable<SabotageChoice['sabotage']>;
 type Step = 'who' | 'what';
 
 interface Props {
   players: readonly PublicPlayer[];
   /** The sabotage already armed, if the sheet is opened again. */
-  current: PrepChoice['sabotage'];
-  /** One line: what else is sent with it ("Güvenli + Çifte Hak"), because the commitment is one message. */
-  recap: string;
+  current: SabotageChoice['sabotage'];
   onConfirm: (choice: Choice) => void;
   /** Takes an armed sabotage back (only offered while one is armed). */
   onRemove: () => void;
@@ -36,7 +34,7 @@ interface Props {
  * takes the whole prep as one final message (ADR-0010), so "send" is the commit: there is no undo
  * after it, which is why the caller gives a short undo window before it goes out.
  */
-export function SabotageSheet({ players, current, recap, onConfirm, onRemove, onClose }: Props) {
+export function SabotageSheet({ players, current, onConfirm, onRemove, onClose }: Props) {
   const { t, td } = useI18n();
   const [step, setStep] = useState<Step>(current ? 'what' : 'who');
   const [targetId, setTargetId] = useState<string | null>(current?.targetId ?? null);
@@ -211,8 +209,8 @@ export function SabotageSheet({ players, current, recap, onConfirm, onRemove, on
               </div>
             </div>
             <div className={styles.footer}>
-              <div className={cx(styles.why, !why && styles.recap)} data-testid="sabotage-why">
-                {why ?? t('ctl.prep.sabotage.recap', { summary: recap })}
+              <div className={styles.why} data-testid="sabotage-why">
+                {why ?? t('ctl.sabotage.final')}
               </div>
               <Button
                 size="lg"

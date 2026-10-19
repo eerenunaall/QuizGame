@@ -4,7 +4,7 @@ import type { PhaseDataOf } from '@quizparty/protocol';
 import { player, roomView, ROUND } from '@quizparty/controller-client/fixtures';
 import { sfx } from '../../lib/audio';
 import { I18nProvider } from '../../lib/i18n';
-import { TvPrep } from './TvInterstitials';
+import { TvRiskPick, TvSabotagePick } from './TvInterstitials';
 import { TvPowerResolution, itemDelay } from './TvPower';
 
 afterEach(() => {
@@ -21,9 +21,9 @@ const players = [
 const room = roomView({ players });
 const wrap = (node: React.ReactElement) => render(<I18nProvider locale="tr">{node}</I18nProvider>);
 
-describe('TvPrep', () => {
-  const data: PhaseDataOf<'QUESTION_PREP'> = {
-    phase: 'QUESTION_PREP',
+describe('TvRiskPick', () => {
+  const data: PhaseDataOf<'RISK_PICK'> = {
+    phase: 'RISK_PICK',
     round: { ...ROUND, kind: 'RISK' },
     category: { id: 'sports', label: 'Spor' },
     difficulty: 'HARD',
@@ -39,31 +39,73 @@ describe('TvPrep', () => {
     eligibleCount: 4,
   };
 
-  it('shows the category, the ladder, the powers on offer and how many have decided', () => {
-    wrap(<TvPrep data={data} now={() => 2000} startAt={1000} deadlineAt={9000} />);
-    expect(screen.getByTestId('tv-prep').textContent).toContain('Spor');
-    expect(screen.getByTestId('tv-prep').textContent).toContain('RİSK TURU');
+  it('has a loud title, the ladder, the rule, a big clock and a count of who locked in', () => {
+    wrap(<TvRiskPick data={data} now={() => 2000} startAt={1000} deadlineAt={9000} />);
+    expect(screen.getByTestId('tv-pick-title').textContent).toBe('RİSK ZAMANI');
+    expect(screen.getByTestId('tv-risk').textContent).toContain('Spor');
+    expect(screen.getByTestId('tv-risk').textContent).toContain('Bahsini seç');
     const ladder = screen.getByTestId('tv-ladder').textContent ?? '';
     expect(ladder).toContain('×3');
     expect(ladder).toContain('yanlışta −300');
     expect(ladder).toContain('kayıp yok');
-    expect(screen.getByTestId('tv-prep').textContent).toContain('Sabotaj açık');
-    expect(screen.getByTestId('tv-prep').textContent).toContain('Çifte Hak açık');
-    expect(screen.getByTestId('tv-prep-ready').textContent).toBe('2/4 hazır');
+    expect(screen.getByTestId('tv-risk').textContent).toContain('Çifte Hak açık');
+    expect(screen.getByTestId('tv-pick-clock')).toBeTruthy();
+    expect(screen.getByTestId('tv-prep-ready').textContent).toBe('2/4 kilitledi');
   });
 
-  it('says when a stake is a must, and hides powers that are not on offer', () => {
+  it('says it in English too', () => {
+    render(
+      <I18nProvider locale="en">
+        <TvRiskPick data={data} now={() => 2000} startAt={1000} deadlineAt={9000} />
+      </I18nProvider>,
+    );
+    expect(screen.getByTestId('tv-pick-title').textContent).toBe('RISK TIME');
+  });
+
+  it('says when a stake is a must, and hides Double Down when it is not on offer', () => {
     wrap(
-      <TvPrep
-        data={{ ...data, stakeMandatory: true, doubleDownEnabled: false, sabotageEnabled: false }}
+      <TvRiskPick
+        data={{ ...data, stakeMandatory: true, doubleDownEnabled: false }}
         now={() => 2000}
         startAt={1000}
         deadlineAt={null}
       />,
     );
-    expect(screen.getByTestId('tv-prep').textContent).toContain('Son soru: bahis zorunlu!');
-    expect(screen.getByTestId('tv-prep').textContent).not.toContain('Sabotaj açık');
-    expect(screen.getByTestId('tv-prep').textContent).not.toContain('Çifte Hak açık');
+    expect(screen.getByTestId('tv-risk').textContent).toContain('Son soru: bahis zorunlu!');
+    expect(screen.getByTestId('tv-risk').textContent).not.toContain('Çifte Hak açık');
+    expect(screen.queryByTestId('tv-pick-clock')).toBeNull();
+  });
+});
+
+describe('TvSabotagePick', () => {
+  const data: PhaseDataOf<'SABOTAGE_PICK'> = {
+    phase: 'SABOTAGE_PICK',
+    round: ROUND,
+    category: { id: 'sports', label: 'Spor' },
+    difficulty: 'HARD',
+    committedCount: 1,
+    eligibleCount: 4,
+  };
+
+  it('has its own loud title and clock, and shows only how many are done, as ticks', () => {
+    wrap(<TvSabotagePick data={data} now={() => 2000} startAt={1000} deadlineAt={9000} />);
+    expect(screen.getByTestId('tv-pick-title').textContent).toBe('SABOTAJ ZAMANI');
+    expect(screen.getByTestId('tv-pick-clock')).toBeTruthy();
+    expect(screen.getByTestId('tv-prep-ready').textContent).toBe('1/4 kilitledi');
+    const ticks = screen.getByTestId('tv-pick-progress').querySelectorAll('span[class*="tick"]');
+    expect(ticks).toHaveLength(4);
+    // Nothing on the screen can name a player or a sabotage target (ATTACK 27).
+    const text = screen.getByTestId('tv-sabotage').textContent ?? '';
+    for (const name of ['Ece', 'Ahmet', 'Merve']) expect(text).not.toContain(name);
+  });
+
+  it('says it in English too', () => {
+    render(
+      <I18nProvider locale="en">
+        <TvSabotagePick data={data} now={() => 2000} startAt={1000} deadlineAt={9000} />
+      </I18nProvider>,
+    );
+    expect(screen.getByTestId('tv-pick-title').textContent).toBe('SABOTAGE TIME');
   });
 });
 

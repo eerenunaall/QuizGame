@@ -412,6 +412,7 @@
 }
 .waiting {
   display: flex;
+  flex-direction: column;
   align-items: center;
   margin-top: 16px;
   font-size: 17px;
@@ -447,4 +448,90 @@
     min-height: 52px;
     margin-top: 6px;
   }
+}
+
+/* The loud title of a timed pick screen, and its one-line rule. */
+.pickTitle {
+  flex: none;
+  padding: 0.1em 0 0.16em;
+  font-family: var(--qp-font-display);
+  font-size: 40px;
+  line-height: 1.05;
+  text-align: center;
+  letter-spacing: 0.02em;
+  text-shadow: 0 4px 0 rgba(0, 0, 0, 0.4);
+  animation: qp-zoom-in 380ms ease-out 1;
+}
+.pickRisk {
+  color: var(--qp-color-accent-a);
+}
+.pickSabotage {
+  color: var(--qp-color-danger);
+}
+.rule {
+  flex: none;
+  margin-bottom: 6px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--qp-color-muted-text);
+}
+
+/* Who has locked in: one tick per player, a count and nothing else. */
+.ticks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+.tick {
+  width: 22px;
+  height: 22px;
+  background: rgba(var(--qp-deep-rgb), 0.8);
+  border: 3px solid var(--qp-color-surface-line);
+  border-radius: 50%;
+  transition:
+    background 200ms ease,
+    border-color 200ms ease;
+}
+.tickOn {
+  background: var(--qp-color-success);
+  border-color: #fff;
+}
+
+/* A player with nothing to choose in a phase: calm, no buttons. */
+.calm {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 8px;
+  text-align: center;
+}
+.calmTitle {
+  margin-top: 10px;
+  font-family: var(--qp-font-display);
+  font-size: 28px;
+  line-height: 1.15;
+}
+.calmText {
+  margin-top: 8px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--qp-color-muted-text);
+}
+.skip {
+  margin-top: 10px;
+}
+
+/* The sabotage chip is the one action of its screen, so it is bigger than in the old prep. */
+.sabBig {
+  min-height: 92px;
+  margin-top: 18px;
+  background: rgba(var(--qp-surface-rgb), 0.9);
+  border-color: var(--qp-color-danger);
+  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.3);
 }
