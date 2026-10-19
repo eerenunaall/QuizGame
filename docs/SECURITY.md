@@ -46,7 +46,6 @@ forbidden key such as an unrevealed answer).
 
 | Gap | Effect | Mitigation today |
 |---|---|---|
-| Retention jobs for room history, security events, telemetry, OTP rows and dead sessions are not scheduled | data older than the ADR-0018 periods stays | SQL in `docs/PRIVACY.md` section 5, run monthly |
 | Rate limiter and room ownership are single-process; there is no Redis implementation | cannot run two app instances behind a balancer | deploy one instance (`docs/DEPLOYMENT.md`) |
 | No IP allow-list for `/admin` (ADR-0018 says optional) | the admin console is reachable from the internet, protected by e-mail code, roles and short sessions | add a Caddy `remote_ip` rule `[UNTESTED HERE]` |
 | One database role (the app uses the owner role of its database); no separate role for destructive jobs (ADR-0018 target) | a SQL-injection-class bug would have full rights; all queries are parameterised (Kysely) | none beyond that |

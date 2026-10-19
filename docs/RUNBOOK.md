@@ -62,7 +62,7 @@ Other switches that are not flags:
 | Close a room / remove a player | console: Rooms -> close; player -> ban | `room.close`, `ban.create` in the audit log |
 | Ban | console: Bans (IP hash, device hash or account; with expiry and reason) | applies at room creation, sign-in, join and connection |
 | Suspend an account / sign someone out | console: Users -> status `SUSPENDED` / sign-out | `user.status`, `user.sign-out` |
-| Maintenance job off | `MAINTENANCE_INTERVAL_MS=0` | question maintenance and personal-quiz retention stop (do not leave off) |
+| Maintenance job off | `MAINTENANCE_INTERVAL_MS=0` | question maintenance, personal-quiz retention and every other retention job (`RETENTION_*`, `docs/PRIVACY.md` section 3) stop (do not leave off) |
 
 ## 4. Security incident (suspected breach or leak)
 
@@ -96,17 +96,18 @@ When someone writes to you instead:
 
 1. Confirm it is them: reply to the address on file and ask for the request in that thread (or let them sign in and
    show a code). Log the date, the request, who handled it.
-2. Export first if they asked for a copy; also search for what the export omits (personal quizzes where they are the
-   creator, or targets by display name: `docs/PRIVACY.md` section 6).
+2. Export first if they asked for a copy (it includes the quizzes they created); a person who was only a Blind Quiz target
+   has no account: find them by display name (`docs/PRIVACY.md` section 6).
 3. Erase: `dc exec app pnpm ops:delete-account --email person@example.com` shows what it found; add `--yes` to delete. The container already
    has `DATABASE_URL` and `SERVER_SECRET`. It runs the same code as `DELETE /v1/me` (verified in the sandbox on a throwaway database: the account
    becomes `DELETED`, e-mail and name are cleared, a second run reports nothing to delete); the `dc exec` wrapper is `[UNTESTED HERE]`. If the account is
    staff it refuses: remove the roles in the console first.
 4. Third parties named in a personal quiz: the respondent deletes their own answers with their invite link. If they cannot, there is no console
-   button for removing someone else's quiz; use SQL: `DELETE FROM personal_quizzes WHERE id = '...'` (cascades to prompts, targets, sealed answers, custom questions).
+   button for removing someone else's quiz unless it was reported (console, Reports → personal-quiz reports → delete quiz); otherwise use SQL: `DELETE FROM personal_quizzes WHERE id = '...'` (cascades to prompts, targets, sealed answers, custom questions).
 5. Reply within 30 days saying what was done and that backups age out on their retention schedule (`docs/BACKUP.md`).
 6. Rooms and game history are keyed by random ids and nicknames and are not tied to the account; if the person gave a nickname that
-   identifies them and asks for removal, delete that room per `docs/PRIVACY.md` section 5.
+   identifies them and asks for removal, delete that room now (`DELETE FROM rooms WHERE id = '...' AND status = 'CLOSED'`, cascades);
+   otherwise the retention job removes it 30 days after it closed (`docs/PRIVACY.md` section 3).
 
 ## 7. Payments
 
@@ -120,7 +121,6 @@ When someone writes to you instead:
 
 - **Docker log size.** Without a limit container logs grow forever. Set once in `/etc/docker/daemon.json`:
   `{"log-driver":"json-file","log-opts":{"max-size":"20m","max-file":"5"}}` then `sudo systemctl restart docker`, then `dc up -d --force-recreate`.
-- **Retention jobs are missing for old rooms, security events, telemetry, OTP rows and sessions**: run the SQL of `docs/PRIVACY.md` section 5 monthly.
 - Disk: `df -h`, `docker system df`, `dc exec -T db psql -U quizparty -d quizparty -c "SELECT pg_size_pretty(pg_database_size('quizparty'))"`.
 - Updates: `docs/DEPLOYMENT.md` section 9. OS security updates: `sudo apt update && sudo apt upgrade`, reboot at a quiet hour.
 - Backups: nightly, off-server, restore drill each quarter (`docs/BACKUP.md`).

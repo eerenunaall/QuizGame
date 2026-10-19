@@ -145,7 +145,8 @@ Set in `docker-compose.prod.yml` (not by you) unless the column says "you". Sour
 | `LOG_LEVEL` | `info` | tokens, cookies, `reconnectToken` are redacted from logs |
 | `PORT`, `HOST` | `8080`, `0.0.0.0` | inside the container only |
 | `MAX_WS_CONNECTIONS` / `MAX_WS_PER_IP` | 5000 / 40 | per-address cap matters for a venue where many phones share one Wi-Fi address; raise `MAX_WS_PER_IP` for big venues; creating rooms is limited to 10 per hour per address (burst 10), so one venue with several TVs behind one address can hit it |
-| `MAINTENANCE_INTERVAL_MS` | 900000 (15 min) | question maintenance and personal-quiz retention; `0` switches it off |
+| `MAINTENANCE_INTERVAL_MS` | 900000 (15 min) | question maintenance and all retention jobs; `0` switches it off |
+| `RETENTION_OTP_HOURS`, `RETENTION_ACCOUNT_SESSION_DAYS`, `RETENTION_SECURITY_EVENT_DAYS`, `RETENTION_TELEMETRY_DAYS`, `RETENTION_CLOSED_ROOM_DAYS` | 24, 7, 180, 180, 30 | retention periods (`docs/PRIVACY.md` section 3); the privacy page states the defaults, change it with them |
 | `PAYMENTS_ENABLED` and `APPLE_*`, `GOOGLE_*` | off | in-app purchases; only when the stores are set up (`docs/MOBILE.md` owner checklist, `docs/EXTERNAL_CHECKLIST.md`) |
 | `PAYMENTS_ACCEPT_SANDBOX` | `1` | accepts store test purchases as real entitlements; set `0` once review passes |
 | `AI_DECOYS_*`, `AUDIT_*`, `EMBEDDINGS_*` | unset | optional model services; names are never built in |

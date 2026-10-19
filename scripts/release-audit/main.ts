@@ -95,12 +95,15 @@ const PRODUCTION_PATHS = [
   /^database\/migrations\//u,
   /^infra\/deployment\/(docker-compose\.prod\.yml|Caddyfile|Dockerfile|entrypoint\.sh)$/u,
 ];
+const LEGAL_TEXTS = 'packages/i18n/src/legal.ts';
 const PLACEHOLDER =
   /\b(TODO|FIXME|XXX|HACK|CHANGEME|CHANGE_ME|REPLACE_ME|OWNER-TO-FILL|TBD)\b|example\.(com|org|net)\b|com\.example\./u;
 function noPlaceholders(): Result {
   const hits: string[] = [];
   for (const file of tracked) {
     if (!PRODUCTION_PATHS.some((p) => p.test(file)) || isTest(file) || !TEXT.test(file)) continue;
+    // The legal drafts carry the owner's identity markers on purpose; row "legal-identity" reports them.
+    if (file === LEGAL_TEXTS) continue;
     read(file)
       .split('\n')
       .forEach((line, index) => {
@@ -558,27 +561,43 @@ async function liveApplication(): Promise<{ results: Check[]; routes: RouteRow[]
 
     // Retention jobs promised by ADR-0018: are they scheduled?
     const appSource = read('apps/realtime/src/app.ts');
-    const missing: string[] = [];
-    if (!/addTask\([^)]*otp[^)]*purge/u.test(appSource)) missing.push('email_otps');
-    if (!/addTask\([^)]*(accountSessions|sessions)[^)]*purge/u.test(appSource))
-      missing.push('account_sessions');
-    if (
-      !/security_events/u.test(
-        read('apps/realtime/src/moderation/maintenance.ts') +
-          appSource.replace(/'security_events'/gu, ''),
-      )
-    )
-      missing.push('security_events');
+    const retentionSource = exists('apps/realtime/src/moderation/retention.ts')
+      ? read('apps/realtime/src/moderation/retention.ts')
+      : '';
+    const scheduled =
+      /new RetentionJob\(/u.test(appSource) &&
+      /maintenance\.addTask\([^;]*retention\.run\(\)/su.test(appSource);
+    const missing = [
+      'email_otps',
+      'account_sessions',
+      'security_events',
+      'telemetry_events',
+      'rooms',
+    ].filter(
+      (table) =>
+        !retentionSource.includes(`'${table}'`) && !retentionSource.includes(`FROM ${table}`),
+    );
+    const untouchable = [
+      'purchase_transactions',
+      'entitlements',
+      'store_notifications',
+      'admin_audit',
+      'venue_session',
+    ].filter((table) =>
+      new RegExp(`DELETE FROM ${table}|deleteFrom\\('${table}`, 'u').test(retentionSource),
+    );
+    const proof = exists('tests/integration/retention.test.ts');
     results.push({
       id: 'retention',
       title: 'Retention jobs promised by ADR-0018 are scheduled',
       result:
-        missing.length === 0
-          ? pass('one-time-code, session and security-event retention are scheduled')
-          : {
-              status: 'OPEN',
-              detail: `not scheduled: ${missing.join(', ')}, plus room history and telemetry (no purge code); personal quizzes and personal-content rooms ARE purged. Workaround: SQL in docs/PRIVACY.md section 5`,
-            },
+        scheduled && missing.length === 0 && untouchable.length === 0 && proof
+          ? pass(
+              'RetentionJob runs on the maintenance timer: sign-in codes 24 h, dead sessions 7 days, security events and telemetry 180 days, closed rooms 30 days (RETENTION_* overrides); purchases, entitlements, store notifications, the admin audit and the venue ledger are out of its reach; personal quizzes have their own job. Proof: integration retention.test.ts (injected clock)',
+            )
+          : fail(
+              `retention not wired: scheduled=${scheduled} missing=${missing.join(',')} touches=${untouchable.join(',')} proof=${proof}`,
+            ),
     });
   } finally {
     await built.close();
@@ -617,9 +636,7 @@ const BLOCKERS: Record<string, string> = {
   E: 'the production domain, signed iOS/Android builds and the association files fetched by Apple and Google; opening a link from Camera, Safari and Messages needs real devices',
   U: 'a store sandbox purchase: Apple Developer and Google Play accounts, products, Apple root certificates, a Google service account',
 };
-const OPEN_GAPS: Record<string, string> = {
-  AC: 'Blind-Quiz-specific reports (a moderator-only snapshot of a personal question) are not built; personal questions are refused by the bank report path',
-};
+const OPEN_GAPS: Record<string, string> = {};
 
 function proofFilesMissing(proof: string): string[] {
   const names = [...proof.matchAll(/`([\w.-]+\.(?:test|spec)\.tsx?)`/gu)].map((m) => m[1]!);
@@ -748,28 +765,53 @@ function openCodeGaps(): { id: string; title: string; result: Result }[] {
   const gaps: { id: string; title: string; result: Result }[] = [];
   const router = read('apps/web/src/App.tsx');
   const missing = ['/privacy', '/terms', '/support'].filter((p) => !router.includes(`'${p}'`));
+  const linked = [
+    'apps/web/src/tv/screens/TvTitle.tsx',
+    'apps/web/src/pages/CodeEntry.tsx',
+    'apps/web/src/play/JoinForm.tsx',
+  ].filter((file) => read(file).includes('<LegalLinks')).length;
+  const legal = exists(LEGAL_TEXTS) ? read(LEGAL_TEXTS) : '';
   gaps.push({
     id: 'legal-pages',
     title: 'Privacy, terms and support pages are served',
     result:
-      missing.length === 0
-        ? pass('routes exist')
+      missing.length === 0 && linked === 3 && /not legal advice/u.test(legal)
+        ? pass(
+            '/privacy, /terms and /support are routes of the web app (Turkish text first, English second, lazy-loaded, served under the strict CSP: ws static.test.ts), linked from the TV title, the phone code and join screens and the admin console; every page carries a "draft, not legal advice" notice (web Legal.test.tsx)',
+          )
         : {
             status: 'OPEN',
-            detail: `the web app has no ${missing.join(', ')} page (ADR-0004 planned them). Store listings need a privacy-policy URL and a support URL; the texts are the owner's (docs/EXTERNAL_CHECKLIST.md section 5)`,
+            detail: `missing routes: ${missing.join(', ') || 'none'}; screens linking them: ${linked}/3`,
+          },
+  });
+  const markers = (legal.match(/OWNER-TO-FILL/gu) ?? []).length;
+  gaps.push({
+    id: 'legal-identity',
+    title: "Legal texts carry the owner's identity and counsel review",
+    result:
+      markers === 0
+        ? pass('no OWNER-TO-FILL marker left in packages/i18n/src/legal.ts')
+        : {
+            status: 'EXTERNAL',
+            detail: `${markers} OWNER-TO-FILL markers in ${LEGAL_TEXTS} (controller identity, contact address, processors, legal bases, periods). Blocker: the owner fills them and has the texts reviewed by counsel, then removes the draft notice (docs/EXTERNAL_CHECKLIST.md section 5)`,
           },
   });
   const exportSource = read('apps/realtime/src/auth/privacy.ts');
+  const quizSource = read('apps/realtime/src/blind/quizzes.ts');
   gaps.push({
     id: 'export-scope',
     title: 'Account export covers personal quizzes',
-    result: /personal_quizzes/u.test(exportSource.slice(0, exportSource.indexOf('deleteAccount')))
-      ? pass('export includes personal quizzes')
-      : {
-          status: 'OPEN',
-          detail:
-            "GET /v1/me/export returns account, roles, sessions, purchases and entitlements but not the account's personal quizzes (docs/PRIVACY.md section 4)",
-        },
+    result:
+      /personalQuizzes/u.test(exportSource.slice(0, exportSource.indexOf('deleteAccount'))) &&
+      /async exportForOwner\(/u.test(quizSource)
+        ? pass(
+            "GET /v1/me/export includes the account's personal quizzes as their creator sees them (titles, prompts, target names with completion counts, custom questions), never a target's sealed answer (integration account-privacy.test.ts)",
+          )
+        : {
+            status: 'OPEN',
+            detail:
+              "GET /v1/me/export returns account, roles, sessions, purchases and entitlements but not the account's personal quizzes (docs/PRIVACY.md section 4)",
+          },
   });
   return gaps;
 }

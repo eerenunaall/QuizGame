@@ -43,16 +43,19 @@ Statements about law are pointers for your counsel, not legal advice.
 - [ ] Reading distance, glare and colour checks on the actual TVs; large-text and screen-reader pass on phones.
 - [ ] Load: run `pnpm perf` from a machine on a different network (the sandbox numbers are loopback only) if you expect big events.
 
-## 5. Legal and policy texts (the web app has no pages for them yet)
+## 5. Legal and policy texts (draft pages exist; your identity and counsel review do not)
 
-The app serves `/credits` only; the routes `/privacy`, `/terms` and `/support` planned in ADR-0004 are **not built**. Store listings need a
-privacy-policy URL and a support URL, so this blocks submission.
+The web app serves `/privacy`, `/terms` and `/support` (Turkish first, English second) from the draft texts in
+`packages/i18n/src/legal.ts`. They are built from `docs/PRIVACY.md`, carry a visible "draft, not legal advice" notice and leave every
+owner value as an `OWNER-TO-FILL` marker; the release audit reports them as EXTERNAL until no marker is left.
 
-- [ ] Privacy policy (TR + EN) based on `docs/PRIVACY.md`, published at a stable URL; terms of use; support contact page; a security contact (`docs/SECURITY.md` section 4).
+- [ ] Fill every `OWNER-TO-FILL` in `packages/i18n/src/legal.ts` (controller identity, contact and support addresses, processors and their
+  countries, legal bases, purchase-record and backup periods, account age limit, governing-law wording), have counsel review both languages,
+  then remove the draft notice (`draftNotice`) and its test expectation. A security contact (`docs/SECURITY.md` section 4).
 - [ ] Controller identity: who is the data controller (name, address, contact); KVKK "aydınlatma metni" (information notice) and, where required, explicit-consent texts; GDPR art. 13 notice if you serve the EU.
 - [ ] KVKK: whether VERBIS registration applies to you; how you respond to data-subject requests within the statutory period; the breach-notification procedure (`docs/RUNBOOK.md` section 4). GDPR: representative in the EU if you have no establishment there; DPO need.
 - [ ] Data-processing agreements and transfer basis for: the VPS provider, the mail service, any model provider, Apple/Google. Where servers are located (Turkey/EU/elsewhere) matters for cross-border transfer rules.
-- [ ] Decide the retention periods you will publish; today they are only partly enforced (`docs/PRIVACY.md` section 3); implement the missing jobs or run the SQL.
+- [ ] Confirm the retention periods: they are enforced by the maintenance job with the defaults in `docs/PRIVACY.md` section 3 (`RETENTION_*` overrides); if you change one, change the privacy page text with it.
 - [ ] Children: choose the age rating and the position on under-age users; the game has no age gate.
 - [ ] Blind Quiz / Who Said It: consent text wording shown to targets, the notice for statements, and a position on content that is about third parties who are not users. Review before switching on `mode.blind_quiz`, `mode.who_said_it`, `mode.custom_quiz`.
 - [ ] AI decoys (`ai.decoys`): sends a person's personal answer to a model provider; needs notice, consent and a processing agreement before the flag is turned on.

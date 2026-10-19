@@ -43,6 +43,12 @@ services:
       EMAIL_WEBHOOK_URL: ${EMAIL_WEBHOOK_URL:-}
       EMAIL_WEBHOOK_TOKEN: ${EMAIL_WEBHOOK_TOKEN:-}
       BLIND_DATA_KEYS: ${BLIND_DATA_KEYS:-}
+      # Retention periods (docs/PRIVACY.md section 3); empty keeps the defaults the privacy page states.
+      RETENTION_OTP_HOURS: ${RETENTION_OTP_HOURS:-}
+      RETENTION_ACCOUNT_SESSION_DAYS: ${RETENTION_ACCOUNT_SESSION_DAYS:-}
+      RETENTION_SECURITY_EVENT_DAYS: ${RETENTION_SECURITY_EVENT_DAYS:-}
+      RETENTION_TELEMETRY_DAYS: ${RETENTION_TELEMETRY_DAYS:-}
+      RETENTION_CLOSED_ROOM_DAYS: ${RETENTION_CLOSED_ROOM_DAYS:-}
       SERVE_WEB: '1'
       SERVE_ADMIN: '1'
       # Exactly one reverse proxy (Caddy) sits in front of the app.

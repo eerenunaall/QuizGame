@@ -11,9 +11,9 @@ Branch: `claude/cloud-session-infrastructure-ln57mp` · Last updated: 2026-10-19
 | M1b database + realtime | DONE | HTTP + WS, sessions with token rotation, durable event log with fencing, crash recovery, rate limits, static web serving with strict CSP |
 | M1c web TV + browser controller | DONE (CI green: check, integration, e2e) | `/tv` (QR lobby → game → results → rematch), `/join`, `/game`, settings (rounds, difficulty, categories), lobby tools for the leader, English + Turkish, synthesized sound, animated art; Playwright E2E with real Chromium |
 | M2 Party mechanics & resilience | DONE (CI result of the latest push: see "Next actions") | reconnect, token rotation, leader migration, display grace, crash recovery, rate limits (M1b) plus a prep phase with stakes, Double Down, 50/50, sabotage (JAM / SHUFFLE / FOG / LOCKOUT / POINT_TAX) with shield, token earning, cooldowns and softened effects, CROWD reveal, POWER_RESOLUTION screen, persistence of power use (migration 0003), ATTACK 5 closed |
-| M3 Content factory & admin | DONE (CI of the latest push: see "Next actions") | question schema + fingerprints + duplicate detection, importer/audit/export CLIs, 170+ TR dev seed, migration 0004, REPORT_QUESTION, bans, flags, maintenance job, email-OTP sign-in + staff roles, admin API (RBAC, CSRF, audit log), admin console SPA under `/admin`, acceptance Y/Z proven, AC partial (Blind Quiz reports are M5), red team ATTACK 15–24 |
+| M3 Content factory & admin | DONE (CI of the latest push: see "Next actions") | question schema + fingerprints + duplicate detection, importer/audit/export CLIs, 170+ TR dev seed, migration 0004, REPORT_QUESTION, bans, flags, maintenance job, email-OTP sign-in + staff roles, admin API (RBAC, CSRF, audit log), admin console SPA under `/admin`, acceptance Y/Z proven, AC (personal-quiz reports added in M7), red team ATTACK 15–24 |
 | M4 Accounts & payments | DONE (store sandbox purchases are external) | purchase verification (Apple StoreKit 2 via Apple's verifier, Google Play via the Developer API), entitlements bound to one account, restore, refund notifications, TV unlock link (QR) with live tier change, `/unlock` and `/purchase` pages, account export/deletion; acceptance U partial, V–X pass; red team ATTACK 9 and 25 |
-| M5 Blind Quiz & friends | WIP | M5-a..c Blind/Custom quiz done; M5-d Who Said It done (`SUBMIT_STATEMENT`, statement-per-question deck, author exempt, scrubbed at close, flag `mode.who_said_it`); M5-e AI decoy adapter (flag `ai.decoys`, off; HTTP provider with deadline + circuit breaker, strict output, fallback to the target's own alternatives); M5-f canary + ATTACK 10, which found and closed the creator-held-invite hole (claim cookie, migration 0007); Blind-Quiz reports remain |
+| M5 Blind Quiz & friends | WIP | M5-a..c Blind/Custom quiz done; M5-d Who Said It done (`SUBMIT_STATEMENT`, statement-per-question deck, author exempt, scrubbed at close, flag `mode.who_said_it`); M5-e AI decoy adapter (flag `ai.decoys`, off; HTTP provider with deadline + circuit breaker, strict output, fallback to the target's own alternatives); M5-f canary + ATTACK 10, which found and closed the creator-held-invite hole (claim cookie, migration 0007); Blind/Custom Quiz reports done (migration 0010, see below) |
 | M6 Mobile | DONE in the sandbox (device/store parts are external) | `apps/mobile` Expo SDK 58 + expo-router, TypeScript strict: Home, Join (code / nickname / avatar, deep links `quiznight://join/CODE`, `https://host/j/CODE`), Lobby, Prep (Risk stake, Double Down, Sabotage), Question (50/50, SHUFFLE/FOG/JAM), Reveal/Score/Results, Reconnect banner, Purchase (`PurchaseProvider` over `expo-iap`, account-bound), Unlock link, Profile (email OTP as MOBILE session, export, delete). Shared `controller-client`/`i18n`/`ui-tokens`; Jest 132 tests; ws test drives the app runtime against the real server. See `docs/MOBILE.md` |
 | M7 Polish, hardening, release | TODO | |
 
@@ -58,6 +58,25 @@ original inline-SVG icons (web) and emoji (native). Migration 0008. Tests: engin
 the second wave (Two-Step, Trim, Steam, Mirror, Spotlight, Backer, Herd, Rush). Not verified: balance in real play and
 the native app on a device.
 
+## Release-audit gaps closed for the browser-only product (2026-10-19)
+The owner decided: browser only, no App Store / Play Store; `apps/mobile` stays as it is and is not extended. The four
+OPEN rows of `docs/FINAL_RELEASE_AUDIT.md` are closed:
+- **Retention**: `RetentionJob` (`apps/realtime/src/moderation/retention.ts`) on the maintenance timer deletes sign-in codes
+  (24 h), dead sessions (7 days), security events and telemetry (180 days) and closed rooms with their game records (30 days),
+  each an env override (`RETENTION_*`, also in the production compose file). It cannot reach purchases, entitlements, store
+  notifications, the admin audit or the venue ledger. Integration `retention.test.ts` (injected clock, both sides of each limit).
+- **Legal pages**: `/privacy` (KVKK aydınlatma style), `/terms` (free game, possible paid features later, trademark notice),
+  `/support`, Turkish first then English, texts in `packages/i18n/src/legal.ts`, lazy-loaded, strict CSP unchanged; linked from
+  the TV title, the phone code and join screens and the admin sidebar. Drafts: 39 `OWNER-TO-FILL` markers and a visible
+  "not legal advice" notice; the audit lists them as EXTERNAL until the owner fills them and counsel reviews.
+- **Export**: `GET /v1/me/export` includes `personalQuizzes` (what the creator's own API shows), never a target's answer.
+- **Blind/Custom Quiz reports (acceptance AC)**: `REPORT_QUESTION` on a personal question stores quiz id + question id +
+  reason (`personal_reports`, migration 0010); ADMIN/MODERATOR see ids only in the console (Reports page) and can remove the
+  question, delete the quiz or dismiss, audited. No snapshot: nothing sealed leaves the vault. Who Said It stays unreportable.
+Still open for a browser-only launch: a web button for account export/deletion (API and the RUNBOOK path exist), the owner's
+legal identity and counsel review, and the store-related EXTERNAL rows (E, U, purchase verification) are moot while there are
+no store builds.
+
 ## Recent balance change
 ADR-0021 (power limits): Double Down is refused with HIGH / ALL_IN (`DOUBLE_DOWN_STAKE_CONFLICT`), gains
 after stake and Double Down are capped at 3x (FINAL 5x) of base + speed, Double Down extra loss 100 → 200,
@@ -77,7 +96,7 @@ after a 2 s undo window (immediately when under ~3 s are left), and "Sabotaj yap
 
 ## Next actions
 1. Read the CI result of the latest push (`mcp__github__actions_list`) and fix anything red.
-2. M5: Blind-Quiz reports (acceptance AC rest); a "suggest alternatives" button and a "link already used" message on the respond page (server route and 403 exist; web not wired); browser E2E for the respond page.
+2. M5: a "suggest alternatives" button and a "link already used" message on the respond page (server route and 403 exist; web not wired); browser E2E for the respond page.
 3. M6 follow-ups: everything in `docs/MOBILE.md` "Owner checklist" (accounts, ids, keys, EAS builds, device runs); then phone parity (categories, kick, report).
 4. M7: polish, perf, release audit.
 

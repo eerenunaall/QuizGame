@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ROLES } from '../../apps/realtime/src/auth/accounts';
+import { PersonalReports } from '../../apps/realtime/src/blind/reports';
 import { adminApi, staff } from '../helpers/admin';
 import { startModelServer, type ModelServer } from '../helpers/model-server';
 import { call, player, type CookieJar, type Player } from '../helpers/payments';
@@ -192,6 +193,23 @@ describe('ATTACK 10: the creator reads a target’s answers', () => {
   });
 
   it('every registered route, replayed as creator, another player, nobody and each staff role, never carries an answer', async () => {
+    // a player reported the target's question (acceptance AC): the moderation queue must not leak it either
+    const response = await server.db.db
+      .selectFrom('blind_responses')
+      .select('id')
+      .where('target_id', '=', targetId)
+      .executeTakeFirstOrThrow();
+    const reported = await new PersonalReports(server.db.db, server.config.serverSecret, {
+      now: () => Date.now(),
+    }).submit({
+      quizId,
+      kind: 'BLIND',
+      questionId: response.id,
+      sessionId: 'attack10-reporter',
+      roomId: quizId,
+      reason: 'OFFENSIVE',
+    });
+    expect(reported).toBe(true);
     const other = await player(server, 'WEB');
     const members = await Promise.all(ROLES.map((role) => staff(server, [role])));
     const fill = (url: string): string =>
@@ -246,7 +264,12 @@ describe('ATTACK 10: the creator reads a target’s answers', () => {
     // the admin API too, by name, for the roles the ADR calls out
     for (const member of members) {
       const api = adminApi(server, member);
-      for (const path of ['/v1/admin/reports', '/v1/admin/rooms', '/v1/admin/incidents']) {
+      for (const path of [
+        '/v1/admin/reports',
+        '/v1/admin/personal-reports',
+        '/v1/admin/rooms',
+        '/v1/admin/incidents',
+      ]) {
         const result = await api.call('GET', path);
         expect(result.text).not.toContain(ANSWER);
       }
