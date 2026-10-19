@@ -17,6 +17,7 @@ import { Incidents } from './pages/Incidents';
 import { Security } from './pages/Security';
 import { Users } from './pages/Users';
 import { AuditLog } from './pages/AuditLog';
+import { Venues } from './pages/Venues';
 import { t } from './ui';
 
 export interface Account {
@@ -45,6 +46,7 @@ const NAV = [
   ['security', 'admin.nav.security'],
   ['users', 'admin.nav.users'],
   ['audit', 'admin.nav.audit'],
+  ['venues', 'admin.nav.venues'],
 ] as const;
 
 function Screen({ section, id }: { section: string; id: string | undefined }): ReactNode {
@@ -74,6 +76,8 @@ function Screen({ section, id }: { section: string; id: string | undefined }): R
       return <Users />;
     case 'audit':
       return <AuditLog />;
+    case 'venues':
+      return <Venues id={id} />;
     default:
       return <Dashboard />;
   }
