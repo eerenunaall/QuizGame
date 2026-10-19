@@ -485,6 +485,61 @@ export interface TelemetryEvents {
   props: Generated<Json>;
 }
 
+export interface VenueRewards {
+  code_hash: string;
+  expires_at: Timestamp;
+  game_id: string;
+  id: Generated<string>;
+  issued_at: Timestamp;
+  redeemed_at: Timestamp | null;
+  redeemed_by: string | null;
+  reward_text: string;
+  room_id: string;
+  session_id: string;
+  venue_id: string;
+  winner_display_name: string;
+}
+
+export interface Venues {
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  id: Generated<string>;
+  name: string;
+  settings: Generated<Json>;
+}
+
+export interface VenueSessionEvents {
+  at: Generated<Timestamp>;
+  id: Generated<Int8>;
+  kind: string;
+  seconds: Generated<number>;
+  session_id: string;
+  staff_account_id: string | null;
+  venue_id: string;
+}
+
+export interface VenueSessions {
+  ended_at: Timestamp | null;
+  id: Generated<string>;
+  opened_by: string | null;
+  paused_at: Timestamp | null;
+  paused_total_seconds: Generated<number>;
+  purchased_seconds: number;
+  room_code: string;
+  room_id: string;
+  started_at: Timestamp;
+  state: Generated<string>;
+  venue_id: string;
+}
+
+export interface VenueStaff {
+  account_id: string;
+  added_at: Generated<Timestamp>;
+  added_by: string | null;
+  role: string;
+  venue_id: string;
+}
+
 export interface DB {
   account_roles: AccountRoles;
   account_sessions: AccountSessions;
@@ -524,4 +579,9 @@ export interface DB {
   security_events: SecurityEvents;
   store_notifications: StoreNotifications;
   telemetry_events: TelemetryEvents;
+  venue_rewards: VenueRewards;
+  venue_session_events: VenueSessionEvents;
+  venue_sessions: VenueSessions;
+  venue_staff: VenueStaff;
+  venues: Venues;
 }
