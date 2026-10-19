@@ -16,6 +16,8 @@ export const CAN = {
   queueRead: ['ADMIN', 'EDITOR', 'MODERATOR'],
   reportsRead: ['ADMIN', 'EDITOR', 'MODERATOR'],
   reportsResolve: ['ADMIN', 'EDITOR', 'MODERATOR'],
+  /** Reports of personal quizzes (ADR-0015): moderation only, ids only. */
+  personalReports: ['ADMIN', 'MODERATOR'],
   categoriesRead: ['ADMIN', 'EDITOR', 'MODERATOR', 'SUPPORT'],
   categoriesWrite: ['ADMIN', 'EDITOR'],
   roomsRead: ['ADMIN', 'MODERATOR', 'SUPPORT'],

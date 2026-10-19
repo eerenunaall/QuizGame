@@ -3,9 +3,11 @@ import { z } from 'zod';
 import type { Database } from '@quizparty/db';
 import { REPORT_REASONS, reviewQueue, resolveReport } from '@quizparty/question-bank';
 import { QUESTION_STATUSES } from '@quizparty/question-schema';
+import { PersonalReports } from '../blind/reports';
 import type { AppConfig } from '../config';
 import { hmacHex } from '../security/crypto';
 import type { RoomManager } from '../rooms/manager';
+import type { Clock } from '../util/clock';
 import type { AdminAudit } from './audit';
 import {
   IdParams,
@@ -24,6 +26,7 @@ export interface ModerationRouteDeps {
   db: Database;
   manager: RoomManager;
   audit: AdminAudit;
+  clock: Clock;
 }
 
 const StatusList = z
@@ -35,6 +38,7 @@ const StatusList = z
 /** Reports, the review queue, live rooms, bans and incidents: what staff do when players run into trouble. */
 export function registerModerationRoutes(app: FastifyInstance, deps: ModerationRouteDeps): void {
   const { db, manager, audit, config } = deps;
+  const personalReports = new PersonalReports(db, config.serverSecret, deps.clock);
 
   // ───────────── review queue ─────────────
   app.get(
@@ -177,6 +181,53 @@ export function registerModerationRoutes(app: FastifyInstance, deps: ModerationR
       } catch (error) {
         return lifecycleReply(reply, error);
       }
+    },
+  );
+
+  // ───────────── personal-quiz reports (ADR-0015) ─────────────
+  // Ids only: no question text, option or answer is ever loaded for this queue. A moderator removes the
+  // reported question or the whole quiz without reading it, or dismisses the report.
+  app.get(
+    '/v1/admin/personal-reports',
+    { config: { auth: 'admin', limit: 'adminRead', roles: CAN.personalReports } },
+    async (request, reply) => {
+      const query = parse(
+        Page.extend({ status: z.enum(['OPEN', 'ACTIONED', 'DISMISSED']).default('OPEN') }).strict(),
+        request.query,
+        reply,
+      );
+      if (!query) return reply;
+      return personalReports.list(query);
+    },
+  );
+
+  app.post(
+    '/v1/admin/personal-reports/:id/resolve',
+    { config: { auth: 'admin', limit: 'adminWrite', roles: CAN.personalReports } },
+    async (request, reply) => {
+      const params = parse(IdParams, request.params, reply);
+      const body = params
+        ? parse(
+            z.strictObject({ action: z.enum(['DISMISS', 'REMOVE_QUESTION', 'DELETE_QUIZ']) }),
+            request.body,
+            reply,
+          )
+        : null;
+      if (!params || !body) return reply;
+      const outcome = await personalReports.resolve(
+        params.id,
+        body.action,
+        actorOf(request).accountId,
+      );
+      if (!outcome.ok)
+        return adminError(reply, outcome.code === 'NOT_FOUND' ? 404 : 409, outcome.code);
+      await audit.record(
+        request,
+        'personal_report.resolve',
+        { type: 'personal_report', id: params.id },
+        { action: body.action, closed: outcome.closed },
+      );
+      return outcome;
     },
   );
 

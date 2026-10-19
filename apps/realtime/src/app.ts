@@ -186,7 +186,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
         ? null // fail closed: no way to deliver a code means no email sign-in
         : new ConsoleEmailSender((line) => log.info(line)));
   const otp = mail ? new OtpService(db, config.serverSecret, clock, mail, onError) : null;
-  const reports = new QuestionReports(db, flags, config.serverSecret, telemetry);
+  const reports = new QuestionReports(db, flags, config.serverSecret, telemetry, clock);
   const maintenance = new MaintenanceJob(
     db,
     clock,

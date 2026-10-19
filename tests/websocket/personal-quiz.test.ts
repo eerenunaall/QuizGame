@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { appleNotification, appleTransaction } from '../helpers/apple-store';
+import { adminApi, staff } from '../helpers/admin';
 import type { TestClient } from '../helpers/client';
 import { closeParty, createParty, type Party } from '../helpers/party';
 import { call, player, startShop, type Player, type Shop } from '../helpers/payments';
@@ -252,8 +253,88 @@ describe('playing a Blind Quiz', () => {
     await closeParty(party);
   });
 
-  it('cannot be reported through the bank’s report path (personal questions are not in the bank)', async () => {
+  it('can be reported: the report reaches moderation by id only, and a moderator removes the question unread (ADR-0015, AC)', async () => {
     const quiz = await readyBlindQuiz(server());
+    await buy(quiz.creator);
+    const party = await createParty(server(), 2);
+    const token = await linkFor(party);
+    await attach(quiz.creator, token, quiz.quizId);
+    party.leader.send('START_GAME', {});
+    await party.leader.nextOfType('ACK');
+    const first = await party.players[0]!.waitForPhase('ANSWERING', 20_000);
+    if (first.payload.data.phase !== 'ANSWERING') throw new Error('not answering');
+    const questionId = first.payload.data.questionId;
+    for (const client of party.players)
+      client.send('SUBMIT_ANSWER', {
+        questionId,
+        optionId: first.payload.data.options[0]!.optionId,
+      });
+    await party.players[0]!.waitForPhase('REVEAL', 20_000);
+    // the bank's queue is untouched; a second press by the same player is not a second report
+    const bankBefore = await server().db.db.selectFrom('question_reports').select('id').execute();
+    for (let i = 0; i < 2; i += 1) {
+      const id = party.players[0]!.send('REPORT_QUESTION', { questionId, reason: 'OFFENSIVE' });
+      await party.players[0]!.next((m) => m.type === 'ACK' && m.payload.messageId === id);
+    }
+    const id = party.players[1]!.send('REPORT_QUESTION', { questionId, reason: 'OTHER' });
+    await party.players[1]!.next((m) => m.type === 'ACK' && m.payload.messageId === id);
+    const rows = await server().db.db.selectFrom('personal_reports').selectAll().execute();
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ quiz_id: quiz.quizId, kind: 'BLIND', question_id: questionId });
+    // nothing a target wrote is copied into the report
+    for (const answer of quiz.answers) expect(JSON.stringify(rows)).not.toContain(answer);
+    expect(await server().db.db.selectFrom('question_reports').select('id').execute()).toEqual(
+      bankBefore,
+    );
+
+    // only moderators and administrators see the queue, and it holds ids, never text
+    const editor = adminApi(server(), await staff(server(), ['EDITOR']));
+    expect((await editor.get('/v1/admin/personal-reports')).status).toBe(403);
+    const moderator = adminApi(server(), await staff(server(), ['MODERATOR']));
+    const queue = await moderator.get<{
+      total: number;
+      items: { id: string; quizId: string; questionId: string; reports: number }[];
+    }>('/v1/admin/personal-reports');
+    expect(queue.status).toBe(200);
+    expect(queue.body.total).toBe(2);
+    expect(queue.body.items[0]).toMatchObject({ quizId: quiz.quizId, questionId, reports: 2 });
+    for (const secret of [...quiz.answers, quiz.targetName, 'reporter', 'room'])
+      expect(queue.text, secret).not.toContain(secret);
+
+    const resolved = await moderator.post(
+      `/v1/admin/personal-reports/${queue.body.items[0]!.id}/resolve`,
+      { action: 'REMOVE_QUESTION' },
+    );
+    expect(resolved.status).toBe(200);
+    expect(resolved.body).toEqual({ ok: true, closed: 2 });
+    expect(
+      await server()
+        .db.db.selectFrom('blind_responses')
+        .select('id')
+        .where('id', '=', questionId)
+        .execute(),
+    ).toEqual([]);
+    expect((await moderator.get<{ total: number }>('/v1/admin/personal-reports')).body.total).toBe(
+      0,
+    );
+    const again = await moderator.post(
+      `/v1/admin/personal-reports/${queue.body.items[0]!.id}/resolve`,
+      { action: 'DISMISS' },
+    );
+    expect(again.status).toBe(409);
+    const audit = await server()
+      .db.db.selectFrom('admin_audit')
+      .select(['action', 'detail'])
+      .where('action', '=', 'personal_report.resolve')
+      .execute();
+    expect(audit).toEqual([
+      { action: 'personal_report.resolve', detail: { action: 'REMOVE_QUESTION', closed: 2 } },
+    ]);
+    await closeParty(party);
+  });
+
+  it('a moderator can delete the whole reported quiz, which takes its reports with it', async () => {
+    const quiz = await readyCustomQuiz(server());
     await buy(quiz.creator);
     const party = await createParty(server(), 2);
     const token = await linkFor(party);
@@ -270,12 +351,33 @@ describe('playing a Blind Quiz', () => {
     await party.players[0]!.waitForPhase('REVEAL', 20_000);
     const id = party.players[0]!.send('REPORT_QUESTION', {
       questionId: first.payload.data.questionId,
-      reason: 'OTHER',
+      reason: 'OFFENSIVE',
     });
-    const refused = await party.players[0]!.next(
-      (m) => m.type === 'ERROR' && m.payload.messageId === id,
+    await party.players[0]!.next((m) => m.type === 'ACK' && m.payload.messageId === id);
+    const admin = adminApi(server(), await staff(server(), ['ADMIN']));
+    const queue = await admin.get<{ items: { id: string; quizId: string; kind: string }[] }>(
+      '/v1/admin/personal-reports',
     );
-    expect(refused.type === 'ERROR' && refused.payload.code).toBe('INVALID_STATE');
+    const report = queue.body.items.find((item) => item.quizId === quiz.quizId)!;
+    expect(report.kind).toBe('CUSTOM');
+    const done = await admin.post(`/v1/admin/personal-reports/${report.id}/resolve`, {
+      action: 'DELETE_QUIZ',
+    });
+    expect(done.status).toBe(200);
+    expect(
+      await server()
+        .db.db.selectFrom('personal_quizzes')
+        .select('id')
+        .where('id', '=', quiz.quizId)
+        .execute(),
+    ).toEqual([]);
+    expect(
+      await server()
+        .db.db.selectFrom('personal_reports')
+        .select('id')
+        .where('quiz_id', '=', quiz.quizId)
+        .execute(),
+    ).toEqual([]);
     await closeParty(party);
   });
 });

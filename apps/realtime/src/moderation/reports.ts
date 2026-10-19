@@ -1,8 +1,10 @@
 import { submitReport, type ReportOutcome, type ReportReason } from '@quizparty/question-bank';
 import type { Database } from '@quizparty/db';
+import { PersonalReports } from '../blind/reports';
 import type { FeatureFlags } from '../flags/service';
 import { pseudonym } from '../security/crypto';
 import type { TelemetrySink } from '../telemetry/sink';
+import type { Clock } from '../util/clock';
 
 /**
  * Player reports of a question (GDD §10). The reporter is a keyed pseudonym of the room session, so
@@ -10,12 +12,18 @@ import type { TelemetrySink } from '../telemetry/sink';
  * can switch the whole feature off.
  */
 export class QuestionReports {
+  /** Reports of personal-quiz questions go to their own queue, by id only (ADR-0015). */
+  readonly personal: PersonalReports;
+
   constructor(
     private readonly db: Database,
     private readonly flags: FeatureFlags,
     private readonly secret: string,
     private readonly telemetry: TelemetrySink,
-  ) {}
+    clock: Clock,
+  ) {
+    this.personal = new PersonalReports(db, secret, clock);
+  }
 
   enabled(): Promise<boolean> {
     return this.flags.isEnabled('report.questions');

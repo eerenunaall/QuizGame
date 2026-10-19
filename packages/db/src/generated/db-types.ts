@@ -258,6 +258,21 @@ export interface PersonalQuizzes {
   updated_at: Generated<Timestamp>;
 }
 
+export interface PersonalReports {
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  kind: string;
+  question_id: string;
+  quiz_id: string;
+  reason: string;
+  reporter_hash: string;
+  resolution: string | null;
+  resolved_at: Timestamp | null;
+  resolved_by: string | null;
+  room_id: string | null;
+  status: Generated<string>;
+}
+
 export interface PurchaseTransactions {
   account_id: string | null;
   created_at: Generated<Timestamp>;
@@ -492,6 +507,7 @@ export interface DB {
   incidents: Incidents;
   link_intents: LinkIntents;
   personal_quizzes: PersonalQuizzes;
+  personal_reports: PersonalReports;
   purchase_transactions: PurchaseTransactions;
   question_audits: QuestionAudits;
   question_options: QuestionOptions;

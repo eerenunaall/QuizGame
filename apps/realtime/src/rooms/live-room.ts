@@ -754,17 +754,33 @@ export class LiveRoom {
     if (!round || !question || !round.outcome || !REPORTABLE_PHASES.has(this.state.phase))
       return reject('INVALID_STATE');
     if (message.payload.questionId !== question.questionId) return reject('QUESTION_MISMATCH');
-    if (!UUID_RE.test(question.questionId)) return reject('INVALID_STATE'); // only bank questions have a record to flag
-    // Personal questions are not in the bank: there is nothing to flag there (reports of personal content are handled apart).
-    if (this.state.game?.deck.questions[question.questionId]?.source !== 'BANK')
+    if (!UUID_RE.test(question.questionId)) return reject('INVALID_STATE'); // only stored questions have a record to flag
+    const source = this.state.game?.deck.questions[question.questionId]?.source;
+    // Who Said It statements live only in this room and are erased at close: there is no record to flag.
+    if (source !== 'BANK' && source !== 'BLIND' && source !== 'CUSTOM')
       return reject('INVALID_STATE');
     if (!(await this.deps.reports.enabled())) return reject('FEATURE_DISABLED');
-    await this.deps.reports.submit({
-      questionId: question.questionId,
-      sessionId,
-      roomId: this.id,
-      reason: message.payload.reason,
-    });
+    if (source === 'BANK') {
+      await this.deps.reports.submit({
+        questionId: question.questionId,
+        sessionId,
+        roomId: this.id,
+        reason: message.payload.reason,
+      });
+    } else {
+      // Personal content goes to moderation by id only (ADR-0015): the quiz is the room's own, never the client's word.
+      const quizId = this.state.contentRef;
+      if (!quizId) return reject('INVALID_STATE');
+      const stored = await this.deps.reports.personal.submit({
+        quizId,
+        kind: source,
+        questionId: question.questionId,
+        sessionId,
+        roomId: this.id,
+        reason: message.payload.reason,
+      });
+      if (!stored) return reject('INVALID_STATE');
+    }
     this.send(connection, { type: 'ACK', payload: { messageId: message.messageId } });
   }
 

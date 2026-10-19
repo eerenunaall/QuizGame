@@ -33,7 +33,13 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminDeps): void
     audit,
     engine: deps.engine,
   });
-  registerModerationRoutes(app, { config: deps.config, db: deps.db, manager: deps.manager, audit });
+  registerModerationRoutes(app, {
+    config: deps.config,
+    db: deps.db,
+    manager: deps.manager,
+    audit,
+    clock: deps.clock,
+  });
   registerSystemRoutes(app, {
     db: deps.db,
     accounts: deps.accounts,
