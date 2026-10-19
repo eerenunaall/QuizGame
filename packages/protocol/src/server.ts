@@ -17,6 +17,7 @@ import {
   PhaseDataSchema,
   PublicPlayerSchema,
   RoomViewSchema,
+  VenueMeterViewSchema,
   YouViewSchema,
 } from './views';
 
@@ -114,6 +115,16 @@ export const SERVER_PAYLOADS = {
   }),
   DISPLAY_STATUS: z.strictObject({ connected: z.boolean(), awaitingDisplay: z.boolean() }),
   ROOM_CLOSING: z.strictObject({ reason: CloseReasonSchema }),
+  /** Venue mode (ADR-0024): staff opened, extended, paused or ended the table (or its time ran out). */
+  VENUE_METER_CHANGED: z.strictObject({ venue: VenueMeterViewSchema }),
+  /** Venue mode: to the winner's phone only. The code is shown big; nobody else ever receives it. */
+  VENUE_REWARD: z.strictObject({
+    code: z.string().regex(/^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{8}$/u),
+    text: z.string().min(1).max(120),
+    expiresAt: EpochMsSchema,
+  }),
+  /** Venue mode: to the display only, for the results banner (who won; no code, no reward text). */
+  VENUE_REWARD_ISSUED: z.strictObject({ playerId: PlayerIdSchema }),
 } as const;
 
 export type ServerMessageType = keyof typeof SERVER_PAYLOADS;

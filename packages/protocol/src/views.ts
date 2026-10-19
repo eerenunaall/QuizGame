@@ -467,6 +467,17 @@ export const PublicGameSchema = z.strictObject({
   scoreboard: z.array(ScoreboardEntrySchema).max(8),
 });
 
+/**
+ * Venue mode (ADR-0024): the table's time meter, the only venue data a room frame ever carries.
+ * `endsAt` is server time while RUNNING; `remainingMs` is what is left at the frame's server time.
+ */
+export const VenueMeterViewSchema = z.strictObject({
+  state: z.enum(['RUNNING', 'PAUSED', 'ENDED']),
+  endsAt: EpochMsSchema.nullable(),
+  remainingMs: z.int().nonnegative(),
+});
+export type VenueMeterView = z.infer<typeof VenueMeterViewSchema>;
+
 export const RoomViewSchema = z.strictObject({
   roomId: UuidSchema,
   code: z.string().min(6).max(6),
@@ -487,5 +498,7 @@ export const RoomViewSchema = z.strictObject({
   game: PublicGameSchema.nullable(),
   phaseData: PhaseDataSchema,
   you: YouViewSchema.nullable(),
+  /** Venue mode only (ADR-0024); absent for every other room and from older servers. */
+  venue: VenueMeterViewSchema.optional(),
 });
 export type RoomView = z.infer<typeof RoomViewSchema>;

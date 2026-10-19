@@ -69,6 +69,14 @@ export const ERROR_CODES = {
   LIMIT_REACHED: { retryable: false },
   /** The quiz is not ready to be played (not enough approved questions). */
   NOT_READY: { retryable: false },
+  /** Venue mode (ADR-0024): the table's paid time is used up or the table was ended; staff can extend it. */
+  VENUE_TIME_UP: { retryable: false },
+  /** Venue mode: staff paused the table's clock; no new game starts until they resume it. */
+  VENUE_PAUSED: { retryable: false },
+  /** Venue reward: this code was already used. */
+  REWARD_ALREADY_REDEEMED: { retryable: false },
+  /** Venue reward: this code's day is over. */
+  REWARD_EXPIRED: { retryable: false },
   INTERNAL: { retryable: true },
 } as const;
 

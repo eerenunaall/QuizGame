@@ -7,4 +7,5 @@ export * from './scoring';
 export * from './timers';
 export * from './who-said-it';
 export * from './types';
+export * from './venue';
 export * from './views';

@@ -1,3 +1,4 @@
+import { meterView } from './venue';
 import type {
   PhaseData,
   PublicPlayer,
@@ -493,5 +494,7 @@ export function roomView(state: RoomState, viewer: Viewer, now: number): RoomVie
       : null,
     phaseData: phaseDataFor(state),
     you: viewer.role === 'PLAYER' ? youView(state, viewer.playerId) : null,
+    // Venue mode: the table's meter is public room information; nothing else of a venue is (ADR-0024).
+    ...(state.venue ? { venue: meterView(state.venue, now) } : {}),
   };
 }

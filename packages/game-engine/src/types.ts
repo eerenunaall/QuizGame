@@ -19,6 +19,7 @@ import type {
 } from '@quizparty/protocol';
 import type { GameConfig } from './config';
 import type { Deck } from './deck';
+import type { VenueMeter } from './venue';
 
 export type EpochMs = number;
 
@@ -269,6 +270,8 @@ export interface ResultsRecord {
     kind: 'SHARPSHOOTER' | 'FASTEST_FINGER' | 'STREAK_MASTER' | 'COMEBACK';
     playerId: string;
   }[];
+  /** Venue mode: the table's time ran out (or was paused/ended) and the game stopped early. Server-only. */
+  cutShort?: boolean;
 }
 
 export interface GameState {
@@ -323,6 +326,11 @@ export interface RoomState {
   playerOrder: string[];
   game: GameState | null;
   closed: { reason: CloseReason; at: EpochMs } | null;
+  /**
+   * Venue mode (ADR-0024): the table's time meter, set by the server. Optional so rooms stored before
+   * it load unchanged; absent/null for every room that is not a metered café table.
+   */
+  venue?: VenueMeter | null;
 }
 
 export type EngineCommandType =
@@ -401,6 +409,8 @@ export type EngineInput =
       rounds: number | null;
     })
   | (InputBase & { kind: 'RECOVER'; outageMs: number })
+  /** Venue mode: staff opened, extended, paused or ended the table (null detaches it). */
+  | (InputBase & { kind: 'VENUE_METER'; meter: VenueMeter | null })
   | (InputBase & { kind: 'CLOSE'; reason: CloseReason });
 
 export type Audience =

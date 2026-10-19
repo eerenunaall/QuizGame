@@ -46,6 +46,7 @@ import { rankPlayers } from './rank';
 import { resolveDuel, settlePot, type PotEntry } from './risks';
 import { computeScore } from './scoring';
 import { allPlayersGoneSince, isInGamePhase, leaderHandoverPossible } from './timers';
+import { meterBlock, meterHeld, meterView, type VenueMeter } from './venue';
 import { exemptPlayerId, tickFor } from './who-said-it';
 import type {
   Actor,
@@ -223,6 +224,8 @@ function dispatch(d: Room, ctx: Ctx): void {
       return onEntitlement(d, ctx, input.tier, input.hostAccountId, input.reason);
     case 'RECOVER':
       return onRecover(d, ctx, input.at, input.outageMs);
+    case 'VENUE_METER':
+      return onVenueMeter(d, ctx, input.at, input.meter);
     case 'CLOSE':
       return closeRoom(d, ctx, input.at, input.reason);
   }
@@ -591,11 +594,15 @@ function onCommand(
     case 'START_GAME': {
       if (!isHost) return reject(ctx, 'NOT_HOST');
       if (d.phase !== 'LOBBY') return reject(ctx, 'INVALID_STATE');
+      const blocked = meterBlock(d.venue, at);
+      if (blocked) return reject(ctx, blocked);
       return requestDeck(d, ctx, 'START', actor);
     }
     case 'REMATCH': {
       if (!isHost) return reject(ctx, 'NOT_HOST');
       if (d.phase !== 'RESULTS') return reject(ctx, 'INVALID_STATE');
+      const blocked = meterBlock(d.venue, at);
+      if (blocked) return reject(ctx, blocked);
       return requestDeck(d, ctx, 'REMATCH', actor);
     }
     case 'BACK_TO_LOBBY': {
@@ -676,6 +683,9 @@ function onBeginGame(d: Room, ctx: Ctx, input: Extract<EngineInput, { kind: 'BEG
   const expectedPhase = purpose === 'START' ? 'LOBBY' : 'RESULTS';
   if (d.phase !== expectedPhase) return reject(ctx, 'INVALID_STATE');
   if (!isHostActor(d, requestedBy)) return reject(ctx, 'NOT_HOST');
+  // The deck was being built while the table's time ran out (or staff paused it): no game after all.
+  const blocked = meterBlock(d.venue, at);
+  if (blocked) return reject(ctx, blocked);
   if (connectedPlayerCount(d) < d.config.minPlayersToStart)
     return reject(ctx, 'NOT_ENOUGH_PLAYERS');
 
@@ -1255,8 +1265,12 @@ function onTick(d: Room, ctx: Ctx, at: number): void {
   const t = d.config.timings;
   if (at - d.createdAt >= t.maxLifetimeMs) return closeRoom(d, ctx, at, 'LIFETIME');
 
-  const idleLimit =
-    d.phase === 'WAITING' || d.phase === 'LOBBY'
+  // A café table that is still somebody's (ADR-0024) waits for them: no idle close, no close when
+  // every phone sleeps. The lifetime cap above still applies.
+  const held = meterHeld(d.venue);
+  const idleLimit = held
+    ? null
+    : d.phase === 'WAITING' || d.phase === 'LOBBY'
       ? t.lobbyIdleMs
       : d.phase === 'RESULTS'
         ? t.resultsIdleMs
@@ -1271,7 +1285,7 @@ function onTick(d: Room, ctx: Ctx, at: number): void {
   // Phones that merely dropped (not LEFT) never close a room by themselves, so a TV would hang on
   // a dead lobby for ever: when every active seat is gone for a while, send the TV back to its menu.
   const goneSince = allPlayersGoneSince(d);
-  if (goneSince !== null && at - goneSince >= allPlayersGoneMsFor(d.config))
+  if (!held && goneSince !== null && at - goneSince >= allPlayersGoneMsFor(d.config))
     return closeRoom(d, ctx, at, 'ABANDONED');
 
   if (
@@ -1347,6 +1361,8 @@ function advancePhase(d: Room, ctx: Ctx, at: number): void {
     case 'SCORE_UPDATE': {
       const game = d.game!;
       if (game.roundIndex >= game.totalRounds - 1) return enterResults(d, ctx, at);
+      // Venue mode: the round that was running when the table's time ran out has finished; no next one.
+      if (meterBlock(d.venue, at)) return enterResults(d, ctx, at, true);
       planRound(d, ctx, game.roundIndex + 1);
       return enterPhase(d, 'MICRO_INTERMISSION', at, t.microIntermissionMs);
     }
@@ -1666,7 +1682,7 @@ function enterScoreUpdate(d: Room, ctx: Ctx, at: number): void {
   enterPhase(d, 'SCORE_UPDATE', at, d.config.timings.scoreUpdateMs);
 }
 
-function enterResults(d: Room, ctx: Ctx, at: number): void {
+function enterResults(d: Room, ctx: Ctx, at: number, cutShort = false): void {
   const game = d.game!;
   const joinIndexOf = (playerId: string): number =>
     d.players[playerId]?.joinIndex ?? Number.MAX_SAFE_INTEGER;
@@ -1713,7 +1729,7 @@ function enterResults(d: Room, ctx: Ctx, at: number): void {
     awards.push({ kind: 'COMEBACK', playerId: comeback.playerId });
   }
 
-  game.results = { ranking, awards };
+  game.results = { ranking, awards, ...(cutShort ? { cutShort: true } : {}) };
   game.upcoming = null;
   enterPhase(d, 'RESULTS', at, null);
   touch(d, at);
@@ -1802,6 +1818,28 @@ function onEntitlement(
       );
     }
   }
+}
+
+/**
+ * Venue mode (ADR-0024): the server tells the room about its table's meter. Stored as given (the server
+ * computed it from the session's facts); every screen hears the public part. Null detaches the table.
+ */
+function onVenueMeter(d: Room, ctx: Ctx, at: number, meter: VenueMeter | null): void {
+  const same =
+    (d.venue ?? null) === null
+      ? meter === null
+      : meter !== null &&
+        d.venue!.state === meter.state &&
+        d.venue!.endsAt === meter.endsAt &&
+        d.venue!.remainingMs === meter.remainingMs;
+  if (meter)
+    emit(
+      ctx,
+      { to: 'ALL' },
+      { type: 'VENUE_METER_CHANGED', payload: { venue: meterView(meter, at) } },
+    );
+  if (same) return;
+  d.venue = meter ? { ...meter } : null;
 }
 
 function onRecover(d: Room, ctx: Ctx, at: number, outageMs: number): void {
