@@ -10,9 +10,9 @@ export const FAST_GAME_CONFIG = {
   timings: {
     countdownMs: 100,
     roundIntroMs: 50,
-    prepMs: 50,
-    prepQuickMs: 50,
-    prepDecisionMs: 50,
+    riskPickMs: 50,
+    sabotagePickMs: 50,
+    riskPickDecisionMs: 50,
     readBaseMs: 50,
     readPerCharMs: 0,
     readMinMs: 50,

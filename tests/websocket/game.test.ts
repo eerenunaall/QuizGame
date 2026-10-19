@@ -55,7 +55,7 @@ describe('a complete game over real WebSockets', () => {
     // phase order seen by the TV (LOBBY is before we subscribed): every round has the full cycle
     const round = [
       'ROUND_INTRO',
-      'QUESTION_PREP',
+      'RISK_PICK',
       'QUESTION',
       'ANSWERING',
       'LOCKED',
@@ -65,7 +65,7 @@ describe('a complete game over real WebSockets', () => {
     ];
     const final = [
       'FINAL',
-      'QUESTION_PREP',
+      'RISK_PICK',
       'QUESTION',
       'ANSWERING',
       'LOCKED',

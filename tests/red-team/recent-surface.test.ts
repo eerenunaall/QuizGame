@@ -496,26 +496,15 @@ describe('ATTACK 33 — well-formed intents that make no sense, in every phase',
       const intents: [ClientMessageType, unknown][] = [
         ['SUBMIT_ANSWER', { questionId: q, optionId: 'A'.repeat(12) }],
         ['SUBMIT_ANSWER', { questionId: bogus, optionId: bogus }],
+        ['COMMIT_RISK', { stake: 'HIGH', doubleDown: true }],
+        ['COMMIT_RISK', { stake: 'SAFE', doubleDown: false }],
+        ['COMMIT_SABOTAGE', { sabotage: { targetId: target, effect: 'JAM' } }],
+        ['COMMIT_SABOTAGE', { sabotage: { targetId: client.playerId ?? bogus, effect: 'FOG' } }],
         [
-          'COMMIT_PREP',
-          { stake: 'HIGH', doubleDown: true, sabotage: { targetId: target, effect: 'JAM' } },
+          'COMMIT_SABOTAGE',
+          { sabotage: { targetId: bogus, effect: 'LOCKOUT', joker: 'FIFTY_FIFTY' } },
         ],
-        [
-          'COMMIT_PREP',
-          {
-            stake: 'SAFE',
-            doubleDown: false,
-            sabotage: { targetId: client.playerId ?? bogus, effect: 'FOG' },
-          },
-        ],
-        [
-          'COMMIT_PREP',
-          {
-            stake: 'SAFE',
-            doubleDown: false,
-            sabotage: { targetId: bogus, effect: 'LOCKOUT', joker: 'FIFTY_FIFTY' },
-          },
-        ],
+        ['COMMIT_SABOTAGE', { sabotage: null }],
         ['USE_FIFTY_FIFTY', {}],
         ['SET_PREFERENCES', { reducedEffects: true }],
         ['REPORT_QUESTION', { questionId: q, reason: 'WRONG_ANSWER' }],

@@ -267,7 +267,7 @@ describe('claiming a link', () => {
     await party.leader.next(
       (m) =>
         m.type === 'PHASE_ENTERED' &&
-        (m.payload.data.phase === 'QUESTION_PREP' || m.payload.data.phase === 'QUESTION'),
+        (m.payload.data.phase === 'RISK_PICK' || m.payload.data.phase === 'QUESTION'),
       15_000,
       'the game carrying on after the refund',
     );

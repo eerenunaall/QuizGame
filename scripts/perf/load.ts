@@ -154,9 +154,9 @@ const GAME_CONFIG = {
   timings: {
     countdownMs: 300,
     roundIntroMs: 150,
-    prepMs: 200,
-    prepQuickMs: 200,
-    prepDecisionMs: 200,
+    riskPickMs: 200,
+    sabotagePickMs: 200,
+    riskPickDecisionMs: 200,
     readBaseMs: 200,
     readPerCharMs: 0,
     readMinMs: 200,

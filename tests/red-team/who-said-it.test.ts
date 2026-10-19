@@ -116,12 +116,12 @@ describe('ATTACK 26 — Who Said It', () => {
     party.leader.send('START_GAME', {});
     await party.leader.nextOfType('ACK');
 
-    await Promise.all(party.players.map((c) => c.waitForPhase('QUESTION_PREP', 10_000)));
+    await Promise.all(party.players.map((c) => c.waitForPhase('RISK_PICK', 10_000)));
     const deckQuestion = room.state.game!.deck.questions[room.state.game!.round!.questionId]!;
     const author = party.players.find((c) => c.playerId === deckQuestion.authorPlayerId)!;
     const guessers = party.players.filter((c) => c !== author);
 
-    const stake = author.send('COMMIT_PREP', { stake: 'SAFE', doubleDown: true, sabotage: null });
+    const stake = author.send('COMMIT_RISK', { stake: 'SAFE', doubleDown: true });
     expect(
       (await author.next((m) => m.type === 'ERROR' && m.payload.messageId === stake)).payload,
     ).toMatchObject({ code: 'ANSWER_NOT_ALLOWED' });

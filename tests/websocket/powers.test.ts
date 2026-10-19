@@ -16,8 +16,9 @@ const POWER_GAME = {
   defaultRounds: 6,
   timings: {
     ...FAST_GAME_CONFIG.timings,
-    prepQuickMs: 4000,
-    prepDecisionMs: 4000,
+    riskPickMs: 4000,
+    sabotagePickMs: 4000,
+    riskPickDecisionMs: 4000,
     answerMs: { STANDARD: 4000, SPEED: 4000, RISK: 4000, CROWD: 4000, FINAL: 4000 },
   },
 };
@@ -53,20 +54,21 @@ async function nextPlayerState(
 
 const commit = (
   client: TestClient,
-  choice: {
-    stake?: 'SAFE' | 'RISK' | 'HIGH' | 'ALL_IN';
-    doubleDown?: boolean;
-    sabotage?: {
-      targetId: string;
-      effect: 'JAM' | 'SHUFFLE' | 'FOG' | 'LOCKOUT' | 'POINT_TAX';
-    } | null;
-  } = {},
+  choice: { stake?: 'SAFE' | 'RISK' | 'HIGH' | 'ALL_IN'; doubleDown?: boolean } = {},
 ) =>
-  client.send('COMMIT_PREP', {
+  client.send('COMMIT_RISK', {
     stake: choice.stake ?? 'SAFE',
     doubleDown: choice.doubleDown ?? false,
-    sabotage: choice.sabotage ?? null,
   });
+
+/** SABOTAGE_PICK: one sabotage, or none (a pass) when no target is given. */
+const sabotage = (
+  client: TestClient,
+  choice: {
+    targetId: string;
+    effect: 'JAM' | 'SHUFFLE' | 'FOG' | 'LOCKOUT' | 'POINT_TAX';
+  } | null = null,
+) => client.send('COMMIT_SABOTAGE', { sabotage: choice });
 
 async function everyone<T>(party: Party, run: (client: TestClient, index: number) => Promise<T>) {
   return Promise.all(party.players.map(run));
@@ -97,8 +99,8 @@ describe('a powered game over real WebSockets', () => {
     };
 
     // ── Round 1: p0 goes RISK and doubles down; the others play safe.
-    await everyone(party, (client) => client.waitForPhase('QUESTION_PREP'));
-    const prep = await party.display.waitForPhase('QUESTION_PREP');
+    await everyone(party, (client) => client.waitForPhase('RISK_PICK'));
+    const prep = await party.display.waitForPhase('RISK_PICK');
     expect(dataOf(prep)).toMatchObject({
       riskLadder: [
         { tier: 'SAFE', multiplier: 1, loss: 0 },
@@ -140,7 +142,7 @@ describe('a powered game over real WebSockets', () => {
     expect(mine.delta).toBeLessThanOrEqual(3 * (100 + 100));
 
     // ── Round 2: p1 uses 50/50; nobody else is told.
-    await everyone(party, (client) => client.waitForPhase('QUESTION_PREP'));
+    await everyone(party, (client) => client.waitForPhase('RISK_PICK'));
     party.players.forEach((client) => commit(client));
     const answering = await everyone(party, (client) => client.waitForPhase('ANSWERING', 8_000));
     p1.send('USE_FIFTY_FIFTY', {});
@@ -175,12 +177,18 @@ describe('a powered game over real WebSockets', () => {
     await party.display.waitForPhase('POWER_RESOLUTION', 8_000);
     await party.display.waitForPhase('SCORE_UPDATE', 8_000);
 
-    // ── Round 3 (index 2): p1 sabotages p0. The shield blocks the first hit; p2 hears nothing.
-    await everyone(party, (client) => client.waitForPhase('QUESTION_PREP'));
+    // ── Round 3 (index 2): p1 sabotages p0, on the screen of its own after the risk screen. The
+    // shield blocks the first hit; p2 hears nothing.
+    await everyone(party, (client) => client.waitForPhase('RISK_PICK'));
     const before = p2.messages.length;
-    commit(p0);
-    commit(p1, { sabotage: { targetId: p0.playerId!, effect: 'JAM' } });
-    commit(p2);
+    party.players.forEach((client) => commit(client));
+    await everyone(party, (client) => client.waitForPhase('SABOTAGE_PICK'));
+    // Stakes are refused on the sabotage screen, and nothing is spent by trying.
+    commit(p2, { stake: 'RISK' });
+    expect((await p2.nextOfType('ERROR')).payload.code).toBe('INVALID_STATE');
+    sabotage(p0);
+    sabotage(p1, { targetId: p0.playerId!, effect: 'JAM' });
+    sabotage(p2);
     await nextPlayerState(p0, (s) => s.hits.length > 0);
     expect(you(p0).hits).toEqual([{ effect: 'JAM', blocked: true }]);
     expect(you(p0).powers).toMatchObject({ shield: 0 });
@@ -212,10 +220,16 @@ describe('a powered game over real WebSockets', () => {
     });
     await party.display.waitForPhase('SCORE_UPDATE', 8_000);
 
-    // Finish the game with everyone answering.
+    // Finish the game with everyone answering. Round 4 still offers sabotage to p0 and p2 (p1 is
+    // cooling down); rounds 5 and 6 are the final stage, which has no sabotage screen at all.
     for (let round = 3; round < 6; round++) {
-      await everyone(party, (client) => client.waitForPhase('QUESTION_PREP'));
+      await everyone(party, (client) => client.waitForPhase('RISK_PICK'));
       party.players.forEach((client) => commit(client, { stake: round === 5 ? 'RISK' : 'SAFE' }));
+      if (round === 3) {
+        await everyone(party, (client) => client.waitForPhase('SABOTAGE_PICK'));
+        sabotage(p0);
+        sabotage(p2);
+      }
       await answerAll(['correct', 'correct', 'correct']);
       await party.display.waitForPhase(round === 5 ? 'RESULTS' : 'SCORE_UPDATE', 8_000);
     }

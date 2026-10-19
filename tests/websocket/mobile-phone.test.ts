@@ -33,8 +33,9 @@ const GAME = {
   defaultRounds: 3,
   timings: {
     ...FAST_GAME_CONFIG.timings,
-    prepQuickMs: 1500,
-    prepDecisionMs: 1500,
+    riskPickMs: 1500,
+    sabotagePickMs: 1500,
+    riskPickDecisionMs: 1500,
     answerMs: { STANDARD: 3000, SPEED: 3000, RISK: 3000, CROWD: 3000, FINAL: 3000 },
   },
 };
@@ -135,15 +136,24 @@ function play(p: Phone, pick = 0): () => void {
   const { client } = p.runtime;
   let answered: string | null = null;
   let prepped = -1;
+  let passed = -1;
   return client.store.subscribe(() => {
     const room = client.state.room;
     const data = room?.phaseData;
     if (!room || !data) return;
-    if (data.phase === 'QUESTION_PREP' && !room.you?.commitment && prepped !== data.round.index) {
+    if (data.phase === 'RISK_PICK' && !room.you?.commitment && prepped !== data.round.index) {
       prepped = data.round.index;
       void client
-        .commitPrep({ stake: defaultStake(data), doubleDown: false, sabotage: null })
+        .commitRisk({ stake: defaultStake(data), doubleDown: false })
         .catch(() => undefined);
+    }
+    if (
+      data.phase === 'SABOTAGE_PICK' &&
+      !room.you?.sabotage?.decided &&
+      passed !== data.round.index
+    ) {
+      passed = data.round.index;
+      void client.commitSabotage({ sabotage: null }).catch(() => undefined);
     }
     if (data.phase === 'ANSWERING' && !room.you?.answer && answered !== data.questionId) {
       answered = data.questionId;
@@ -204,7 +214,8 @@ describe('phone flow: join, prep, answer, results', () => {
           phase === 'ANSWERING' ||
           phase === 'QUESTION' ||
           phase === 'LOCKED' ||
-          phase === 'QUESTION_PREP'
+          phase === 'RISK_PICK' ||
+          phase === 'SABOTAGE_PICK'
         )
           expect(JSON.stringify(state.room?.phaseData)).not.toContain('correctOptionId');
       }
