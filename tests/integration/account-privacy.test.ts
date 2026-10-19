@@ -3,6 +3,12 @@ import { appleTransaction } from '../helpers/apple-store';
 import { staff } from '../helpers/admin';
 import { call, player, startShop, type Player, type Shop } from '../helpers/payments';
 import { createRoom } from '../helpers/server';
+import {
+  SENTINEL_ANSWER,
+  enablePersonalQuizzes,
+  readyBlindQuiz,
+  readyCustomQuiz,
+} from '../helpers/quizzes';
 
 /** ADR-0018 data-subject rights: a copy of what we hold, and deletion that really lets go. */
 let shop: Shop;
@@ -66,6 +72,62 @@ describe('exporting an account', () => {
 
   it('needs a sign-in', async () => {
     expect((await call(server(), 'GET', '/v1/me/export')).status).toBe(401);
+  });
+
+  it("includes the person's own personal quizzes, never what their friends answered (ADR-0015)", async () => {
+    await enablePersonalQuizzes(server());
+    const blind = await readyBlindQuiz(server(), {
+      title: 'Ece hakkında',
+      sentinel: SENTINEL_ANSWER,
+    });
+    const custom = await readyCustomQuiz(server(), 3, blind.creator);
+    // someone else's quiz must not show up in this export
+    const stranger = await readyCustomQuiz(server(), 3);
+    const result = await call<{
+      personalQuizzes: {
+        id: string;
+        kind: string;
+        title: string;
+        prompts: { catalogKey: string | null }[];
+        targets: { displayName: string; status: string; answered: number }[];
+        questions: { text: string; options: string[]; correctIndex: number }[];
+        retainUntil: string;
+        lastUsedAt: string | null;
+      }[];
+    }>(server(), 'GET', '/v1/me/export', { token: blind.creator.token });
+    expect(result.status).toBe(200);
+    const quizzes = result.body.personalQuizzes;
+    expect(quizzes.map((q) => q.id).sort()).toEqual([blind.quizId, custom.quizId].sort());
+    const b = quizzes.find((q) => q.id === blind.quizId)!;
+    expect(b).toMatchObject({ kind: 'BLIND', title: 'Ece hakkında' });
+    expect(b.prompts.map((p) => p.catalogKey)).toEqual([
+      'dreamJob',
+      'dislikedFood',
+      'surprisingHobby',
+    ]);
+    expect(b.targets).toEqual([
+      expect.objectContaining({ displayName: 'Ece', status: 'APPROVED', answered: 3 }),
+    ]);
+    expect(b.questions).toEqual([]);
+    const c = quizzes.find((q) => q.id === custom.quizId)!;
+    expect(c.questions).toHaveLength(3);
+    expect(c.questions[0]).toMatchObject({
+      options: ['Yanlış bir', 'Doğru olan', 'Yanlış iki'],
+      correctIndex: 1,
+    });
+    const text = JSON.stringify(result.body);
+    // the target's sealed answers, decoys and invite never leave the vault for the creator
+    for (const secret of [
+      ...blind.answers,
+      'Pilot',
+      'Lahmacun',
+      'Satranç',
+      'sealed',
+      'invite',
+      'claim',
+    ])
+      expect(text, secret).not.toContain(secret);
+    expect(text).not.toContain(stranger.quizId);
   });
 });
 

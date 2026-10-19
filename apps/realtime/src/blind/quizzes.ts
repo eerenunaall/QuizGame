@@ -465,6 +465,33 @@ export class QuizService {
     };
   }
 
+  /**
+   * The owner's copy for an account export (ADR-0018 data-subject rights): exactly what the creator's
+   * own API already shows (titles, prompts, target names, completion counts, custom questions) plus the
+   * dates. What a target answered is theirs, not the creator's, and stays out (ADR-0015).
+   */
+  async exportForOwner(
+    accountId: string,
+  ): Promise<(QuizDetail & { updatedAt: string; lastUsedAt: string | null })[]> {
+    const rows = await this.db
+      .selectFrom('personal_quizzes')
+      .select(['id', 'updated_at', 'last_used_at'])
+      .where('owner_account_id', '=', accountId)
+      .orderBy('created_at')
+      .execute();
+    const out: (QuizDetail & { updatedAt: string; lastUsedAt: string | null })[] = [];
+    for (const row of rows) {
+      const detail = await this.get(accountId, row.id);
+      if (!detail) continue; // deleted meanwhile
+      out.push({
+        ...detail,
+        updatedAt: row.updated_at.toISOString(),
+        lastUsedAt: row.last_used_at ? row.last_used_at.toISOString() : null,
+      });
+    }
+    return out;
+  }
+
   /** Retention (ADR-0015): quizzes past their retention date are deleted with everything under them. */
   async purgeExpired(): Promise<number> {
     const rows = await this.db

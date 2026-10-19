@@ -14,6 +14,8 @@ export interface PrivacyDeps {
   secret: string;
   sessions: AccountSessionService;
   otp: OtpService | null;
+  /** The account's personal quizzes as their creator sees them (`QuizService.exportForOwner`). */
+  personalQuizzes: (accountId: string) => Promise<unknown[]>;
   /** The account's purchase is gone: rooms it hosted fall back to FREE. */
   onEntitlementLost: (accountId: string) => void;
 }
@@ -39,7 +41,7 @@ export class AccountPrivacy {
       .where('status', '!=', 'DELETED')
       .executeTakeFirst();
     if (!account) return null;
-    const [roles, sessions, purchases, entitlements] = await Promise.all([
+    const [roles, sessions, purchases, entitlements, personalQuizzes] = await Promise.all([
       db
         .selectFrom('account_roles')
         .select(['role', 'granted_at'])
@@ -72,6 +74,7 @@ export class AccountPrivacy {
         .where('account_id', '=', accountId)
         .orderBy('granted_at')
         .execute(),
+      this.deps.personalQuizzes(accountId),
     ]);
     const iso = (value: Date | null): string | null => (value ? value.toISOString() : null);
     return {
@@ -108,6 +111,7 @@ export class AccountPrivacy {
         grantedAt: e.granted_at.toISOString(),
         revokedAt: iso(e.revoked_at),
       })),
+      personalQuizzes,
     };
   }
 

@@ -369,6 +369,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
       secret: config.serverSecret,
       sessions: accountSessions,
       otp,
+      personalQuizzes: (accountId) => quizzes.exportForOwner(accountId),
       onEntitlementLost: (accountId) =>
         manager.entitlementChanged(accountId, 'FREE', 'REVOKED', { unlink: true }),
     }),
