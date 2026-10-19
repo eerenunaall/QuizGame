@@ -6,6 +6,7 @@ import { useI18n } from '../lib/i18n';
 import { Link } from '../lib/router';
 import styles from './CodeEntry.module.css';
 import { SignInForm, useAccount } from './useAccount';
+import { venueApi } from '../venue/api';
 
 interface Peek {
   roomCode: string;
@@ -32,6 +33,8 @@ export function UnlockPage({ token }: { token: string }) {
   const [step, setStep] = useState<Step | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  // Venue staff scan the same QR to open the TV as a metered table (ADR-0024); others never see this.
+  const [venueStaff, setVenueStaff] = useState(false);
 
   const load = useCallback(async (): Promise<void> => {
     try {
@@ -44,6 +47,13 @@ export function UnlockPage({ token }: { token: string }) {
   useEffect(() => {
     if (state.kind === 'in') void load();
   }, [state, load]);
+  useEffect(() => {
+    if (state.kind !== 'in') return;
+    venueApi.mine().then(
+      (result) => setVenueStaff(Array.isArray(result.venues) && result.venues.length > 0),
+      () => setVenueStaff(false),
+    );
+  }, [state]);
 
   const run = async (work: () => Promise<void>): Promise<void> => {
     if (busy) return;
@@ -104,6 +114,13 @@ export function UnlockPage({ token }: { token: string }) {
         {state.kind === 'in' && step?.kind === 'ready' ? (
           <div>
             <p>{t('unlock.room', { code: step.peek.roomCode })}</p>
+            {venueStaff ? (
+              <p>
+                <Link to={`/staff?link=${encodeURIComponent(token)}`} data-testid="unlock-staff">
+                  {t('unlock.staff')}
+                </Link>
+              </p>
+            ) : null}
             <p className={styles.label}>
               {t('unlock.signedIn', { email: state.account.email ?? '' })}
             </p>

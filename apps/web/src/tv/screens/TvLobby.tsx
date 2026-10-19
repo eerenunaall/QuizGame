@@ -21,6 +21,8 @@ interface Props {
   onOpenSettings: () => void;
   onOpenUnlock: () => void;
   categoryLabel: string;
+  /** Server-synchronised clock for the venue chip. */
+  now?: () => number;
 }
 
 const SLOTS = 8;
@@ -36,6 +38,7 @@ export function TvLobby({
   onOpenSettings,
   onOpenUnlock,
   categoryLabel,
+  now,
 }: Props) {
   const { t, td } = useI18n();
   const startRef = useRef<HTMLButtonElement>(null);
@@ -55,7 +58,7 @@ export function TvLobby({
   const difficultyLabel = td(`settings.preset.${room.settings.difficulty}`);
 
   return (
-    <TvFrame room={room} theme="lobby" strip={false}>
+    <TvFrame room={room} theme="lobby" strip={false} {...(now ? { now } : {})}>
       <div className={styles.screen}>
         <Panel className={styles.join}>
           <h2 className={styles.joinTitle}>{t('lobby.scanToJoin')}</h2>

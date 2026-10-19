@@ -39,6 +39,7 @@ import {
   type SabotageChoice,
 } from './powers';
 import styles from './Controller.module.css';
+import { PhoneReward, PhoneVenueNotice } from '../venue/PhoneVenue';
 import { cx } from '../lib/cx';
 
 const ROUND_CHOICES = [5, 10, 15, 20] as const;
@@ -115,14 +116,17 @@ export function Controller({ room, state, now, catalog, busy, error, actions, st
     case 'WAITING':
     case 'LOBBY':
       return (
-        <LobbyScreen
-          room={room}
-          catalog={catalog}
-          isLeader={isLeader}
-          busy={busy}
-          error={error}
-          actions={actions}
-        />
+        <>
+          <PhoneVenueNotice room={room} now={now} />
+          <LobbyScreen
+            room={room}
+            catalog={catalog}
+            isLeader={isLeader}
+            busy={busy}
+            error={error}
+            actions={actions}
+          />
+        </>
       );
     case 'COUNTDOWN':
       return (
@@ -246,6 +250,8 @@ export function Controller({ room, state, now, catalog, busy, error, actions, st
           isLeader={isLeader}
           busy={busy}
           actions={actions}
+          reward={state.venueReward}
+          now={now}
         />
       );
     case 'ROOM_CLOSED':
@@ -882,6 +888,8 @@ function ResultsScreen({
   isLeader,
   busy,
   actions,
+  reward,
+  now,
 }: {
   data: PhaseDataOf<'RESULTS'>;
   myId: string;
@@ -889,6 +897,9 @@ function ResultsScreen({
   isLeader: boolean;
   busy: boolean;
   actions: ControllerActions;
+  /** Venue mode: this phone won the table's reward (ADR-0024). */
+  reward: ClientState['venueReward'];
+  now: () => number;
 }) {
   const { t } = useI18n();
   const mine = data.ranking.find((entry) => entry.playerId === myId);
@@ -898,6 +909,8 @@ function ResultsScreen({
   }, [mine]);
   return (
     <Center testId="ctl-results">
+      {reward ? <PhoneReward reward={reward} /> : null}
+      <PhoneVenueNotice room={room} now={now} />
       <div className={styles.resultCheer}>
         {mine?.rank === 1 ? (
           <Mascot height={130} mood="cheer" />

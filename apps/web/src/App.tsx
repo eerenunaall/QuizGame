@@ -17,6 +17,10 @@ import { UnlockPage } from './pages/Unlock';
 
 // Phones never download the TV screens (and the QR code library); TVs never download the controller.
 const TvApp = lazy(() => import('./tv/TvApp').then((module) => ({ default: module.TvApp })));
+// Venue staff use their own phones: the desk is a separate chunk nobody else downloads.
+const StaffPage = lazy(() =>
+  import('./venue/StaffPage').then((module) => ({ default: module.StaffPage })),
+);
 const PlayApp = lazy(() =>
   import('./play/PlayApp').then((module) => ({ default: module.PlayApp })),
 );
@@ -82,6 +86,7 @@ export function App() {
     },
     { path: '/unlock/:token', render: (params) => <UnlockPage token={params.token ?? ''} /> },
     { path: '/purchase', render: () => <PurchasePage /> },
+    { path: '/staff', render: () => <StaffPage /> },
     { path: '/credits', render: () => <CreditsPage /> },
     { path: '/privacy', render: () => <LegalPage doc="privacy" /> },
     { path: '/terms', render: () => <LegalPage doc="terms" /> },

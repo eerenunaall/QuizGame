@@ -7,6 +7,7 @@ import { PlayerStrip } from './PlayerStrip';
 import styles from './TvFrame.module.css';
 import { cx } from '../lib/cx';
 import { VenueLogo } from '../ui/VenueLogo';
+import { VenueChip } from '../venue/VenueChip';
 
 interface Props {
   room: RoomView;
@@ -23,6 +24,8 @@ interface Props {
   /** Overlay content rendered above everything (banners). */
   overlay?: ReactNode;
   celebrate?: boolean;
+  /** Server-synchronised clock for the venue chip (ADR-0024); the wall clock when absent. */
+  now?: () => number;
   children: ReactNode;
 }
 
@@ -37,6 +40,7 @@ export function TvFrame({
   strip,
   overlay,
   celebrate,
+  now,
   children,
 }: Props) {
   const { t } = useI18n();
@@ -55,6 +59,7 @@ export function TvFrame({
           ) : null}
         </div>
         <div className={styles.slotEnd}>
+          {room.venue ? <VenueChip venue={room.venue} {...(now ? { now } : {})} /> : null}
           <span className={styles.code}>
             <span className={styles.codeLabel}>{t('lobby.roomCode')}</span>
             <span className={styles.codeValue} data-testid="room-code">

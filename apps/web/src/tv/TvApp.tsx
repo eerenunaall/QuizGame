@@ -30,6 +30,8 @@ import type { ThemeId } from '@quizparty/ui-tokens';
 import { TvTitle } from './screens/TvTitle';
 import { TvUnlock } from './screens/TvUnlock';
 import styles from './TvApp.module.css';
+import { meterBlocked, useTicker } from '../venue/meter';
+import { TvVenueTimeUp } from '../venue/TvVenueTimeUp';
 
 const JOIN_KEY = 'qp.tv.join';
 
@@ -289,6 +291,13 @@ export function TvApp({
     }
   };
 
+  // Venue mode (ADR-0024): a café table whose time is up (or paused) shows who to ask instead of a lobby.
+  const venueTick = useTicker(now, room?.venue !== undefined);
+  const venueBlock = meterBlocked(room?.venue, venueTick);
+  const rewardWinner = state.venueRewardWinner
+    ? (room?.players.find((p) => p.playerId === state.venueRewardWinner?.playerId) ?? null)
+    : null;
+
   const reconnecting = state.transport === 'RECONNECTING';
   const overlay = reconnecting ? (
     <Banner tone="warning" size="tv" busy testId="tv-reconnecting">
@@ -322,11 +331,17 @@ export function TvApp({
       'round' in data
         ? { index: data.round.index, total: data.round.total, isFinal: data.round.isFinal }
         : undefined;
-    const base = { room, ...(round ? { round } : {}), overlay } as const;
+    const base = { room, ...(round ? { round } : {}), overlay, now } as const;
 
     switch (data.phase) {
       case 'WAITING':
       case 'LOBBY':
+        if (venueBlock)
+          return (
+            <TvFrame {...base} theme="lobby" strip={false}>
+              <TvVenueTimeUp room={room} reason={venueBlock} />
+            </TvFrame>
+          );
         return (
           <>
             <TvLobby
@@ -339,6 +354,7 @@ export function TvApp({
               onOpenSettings={() => setShowSettings(true)}
               onOpenUnlock={openUnlock}
               categoryLabel={categorySummary(room, catalog, t('settings.mixed'))}
+              now={now}
             />
             {showSettings ? (
               <TvSettings
@@ -536,9 +552,27 @@ export function TvApp({
             <TvIntermission next={data.next} />
           </TvFrame>
         );
-      case 'RESULTS':
+      case 'RESULTS': {
+        const venueBanners =
+          rewardWinner || venueBlock ? (
+            <div className={styles.venueBanners}>
+              {overlay}
+              {rewardWinner ? (
+                <Banner tone="success" size="tv" testId="tv-venue-reward">
+                  {t('venue.reward.tv', { name: rewardWinner.nickname })}
+                </Banner>
+              ) : null}
+              {venueBlock ? (
+                <Banner tone="warning" size="tv" testId="tv-venue-time-up">
+                  {venueBlock === 'up' ? t('venue.timeUp.banner') : t('venue.paused.title')}
+                </Banner>
+              ) : null}
+            </div>
+          ) : (
+            overlay
+          );
         return (
-          <TvFrame {...base} theme="results" strip={false} celebrate>
+          <TvFrame {...base} overlay={venueBanners} theme="results" strip={false} celebrate>
             <TvResults
               room={room}
               data={data}
@@ -549,6 +583,7 @@ export function TvApp({
             />
           </TvFrame>
         );
+      }
       case 'ROOM_CLOSED':
         return (
           <TvFrame {...base} strip={false}>

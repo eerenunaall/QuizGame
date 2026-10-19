@@ -1,0 +1,48 @@
+.reward {
+  width: 100%;
+  margin: 0 0 16px;
+  padding: 18px 16px 14px;
+  text-align: center;
+  background: rgba(var(--qp-deep-rgb), 0.85);
+  border: 3px solid var(--qp-color-accent-a, #ffd34d);
+  border-radius: 22px;
+}
+
+.rewardTitle {
+  font-family: var(--qp-font-display);
+  font-size: 24px;
+  color: var(--qp-color-accent-a, #ffd34d);
+}
+
+.rewardText {
+  margin-top: 6px;
+  font-size: 20px;
+  color: var(--qp-color-text, #fff);
+}
+
+.code {
+  margin: 12px 0 8px;
+  font-family: var(--qp-font-display);
+  font-size: 44px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  color: #fff;
+  user-select: all;
+}
+
+.hint {
+  font-size: 15px;
+  color: var(--qp-color-muted-text);
+}
+
+.notice {
+  width: 100%;
+  margin: 8px 0;
+  padding: 10px 14px;
+  font-size: 17px;
+  text-align: center;
+  color: #ffc861;
+  background: rgba(var(--qp-deep-rgb), 0.7);
+  border: 2px solid #f5a524;
+  border-radius: 14px;
+}
