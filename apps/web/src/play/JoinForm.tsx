@@ -6,6 +6,7 @@ import { Avatar } from '../ui/Avatar';
 import { Banner } from '../ui/Banner';
 import { Button } from '../ui/Button';
 import { Sticker } from '../ui/Sticker';
+import { LegalLinks } from '../ui/LegalLinks';
 import { useI18n } from '../lib/i18n';
 import styles from './JoinForm.module.css';
 import { cx } from '../lib/cx';
@@ -140,6 +141,7 @@ export function JoinForm({
           {joining ? t('join.joining') : t('join.submit')}
         </Button>
       </div>
+      <LegalLinks className={styles.legal} />
     </form>
   );
 }

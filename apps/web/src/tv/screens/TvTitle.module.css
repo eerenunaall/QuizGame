@@ -99,6 +99,14 @@
   color: var(--qp-color-muted-text);
 }
 
+.legal {
+  position: absolute;
+  left: 0;
+  bottom: 22px;
+  z-index: 3;
+  width: 100%;
+}
+
 .banner {
   position: absolute;
   top: 60px;

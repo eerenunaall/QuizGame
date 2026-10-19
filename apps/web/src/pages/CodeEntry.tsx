@@ -4,6 +4,7 @@ import { parseRoomCode } from '@quizparty/shared';
 import { Button } from '../ui/Button';
 import { Wordmark } from '../ui/Wordmark';
 import { useI18n } from '../lib/i18n';
+import { LegalLinks } from '../ui/LegalLinks';
 import styles from './CodeEntry.module.css';
 
 /** The phone's front door: type the 6-character room code shown on the TV. */
@@ -54,6 +55,7 @@ export function CodeEntry() {
       <a className={styles.tvLink} href="/tv">
         {t('landing.startOnTv')}
       </a>
+      <LegalLinks className={styles.legal} />
     </form>
   );
 }

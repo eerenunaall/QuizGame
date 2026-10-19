@@ -7,6 +7,7 @@ import { Panel, Pill } from '../../ui/Panel';
 import { Sticker } from '../../ui/Sticker';
 import { LetterParade } from '../../ui/LetterParade';
 import { Mascot } from '../../ui/Mascot';
+import { LegalLinks } from '../../ui/LegalLinks';
 import { venueLogoFor } from '../../ui/VenueLogo';
 import { resolveVenueInfo } from '../../lib/theme';
 import { useDataTheme } from '../../lib/useDataTheme';
@@ -112,6 +113,7 @@ export function TvTitle({
         </p>
       </div>
       <div className={styles.hint}>{t('tv.menu.hint')}</div>
+      <LegalLinks size="tv" className={styles.legal} />
       {error ? (
         <div className={styles.banner}>
           <Banner tone="danger" size="tv">

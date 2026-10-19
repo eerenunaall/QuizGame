@@ -120,6 +120,10 @@
   margin-top: 18px;
 }
 
+.legal {
+  margin-top: 16px;
+}
+
 /* Landscape phone: the party-popper only costs height; keep the form short. */
 @media (orientation: landscape) and (max-height: 520px) {
   .head img {

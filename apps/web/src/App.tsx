@@ -20,6 +20,10 @@ const TvApp = lazy(() => import('./tv/TvApp').then((module) => ({ default: modul
 const PlayApp = lazy(() =>
   import('./play/PlayApp').then((module) => ({ default: module.PlayApp })),
 );
+// The legal texts are long and rarely read: nobody downloads them with the game.
+const LegalPage = lazy(() =>
+  import('./pages/Legal').then((module) => ({ default: module.LegalPage })),
+);
 
 function PlayRoute({ code }: { code: string | undefined }) {
   if (!code) return <CodeEntry />;
@@ -79,6 +83,9 @@ export function App() {
     { path: '/unlock/:token', render: (params) => <UnlockPage token={params.token ?? ''} /> },
     { path: '/purchase', render: () => <PurchasePage /> },
     { path: '/credits', render: () => <CreditsPage /> },
+    { path: '/privacy', render: () => <LegalPage doc="privacy" /> },
+    { path: '/terms', render: () => <LegalPage doc="terms" /> },
+    { path: '/support', render: () => <LegalPage doc="support" /> },
   ];
 
   return (

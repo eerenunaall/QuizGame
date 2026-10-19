@@ -59,11 +59,16 @@ describe('serving the web app', () => {
       '/join/ABC234',
       '/play/ABC234',
       '/credits',
+      '/privacy',
+      '/terms',
+      '/support',
       '/anything/else',
     ]) {
       const response = await get(path);
       expect(response.status, path).toBe(200);
       expect(response.headers.get('content-type'), path).toContain('text/html');
+      // the legal pages are store and KVKK links: same shell, same strict policy as the game
+      expect(response.headers.get('content-security-policy'), path).toContain("default-src 'none'");
     }
     const missingAsset = await get('/assets/missing-12345678.js');
     expect(missingAsset.status).toBe(404);
