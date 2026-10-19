@@ -237,7 +237,13 @@ describe('phone flow: join, prep, answer, results', () => {
     ).token;
     const stops = [play(a), play(b)];
     await a.runtime.client.startGame();
-    await waitUntil(() => a.runtime.client.state.room?.phase === 'ANSWERING', 10_000, 'ANSWERING');
+    // Both phones lock in at once and every pick phase ends early, so ANSWERING can be over between two
+    // polls: look at the states the screens were rendered from, not at the live phase.
+    await waitUntil(
+      () => a.seen.some((state) => state.room?.phase === 'ANSWERING'),
+      10_000,
+      'ANSWERING',
+    );
 
     a.sockets.at(-1)?.terminate();
     await waitUntil(
