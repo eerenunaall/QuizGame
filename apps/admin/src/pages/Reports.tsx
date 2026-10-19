@@ -15,6 +15,95 @@ interface Report {
 const LIMIT = 25;
 const ACTIONS = ['DISMISS', 'SEND_TO_REVIEW', 'RETIRE', 'MARK_FIXED'] as const;
 
+interface PersonalReport {
+  id: string;
+  quizId: string;
+  kind: string;
+  questionId: string;
+  reason: string;
+  status: string;
+  createdAt: string;
+  reports: number;
+}
+const PERSONAL_ACTIONS = ['DISMISS', 'REMOVE_QUESTION', 'DELETE_QUIZ'] as const;
+
+/**
+ * Reports of personal-quiz questions (ADR-0015): ids only, never the question or an answer. The API
+ * lets ADMIN and MODERATOR in; for anyone else the section shows the server's refusal.
+ */
+function PersonalReports(): ReactNode {
+  const [offset, setOffset] = useState(0);
+  const action = useAction();
+  const list = useLoad(
+    () =>
+      api<{ total: number; items: PersonalReport[] }>('/v1/admin/personal-reports', {
+        query: { status: 'OPEN', limit: LIMIT, offset },
+      }),
+    `${offset}`,
+  );
+  const resolve = (id: string, verb: (typeof PERSONAL_ACTIONS)[number]): void => {
+    void action
+      .run(async () => {
+        await api(`/v1/admin/personal-reports/${id}/resolve`, {
+          method: 'POST',
+          body: { action: verb },
+        });
+        return t('admin.reports.resolved', { n: label('admin.personalReports.action', verb) });
+      })
+      .then((done) => {
+        if (done) list.reload();
+      });
+  };
+  return (
+    <section data-testid="personal-reports">
+      <h2>{t('admin.personalReports.title')}</h2>
+      <p className="muted">{t('admin.personalReports.privacy')}</p>
+      <ErrorNote message={list.error ?? action.error} />
+      <Ok message={action.ok} />
+      {list.data ? (
+        <div className="card table-wrap">
+          <table data-testid="personal-report-table">
+            <tbody>
+              {list.data.items.length === 0 ? (
+                <tr>
+                  <td className="muted">{t('admin.empty')}</td>
+                </tr>
+              ) : null}
+              {list.data.items.map((r) => (
+                <tr key={r.id}>
+                  <td>
+                    <code>{r.questionId}</code>
+                    <div className="muted">
+                      <Badge tone="warn">{r.reason}</Badge>
+                      {label('admin.personalReports.kind', r.kind)} · <code>{r.quizId}</code> ·{' '}
+                      {t('admin.personalReports.count', { n: r.reports })} · {when(r.createdAt)}
+                    </div>
+                  </td>
+                  <td>
+                    {PERSONAL_ACTIONS.map((verb) => (
+                      <button
+                        key={verb}
+                        data-testid={`personal-report-${verb}`}
+                        disabled={action.busy}
+                        onClick={() => resolve(r.id, verb)}
+                      >
+                        {label('admin.personalReports.action', verb)}
+                      </button>
+                    ))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <Pager total={list.data.total} offset={offset} limit={LIMIT} onChange={setOffset} />
+        </div>
+      ) : list.loading ? (
+        <Loading />
+      ) : null}
+    </section>
+  );
+}
+
 export function Reports(): ReactNode {
   const [status, setStatus] = useState('OPEN');
   const [offset, setOffset] = useState(0);
@@ -103,6 +192,7 @@ export function Reports(): ReactNode {
       ) : list.loading ? (
         <Loading />
       ) : null}
+      <PersonalReports />
     </>
   );
 }

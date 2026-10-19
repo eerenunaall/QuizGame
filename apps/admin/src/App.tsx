@@ -105,6 +105,11 @@ function Shell({ account, onSignOut }: { account: Account; onSignOut: () => void
             {t('admin.signOut')}
           </button>
         </div>
+        <nav className="legal" aria-label={t('admin.legal.title')} data-testid="admin-legal-links">
+          <a href="/privacy">{t('admin.legal.privacy')}</a>
+          <a href="/terms">{t('admin.legal.terms')}</a>
+          <a href="/support">{t('admin.legal.support')}</a>
+        </nav>
       </aside>
       <main>
         <Screen section={section} id={route.segments[1]} />

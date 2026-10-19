@@ -269,6 +269,19 @@ export const adminTr = {
   'admin.reports.resolved': 'Bildirim kapatıldı ({n}).',
   'admin.reports.reporterHidden': 'Bildirenin kimliği gösterilmez.',
   'admin.reports.revisionNote': 'Bildirim {n}. sürüm için',
+  'admin.personalReports.title': 'Kişisel quiz bildirimleri',
+  'admin.personalReports.privacy':
+    'Kişisel quiz soruları burada gösterilmez (ADR-0015): yalnızca quiz ve soru kimliği görünür. Soruyu ya da tüm quizi okumadan kaldırabilirsin.',
+  'admin.personalReports.kind.BLIND': 'Blind Quiz',
+  'admin.personalReports.kind.CUSTOM': 'Özel Quiz',
+  'admin.personalReports.count': '{n} bildirim',
+  'admin.personalReports.action.DISMISS': 'Bildirimi reddet',
+  'admin.personalReports.action.REMOVE_QUESTION': 'Soruyu kaldır',
+  'admin.personalReports.action.DELETE_QUIZ': 'Tüm quizi sil',
+  'admin.legal.title': 'Yasal sayfalar',
+  'admin.legal.privacy': 'Gizlilik',
+  'admin.legal.terms': 'Kullanım koşulları',
+  'admin.legal.support': 'Destek',
 
   // categories
   'admin.categories.title': 'Kategoriler',
