@@ -156,6 +156,7 @@ export const PhaseDataSchema = z.discriminatedUnion('phase', [
   }),
   z.strictObject({ phase: z.literal('COUNTDOWN') }),
   z.strictObject({ phase: z.literal('ROUND_INTRO'), round }),
+  /** Legacy (ADR-0022): never emitted any more, kept so stored snapshots and old clients parse. */
   z.strictObject({
     phase: z.literal('QUESTION_PREP'),
     round,
@@ -169,6 +170,34 @@ export const PhaseDataSchema = z.discriminatedUnion('phase', [
     doubleDownExcludedStakes: z.array(RiskTierSchema).max(4).optional(),
     sabotageEnabled: z.boolean(),
     /** Players who have made their choices / players who are expected to. */
+    committedCount: z.int().nonnegative(),
+    eligibleCount: z.int().nonnegative(),
+  }),
+  z.strictObject({
+    phase: z.literal('RISK_PICK'),
+    round,
+    category: CategoryRefSchema,
+    difficulty: DifficultySchema,
+    riskLadder: z.array(LadderRungSchema).min(1).max(4),
+    /** True when the ladder has no SAFE rung (the last question): a stake must be taken. */
+    stakeMandatory: z.boolean(),
+    doubleDownEnabled: z.boolean(),
+    /** Stakes that cannot be combined with Double Down; absent from older servers (ADR-0021). */
+    doubleDownExcludedStakes: z.array(RiskTierSchema).max(4).optional(),
+    sabotageEnabled: z.boolean(),
+    /** Players who have made their choices / players who are expected to. */
+    committedCount: z.int().nonnegative(),
+    eligibleCount: z.int().nonnegative(),
+  }),
+  z.strictObject({
+    phase: z.literal('SABOTAGE_PICK'),
+    round,
+    category: CategoryRefSchema,
+    difficulty: DifficultySchema,
+    /**
+     * Players who confirmed / players at the table. Counts only, never who (ATTACK 27): the number of
+     * players who could sabotage is not disclosed either, so this is out of everybody online.
+     */
     committedCount: z.int().nonnegative(),
     eligibleCount: z.int().nonnegative(),
   }),
@@ -324,6 +353,11 @@ export const YouViewSchema = z.strictObject({
   /** Null outside a running game. */
   powers: PowersViewSchema.nullable(),
   commitment: CommitmentViewSchema.nullable(),
+  /**
+   * SABOTAGE_PICK (ADR-0022): this player can sabotage right now (token, cooldown, a legal target), and
+   * whether they already confirmed. Private to this player; absent from older servers.
+   */
+  sabotage: z.strictObject({ ready: z.boolean(), decided: z.boolean() }).optional(),
   /** The two options that remain after this player used 50/50 on the current question. */
   fiftyFifty: z.strictObject({ keep: z.array(OptionIdSchema).max(8) }).nullable(),
   effects: EffectsViewSchema.nullable(),

@@ -129,7 +129,7 @@ describe('the author sits their own statement out', () => {
   it('cannot answer, use 50/50 or stake on it, and is not waited for', () => {
     const { h, ids } = lobby();
     h.start();
-    h.runUntil('QUESTION_PREP');
+    h.runUntil('RISK_PICK');
     const author = h.state.game!.deck.questions[h.round().questionId]!.authorPlayerId!;
     const others = ids.filter((id) => id !== author);
 
@@ -139,14 +139,14 @@ describe('the author sits their own statement out', () => {
     expect(h.view({ role: 'DISPLAY' }).you).toBeNull();
     expect(
       h.command(h.actor(author), {
-        type: 'COMMIT_PREP',
-        payload: { stake: 'SAFE', doubleDown: false, sabotage: null },
+        type: 'COMMIT_RISK',
+        payload: { stake: 'SAFE', doubleDown: false },
       }),
     ).toEqual({ ok: false, code: 'ANSWER_NOT_ALLOWED' });
     for (const id of others)
       h.command(h.actor(id), {
-        type: 'COMMIT_PREP',
-        payload: { stake: 'SAFE', doubleDown: false, sabotage: null },
+        type: 'COMMIT_RISK',
+        payload: { stake: 'SAFE', doubleDown: false },
       });
     expect(h.state.phase).toBe('QUESTION'); // everyone who can decide has decided
 
@@ -212,7 +212,7 @@ describe('the author sits their own statement out', () => {
     ];
     // Everything before the question is presented: no statement text and no authorship in any view.
     h.runUntil('ROUND_INTRO');
-    for (const phase of ['ROUND_INTRO', 'QUESTION_PREP'] as const) {
+    for (const phase of ['ROUND_INTRO', 'RISK_PICK'] as const) {
       h.runUntil(phase);
       for (const viewer of viewers) {
         const view = JSON.stringify(h.view(viewer));

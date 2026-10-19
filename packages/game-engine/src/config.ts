@@ -47,12 +47,18 @@ export const GameConfigSchema = z.strictObject({
   timings: z.strictObject({
     countdownMs: ms(0, 10_000),
     roundIntroMs: ms(0, 10_000),
-    /** QUESTION_PREP when nothing can be chosen (no stakes, jokers or sabotage on offer). */
+    /** Legacy QUESTION_PREP windows (ADR-0022): unused, kept so stored configs still parse. */
     prepMs: ms(0, 30_000),
-    /** QUESTION_PREP in ordinary rounds: stakes and powers are offered quietly. */
     prepQuickMs: ms(0, 60_000),
-    /** QUESTION_PREP in RISK and FINAL rounds: the ladder is the point of the round. */
     prepDecisionMs: ms(0, 60_000),
+    /**
+     * RISK_PICK in ordinary rounds, SABOTAGE_PICK, and RISK_PICK in RISK/FINAL rounds (ADR-0022).
+     * Optional so snapshots stored before they existed still parse; read them via `riskPickMsFor`,
+     * `riskPickDecisionMsFor` and `sabotagePickMsFor`.
+     */
+    riskPickMs: ms(0, 60_000).optional(),
+    riskPickDecisionMs: ms(0, 60_000).optional(),
+    sabotagePickMs: ms(0, 60_000).optional(),
     readBaseMs: ms(0, 10_000),
     readPerCharMs: ms(0, 200),
     readMinMs: ms(0, 10_000),
@@ -196,6 +202,9 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     prepMs: 2_500,
     prepQuickMs: 6_000,
     prepDecisionMs: 10_000,
+    riskPickMs: 12_000,
+    riskPickDecisionMs: 16_000,
+    sabotagePickMs: 12_000,
     readBaseMs: 1_500,
     readPerCharMs: 25,
     readMinMs: 2_000,
@@ -379,6 +388,21 @@ export function doubleDownExcludedStakes(config: GameConfig): readonly RiskTier[
 /** How long every active player may be disconnected before the room closes (old snapshots fall back to the default). */
 export function allPlayersGoneMsFor(config: GameConfig): number {
   return config.timings.allPlayersGoneMs ?? DEFAULT_GAME_CONFIG.timings.allPlayersGoneMs!;
+}
+
+/** RISK_PICK window in ordinary rounds (old snapshots fall back to the default). */
+export function riskPickMsFor(config: GameConfig): number {
+  return config.timings.riskPickMs ?? DEFAULT_GAME_CONFIG.timings.riskPickMs!;
+}
+
+/** RISK_PICK window in RISK and FINAL rounds, where the ladder is the point of the round. */
+export function riskPickDecisionMsFor(config: GameConfig): number {
+  return config.timings.riskPickDecisionMs ?? DEFAULT_GAME_CONFIG.timings.riskPickDecisionMs!;
+}
+
+/** SABOTAGE_PICK window. */
+export function sabotagePickMsFor(config: GameConfig): number {
+  return config.timings.sabotagePickMs ?? DEFAULT_GAME_CONFIG.timings.sabotagePickMs!;
 }
 
 /** Tier that applies when a player has not chosen one: the lowest tier the ladder offers. */

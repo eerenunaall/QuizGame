@@ -15,22 +15,28 @@ import {
   maxRoundsFor,
   presetOffset,
   resolveGameConfig,
+  riskPickDecisionMsFor,
+  riskPickMsFor,
+  sabotagePickMsFor,
   type GameConfig,
 } from './config';
 import { deckSize, selectQuestionId } from './deck';
 import { LEVEL_MAX, LEVEL_MIN, chooseRoundKind, direct } from './director';
 import {
   buildPowerItems,
-  checkCommit,
+  canSabotage,
+  checkRisk,
+  checkSabotage,
   chooseFiftyFifty,
-  doubleDownOffered,
   earnToken,
   jamFor,
   jokerLockedOut,
   newLedger,
   resolveSabotage,
+  riskPickOffered,
   roundLadder,
-  sabotageOpen,
+  sabotageActors,
+  sabotagePicksOf,
 } from './powers';
 import { rankPlayers } from './rank';
 import { computeScore } from './scoring';
@@ -57,6 +63,7 @@ import {
   isHostActor,
   phaseDataFor,
   prepCounts,
+  prepEligibleIds,
   statementPlayerIds,
   toPublicPlayer,
   youView,
@@ -513,9 +520,12 @@ function onCommand(
         command.payload.questionId,
         command.payload.optionId,
       );
-    case 'COMMIT_PREP':
+    case 'COMMIT_RISK':
       if (!playerId) return reject(ctx, 'FORBIDDEN');
-      return commitPrep(d, ctx, at, playerId, command.payload);
+      return commitRisk(d, ctx, at, playerId, command.payload);
+    case 'COMMIT_SABOTAGE':
+      if (!playerId) return reject(ctx, 'FORBIDDEN');
+      return commitSabotage(d, ctx, at, playerId, command.payload);
     case 'USE_FIFTY_FIFTY':
       if (!playerId) return reject(ctx, 'FORBIDDEN');
       return useFiftyFifty(d, ctx, at, playerId);
@@ -751,22 +761,55 @@ function emitAllPlayerStates(d: Room, ctx: Ctx): void {
   for (const player of activePlayerList(d)) emitPlayerState(d, ctx, player.playerId);
 }
 
-function commitPrep(
+/** Everyone the current pick phase waits for has confirmed: no reason to keep the table waiting. */
+function pickPhaseComplete(d: Room): boolean {
+  const round = d.game!.round!;
+  const eligible = prepEligibleIds(d);
+  if (d.phase === 'SABOTAGE_PICK') {
+    // Players who cannot sabotage (no token, cooldown, nobody to hit) are never waited for.
+    const picks = sabotagePicksOf(round);
+    return eligible.every((playerId) => picks[playerId] !== undefined || !canSabotage(d, playerId));
+  }
+  return prepCounts(d).committedCount >= prepCounts(d).eligibleCount;
+}
+
+function commitRisk(
   d: Room,
   ctx: Ctx,
   at: number,
   playerId: string,
-  payload: Extract<EngineCommand, { type: 'COMMIT_PREP' }>['payload'],
+  payload: Extract<EngineCommand, { type: 'COMMIT_RISK' }>['payload'],
 ): void {
-  const refused = checkCommit(d, playerId, payload);
+  const refused = checkRisk(d, playerId, payload);
   if (refused) return reject(ctx, refused);
-  const game = d.game!;
-  const round = game.round!;
-  const me = game.players[playerId]!;
-  const sabotage = payload.sabotage;
+  const round = d.game!.round!;
+  const me = d.game!.players[playerId]!;
   round.commitments[playerId] = {
     stake: payload.stake,
     doubleDown: payload.doubleDown,
+    committedAt: at,
+  };
+  // Spent on commitment, even if the answer turns out wrong (ADR-0007).
+  if (payload.doubleDown) me.powers.doubleDown -= 1;
+  touch(d, at);
+  emitPlayerState(d, ctx, playerId);
+  emit(ctx, { to: 'ALL' }, { type: 'PREP_PROGRESS', payload: prepCounts(d) });
+  if (pickPhaseComplete(d)) advancePhase(d, ctx, at);
+}
+
+function commitSabotage(
+  d: Room,
+  ctx: Ctx,
+  at: number,
+  playerId: string,
+  payload: Extract<EngineCommand, { type: 'COMMIT_SABOTAGE' }>['payload'],
+): void {
+  const refused = checkSabotage(d, playerId, payload);
+  if (refused) return reject(ctx, refused);
+  const round = d.game!.round!;
+  const me = d.game!.players[playerId]!;
+  const sabotage = payload.sabotage;
+  (round.sabotagePicks ??= {})[playerId] = {
     sabotage: sabotage
       ? {
           targetId: sabotage.targetId,
@@ -776,18 +819,15 @@ function commitPrep(
       : null,
     committedAt: at,
   };
-  // Spent on commitment, even if the answer turns out wrong (ADR-0007).
-  if (payload.doubleDown) me.powers.doubleDown -= 1;
+  // The token is spent on commitment, even if the shield blocks the hit (ADR-0010).
   if (sabotage) {
     me.powers.tokens -= 1;
     me.powers.lastSabotageRound = round.index;
   }
   touch(d, at);
   emitPlayerState(d, ctx, playerId);
-  const counts = prepCounts(d);
-  emit(ctx, { to: 'ALL' }, { type: 'PREP_PROGRESS', payload: counts });
-  // Everyone online has decided: no reason to keep the table waiting.
-  if (counts.committedCount >= counts.eligibleCount) advancePhase(d, ctx, at);
+  emit(ctx, { to: 'ALL' }, { type: 'PREP_PROGRESS', payload: prepCounts(d) });
+  if (pickPhaseComplete(d)) advancePhase(d, ctx, at);
 }
 
 function useFiftyFifty(d: Room, ctx: Ctx, at: number, playerId: string): void {
@@ -816,16 +856,45 @@ function useFiftyFifty(d: Room, ctx: Ctx, at: number, playerId: string): void {
   emitPlayerState(d, ctx, playerId);
 }
 
-/** How long QUESTION_PREP lasts: longer when stakes are the point of the round or powers are on offer. */
-function prepDuration(d: Room): number {
+/** RISK_PICK lasts longer when stakes are the point of the round (RISK and FINAL rounds). */
+function riskPickDuration(d: Room): number {
+  const kind = d.game!.round!.kind;
+  return kind === 'RISK' || kind === 'FINAL'
+    ? riskPickDecisionMsFor(d.config)
+    : riskPickMsFor(d.config);
+}
+
+/**
+ * Enters the next pick phase that has something to choose, or the question itself (ADR-0022). A
+ * phase nobody can act in is skipped, so no screen is ever empty.
+ */
+function enterNextPick(d: Room, ctx: Ctx, at: number, after: 'INTRO' | 'RISK_PICK'): void {
+  const eligible = prepEligibleIds(d);
+  if (after === 'INTRO' && riskPickOffered(d, eligible)) {
+    enterPhase(d, 'RISK_PICK', at, riskPickDuration(d));
+    emitAllPlayerStates(d, ctx); // fresh round: nothing committed, lockouts and tokens as they stand
+    return;
+  }
+  if (sabotageActors(d, eligible).length > 0) {
+    enterPhase(d, 'SABOTAGE_PICK', at, sabotagePickMsFor(d.config));
+    emitAllPlayerStates(d, ctx);
+    return;
+  }
+  startQuestion(d, ctx, at);
+}
+
+function startQuestion(d: Room, ctx: Ctx, at: number): void {
   const t = d.config.timings;
-  const game = d.game!;
-  const round = game.round!;
-  if (round.kind === 'RISK' || round.kind === 'FINAL') return t.prepDecisionMs;
-  const ladder = roundLadder(d.config, round, game.totalRounds);
-  const choices =
-    ladder.rungs.length > 1 || doubleDownOffered(d.config) || sabotageOpen(d.config, round);
-  return choices ? t.prepQuickMs : t.prepMs;
+  presentQuestion(d, ctx);
+  resolveSabotage(d, ctx.rng());
+  const round = d.game!.round!;
+  round.questionStartedAt = at;
+  const text = round.question!.text;
+  const readMs = clamp(t.readBaseMs + t.readPerCharMs * text.length, t.readMinMs, t.readMaxMs);
+  enterPhase(d, 'QUESTION', at, readMs);
+  // After the phase change, so views already show what hit whom: targets learn what hit them,
+  // and everyone's shield and token counts are current.
+  emitAllPlayerStates(d, ctx);
 }
 
 // ───────────────────────────── answering ─────────────────────────────
@@ -848,9 +917,15 @@ function submitAnswer(
   if (exemptPlayerId(game) === playerId) return reject(ctx, 'ANSWER_NOT_ALLOWED');
 
   if (d.phase !== 'ANSWERING') {
-    const early = ['COUNTDOWN', 'ROUND_INTRO', 'FINAL', 'QUESTION_PREP', 'QUESTION'].includes(
-      d.phase,
-    );
+    const early = [
+      'COUNTDOWN',
+      'ROUND_INTRO',
+      'FINAL',
+      'QUESTION_PREP',
+      'RISK_PICK',
+      'SABOTAGE_PICK',
+      'QUESTION',
+    ].includes(d.phase);
     return reject(ctx, early ? 'INVALID_STATE' : 'ANSWER_LATE');
   }
   const question = round.question!;
@@ -1032,22 +1107,12 @@ function advancePhase(d: Room, ctx: Ctx, at: number): void {
       return startRound(d, ctx, at, d.game!.upcoming ?? planRound(d, ctx, 0));
     case 'ROUND_INTRO':
     case 'FINAL':
-      enterPhase(d, 'QUESTION_PREP', at, prepDuration(d));
-      emitAllPlayerStates(d, ctx); // fresh round: nothing committed, lockouts and tokens as they stand
-      return;
-    case 'QUESTION_PREP': {
-      presentQuestion(d, ctx);
-      resolveSabotage(d, ctx.rng());
-      const round = d.game!.round!;
-      round.questionStartedAt = at;
-      const text = round.question!.text;
-      const readMs = clamp(t.readBaseMs + t.readPerCharMs * text.length, t.readMinMs, t.readMaxMs);
-      enterPhase(d, 'QUESTION', at, readMs);
-      // After the phase change, so views already show what hit whom: targets learn what hit them,
-      // and everyone's shield and token counts are current.
-      emitAllPlayerStates(d, ctx);
-      return;
-    }
+      return enterNextPick(d, ctx, at, 'INTRO');
+    case 'QUESTION_PREP': // legacy phase of a recovered room: handled as RISK_PICK
+    case 'RISK_PICK':
+      return enterNextPick(d, ctx, at, 'RISK_PICK');
+    case 'SABOTAGE_PICK':
+      return startQuestion(d, ctx, at);
     case 'QUESTION': {
       const round = d.game!.round!;
       round.answerOpensAt = at;
@@ -1193,6 +1258,7 @@ function startRound(d: Room, ctx: Ctx, at: number, plan: UpcomingRound): void {
     lockedAt: null,
     answers: {},
     commitments: {},
+    sabotagePicks: {},
     sabotages: [],
     effects: {},
     fiftyFifty: null,
@@ -1556,4 +1622,13 @@ function onRecover(d: Room, ctx: Ctx, at: number, outageMs: number): void {
     player.disconnectedAt = at;
   }
   d.leaderLostAt = d.leaderPlayerId === null ? null : at;
+}
+
+/**
+ * A room stored before ADR-0022 may sit in the retired QUESTION_PREP: it carries on as RISK_PICK
+ * (same deadline, same commitments). Everything else loads unchanged; old rounds have no sabotage picks.
+ */
+export function normalizeRecoveredState(state: RoomState): RoomState {
+  if ((state.phase as string) !== 'QUESTION_PREP') return state;
+  return { ...state, phase: 'RISK_PICK' };
 }

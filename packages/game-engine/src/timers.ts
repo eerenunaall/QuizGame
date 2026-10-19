@@ -5,6 +5,8 @@ const IN_GAME_PHASES = new Set([
   'COUNTDOWN',
   'ROUND_INTRO',
   'QUESTION_PREP',
+  'RISK_PICK',
+  'SABOTAGE_PICK',
   'QUESTION',
   'ANSWERING',
   'LOCKED',

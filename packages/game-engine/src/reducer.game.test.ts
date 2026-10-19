@@ -20,9 +20,11 @@ describe('phase flow', () => {
     h.runUntil('RESULTS');
 
     const phases = h.phaseEvents();
+    // Risk and sabotage have their own screens (ADR-0022); sabotage opens at round 3 and closes for
+    // the final stage, and nobody spends a token here, so every sabotage-open round shows it.
     const perRound: Phase[] = [
       'ROUND_INTRO',
-      'QUESTION_PREP',
+      'RISK_PICK',
       'QUESTION',
       'ANSWERING',
       'LOCKED',
@@ -31,11 +33,13 @@ describe('phase flow', () => {
       'MICRO_INTERMISSION',
     ];
     // The final stage of a 10-question game is questions 8–10: the splash plays once, before the first.
+    const withSabotage: Phase[] = [...perRound];
+    withSabotage.splice(2, 0, 'SABOTAGE_PICK');
     const finalOpening: Phase[] = [...perRound];
     finalOpening[0] = 'FINAL';
     const finalLast: Phase[] = [
       'ROUND_INTRO',
-      'QUESTION_PREP',
+      'RISK_PICK',
       'QUESTION',
       'ANSWERING',
       'LOCKED',
@@ -47,7 +51,9 @@ describe('phase flow', () => {
     expect(phases).toEqual([
       'LOBBY',
       'COUNTDOWN',
-      ...Array(7).fill(perRound).flat(),
+      ...perRound,
+      ...perRound,
+      ...Array(5).fill(withSabotage).flat(),
       ...finalOpening,
       ...perRound,
       ...finalLast,

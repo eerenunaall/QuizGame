@@ -47,7 +47,7 @@ describe('powers: invariants for any play', () => {
 
         for (const round of plan) {
           if (h.state.phase === 'RESULTS') break;
-          h.runUntil('QUESTION_PREP');
+          h.runUntil('RISK_PICK');
           round.forEach((p, i) => {
             h.command(h.actor(ids[i]!), {
               type: 'SET_PREFERENCES',
@@ -55,12 +55,21 @@ describe('powers: invariants for any play', () => {
             });
           });
           round.forEach((p, i) => {
-            if (!p.commit || h.state.phase !== 'QUESTION_PREP') return;
+            if (!p.commit || h.state.phase !== 'RISK_PICK') return;
             h.command(h.actor(ids[i]!), {
-              type: 'COMMIT_PREP',
+              type: 'COMMIT_RISK',
+              payload: { stake: p.commit.stake, doubleDown: p.commit.doubleDown },
+            });
+          });
+          if (h.state.phase === 'RISK_PICK') {
+            // RISK_PICK ends by its timer (or by the last commit): sabotage is a screen of its own.
+            h.runWhile(() => h.state.phase === 'RISK_PICK');
+          }
+          round.forEach((p, i) => {
+            if (!p.commit || h.state.phase !== 'SABOTAGE_PICK') return;
+            h.command(h.actor(ids[i]!), {
+              type: 'COMMIT_SABOTAGE',
               payload: {
-                stake: p.commit.stake,
-                doubleDown: p.commit.doubleDown,
                 sabotage: p.commit.sabotage
                   ? {
                       targetId: ids[p.commit.sabotage.target % ids.length]!,
@@ -80,11 +89,9 @@ describe('powers: invariants for any play', () => {
             const fx = live.effects[id];
             if (fx) expect(live.answerMs - fx.jamMs).toBeGreaterThanOrEqual(live.answerMs * 0.8);
           }
-          const sabotageCount = Object.values(live.commitments).filter((c) => c.sabotage).length;
-          expect(sabotageCount).toBeLessThanOrEqual(powers.sabotage.maxPerRound);
-          const targets = Object.values(live.commitments)
-            .filter((c) => c.sabotage)
-            .map((c) => c.sabotage!.targetId);
+          const picks = Object.values(live.sabotagePicks ?? {}).filter((c) => c.sabotage);
+          expect(picks.length).toBeLessThanOrEqual(powers.sabotage.maxPerRound);
+          const targets = picks.map((c) => c.sabotage!.targetId);
           expect(new Set(targets).size).toBe(targets.length); // never two hits on one target a round
 
           round.forEach((p, i) => {

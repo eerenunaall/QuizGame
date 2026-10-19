@@ -83,7 +83,7 @@ export const LIMITS = {
   reconnect: { capacity: 30, refillPerSec: 1 },
   message: { capacity: 40, refillPerSec: 20 },
   answer: { capacity: 6, refillPerSec: 1 },
-  /** COMMIT_PREP, USE_FIFTY_FIFTY, SET_PREFERENCES: a handful a round, never a flood. */
+  /** COMMIT_RISK, COMMIT_SABOTAGE, USE_FIFTY_FIFTY, SET_PREFERENCES: a handful a round, never a flood. */
   power: { capacity: 8, refillPerSec: 0.5 },
   /** Who Said It statements: a few edits in the lobby, never a flood. */
   statement: { capacity: 5, refillPerSec: 1 / 12 },

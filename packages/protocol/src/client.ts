@@ -54,12 +54,18 @@ export const CLIENT_PAYLOADS = {
     clientSentAt: EpochMsSchema.optional(),
   }),
   /**
-   * Everything a player decides in QUESTION_PREP, committed at once and final (ADR-0010): the stake,
-   * Double Down, and at most one sabotage. All-or-nothing: if any part is refused, nothing is spent.
+   * RISK_PICK: the stake and Double Down, final once sent (ADR-0010, ADR-0022). All-or-nothing: if
+   * any part is refused, nothing is spent.
    */
-  COMMIT_PREP: z.strictObject({
+  COMMIT_RISK: z.strictObject({
     stake: RiskTierSchema,
     doubleDown: z.boolean(),
+  }),
+  /**
+   * SABOTAGE_PICK: at most one sabotage, final once sent; `sabotage: null` confirms "no sabotage" so
+   * the table does not wait for this player (ADR-0022). Refused outside SABOTAGE_PICK (`INVALID_STATE`).
+   */
+  COMMIT_SABOTAGE: z.strictObject({
     sabotage: z
       .strictObject({
         targetId: PlayerIdSchema,

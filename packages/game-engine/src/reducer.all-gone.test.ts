@@ -142,7 +142,8 @@ describe('all players disconnected', () => {
   const IN_GAME: Phase[] = [
     'COUNTDOWN',
     'ROUND_INTRO',
-    'QUESTION_PREP',
+    'RISK_PICK',
+    'SABOTAGE_PICK',
     'QUESTION',
     'ANSWERING',
     'LOCKED',

@@ -3,14 +3,7 @@ import type { ClientPayload, ErrorCode, SabotageKind, ServerEvent } from '@quizp
 import type { CommandResult } from './types';
 import { Harness, testConfig } from './testing';
 
-type Commit = ClientPayload<'COMMIT_PREP'>;
-
-const commitOf = (patch: Partial<Commit> = {}): Commit => ({
-  stake: 'SAFE',
-  doubleDown: false,
-  sabotage: null,
-  ...patch,
-});
+type Commit = ClientPayload<'COMMIT_RISK'> & ClientPayload<'COMMIT_SABOTAGE'>;
 
 function setup(players = 3, override: unknown = {}) {
   const h = new Harness({ config: testConfig(override) });
@@ -19,28 +12,49 @@ function setup(players = 3, override: unknown = {}) {
   return { h, ids };
 }
 
-const commit = (h: Harness, playerId: string, patch: Partial<Commit> = {}): CommandResult =>
-  h.command(h.actor(playerId), { type: 'COMMIT_PREP', payload: commitOf(patch) });
+/**
+ * Sends the intent that matches the phase the room is in: the stake and Double Down in RISK_PICK, the
+ * sabotage in SABOTAGE_PICK. A sabotage offered during RISK_PICK goes out as the sabotage intent, so the
+ * server's refusal is what the test sees (ADR-0022).
+ */
+const commit = (h: Harness, playerId: string, patch: Partial<Commit> = {}): CommandResult => {
+  if (h.state.phase === 'SABOTAGE_PICK' || patch.sabotage) {
+    return h.command(h.actor(playerId), {
+      type: 'COMMIT_SABOTAGE',
+      payload: { sabotage: patch.sabotage ?? null },
+    });
+  }
+  return h.command(h.actor(playerId), {
+    type: 'COMMIT_RISK',
+    payload: { stake: patch.stake ?? 'SAFE', doubleDown: patch.doubleDown ?? false },
+  });
+};
 
 const fiftyFifty = (h: Harness, playerId: string): CommandResult =>
   h.command(h.actor(playerId), { type: 'USE_FIFTY_FIFTY', payload: {} });
 
 const refusal = (result: CommandResult): ErrorCode | 'OK' => (result.ok ? 'OK' : result.code);
 
-/** Runs the game (nobody commits or answers) until round `index` is in QUESTION_PREP. */
+/** Runs the game (nobody commits or answers) until round `index` is in RISK_PICK. */
 function toPrep(h: Harness, index: number): void {
   for (let guard = 0; guard < 40; guard++) {
-    h.runUntil('QUESTION_PREP');
+    h.runUntil('RISK_PICK');
     if (h.round().index === index) return;
     h.runUntil('SCORE_UPDATE');
   }
   throw new Error(`never reached round ${index}`);
 }
 
+/** Like `toPrep`, then lets RISK_PICK run out so the room stands in SABOTAGE_PICK. */
+function toSabotage(h: Harness, index: number): void {
+  toPrep(h, index);
+  h.runUntil('SABOTAGE_PICK');
+}
+
 /** Plays rounds up to (not including) `index`, answering correctly with the given players. */
 function playCorrect(h: Harness, until: number, answerers: string[]): void {
   for (let guard = 0; guard < 40; guard++) {
-    h.runUntil('QUESTION_PREP');
+    h.runUntil('RISK_PICK');
     if (h.round().index >= until) return;
     h.runUntil('ANSWERING');
     for (const id of answerers) h.answer(id, 'correct');
@@ -52,15 +66,15 @@ function playCorrect(h: Harness, until: number, answerers: string[]): void {
 const youOf = (h: Harness, playerId: string) => h.view({ role: 'PLAYER', playerId }).you!;
 const prepData = (h: Harness) => {
   const data = h.view({ role: 'DISPLAY' }).phaseData;
-  if (data.phase !== 'QUESTION_PREP') throw new Error(`not in prep: ${data.phase}`);
+  if (data.phase !== 'RISK_PICK') throw new Error(`not in prep: ${data.phase}`);
   return data;
 };
 const eventsOf = (h: Harness, type: ServerEvent['type']) => h.events(type);
 
-describe('QUESTION_PREP offers', () => {
+describe('RISK_PICK offers', () => {
   it('shows the ladder with its rules, and what is on offer this round', () => {
     const { h } = setup();
-    h.runUntil('QUESTION_PREP');
+    h.runUntil('RISK_PICK');
     const data = prepData(h);
     expect(data.riskLadder).toEqual([
       { tier: 'SAFE', multiplier: 1, loss: 0 },
@@ -94,17 +108,16 @@ describe('QUESTION_PREP offers', () => {
 
   it('gives risk and final rounds a longer decision window than ordinary ones', () => {
     const { h } = setup(3, {
-      timings: { prepMs: 1000, prepQuickMs: 2000, prepDecisionMs: 5000 },
+      timings: { riskPickMs: 2000, riskPickDecisionMs: 5000 },
     });
-    h.runUntil('QUESTION_PREP');
+    h.runUntil('RISK_PICK');
     expect(h.state.phaseDeadlineAt! - h.state.phaseEnteredAt).toBe(2000);
     toPrep(h, 7);
     expect(h.state.phaseDeadlineAt! - h.state.phaseEnteredAt).toBe(5000);
   });
 
-  it('falls back to the short window when nothing can be chosen', () => {
+  it('is skipped when nobody can choose anything, so no screen is ever empty', () => {
     const config = testConfig({
-      timings: { prepMs: 1000, prepQuickMs: 2000 },
       powers: { doubleDownPerGame: 0, sabotage: { enabled: false } },
     });
     // The ladder merge only adds rungs, so replace the ordinary ladder outright.
@@ -112,17 +125,18 @@ describe('QUESTION_PREP offers', () => {
     const h = new Harness({ config });
     h.joinPlayers(3);
     h.start();
-    h.runUntil('QUESTION_PREP');
-    expect(h.state.phaseDeadlineAt! - h.state.phaseEnteredAt).toBe(1000);
+    h.runUntil('QUESTION');
+    expect(h.phaseEvents()).not.toContain('RISK_PICK');
+    expect(h.phaseEvents()).not.toContain('SABOTAGE_PICK');
   });
 });
 
-describe('COMMIT_PREP', () => {
-  it('is accepted once, and only in QUESTION_PREP', () => {
+describe('COMMIT_RISK', () => {
+  it('is accepted once, and only in RISK_PICK', () => {
     const { h, ids } = setup();
     h.runUntil('ROUND_INTRO');
     expect(refusal(commit(h, ids[0]!))).toBe('INVALID_STATE');
-    h.runUntil('QUESTION_PREP');
+    h.runUntil('RISK_PICK');
     expect(refusal(commit(h, ids[0]!, { stake: 'RISK' }))).toBe('OK');
     expect(refusal(commit(h, ids[0]!, { stake: 'HIGH' }))).toBe('ALREADY_COMMITTED');
     expect(h.round().commitments[ids[0]!]!.stake).toBe('RISK'); // the first choice stands
@@ -132,14 +146,17 @@ describe('COMMIT_PREP', () => {
 
   it('is for players: the display cannot commit', () => {
     const { h } = setup();
-    h.runUntil('QUESTION_PREP');
-    const result = h.command(h.displayActor(), { type: 'COMMIT_PREP', payload: commitOf() });
+    h.runUntil('RISK_PICK');
+    const result = h.command(h.displayActor(), {
+      type: 'COMMIT_RISK',
+      payload: { stake: 'SAFE', doubleDown: false },
+    });
     expect(refusal(result)).toBe('FORBIDDEN');
   });
 
   it('refuses a stake the ladder does not offer', () => {
     const { h, ids } = setup();
-    h.runUntil('QUESTION_PREP');
+    h.runUntil('RISK_PICK');
     expect(refusal(commit(h, ids[0]!, { stake: 'ALL_IN' }))).toBe('STAKE_INVALID');
     toPrep(h, 9);
     expect(refusal(commit(h, ids[0]!, { stake: 'SAFE' }))).toBe('STAKE_INVALID');
@@ -148,22 +165,28 @@ describe('COMMIT_PREP', () => {
 
   it('is all-or-nothing: a refused part spends nothing', () => {
     const { h, ids } = setup();
-    h.runUntil('QUESTION_PREP');
-    // Sabotage is closed in round 1, so the Double Down in the same message must not be spent either.
-    const result = commit(h, ids[0]!, {
-      doubleDown: true,
-      sabotage: { targetId: ids[1]!, effect: 'JAM' },
-    });
-    expect(refusal(result)).toBe('POWER_UNAVAILABLE');
+    h.runUntil('RISK_PICK');
+    // HIGH cannot be doubled (ADR-0021): the refusal must leave the Double Down unspent.
+    const result = commit(h, ids[0]!, { stake: 'HIGH', doubleDown: true });
+    expect(refusal(result)).toBe('DOUBLE_DOWN_STAKE_CONFLICT');
     expect(youOf(h, ids[0]!).powers).toMatchObject({ doubleDown: 2, sabotageTokens: 1 });
     expect(youOf(h, ids[0]!).commitment).toBeNull();
     expect(commit(h, ids[0]!, { doubleDown: true }).ok).toBe(true);
     expect(youOf(h, ids[0]!).powers!.doubleDown).toBe(1);
   });
 
+  it('refuses a sabotage in RISK_PICK and spends nothing', () => {
+    const { h, ids } = setup();
+    toPrep(h, 2);
+    expect(refusal(commit(h, ids[0]!, { sabotage: { targetId: ids[1]!, effect: 'JAM' } }))).toBe(
+      'INVALID_STATE',
+    );
+    expect(youOf(h, ids[0]!).powers!.sabotageTokens).toBe(1);
+  });
+
   it('keeps choices private: others see counts, never the choices', () => {
     const { h, ids } = setup();
-    h.runUntil('QUESTION_PREP');
+    h.runUntil('RISK_PICK');
     commit(h, ids[0]!, { stake: 'RISK', doubleDown: true });
     expect(youOf(h, ids[0]!).commitment).toEqual({
       stake: 'RISK',
@@ -186,12 +209,12 @@ describe('COMMIT_PREP', () => {
   });
 
   it('moves on as soon as everyone online has decided', () => {
-    const { h, ids } = setup(3, { timings: { prepQuickMs: 20_000 } });
-    h.runUntil('QUESTION_PREP');
+    const { h, ids } = setup(3, { timings: { riskPickMs: 20_000 } });
+    h.runUntil('RISK_PICK');
     const entered = h.now;
     commit(h, ids[0]!);
     commit(h, ids[1]!);
-    expect(h.state.phase).toBe('QUESTION_PREP');
+    expect(h.state.phase).toBe('RISK_PICK');
     commit(h, ids[2]!);
     expect(h.state.phase).toBe('QUESTION');
     expect(h.now).toBe(entered); // no waiting for the 20 s window
@@ -199,8 +222,8 @@ describe('COMMIT_PREP', () => {
   });
 
   it('does not wait for a player who is offline', () => {
-    const { h, ids } = setup(3, { timings: { prepQuickMs: 20_000 } });
-    h.runUntil('QUESTION_PREP');
+    const { h, ids } = setup(3, { timings: { riskPickMs: 20_000 } });
+    h.runUntil('RISK_PICK');
     h.apply({ kind: 'PLAYER_CONNECTION', playerId: ids[2]!, connected: false });
     commit(h, ids[0]!);
     commit(h, ids[1]!);
@@ -213,7 +236,7 @@ describe('stakes and Double Down in the score', () => {
 
   it('a RISK stake pays double and a wrong answer costs the stake', () => {
     const { h, ids } = setup(3, FINAL_FREE);
-    h.runUntil('QUESTION_PREP');
+    h.runUntil('RISK_PICK');
     commit(h, ids[0]!, { stake: 'RISK' });
     commit(h, ids[1]!, { stake: 'RISK' });
     // The third player stays at the default (SAFE).
@@ -237,7 +260,7 @@ describe('stakes and Double Down in the score', () => {
   it('a wrong answer costs the stake when there are points to lose', () => {
     const { h, ids } = setup(2, FINAL_FREE);
     playCorrect(h, 1, [ids[0]!, ids[1]!]);
-    h.runUntil('QUESTION_PREP');
+    h.runUntil('RISK_PICK');
     const before = h.state.game!.players[ids[0]!]!.score;
     expect(before).toBeGreaterThan(100);
     commit(h, ids[0]!, { stake: 'HIGH' });
@@ -250,7 +273,7 @@ describe('stakes and Double Down in the score', () => {
   it('silence while connected with a stake riding is a loss', () => {
     const { h, ids } = setup(2, FINAL_FREE);
     playCorrect(h, 1, [ids[0]!, ids[1]!]);
-    h.runUntil('QUESTION_PREP');
+    h.runUntil('RISK_PICK');
     const before = h.state.game!.players[ids[0]!]!.score;
     commit(h, ids[0]!, { stake: 'RISK' });
     h.runUntil('SCORE_UPDATE'); // never answers
@@ -260,7 +283,7 @@ describe('stakes and Double Down in the score', () => {
   it('Double Down doubles a gain, adds a loss when wrong, and is spent either way', () => {
     const { h, ids } = setup(2, FINAL_FREE);
     playCorrect(h, 1, [ids[0]!, ids[1]!]);
-    h.runUntil('QUESTION_PREP');
+    h.runUntil('RISK_PICK');
     const before = h.state.game!.players[ids[0]!]!.score;
     commit(h, ids[0]!, { doubleDown: true });
     h.runUntil('ANSWERING');
@@ -274,7 +297,7 @@ describe('stakes and Double Down in the score', () => {
   it('allows two Double Downs a game and refuses a third', () => {
     const { h, ids } = setup(2, FINAL_FREE);
     for (let round = 0; round < 3; round++) {
-      h.runUntil('QUESTION_PREP');
+      h.runUntil('RISK_PICK');
       const result = commit(h, ids[0]!, { doubleDown: true });
       expect(refusal(result)).toBe(round < 2 ? 'OK' : 'POWER_UNAVAILABLE');
       h.runUntil('SCORE_UPDATE');
@@ -283,7 +306,7 @@ describe('stakes and Double Down in the score', () => {
 
   it('RISK stake and Double Down stack, but never beyond 3x (base + speed)', () => {
     const { h, ids } = setup(2, FINAL_FREE);
-    h.runUntil('QUESTION_PREP');
+    h.runUntil('RISK_PICK');
     expect(refusal(commit(h, ids[0]!, { stake: 'RISK', doubleDown: true }))).toBe('OK');
     h.runUntil('ANSWERING');
     h.answer(ids[0]!, 'correct');
@@ -299,13 +322,13 @@ describe('one big gamble per question (ADR-0021)', () => {
 
   it('offers the excluded stakes in the prep view so phones can disable the right button', () => {
     const { h } = setup(2, FINAL_FREE);
-    h.runUntil('QUESTION_PREP');
+    h.runUntil('RISK_PICK');
     expect(prepData(h).doubleDownExcludedStakes).toEqual(['HIGH', 'ALL_IN']);
   });
 
   it('refuses HIGH + Double Down, spends nothing, and lets the player commit again', () => {
     const { h, ids } = setup(2, FINAL_FREE);
-    h.runUntil('QUESTION_PREP');
+    h.runUntil('RISK_PICK');
     const result = commit(h, ids[0]!, { stake: 'HIGH', doubleDown: true });
     expect(refusal(result)).toBe('DOUBLE_DOWN_STAKE_CONFLICT');
     expect(youOf(h, ids[0]!).powers!.doubleDown).toBe(2);
@@ -315,7 +338,7 @@ describe('one big gamble per question (ADR-0021)', () => {
 
   it('allows Double Down with SAFE and RISK', () => {
     const { h, ids } = setup(3, FINAL_FREE);
-    h.runUntil('QUESTION_PREP');
+    h.runUntil('RISK_PICK');
     expect(refusal(commit(h, ids[0]!, { stake: 'SAFE', doubleDown: true }))).toBe('OK');
     expect(refusal(commit(h, ids[1]!, { stake: 'RISK', doubleDown: true }))).toBe('OK');
   });
@@ -323,7 +346,7 @@ describe('one big gamble per question (ADR-0021)', () => {
   it('refuses ALL_IN + Double Down on the last question', () => {
     const { h, ids } = setup(2, { ...FINAL_FREE });
     for (let guard = 0; guard < 40; guard++) {
-      h.runUntil('QUESTION_PREP');
+      h.runUntil('RISK_PICK');
       if (h.round().index === h.state.game!.totalRounds - 1) break;
       h.runUntil('SCORE_UPDATE');
     }
@@ -339,7 +362,7 @@ describe('one big gamble per question (ADR-0021)', () => {
       ...FINAL_FREE,
       powers: { doubleDownExcludedStakes: [] },
     });
-    h.runUntil('QUESTION_PREP');
+    h.runUntil('RISK_PICK');
     expect(refusal(commit(h, ids[0]!, { stake: 'HIGH', doubleDown: true }))).toBe('OK');
   });
 });
@@ -418,7 +441,7 @@ describe('sabotage rules', () => {
 
   it('costs a token, and everyone starts with one', () => {
     const { h, ids } = setup();
-    toPrep(h, 2);
+    toSabotage(h, 2);
     expect(youOf(h, ids[0]!).powers!.sabotageTokens).toBe(1);
     expect(refusal(attack(h, ids[0]!, ids[1]!))).toBe('OK');
     expect(youOf(h, ids[0]!).powers!.sabotageTokens).toBe(0);
@@ -426,7 +449,7 @@ describe('sabotage rules', () => {
 
   it('cannot be aimed at yourself, a stranger or someone who left', () => {
     const { h, ids } = setup();
-    toPrep(h, 2);
+    toSabotage(h, 2);
     expect(refusal(attack(h, ids[0]!, ids[0]!))).toBe('TARGET_INVALID');
     expect(refusal(attack(h, ids[0]!, 'nobody'))).toBe('TARGET_INVALID');
     h.command(h.actor(ids[2]!), { type: 'LEAVE_ROOM', payload: {} });
@@ -436,16 +459,16 @@ describe('sabotage rules', () => {
 
   it('needs a token', () => {
     const { h, ids } = setup(4);
-    toPrep(h, 2);
+    toSabotage(h, 2);
     attack(h, ids[0]!, ids[1]!);
     h.runUntil('SCORE_UPDATE');
-    toPrep(h, 3);
+    toSabotage(h, 3);
     expect(refusal(attack(h, ids[0]!, ids[2]!))).toBe('POWER_UNAVAILABLE'); // out of tokens
   });
 
   it('limits sabotage per round and per target', () => {
     const { h, ids } = setup(5);
-    toPrep(h, 2);
+    toSabotage(h, 2);
     expect(refusal(attack(h, ids[0]!, ids[3]!))).toBe('OK');
     expect(refusal(attack(h, ids[1]!, ids[3]!))).toBe('SABOTAGE_LIMIT'); // same target twice
     expect(refusal(attack(h, ids[1]!, ids[4]!))).toBe('OK');
@@ -456,16 +479,16 @@ describe('sabotage rules', () => {
     const { h, ids } = setup(3, {
       powers: { sabotage: { startTokens: 2, maxTokens: 2, attackerCooldownRounds: 0 } },
     });
-    toPrep(h, 2);
+    toSabotage(h, 2);
     expect(refusal(attack(h, ids[0]!, ids[2]!))).toBe('OK');
     h.runUntil('SCORE_UPDATE');
-    toPrep(h, 3);
+    toSabotage(h, 3);
     expect(refusal(attack(h, ids[1]!, ids[2]!))).toBe('SABOTAGE_LIMIT'); // hit last round
     h.runUntil('SCORE_UPDATE');
-    toPrep(h, 4);
+    toSabotage(h, 4);
     expect(refusal(attack(h, ids[1]!, ids[2]!))).toBe('SABOTAGE_LIMIT'); // gap 2 rounds not over yet
     h.runUntil('SCORE_UPDATE');
-    toPrep(h, 5);
+    toSabotage(h, 5);
     expect(refusal(attack(h, ids[1]!, ids[2]!))).toBe('OK');
   });
 
@@ -473,25 +496,24 @@ describe('sabotage rules', () => {
     const { h, ids } = setup(4, {
       powers: { sabotage: { startTokens: 2, maxTokens: 2 } },
     });
-    toPrep(h, 2);
+    toSabotage(h, 2);
     attack(h, ids[0]!, ids[1]!);
     h.runUntil('SCORE_UPDATE');
-    toPrep(h, 3);
+    toSabotage(h, 3);
     expect(refusal(attack(h, ids[0]!, ids[2]!))).toBe('SABOTAGE_LIMIT');
     h.runUntil('SCORE_UPDATE');
-    toPrep(h, 4);
+    toSabotage(h, 4);
     expect(refusal(attack(h, ids[0]!, ids[2]!))).toBe('SABOTAGE_LIMIT');
     h.runUntil('SCORE_UPDATE');
-    toPrep(h, 5);
+    toSabotage(h, 5);
     expect(refusal(attack(h, ids[0]!, ids[2]!))).toBe('OK');
   });
 
   it('earns a token at streak 3, never holds more than two, and never in the first rounds', () => {
     const { h, ids } = setup(3);
     toPrep(h, 0);
-    expect(refusal(attack(h, ids[0]!, ids[1]!))).toBe('POWER_UNAVAILABLE'); // round 1
     playCorrect(h, 3, [ids[0]!]);
-    h.runUntil('QUESTION_PREP');
+    h.runUntil('RISK_PICK');
     expect(youOf(h, ids[0]!).powers).toMatchObject({ sabotageTokens: 2, nextTokenAtStreak: 6 });
     expect(youOf(h, ids[1]!).powers).toMatchObject({ sabotageTokens: 1, nextTokenAtStreak: 3 });
   });
@@ -499,14 +521,19 @@ describe('sabotage rules', () => {
   it('is closed in the final stage', () => {
     const { h, ids } = setup();
     toPrep(h, 7);
-    expect(refusal(attack(h, ids[0]!, ids[1]!))).toBe('POWER_UNAVAILABLE');
+    h.runUntil('QUESTION');
+    expect(h.phaseEvents().filter((p) => p === 'SABOTAGE_PICK')).toHaveLength(5); // rounds 3-7 only
+    expect(h.state.phase).toBe('QUESTION');
+    expect(refusal(attack(h, ids[0]!, ids[1]!))).toBe('INVALID_STATE');
   });
 
   it('can be switched off by configuration', () => {
     const { h, ids } = setup(3, { powers: { sabotage: { enabled: false } } });
     toPrep(h, 2);
     expect(prepData(h).sabotageEnabled).toBe(false);
-    expect(refusal(attack(h, ids[0]!, ids[1]!))).toBe('POWER_UNAVAILABLE');
+    h.runUntil('QUESTION');
+    expect(h.phaseEvents()).not.toContain('SABOTAGE_PICK');
+    expect(refusal(attack(h, ids[0]!, ids[1]!))).toBe('INVALID_STATE');
   });
 });
 
@@ -530,7 +557,7 @@ describe('sabotage effects', () => {
 
   it("JAM shortens only the target's window, by a bounded amount", () => {
     const { h, ids } = bare();
-    toPrep(h, 2);
+    toSabotage(h, 2);
     sabotage(h, ids[0]!, ids[1]!, 'JAM');
     h.runUntil('ANSWERING');
     const window = h.round().answerMs;
@@ -551,7 +578,7 @@ describe('sabotage effects', () => {
 
   it('SHUFFLE gives the target their own order of the same options', () => {
     const { h, ids } = bare();
-    toPrep(h, 2);
+    toSabotage(h, 2);
     sabotage(h, ids[0]!, ids[1]!, 'SHUFFLE');
     h.runUntil('ANSWERING');
     const original = h.round().question!.options.map((o) => o.optionId);
@@ -565,7 +592,7 @@ describe('sabotage effects', () => {
 
   it('FOG hides one option, chosen without regard to the answer, for the first moments', () => {
     const { h, ids } = bare();
-    toPrep(h, 2);
+    toSabotage(h, 2);
     sabotage(h, ids[0]!, ids[1]!, 'FOG');
     h.runUntil('ANSWERING');
     const fx = youOf(h, ids[1]!).effects!;
@@ -579,7 +606,7 @@ describe('sabotage effects', () => {
       const { h, ids } = bare();
       h.command(h.actor(ids[1]!), { type: 'SET_PREFERENCES', payload: { reducedEffects: true } });
       expect(youOf(h, ids[1]!).reducedEffects).toBe(true);
-      toPrep(h, 2);
+      toSabotage(h, 2);
       sabotage(h, ids[0]!, ids[2]!, effect); // someone else: full effect
       sabotage(h, ids[2]!, ids[1]!, effect);
       h.runUntil('ANSWERING');
@@ -596,7 +623,7 @@ describe('sabotage effects', () => {
 
   it('LOCKOUT blocks one joker next round, does not consume it, and cannot chain', () => {
     const { h, ids } = bare(4, { powers: { sabotage: { startTokens: 2, maxTokens: 2 } } });
-    toPrep(h, 2);
+    toSabotage(h, 2);
     expect(refusal(sabotage(h, ids[0]!, ids[1]!, 'LOCKOUT'))).toBe('POWER_UNAVAILABLE'); // needs a joker
     expect(refusal(sabotage(h, ids[0]!, ids[1]!, 'LOCKOUT', 'DOUBLE_DOWN'))).toBe('OK');
     h.runUntil('SCORE_UPDATE');
@@ -606,6 +633,7 @@ describe('sabotage effects', () => {
     expect(refusal(commit(h, ids[1]!, { doubleDown: true }))).toBe('POWER_LOCKED_OUT');
     expect(youOf(h, ids[1]!).powers!.doubleDown).toBe(2);
     expect(commit(h, ids[1]!, { stake: 'RISK' }).ok).toBe(true); // the rest of the PREP is open
+    h.runUntil('SABOTAGE_PICK');
     // A lockout that holds this round cannot be extended into the next one.
     expect(refusal(sabotage(h, ids[2]!, ids[1]!, 'LOCKOUT', 'DOUBLE_DOWN'))).toBe('SABOTAGE_LIMIT');
     h.runUntil('SCORE_UPDATE');
@@ -616,7 +644,7 @@ describe('sabotage effects', () => {
 
   it('LOCKOUT on 50/50 refuses it during the next round only', () => {
     const { h, ids } = bare();
-    toPrep(h, 2);
+    toSabotage(h, 2);
     sabotage(h, ids[0]!, ids[1]!, 'LOCKOUT', 'FIFTY_FIFTY');
     h.runUntil('ANSWERING');
     expect(fiftyFifty(h, ids[1]!).ok).toBe(true); // this round is not locked
@@ -628,7 +656,7 @@ describe('sabotage effects', () => {
 
   it('POINT_TAX takes 25 % of the next gain, once', () => {
     const { h, ids } = bare(3);
-    toPrep(h, 2);
+    toSabotage(h, 2);
     sabotage(h, ids[0]!, ids[1]!, 'POINT_TAX');
     h.runUntil('ANSWERING');
     h.answer(ids[1]!, 'correct');
@@ -643,7 +671,7 @@ describe('sabotage effects', () => {
     expect(taxed.delta).toBeLessThan(free.delta);
     expect(h.state.game!.players[ids[1]!]!.powers.pointTax).toBeNull(); // consumed
     // Next round: no tax.
-    toPrep(h, 3);
+    toSabotage(h, 3);
     h.runUntil('ANSWERING');
     h.answer(ids[1]!, 'correct');
     h.runUntil('SCORE_UPDATE');
@@ -659,22 +687,22 @@ describe('sabotage effects', () => {
     const { h, ids } = bare(3, {
       powers: { sabotage: { pointTaxRounds: 3 } },
     });
-    toPrep(h, 2);
+    toSabotage(h, 2);
     sabotage(h, ids[0]!, ids[1]!, 'POINT_TAX');
     // Nobody answers for three rounds (rounds 3, 4, 5).
     h.runUntil('SCORE_UPDATE');
     expect(h.state.game!.players[ids[1]!]!.powers.pointTax).not.toBeNull();
-    toPrep(h, 3);
+    toSabotage(h, 3);
     h.runUntil('SCORE_UPDATE');
     expect(h.state.game!.players[ids[1]!]!.powers.pointTax).not.toBeNull();
-    toPrep(h, 4);
+    toSabotage(h, 4);
     h.runUntil('SCORE_UPDATE');
     expect(h.state.game!.players[ids[1]!]!.powers.pointTax).toBeNull();
   });
 
   it('the shield blocks the first hit (the token stays spent) and is then gone', () => {
     const { h, ids } = setup(3, { powers: { sabotage: { targetMinGapRounds: 0 } } });
-    toPrep(h, 2);
+    toSabotage(h, 2);
     sabotage(h, ids[0]!, ids[1]!, 'JAM');
     h.runUntil('ANSWERING');
     expect(youOf(h, ids[1]!).hits).toEqual([{ effect: 'JAM', blocked: true }]);
@@ -682,7 +710,7 @@ describe('sabotage effects', () => {
     expect(youOf(h, ids[1]!).powers!.shield).toBe(0);
     expect(youOf(h, ids[0]!).powers!.sabotageTokens).toBe(0);
     h.runUntil('SCORE_UPDATE');
-    toPrep(h, 3);
+    toSabotage(h, 3);
     sabotage(h, ids[2]!, ids[1]!, 'JAM');
     h.runUntil('ANSWERING');
     expect(youOf(h, ids[1]!).hits).toEqual([{ effect: 'JAM', blocked: false }]);
@@ -691,7 +719,7 @@ describe('sabotage effects', () => {
 
   it('pushes the new private state to the people it concerns, once the options exist', () => {
     const { h, ids } = bare();
-    toPrep(h, 2);
+    toSabotage(h, 2);
     h.effects.length = 0;
     sabotage(h, ids[0]!, ids[1]!, 'FOG');
     sabotage(h, ids[2]!, ids[0]!, 'JAM');
@@ -716,7 +744,7 @@ describe('sabotage effects', () => {
 
   it('never tells the target who did it, and tells nobody before the options exist', () => {
     const { h, ids } = bare();
-    toPrep(h, 2);
+    toSabotage(h, 2);
     sabotage(h, ids[0]!, ids[1]!, 'SHUFFLE');
     const during = JSON.stringify([
       youOf(h, ids[1]!),
@@ -737,7 +765,7 @@ describe('sabotage effects', () => {
 describe('POWER_RESOLUTION', () => {
   it('is skipped when nothing noteworthy happened', () => {
     const { h } = setup();
-    h.runUntil('QUESTION_PREP');
+    h.runUntil('RISK_PICK');
     const phases = new Set<string>();
     while (h.state.phase !== 'SCORE_UPDATE') {
       phases.add(h.state.phase);
@@ -750,6 +778,7 @@ describe('POWER_RESOLUTION', () => {
     const { h, ids } = setup(3);
     toPrep(h, 2);
     commit(h, ids[0]!, { stake: 'RISK', doubleDown: true });
+    h.runUntil('SABOTAGE_PICK');
     commit(h, ids[1]!, { sabotage: { targetId: ids[2]!, effect: 'JAM' } });
     h.runUntil('ANSWERING');
     h.answer(ids[0]!, 'correct');
@@ -772,11 +801,9 @@ describe('POWER_RESOLUTION', () => {
   it('records power use for the audit trail', () => {
     const { h, ids } = setup(3);
     toPrep(h, 2);
-    commit(h, ids[0]!, {
-      stake: 'RISK',
-      doubleDown: true,
-      sabotage: { targetId: ids[1]!, effect: 'FOG' },
-    });
+    commit(h, ids[0]!, { stake: 'RISK', doubleDown: true });
+    h.runUntil('SABOTAGE_PICK');
+    commit(h, ids[0]!, { sabotage: { targetId: ids[1]!, effect: 'FOG' } });
     h.runUntil('SCORE_UPDATE');
     const record = h.effects
       .flatMap((e) =>
@@ -796,11 +823,11 @@ describe('POWER_RESOLUTION', () => {
 describe('powers across a game', () => {
   it('start fresh on a rematch', () => {
     const { h, ids } = setup(2, { defaultRounds: 3 });
-    h.runUntil('QUESTION_PREP');
+    h.runUntil('RISK_PICK');
     commit(h, ids[0]!, { doubleDown: true });
     h.runUntil('RESULTS');
     h.command(h.actor(ids[0]!), { type: 'REMATCH', payload: {} });
-    h.runUntil('QUESTION_PREP');
+    h.runUntil('RISK_PICK');
     expect(youOf(h, ids[0]!).powers).toMatchObject({ doubleDown: 2, fiftyFifty: 1, shield: 1 });
     expect(youOf(h, ids[0]!).commitment).toBeNull();
   });
@@ -813,7 +840,7 @@ describe('powers across a game', () => {
 
   it('feed the director how much risk the room takes', () => {
     const { h, ids } = setup(2);
-    h.runUntil('QUESTION_PREP');
+    h.runUntil('RISK_PICK');
     commit(h, ids[0]!, { stake: 'HIGH' });
     commit(h, ids[1]!, { stake: 'SAFE' });
     h.runUntil('SCORE_UPDATE');
@@ -823,11 +850,9 @@ describe('powers across a game', () => {
   it('survive a reconnect snapshot: the same private view comes back', () => {
     const { h, ids } = setup(3);
     toPrep(h, 2);
-    commit(h, ids[0]!, {
-      stake: 'RISK',
-      doubleDown: true,
-      sabotage: { targetId: ids[1]!, effect: 'JAM' },
-    });
+    commit(h, ids[0]!, { stake: 'RISK', doubleDown: true });
+    h.runUntil('SABOTAGE_PICK');
+    commit(h, ids[0]!, { sabotage: { targetId: ids[1]!, effect: 'JAM' } });
     h.runUntil('ANSWERING');
     fiftyFifty(h, ids[0]!);
     const before = youOf(h, ids[0]!);

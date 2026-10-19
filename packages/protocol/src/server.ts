@@ -72,7 +72,7 @@ export const SERVER_PAYLOADS = {
     phaseDeadlineAt: EpochMsSchema.nullable(),
     data: PhaseDataSchema,
   }),
-  /** How many players have made their QUESTION_PREP choices (counts only, never the choices). */
+  /** How many players have confirmed in RISK_PICK / SABOTAGE_PICK (counts only, never the choices or who). */
   PREP_PROGRESS: z.strictObject({
     committedCount: z.int().nonnegative(),
     eligibleCount: z.int().nonnegative(),

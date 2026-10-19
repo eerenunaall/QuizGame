@@ -86,7 +86,8 @@ export function clientIp(request: IncomingMessage, trustedHops: number): string 
 
 /** WebSocket endpoint: upgrade policy, connection lifecycle, rate limits and message routing. */
 const POWER_COMMANDS: ReadonlySet<string> = new Set([
-  'COMMIT_PREP',
+  'COMMIT_RISK',
+  'COMMIT_SABOTAGE',
   'USE_FIFTY_FIFTY',
   'SET_PREFERENCES',
 ]);

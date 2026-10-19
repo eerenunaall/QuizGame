@@ -152,11 +152,15 @@ function checkInvariants(h: Harness, previous: RoomState): void {
     }
     const round = game.round;
     if (round) {
-      const sabotageCommits = Object.values(round.commitments).filter((c) => c.sabotage);
+      const picks = round.sabotagePicks ?? {};
+      const sabotageCommits = Object.values(picks).filter((c) => c.sabotage);
       expect(sabotageCommits.length).toBeLessThanOrEqual(powers.sabotage.maxPerRound);
-      for (const [playerId, commitment] of Object.entries(round.commitments)) {
+      for (const playerId of Object.keys(round.commitments)) {
         expect(game.players[playerId]).toBeDefined();
-        if (commitment.sabotage) expect(commitment.sabotage.targetId).not.toBe(playerId);
+      }
+      for (const [playerId, pick] of Object.entries(picks)) {
+        expect(game.players[playerId]).toBeDefined();
+        if (pick.sabotage) expect(pick.sabotage.targetId).not.toBe(playerId);
       }
       for (const [playerId, fx] of Object.entries(round.effects)) {
         expect(game.players[playerId]).toBeDefined();
@@ -318,20 +322,26 @@ function run(actions: Action[]): void {
         const id = pick(action.p);
         const target = action.target === null ? undefined : pick(action.target);
         if (id) {
-          h.command(h.actor(id), {
-            type: 'COMMIT_PREP',
-            payload: {
-              stake: TIERS[action.stake % TIERS.length]!,
-              doubleDown: action.dd,
-              sabotage: target
-                ? {
-                    targetId: target,
-                    effect: EFFECTS[action.effect % EFFECTS.length]!,
-                    joker: JOKERS[action.joker % JOKERS.length]!,
-                  }
-                : null,
-            },
-          });
+          // The phase decides which intent is legal; the wrong one is simply refused.
+          if (h.state.phase === 'SABOTAGE_PICK') {
+            h.command(h.actor(id), {
+              type: 'COMMIT_SABOTAGE',
+              payload: {
+                sabotage: target
+                  ? {
+                      targetId: target,
+                      effect: EFFECTS[action.effect % EFFECTS.length]!,
+                      joker: JOKERS[action.joker % JOKERS.length]!,
+                    }
+                  : null,
+              },
+            });
+          } else {
+            h.command(h.actor(id), {
+              type: 'COMMIT_RISK',
+              payload: { stake: TIERS[action.stake % TIERS.length]!, doubleDown: action.dd },
+            });
+          }
         }
         break;
       }

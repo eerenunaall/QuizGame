@@ -1,5 +1,11 @@
 import { randomUuid, generateRoomCode } from '@quizparty/shared';
-import { createRoom, resolveGameConfig, reduce, type RoomState } from '@quizparty/game-engine';
+import {
+  createRoom,
+  normalizeRecoveredState,
+  resolveGameConfig,
+  reduce,
+  type RoomState,
+} from '@quizparty/game-engine';
 import type { AppConfig } from '../config';
 import { systemClock, type Clock } from '../util/clock';
 import { LiveRoom, type RoomDeps } from './live-room';
@@ -160,7 +166,8 @@ export class RoomManager {
       try {
         const loaded = await this.store.loadForRecovery(id);
         if (!loaded?.snapshot) continue;
-        let state = loaded.snapshot;
+        // A room stored mid-prep before ADR-0022 resumes in RISK_PICK.
+        let state = normalizeRecoveredState(loaded.snapshot);
         for (const event of loaded.events) {
           const result = reduce(state, event.input);
           if (result.state.version !== event.seq) {

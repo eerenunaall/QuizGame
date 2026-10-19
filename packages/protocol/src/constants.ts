@@ -17,7 +17,12 @@ export const PHASES = [
   'LOBBY',
   'COUNTDOWN',
   'ROUND_INTRO',
+  /** Legacy (ADR-0022): replaced by RISK_PICK + SABOTAGE_PICK. Never entered; kept so old data parses. */
   'QUESTION_PREP',
+  /** Stakes, Double Down and the other jokers, on their own timed screen (ADR-0022). */
+  'RISK_PICK',
+  /** Sabotage commits, on their own timed screen after RISK_PICK (ADR-0022). */
+  'SABOTAGE_PICK',
   'QUESTION',
   'ANSWERING',
   'LOCKED',

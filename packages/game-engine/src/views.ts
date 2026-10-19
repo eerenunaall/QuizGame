@@ -8,11 +8,13 @@ import type {
 } from '@quizparty/protocol';
 import { doubleDownExcludedStakes, maxRoundsFor } from './config';
 import {
+  canSabotage,
   doubleDownOffered,
   jokerLockedOut,
   nextTokenStreak,
   roundLadder,
   sabotageOpen,
+  sabotagePicksOf,
 } from './powers';
 import { rankPlayers } from './rank';
 import { exemptPlayerId, progressTicks } from './who-said-it';
@@ -107,7 +109,7 @@ export function scoreboard(state: RoomState): ScoreboardEntry[] {
   }));
 }
 
-/** Players QUESTION_PREP waits for: in the game and online right now. */
+/** Players the pick phases (RISK_PICK, SABOTAGE_PICK) wait for: in the game and online right now. */
 export function prepEligibleIds(state: RoomState): string[] {
   const exempt = exemptPlayerId(state.game);
   return Object.entries(state.game?.players ?? {})
@@ -123,11 +125,17 @@ export function prepEligibleIds(state: RoomState): string[] {
     .map(([playerId]) => playerId);
 }
 
+/**
+ * Progress of the current pick phase, counts only (never who, ATTACK 27). RISK_PICK: players who
+ * confirmed out of those online. SABOTAGE_PICK: sabotage confirmations out of everybody online, so the
+ * number of players who hold a token is not disclosed either.
+ */
 export function prepCounts(state: RoomState): { committedCount: number; eligibleCount: number } {
   const game = state.game;
   const round = game?.round;
   if (!game || !round) return { committedCount: 0, eligibleCount: 0 };
-  const committedCount = Object.keys(round.commitments).filter(
+  const entries = state.phase === 'SABOTAGE_PICK' ? sabotagePicksOf(round) : round.commitments;
+  const committedCount = Object.keys(entries).filter(
     (playerId) => state.players[playerId]?.status === 'ACTIVE' && !game.players[playerId]?.removed,
   ).length;
   return {
@@ -157,11 +165,12 @@ export function phaseDataFor(state: RoomState): PhaseData {
       return { phase: 'ROUND_INTRO', round: roundPublic(state) };
     case 'FINAL':
       return { phase: 'FINAL', round: roundPublic(state) };
-    case 'QUESTION_PREP': {
+    case 'QUESTION_PREP': // legacy phase of a recovered room: shown as RISK_PICK
+    case 'RISK_PICK': {
       const deckQuestion = game!.deck.questions[round!.questionId]!;
       const ladder = roundLadder(state.config, round!, game!.totalRounds);
       return {
-        phase: 'QUESTION_PREP',
+        phase: 'RISK_PICK',
         round: roundPublic(state),
         category: { id: deckQuestion.category.id, label: deckQuestion.category.label },
         difficulty: deckQuestion.difficulty,
@@ -170,6 +179,16 @@ export function phaseDataFor(state: RoomState): PhaseData {
         doubleDownEnabled: doubleDownOffered(state.config),
         doubleDownExcludedStakes: [...doubleDownExcludedStakes(state.config)],
         sabotageEnabled: sabotageOpen(state.config, round!),
+        ...prepCounts(state),
+      };
+    }
+    case 'SABOTAGE_PICK': {
+      const deckQuestion = game!.deck.questions[round!.questionId]!;
+      return {
+        phase: 'SABOTAGE_PICK',
+        round: roundPublic(state),
+        category: { id: deckQuestion.category.id, label: deckQuestion.category.label },
+        difficulty: deckQuestion.difficulty,
         ...prepCounts(state),
       };
     }
@@ -302,8 +321,13 @@ export function youView(state: RoomState, playerId: string): YouView | null {
         }
       : null;
   const commitment = roundIsLive ? (round.commitments[playerId] ?? null) : null;
+  const pick = roundIsLive ? (sabotagePicksOf(round)[playerId] ?? null) : null;
   const effects = roundIsLive ? (round.effects[playerId] ?? null) : null;
-  const questionLive = state.phase !== 'QUESTION_PREP';
+  // SHUFFLE/FOG need the options, which exist only from QUESTION on.
+  const questionLive =
+    state.phase !== 'QUESTION_PREP' &&
+    state.phase !== 'RISK_PICK' &&
+    state.phase !== 'SABOTAGE_PICK';
 
   return {
     playerId,
@@ -318,20 +342,28 @@ export function youView(state: RoomState, playerId: string): YouView | null {
           }
         : null,
     powers,
-    commitment: commitment
-      ? {
-          stake: commitment.stake,
-          doubleDown: commitment.doubleDown,
-          sabotage: commitment.sabotage
-            ? { targetId: commitment.sabotage.targetId, effect: commitment.sabotage.effect }
-            : null,
-        }
-      : null,
+    // The player's own decisions only. A sabotage picked without a stake (RISK_PICK timed out or was
+    // skipped) reports the round's default stake, which is what applies.
+    commitment:
+      commitment || pick
+        ? {
+            stake:
+              commitment?.stake ?? roundLadder(state.config, round!, game!.totalRounds).defaultTier,
+            doubleDown: commitment?.doubleDown ?? false,
+            sabotage: pick?.sabotage
+              ? { targetId: pick.sabotage.targetId, effect: pick.sabotage.effect }
+              : null,
+          }
+        : null,
+    sabotage:
+      roundIsLive && (state.phase === 'SABOTAGE_PICK' || pick)
+        ? { ready: canSabotage(state, playerId), decided: pick !== null }
+        : undefined,
     fiftyFifty:
       roundIsLive && round.fiftyFiftyUsers[playerId] && round.fiftyFifty
         ? { keep: [...round.fiftyFifty.keep] }
         : null,
-    // What hit the player is known once the options exist, i.e. after QUESTION_PREP.
+    // What hit the player is known once the options exist, i.e. after the pick phases.
     effects:
       effects && questionLive
         ? {

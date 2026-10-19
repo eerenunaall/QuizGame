@@ -119,15 +119,20 @@ export interface PowerLedger {
   pointTax: { expiresAfterRound: number } | null;
 }
 
-/** Everything a player decided in QUESTION_PREP. PRIVATE until POWER_RESOLUTION. */
+/** What a player decided in RISK_PICK. PRIVATE until POWER_RESOLUTION. */
 export interface Commitment {
   stake: RiskTier;
   doubleDown: boolean;
+  committedAt: EpochMs;
+}
+
+/** What a player decided in SABOTAGE_PICK (`sabotage: null` = confirmed without one). PRIVATE until POWER_RESOLUTION. */
+export interface SabotagePick {
   sabotage: { targetId: string; effect: SabotageKind; joker: Joker | null } | null;
   committedAt: EpochMs;
 }
 
-/** Presentation effects resolved for one target when QUESTION_PREP ends. */
+/** Presentation effects resolved for one target when SABOTAGE_PICK ends. */
 export interface TargetEffects {
   jamMs: number;
   /** Option ids in the order this player's phone lists them (SHUFFLE). */
@@ -162,7 +167,12 @@ export interface RoundState {
   answers: Record<string, AnswerRecord>;
   /** PRIVATE until POWER_RESOLUTION. */
   commitments: Record<string, Commitment>;
-  /** Sabotage resolved when QUESTION_PREP ended (shield checks done); public at POWER_RESOLUTION. */
+  /**
+   * PRIVATE until POWER_RESOLUTION. Optional so rounds stored before ADR-0022 (sabotage lived in the
+   * commitment) still load; read through `sabotagePicksOf`.
+   */
+  sabotagePicks?: Record<string, SabotagePick>;
+  /** Sabotage resolved when SABOTAGE_PICK ended (shield checks done); public at POWER_RESOLUTION. */
   sabotages: SabotageRecord[];
   effects: Record<string, TargetEffects>;
   /** The two options 50/50 leaves, chosen once per question and shared by everyone who uses it. */
@@ -278,7 +288,8 @@ export type EngineCommandType =
   | 'READY'
   | 'SET_NICKNAME'
   | 'SUBMIT_ANSWER'
-  | 'COMMIT_PREP'
+  | 'COMMIT_RISK'
+  | 'COMMIT_SABOTAGE'
   | 'USE_FIFTY_FIFTY'
   | 'SET_PREFERENCES'
   | 'SUBMIT_STATEMENT'

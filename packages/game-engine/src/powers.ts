@@ -19,8 +19,6 @@ import { exemptPlayerId } from './who-said-it';
  */
 type Room = Draft<RoomState>;
 
-export type CommitPayload = ClientPayload<'COMMIT_PREP'>;
-
 export function newLedger(config: GameConfig): PowerLedger {
   const { powers } = config;
   return {
@@ -61,7 +59,7 @@ export function doubleDownOffered(config: GameConfig): boolean {
   return config.powers.doubleDownPerGame > 0;
 }
 
-/** Sabotage is committed in QUESTION_PREP of ordinary rounds from `firstRoundIndex` on, never in the final stage. */
+/** Sabotage is committed in SABOTAGE_PICK of ordinary rounds from `firstRoundIndex` on, never in the final stage. */
 export function sabotageOpen(
   config: GameConfig,
   round: Pick<RoundState, 'kind' | 'index'>,
@@ -94,18 +92,79 @@ export function earnToken(config: GameConfig, ledger: Draft<PowerLedger>, streak
   }
 }
 
+export type RiskPayload = ClientPayload<'COMMIT_RISK'>;
+export type SabotagePayload = ClientPayload<'COMMIT_SABOTAGE'>;
+
+/** Sabotage picks of a round; rounds stored before ADR-0022 have none. */
+export const sabotagePicksOf = (round: Pick<RoundState, 'sabotagePicks'>) =>
+  round.sabotagePicks ?? {};
+
+/** Whether `playerId` is a seated, active player of the running game. */
+function seated(d: Room, playerId: string): boolean {
+  const me = d.game?.players[playerId];
+  const player = d.players[playerId];
+  return !!me && !me.removed && !!player && player.status === 'ACTIVE';
+}
+
+/** Another player the sabotage rules would let `attackerId` aim at (the per-hit caps, not this round's picks). */
+function hasLegalTarget(d: Room, attackerId: string): boolean {
+  const game = d.game!;
+  const round = game.round!;
+  const cfg = d.config.powers.sabotage;
+  return Object.entries(game.players).some(([targetId, target]) => {
+    if (targetId === attackerId || !seated(d, targetId)) return false;
+    if (target.powers.hits >= cfg.targetMaxPerGame) return false;
+    const hitAt = target.powers.lastHitRound;
+    return !(hitAt !== null && round.index - hitAt <= cfg.targetMinGapRounds);
+  });
+}
+
 /**
- * Checks a QUESTION_PREP commitment against every rule. Returns the first violated rule's error
- * code, or null when the whole commitment is valid. Nothing is spent here: the caller applies the
- * commitment only when this returns null (all-or-nothing).
+ * Whether `playerId` could sabotage in this round's SABOTAGE_PICK at all: sabotage is open, a token is
+ * held, the attacker cooldown is over and somebody can be targeted (ADR-0022: only such players are
+ * waited for; the phase is skipped when nobody qualifies).
  */
-export function checkCommit(d: Room, playerId: string, payload: CommitPayload): ErrorCode | null {
+export function canSabotage(d: Room, playerId: string): boolean {
   const game = d.game;
   const round = game?.round;
-  if (!game || !round || d.phase !== 'QUESTION_PREP') return 'INVALID_STATE';
+  if (!game || !round || !seated(d, playerId)) return false;
+  if (exemptPlayerId(game) === playerId) return false;
+  const me = game.players[playerId]!;
+  if (!sabotageOpen(d.config, round) || me.powers.tokens <= 0) return false;
+  const last = me.powers.lastSabotageRound;
+  if (last !== null && round.index - last <= d.config.powers.sabotage.attackerCooldownRounds)
+    return false;
+  return hasLegalTarget(d, playerId);
+}
+
+/** RISK_PICK is shown when somebody can choose something: any stake rung beyond the default, or Double Down. */
+export function riskPickOffered(d: Room, eligible: readonly string[]): boolean {
+  const game = d.game;
+  const round = game?.round;
+  if (!game || !round || eligible.length === 0) return false;
+  if (roundLadder(d.config, round, game.totalRounds).rungs.length > 1) return true;
+  return (
+    doubleDownOffered(d.config) &&
+    eligible.some((playerId) => (game.players[playerId]?.powers.doubleDown ?? 0) > 0)
+  );
+}
+
+/** Connected players SABOTAGE_PICK waits for; empty means the phase is skipped. */
+export function sabotageActors(d: Room, eligible: readonly string[]): string[] {
+  return eligible.filter((playerId) => canSabotage(d, playerId));
+}
+
+/**
+ * Checks a RISK_PICK commitment (stake + Double Down) against every rule. Returns the first violated
+ * rule's error code, or null when valid. Nothing is spent here: the caller applies the commitment
+ * only when this returns null (all-or-nothing).
+ */
+export function checkRisk(d: Room, playerId: string, payload: RiskPayload): ErrorCode | null {
+  const game = d.game;
+  const round = game?.round;
+  if (!game || !round || d.phase !== 'RISK_PICK') return 'INVALID_STATE';
   const me = game.players[playerId];
-  const player = d.players[playerId];
-  if (!me || me.removed || !player || player.status !== 'ACTIVE') return 'POWER_UNAVAILABLE';
+  if (!seated(d, playerId) || !me) return 'POWER_UNAVAILABLE';
   if (round.commitments[playerId]) return 'ALREADY_COMMITTED';
   // Who Said It: the author of this round's statement has nothing to stake on.
   if (exemptPlayerId(game) === playerId) return 'ANSWER_NOT_ALLOWED';
@@ -120,25 +179,38 @@ export function checkCommit(d: Room, playerId: string, payload: CommitPayload): 
     if (doubleDownExcludedStakes(d.config).includes(payload.stake))
       return 'DOUBLE_DOWN_STAKE_CONFLICT';
   }
+  return null;
+}
+
+/**
+ * Checks a SABOTAGE_PICK commitment. `sabotage: null` (confirm without one) is always legal for a
+ * seated player in the phase. Nothing is spent here.
+ */
+export function checkSabotage(
+  d: Room,
+  playerId: string,
+  payload: SabotagePayload,
+): ErrorCode | null {
+  const game = d.game;
+  const round = game?.round;
+  if (!game || !round || d.phase !== 'SABOTAGE_PICK') return 'INVALID_STATE';
+  const me = game.players[playerId];
+  if (!seated(d, playerId) || !me) return 'POWER_UNAVAILABLE';
+  const picks = sabotagePicksOf(round);
+  if (picks[playerId]) return 'ALREADY_COMMITTED';
+  if (exemptPlayerId(game) === playerId) return 'ANSWER_NOT_ALLOWED';
 
   const sabotage = payload.sabotage;
   if (sabotage) {
     const cfg = d.config.powers.sabotage;
     if (!sabotageOpen(d.config, round) || me.powers.tokens <= 0) return 'POWER_UNAVAILABLE';
     const target = game.players[sabotage.targetId];
-    const targetPlayer = d.players[sabotage.targetId];
-    if (
-      sabotage.targetId === playerId ||
-      !target ||
-      target.removed ||
-      !targetPlayer ||
-      targetPlayer.status !== 'ACTIVE'
-    ) {
+    if (sabotage.targetId === playerId || !target || !seated(d, sabotage.targetId)) {
       return 'TARGET_INVALID';
     }
     const last = me.powers.lastSabotageRound;
     if (last !== null && round.index - last <= cfg.attackerCooldownRounds) return 'SABOTAGE_LIMIT';
-    const pending = Object.values(round.commitments).filter((entry) => entry.sabotage !== null);
+    const pending = Object.values(picks).filter((entry) => entry.sabotage !== null);
     if (pending.length >= cfg.maxPerRound) return 'SABOTAGE_LIMIT';
     if (pending.some((entry) => entry.sabotage?.targetId === sabotage.targetId))
       return 'SABOTAGE_LIMIT';
@@ -171,7 +243,7 @@ const emptyEffects = (): TargetEffects => ({
 });
 
 /**
- * Turns the sabotage committed in QUESTION_PREP into effects, once the options exist (SHUFFLE/FOG
+ * Turns the sabotage committed in SABOTAGE_PICK into effects, once the options exist (SHUFFLE/FOG
  * need them). The shield is checked here: it blocks the first incoming hit and is used up, while the
  * attacker's token stays spent. Players who asked for reduced effects get SHUFFLE and FOG as a
  * half-strength JAM, which looks like any other sabotage to everyone else.
@@ -183,8 +255,8 @@ export function resolveSabotage(d: Room, rng: Rng): void {
   const optionIds = round.question!.options.map((option) => option.optionId);
   const joinIndex = (playerId: string): number =>
     d.players[playerId]?.joinIndex ?? Number.MAX_SAFE_INTEGER;
-  const attackers = Object.entries(round.commitments)
-    .filter(([, commitment]) => commitment.sabotage !== null)
+  const attackers = Object.entries(sabotagePicksOf(round))
+    .filter(([, pick]) => pick.sabotage !== null)
     .sort(([a, ca], [b, cb]) => ca.committedAt - cb.committedAt || joinIndex(a) - joinIndex(b));
 
   for (const [actorId, commitment] of attackers) {
