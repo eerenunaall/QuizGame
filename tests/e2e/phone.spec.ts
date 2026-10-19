@@ -23,8 +23,9 @@ test.afterEach(async () => {
 
 const TIMINGS = {
   ...PLAY_GAME_CONFIG.timings,
-  prepQuickMs: 20_000,
-  prepDecisionMs: 20_000,
+  riskPickMs: 20_000,
+  sabotagePickMs: 20_000,
+  riskPickDecisionMs: 20_000,
   answerMs: { STANDARD: 25_000, SPEED: 25_000, RISK: 25_000, CROWD: 25_000, FINAL: 25_000 },
   revealMs: 1800,
   scoreUpdateMs: 1600,
@@ -80,8 +81,9 @@ for (const phoneSize of [
     const ahmet = await joinPhone(browser, env.url, code, 'Ahmet', 'frog');
     await ece.page.setViewportSize(phoneSize.viewport);
     await ece.page.getByTestId('ctl-start').click();
-    await expect(ece.page.getByTestId('ctl-prep')).toBeVisible();
-    // Prep: the question is not even chosen yet; the phone knows the category and nothing else.
+    await expect(ece.page.getByTestId('ctl-risk')).toBeVisible();
+    await expect(ece.page.getByTestId('pick-title')).toHaveText(tr['tv.risk.title']);
+    // Risk time: the question is not even chosen yet; the phone knows the category and nothing else.
     await expect(ece.page.getByTestId('peek-text')).toHaveCount(0);
     await ece.page.getByTestId('prep-ready').click();
     await ahmet.page.getByTestId('prep-ready').click();
@@ -174,35 +176,40 @@ test('sabotage: a chip, two big faces, one card each, one button; undo within tw
   const [ece, , sebnem] = phones as [Screen, Screen, Screen];
   await ece.page.getByTestId('ctl-start').click();
 
-  // Rounds 1 and 2: sabotage is closed, the chip says so in one line.
+  // Rounds 1 and 2: sabotage is closed, so its screen is skipped and the stakes screen leads
+  // straight to the question.
   for (let round = 0; round < 2; round++) {
-    await expect(ece.page.getByTestId('ctl-prep')).toBeVisible();
-    await expect(ece.page.getByTestId('prep-sabotage')).toBeDisabled();
-    await expect(ece.page.getByTestId('prep-sabotage')).toContainText(
-      tr['ctl.prep.sabotage.closed'],
-    );
+    await expect(ece.page.getByTestId('ctl-risk')).toBeVisible();
+    await expect(ece.page.getByTestId('prep-sabotage')).toHaveCount(0); // never on the stakes screen
     for (const phone of phones) await phone.page.getByTestId('prep-ready').click();
     await expect(ece.page.getByTestId('ctl-answering')).toBeVisible();
+    await expect(ece.page.getByTestId('ctl-sabotage')).toHaveCount(0);
     const right = currentQuestion(code).options.find((option) => option.correct)!;
     for (const phone of phones)
       await phone.page.locator('button[data-answer-index]').filter({ hasText: right.text }).click();
     await expect(tv.page.getByTestId('tv-score')).toBeVisible();
   }
 
-  // Round 3: Ece has two tokens. Chip -> face -> card -> button.
+  // Round 3: first the stakes screen (no sabotage on it), then the sabotage screen of its own.
+  await expect(ece.page.getByTestId('ctl-risk')).toBeVisible();
+  await ece.page.getByTestId('stake-RISK').click();
+  for (const phone of phones) await phone.page.getByTestId('prep-ready').click();
+  await expect(ece.page.getByTestId('ctl-sabotage')).toBeVisible();
+  await expect(ece.page.getByTestId('pick-title')).toHaveText(tr['tv.sabotage.title']);
+  await expect(ece.page.getByTestId('pick-rule')).toHaveText(tr['ctl.sabotage.rule']);
+  await expect(ece.page.getByTestId('stake-SAFE')).toHaveCount(0);
+  // Ece has two tokens. Chip -> face -> card -> button.
   const chip = ece.page.getByTestId('prep-sabotage');
   await expect(chip).toBeEnabled();
   await expect(chip).toContainText(tr['ctl.prep.sabotage']);
   await expect(chip).toContainText('2 jeton');
-  const stakeBox = (await boxes(ece.page, '[data-testid="stake-SAFE"]'))[0]!;
   const chipBox = (await boxes(ece.page, '[data-testid="prep-sabotage"]'))[0]!;
-  const readyBox = (await boxes(ece.page, '[data-testid="prep-ready"]'))[0]!;
+  const skipBox = (await boxes(ece.page, '[data-testid="sabotage-skip"]'))[0]!;
   expect(chipBox.height).toBeGreaterThanOrEqual(56);
-  expect(chipBox.top).toBeGreaterThan(stakeBox.bottom); // stake first, then the extras
-  expect(readyBox.top).toBeGreaterThan(chipBox.bottom);
+  expect(skipBox.top).toBeGreaterThan(chipBox.bottom);
   const view = await viewportOf(ece.page);
-  expect(readyBox.top).toBeGreaterThan(view.h * (2 / 3) - 60); // the primary action is in the bottom third
-  expect(readyBox.bottom).toBeLessThanOrEqual(view.h);
+  expect(skipBox.top).toBeGreaterThan(view.h * (2 / 3) - 60); // the action row is in the bottom third
+  expect(skipBox.bottom).toBeLessThanOrEqual(view.h);
 
   await chip.click();
   await expect(ece.page.getByTestId('sabotage-sheet')).toHaveAttribute('data-step', 'who');
@@ -246,21 +253,20 @@ test('sabotage: a chip, two big faces, one card each, one button; undo within tw
   await expect(ece.page.getByTestId('sabotage-going')).toHaveCount(0);
   await expect(ece.page.getByTestId('prep-sabotage')).toBeEnabled();
   await ece.page.waitForTimeout(2600);
-  await expect(ece.page.getByTestId('ctl-prep-committed')).toHaveCount(0); // nothing went out
+  await expect(ece.page.getByTestId('ctl-sabotage-committed')).toHaveCount(0); // nothing went out
 
-  // And once more for real: the commit follows by itself, with the rest of the prep.
-  await ece.page.getByTestId('stake-RISK').click();
+  // And once more for real: the commit follows by itself after the undo window.
   await ece.page.getByTestId('prep-sabotage').click();
   await ece.page.getByTestId('sabotage-target-Şebnem Ğüneş').click();
   await ece.page.getByTestId('sabotage-effect-JAM').click();
-  await expect(ece.page.getByTestId('sabotage-why')).toContainText('Risk');
   await ece.page.getByTestId('sabotage-confirm').click();
-  await expect(ece.page.getByTestId('ctl-prep-committed')).toBeVisible({ timeout: 8000 });
-  await expect(ece.page.getByTestId('ctl-prep-committed')).toContainText('Süre kes → Şebnem Ğüneş');
-  await expect(ece.page.getByTestId('ctl-prep-committed')).toContainText(tr['ctl.prep.stake.RISK']);
+  await expect(ece.page.getByTestId('ctl-sabotage-committed')).toBeVisible({ timeout: 8000 });
+  await expect(ece.page.getByTestId('ctl-sabotage-committed')).toContainText(
+    'Süre kes → Şebnem Ğüneş',
+  );
 
-  // The target is hit and nobody else is told (no shield in this game).
-  for (const phone of phones.slice(1)) await phone.page.getByTestId('prep-ready').click();
+  // The others pass; the target is hit and nobody else is told (no shield in this game).
+  for (const phone of phones.slice(1)) await phone.page.getByTestId('sabotage-skip').click();
   await expect(sebnem.page.getByTestId('ctl-answering')).toBeVisible();
   await expect(sebnem.page.getByTestId('hit-notices')).toContainText('Süren');
 

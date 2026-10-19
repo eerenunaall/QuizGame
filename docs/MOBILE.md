@@ -33,8 +33,8 @@ No secrets live in the app: only public URLs and identifiers. Account token and 
 ## What is proven in the sandbox
 | Claim | Evidence |
 |---|---|
-| Phase → screen mapping, every phase | Jest `ControllerScreen.test.tsx`, `PrepView.test.tsx` (fixtures from `controller-client`) |
-| Stake / Double Down / sabotage commit exactly what the server accepts; 50/50, SHUFFLE, FOG, lockout states | Jest `PrepView.test.tsx`, `ControllerScreen.test.tsx` |
+| Phase → screen mapping, every phase | Jest `ControllerScreen.test.tsx`, `PickViews.test.tsx` (fixtures from `controller-client`) |
+| Stake / Double Down / sabotage commit exactly what the server accepts; 50/50, SHUFFLE, FOG, lockout states | Jest `PickViews.test.tsx`, `ControllerScreen.test.tsx` |
 | Join form, reconnect banner states, purchase screen, profile (sign out, export, two-step delete), sign-in | Jest `screens.test.tsx` |
 | Link parsing incl. malicious URLs; `app.config.ts` links; association files | Jest `links.test.ts`, `config.test.ts`, `association.test.ts` |
 | Purchase flows A/B/C: bound to the server's account token, finished only after the server confirms, restore, crash recovery, refusal paths | Jest `purchases.test.ts` (scripted store, scripted HTTP) |

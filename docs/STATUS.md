@@ -1,6 +1,6 @@
 # Status (update at the end of every milestone and before ending a session)
 
-Branch: `claude/cloud-session-infrastructure-ln57mp` · Last updated: 2026-10-18
+Branch: `claude/cloud-session-infrastructure-ln57mp` · Last updated: 2026-10-19
 
 ## Milestones
 | Milestone | State | Notes |
@@ -31,6 +31,17 @@ Branch: `claude/cloud-session-infrastructure-ln57mp` · Last updated: 2026-10-18
 The local gate is `format → lint → typecheck → unit → web → integration → websocket → red-team`,
 then `pnpm run build:web && pnpm run build:admin && pnpm test:e2e`.
 
+## Risk time and Sabotage time (ADR-0022)
+`QUESTION_PREP` is retired. Each round now runs `RISK_PICK` (stake + Double Down) then `SABOTAGE_PICK`
+(sabotage or pass), each with its own timer (`riskPickMs` 12 s, `riskPickDecisionMs` 16 s for RISK/FINAL
+rounds, `sabotagePickMs` 12 s, all optional in the config), a dedicated TV screen (loud title, big ring, one-line
+rule, tick count only) and dedicated phone screens (`RiskScreen`, `SabotageScreen` with a calm wait screen for
+players who cannot act). Intents are `COMMIT_RISK` / `COMMIT_SABOTAGE`, legal only in their own phase
+(`INVALID_STATE` otherwise); a phase nobody can act in is skipped and early advance waits only for players who
+can act. `apps/mobile` renders both phases (`PickViews`); full parity of the sabotage cards is still open.
+Old data: `QUESTION_PREP` stays in the enum and is treated as `RISK_PICK`. Tests: `reducer.picks.test.ts`, ws/red-team
+`powers`, e2e `picks.spec.ts`.
+
 ## Recent balance change
 ADR-0021 (power limits): Double Down is refused with HIGH / ALL_IN (`DOUBLE_DOWN_STAKE_CONFLICT`), gains
 after stake and Double Down are capped at 3x (FINAL 5x) of base + speed, Double Down extra loss 100 → 200,
@@ -44,10 +55,9 @@ in place; the choice is kept per device in `qp.prefs` (`phoneShowsQuestion`). Bu
 `VITE_PHONE_SHOWS_QUESTION=1` turns it on for everybody (Dockerfile build arg too); the reveal is unchanged.
 A locked answer stays on screen as a framed card with a lock, the clock is a fat bar at the top.
 Sabotage is chip (token count) → two-column faces → the five real types as cards → one "Sabotajı gönder"
-button. The server takes the whole prep as one final `COMMIT_PREP`, so "send" is that commit: it goes out
-after a 2 s undo window (immediately when under ~3 s of prep are left). Why a chip is grey (no token, closed
-round, final stage) is one line on it; the attacker cooldown is not in the room view, so it is shown only
-after the server refuses with `SABOTAGE_LIMIT`. `apps/mobile` still shows the question text (parity pending).
+button. Since ADR-0022 it lives on its own SABOTAGE_PICK screen: "send" is the final `COMMIT_SABOTAGE`, it goes out
+after a 2 s undo window (immediately when under ~3 s are left), and "Sabotaj yapmayacağım" confirms a pass. A player who cannot sabotage
+(no token, cooldown, nobody to hit; the server says so in `you.sabotage.ready`) gets a calm waiting screen. `apps/mobile` still shows the question text (parity pending).
 
 ## Next actions
 1. Read the CI result of the latest push (`mcp__github__actions_list`) and fix anything red.

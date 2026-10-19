@@ -10,7 +10,7 @@ clear limit, not less fun. Builds on ADR-0007 (composition) and ADR-0010 (powers
 
 ## Decision (all in `GameConfig`, tunable through `GAME_CONFIG_OVERRIDE`; version 2)
 1. **One big gamble per question.** `powers.doubleDownExcludedStakes` (default `['HIGH','ALL_IN']`):
-   Double Down cannot go with those stakes. `COMMIT_PREP` is refused with
+   Double Down cannot go with those stakes. `COMMIT_PREP` (now `COMMIT_RISK`, ADR-0022) is refused with
    `DOUBLE_DOWN_STAKE_CONFLICT` before anything is spent (all-or-nothing, like every prep rule). The
    prep view carries the list (`doubleDownExcludedStakes`), and both phone UIs disable the Double Down
    button when an excluded stake is picked and disable the excluded stakes once Double Down is on,

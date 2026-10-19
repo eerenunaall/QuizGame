@@ -797,7 +797,8 @@ WAITING
 → LOBBY
 → COUNTDOWN
 → ROUND_INTRO
-→ QUESTION_PREP
+→ RISK_PICK        (stakes + Double Down, own timer; skipped when nobody can choose)
+→ SABOTAGE_PICK    (sabotage or pass, own timer; skipped when nobody can sabotage)
 → QUESTION
 → ANSWERING
 → LOCKED
@@ -809,6 +810,16 @@ WAITING
 → FINAL
 → RESULTS
 → REMATCH / LOBBY / ROOM_CLOSED
+
+### Risk time and Sabotage time (ADR-0022)
+Before each question the table gets two separate, clearly timed screens instead of one rushed window.
+**RISK TIME** (`RISK_PICK`, 12 s; 16 s in RISK and FINAL rounds): everyone picks a stake and may Double Down.
+**SABOTAGE TIME** (`SABOTAGE_PICK`, 12 s): players with a token may hit a rival, or pass. Each has a loud TV title
+(TR "RİSK ZAMANI" / "SABOTAJ ZAMANI", EN "RISK TIME" / "SABOTAGE TIME"), a big countdown ring, a one-line rule and
+"who has locked in" shown only as a count of ticks, never which player chose what before the resolution screen. A
+screen is skipped when nobody can choose anything in it (no token holder, sabotage closed in the first rounds and the
+final stage), and it ends early once everyone who can act has confirmed. Players with nothing to choose see a calm
+waiting screen on their phone. The question text stays on the TV.
 
 ## 8.1 State ownership
 

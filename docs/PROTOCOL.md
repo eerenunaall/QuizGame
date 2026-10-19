@@ -4,7 +4,7 @@ The wire contract lives in `packages/protocol` (zod, `.strict()` outbound schema
 a client author needs that is not obvious from the types. ADR-0008 explains the design.
 
 ## WebSocket (`/ws`)
-- Inbound intents: `JOIN`, `HEARTBEAT`, host commands, `ANSWER`, `COMMIT_PREP`, `USE_FIFTY_FIFTY`,
+- Inbound intents: `JOIN`, `HEARTBEAT`, host commands, `ANSWER`, `COMMIT_RISK`, `COMMIT_SABOTAGE`, `USE_FIFTY_FIFTY`,
   `SET_PREFERENCES`, and `REPORT_QUESTION { questionId, reason }`.
 - `REPORT_QUESTION` is accepted only from a **player** (not the TV), only for the question of the current
   round, and only in REVEAL, POWER_RESOLUTION, SCORE_UPDATE or MICRO_INTERMISSION. `reason` is one of
@@ -20,7 +20,7 @@ a client author needs that is not obvious from the types. ADR-0008 explains the 
   round per statement, capped by the room's round setting.
 - Who Said It questions: the statement is the question `text`; the options are all players (`options[].playerId`, text =
   nickname); the correct option is the author, revealed only in REVEAL. The author gets `you.authorOfRound = true` (nobody else
-  is ever told) and their `SUBMIT_ANSWER`, `COMMIT_PREP` and `USE_FIFTY_FIFTY` are refused (`ANSWER_NOT_ALLOWED` /
+  is ever told) and their `SUBMIT_ANSWER`, `COMMIT_RISK`, `COMMIT_SABOTAGE` and `USE_FIFTY_FIFTY` are refused (`ANSWER_NOT_ALLOWED` /
   `POWER_UNAVAILABLE`); they are not waited for, have no result row, and keep score and streak. Selecting the mode:
   `POST /v1/link-intents/:token/quiz` with `{ mode: 'WHO_SAID_IT' }` (flag `mode.who_said_it`, full game only).
   Statements are never persisted outside the room's event log and snapshot, which are erased when the room closes.
@@ -56,7 +56,15 @@ show server text.
 | `POST /v1/link-intents/:token/claim` | player session | `{ tier, roomCode }` or 404 |
 | `GET /v1/me/export`, `DELETE /v1/me` (`{confirm:'DELETE'}`), `DELETE /v1/me/sessions` | session | data-subject rights |
 
-`COMMIT_PREP` is refused with `DOUBLE_DOWN_STAKE_CONFLICT` when Double Down is combined with a stake listed in the prep view's `doubleDownExcludedStakes` (default HIGH, ALL_IN; ADR-0021). Nothing is spent and the player may commit again.
+`COMMIT_RISK` is refused with `DOUBLE_DOWN_STAKE_CONFLICT` when Double Down is combined with a stake listed in the `RISK_PICK` phase data's `doubleDownExcludedStakes` (default HIGH, ALL_IN; ADR-0021). Nothing is spent and the player may commit again.
+
+### Risk and sabotage phases (ADR-0022)
+Each round runs `ROUND_INTRO` (or `FINAL`) → `RISK_PICK` → `SABOTAGE_PICK` → `QUESTION`; a phase nobody can act in is skipped, so a client must not assume either arrives.
+- `COMMIT_RISK { stake, doubleDown }`: only in `RISK_PICK`. `COMMIT_SABOTAGE { sabotage: { targetId, effect, joker? } | null }`: only in `SABOTAGE_PICK`; `null` confirms "no sabotage". Either one in any other phase (a stake in `SABOTAGE_PICK`, a sabotage in `RISK_PICK`) is `INVALID_STATE`. One decision per player and phase (`ALREADY_COMMITTED`); both are final and all-or-nothing. `COMMIT_PREP` no longer exists.
+- Phase data: `RISK_PICK` carries the ladder and powers as `QUESTION_PREP` did; `SABOTAGE_PICK` carries `round`, `category`, `difficulty`, `committedCount`, `eligibleCount`. `PREP_PROGRESS { committedCount, eligibleCount }` follows whichever of the two is current. Counts only: never who committed or what (ATTACK 27); in `SABOTAGE_PICK` `eligibleCount` is everybody online, not only token holders.
+- `you.sabotage { ready, decided }` (optional, private): the player can sabotage right now (token, cooldown over, a legal target) and has/has not confirmed.
+- Timers: `timings.riskPickMs` (12 000), `riskPickDecisionMs` (16 000, RISK and FINAL rounds), `sabotagePickMs` (12 000); all optional in the config, with those defaults.
+- `QUESTION_PREP` is retired: still in the `PHASES` enum and its phase-data schema so stored data and old clients parse, never emitted; clients treat a received one as `RISK_PICK`.
 
 Purchase errors: `PURCHASE_INVALID` (422), `PURCHASE_ACCOUNT_MISMATCH` (403), `TRANSACTION_ALREADY_BOUND` (409),
 `PURCHASE_PENDING` (409), `PURCHASE_REFUNDED` (410), `STORE_UNAVAILABLE` (503, retry).

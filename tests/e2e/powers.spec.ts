@@ -17,8 +17,9 @@ import {
  */
 const POWERS_TIMINGS = {
   ...PLAY_GAME_CONFIG.timings,
-  prepQuickMs: 20_000,
-  prepDecisionMs: 20_000,
+  riskPickMs: 20_000,
+  sabotagePickMs: 20_000,
+  riskPickDecisionMs: 20_000,
   powerResolutionMs: 3500,
   powerResolutionPerItemMs: 700,
   powerResolutionMaxMs: 8000,
@@ -51,7 +52,12 @@ const option = (page: Page, text: string) =>
 async function sendSabotage(phone: Screen): Promise<void> {
   await phone.page.getByTestId('sabotage-confirm').click();
   await expect(phone.page.getByTestId('sabotage-going')).toBeVisible();
-  await expect(phone.page.getByTestId('ctl-prep-committed')).toBeVisible({ timeout: 8000 });
+  await expect(phone.page.getByTestId('ctl-sabotage-committed')).toBeVisible({ timeout: 8000 });
+}
+
+/** SABOTAGE_PICK: the phones that hold a token pass, so the screen does not wait for its timer. */
+async function pass(...phones: Screen[]): Promise<void> {
+  for (const phone of phones) await phone.page.getByTestId('sabotage-skip').click();
 }
 
 async function lobby(browser: Parameters<typeof tvPage>[0], names = ['Ece', 'Ahmet', 'Merve']) {
@@ -86,7 +92,7 @@ test('stakes, double down and 50/50 play out, and the last question demands a st
   await ece.page.getByTestId('ctl-start').click();
 
   // ── Round 1: Ece goes RISK and doubles down (HIGH / ALL_IN exclude Double Down, ADR-0021); the others stay safe.
-  await expect(ece.page.getByTestId('ctl-prep')).toBeVisible();
+  await expect(ece.page.getByTestId('ctl-risk')).toBeVisible();
   await expect(tv.page.getByTestId('tv-ladder')).toBeVisible();
   await expect(ece.page.getByTestId('stake-SAFE')).toHaveAttribute('aria-checked', 'true');
   await ece.page.getByTestId('stake-RISK').click();
@@ -94,12 +100,13 @@ test('stakes, double down and 50/50 play out, and the last question demands a st
   await expect(ece.page.getByTestId('prep-double-down')).toHaveAttribute('aria-pressed', 'true');
   await shot(ece.page, '30-phone-prep');
   await ece.page.getByTestId('prep-ready').click();
-  await expect(ece.page.getByTestId('ctl-prep-committed')).toBeVisible();
-  await expect(tv.page.getByTestId('tv-prep-ready')).toHaveText('1/3 hazır');
+  await expect(ece.page.getByTestId('ctl-risk-committed')).toBeVisible();
+  await expect(tv.page.getByTestId('tv-prep-ready')).toHaveText('1/3 kilitledi');
+  await expect(tv.page.getByTestId('tv-pick-title')).toHaveText(tr['tv.risk.title']);
   await shot(ece.page, '31-phone-prep-committed');
   await shot(tv.page, '32-tv-prep');
   // Choices are private: nobody else's phone shows them.
-  await expect(ahmet.page.getByTestId('ctl-prep-committed')).toHaveCount(0);
+  await expect(ahmet.page.getByTestId('ctl-risk-committed')).toHaveCount(0);
   await ready(ahmet);
   await ready(merve);
 
@@ -118,7 +125,7 @@ test('stakes, double down and 50/50 play out, and the last question demands a st
 
   // ── Round 2: Ahmet uses his 50/50. (The next prep is the lasting proof that the score screen
   // came and went; asserting on the score itself after a sleep and a screenshot would race it.)
-  await expect(ahmet.page.getByTestId('ctl-prep')).toBeVisible();
+  await expect(ahmet.page.getByTestId('ctl-risk')).toBeVisible();
   for (const phone of phones) await ready(phone);
   await expect(ahmet.page.getByTestId('ctl-answering')).toBeVisible();
   await ahmet.page.getByTestId('use-fifty').click();
@@ -132,10 +139,13 @@ test('stakes, double down and 50/50 play out, and the last question demands a st
   await expect(tv.page.getByTestId('tv-power')).toContainText('Ahmet 50/50 kullandı');
   await expect(tv.page.getByTestId('tv-score')).toBeVisible();
 
-  // ── Rounds 3 and 4: everyone answers; nothing special.
+  // ── Rounds 3 and 4: everyone answers; nothing special. Sabotage is open from round 3, so each
+  // gets its own screen after the stakes: everybody passes.
   for (let round = 2; round < 4; round++) {
-    await expect(ece.page.getByTestId('ctl-prep')).toBeVisible();
+    await expect(ece.page.getByTestId('ctl-risk')).toBeVisible();
     for (const phone of phones) await ready(phone);
+    await expect(tv.page.getByTestId('tv-pick-title')).toHaveText(tr['tv.sabotage.title']);
+    await pass(ece, ahmet, merve);
     await expect(ece.page.getByTestId('ctl-answering')).toBeVisible();
     const pick = answerOf(code);
     for (const phone of phones) await option(phone.page, pick.right).click();
@@ -143,11 +153,11 @@ test('stakes, double down and 50/50 play out, and the last question demands a st
   }
 
   // ── The very last question: no safe rung, a stake is a must.
-  await expect(ece.page.getByTestId('ctl-prep')).toBeVisible();
+  await expect(ece.page.getByTestId('ctl-risk')).toBeVisible();
   await expect(ece.page.getByTestId('stake-SAFE')).toHaveCount(0);
   await expect(ece.page.getByTestId('stake-RISK')).toHaveAttribute('aria-checked', 'true');
   await expect(ece.page.getByText(tr['ctl.prep.mandatory'])).toBeVisible();
-  await expect(tv.page.getByTestId('tv-prep')).toContainText(tr['tv.prep.mandatory']);
+  await expect(tv.page.getByTestId('tv-risk')).toContainText(tr['tv.prep.mandatory']);
   await shot(ece.page, '35-phone-prep-final');
   await shot(tv.page, '36-tv-prep-final');
   for (const phone of phones) await ready(phone, 'ALL_IN');
@@ -177,21 +187,23 @@ test('a sabotage the shield blocks, then one that lands on the target and nobody
 
   // Rounds 1 and 2 are plain: sabotage opens at round 3.
   for (let round = 0; round < 2; round++) {
-    await expect(ece.page.getByTestId('ctl-prep')).toBeVisible();
-    // Sabotage opens at round 3: until then the chip is there, grey, and says so in one line.
-    await expect(ece.page.getByTestId('prep-sabotage')).toBeDisabled();
-    await expect(ece.page.getByTestId('prep-sabotage')).toContainText(
-      tr['ctl.prep.sabotage.closed'],
-    );
+    await expect(ece.page.getByTestId('ctl-risk')).toBeVisible();
+    // Sabotage opens at round 3: until then there is no sabotage screen at all.
+    await expect(ece.page.getByTestId('prep-sabotage')).toHaveCount(0);
     for (const phone of phones) await ready(phone);
     await expect(ece.page.getByTestId('ctl-answering')).toBeVisible();
+    await expect(ece.page.getByTestId('ctl-sabotage')).toHaveCount(0);
     const pick = answerOf(code);
     for (const phone of phones) await option(phone.page, pick.right).click();
     await expect(tv.page.getByTestId('tv-score')).toBeVisible();
   }
 
-  // ── Round 3: Merve sabotages Ece (SHUFFLE). Ece's shield blocks it.
+  // ── Round 3: everyone locks a stake, then Merve sabotages Ece (SHUFFLE) on the sabotage screen.
+  // Ece's shield blocks it.
+  for (const phone of phones) await ready(phone);
   await expect(merve.page.getByTestId('prep-sabotage')).toBeVisible();
+  await expect(tv.page.getByTestId('tv-sabotage')).toBeVisible();
+  await shot(tv.page, '37b-tv-sabotage-time');
   await merve.page.getByTestId('prep-sabotage').click();
   await shot(merve.page, '37-phone-sabotage-who');
   await merve.page.getByTestId('sabotage-target-Ece').click();
@@ -201,9 +213,8 @@ test('a sabotage the shield blocks, then one that lands on the target and nobody
   await merve.page.getByTestId('sabotage-confirm').click();
   await expect(merve.page.getByTestId('sabotage-going')).toContainText('Karıştır → Ece');
   await shot(merve.page, '38c-phone-sabotage-undo');
-  await expect(merve.page.getByTestId('ctl-prep-committed')).toBeVisible({ timeout: 8000 });
-  await ready(ece);
-  await ready(ahmet);
+  await expect(merve.page.getByTestId('ctl-sabotage-committed')).toBeVisible({ timeout: 8000 });
+  await pass(ece, ahmet);
   await expect(ece.page.getByTestId('hit-notices')).toContainText('Kalkanın engelledi');
   await expect(ahmet.page.getByTestId('hit-notices')).toHaveCount(0); // nobody else is told
   await shot(ece.page, '39-phone-hit-blocked');
@@ -216,13 +227,13 @@ test('a sabotage the shield blocks, then one that lands on the target and nobody
   await shot(tv.page, '40-tv-power-blocked');
 
   // ── Round 4: Ahmet sabotages Ece again (JAM): the shield is gone, so it lands.
+  for (const phone of phones) await ready(phone);
   await expect(ahmet.page.getByTestId('prep-sabotage')).toBeVisible();
   await ahmet.page.getByTestId('prep-sabotage').click();
   await ahmet.page.getByTestId('sabotage-target-Ece').click();
   await ahmet.page.getByTestId('sabotage-effect-JAM').click();
   await sendSabotage(ahmet);
-  await ready(ece);
-  await ready(merve);
+  await pass(ece, merve);
   await expect(ece.page.getByTestId('ctl-answering')).toBeVisible();
   await expect(ece.page.getByTestId('hit-notices')).toContainText('Süren');
   await expect(merve.page.getByTestId('hit-notices')).toHaveCount(0);
@@ -266,12 +277,12 @@ test('a shuffle and a fog change what the target sees, and only the target', asy
   }
 
   // Round 3: Merve shuffles Ece's options.
+  for (const phone of phones) await ready(phone);
   await merve.page.getByTestId('prep-sabotage').click();
   await merve.page.getByTestId('sabotage-target-Ece').click();
   await merve.page.getByTestId('sabotage-effect-SHUFFLE').click();
   await sendSabotage(merve);
-  await ready(ece);
-  await ready(phones[1]!);
+  await pass(ece, phones[1]!);
   await expect(ece.page.getByTestId('ctl-answering')).toBeVisible();
   await expect(ece.page.getByTestId('hit-notices')).toContainText('karıştı');
   const texts = async (page: Page) => page.locator('button[data-answer-index]').allInnerTexts();
@@ -285,12 +296,12 @@ test('a shuffle and a fog change what the target sees, and only the target', asy
   await expect(tv.page.getByTestId('tv-score')).toBeVisible();
 
   // Round 4: Merve fogs Ece: one option is hidden at first, then comes back.
+  for (const phone of phones) await ready(phone);
   await merve.page.getByTestId('prep-sabotage').click();
   await merve.page.getByTestId('sabotage-target-Ece').click();
   await merve.page.getByTestId('sabotage-effect-FOG').click();
   await sendSabotage(merve);
-  await ready(ece);
-  await ready(phones[1]!);
+  await pass(ece, phones[1]!);
   await expect(ece.page.getByTestId('ctl-answering')).toBeVisible();
   await expect(ece.page.locator('button[data-answer-index]', { hasText: '• • •' })).toHaveCount(1);
   await shot(ece.page, '43-phone-fog');
@@ -320,9 +331,11 @@ test('a crowd round shows what share of the room chose each answer', async ({ br
 
   let crowdSeen = false;
   for (let round = 0; round < 5 && !crowdSeen; round++) {
-    await expect(ece.page.getByTestId('ctl-prep')).toBeVisible();
+    await expect(ece.page.getByTestId('ctl-risk')).toBeVisible();
     const kind = env.server.built.manager.getByCode(code)!.state.game!.round!.kind;
     for (const phone of phones) await ready(phone);
+    // Rounds 3 and 4 offer sabotage (its own screen): nobody uses it here.
+    if (round >= 2 && round <= 3) await pass(ece, ahmet, merve);
     await expect(ece.page.getByTestId('ctl-answering')).toBeVisible();
     const pick = answerOf(code);
     await option(ece.page, pick.right).click();

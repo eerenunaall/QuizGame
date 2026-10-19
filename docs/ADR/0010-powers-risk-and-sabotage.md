@@ -56,6 +56,9 @@ payload scanner (no sabotage details to non-involved players pre-resolution), pr
 sabotage sequence, every active player keeps ≥ 80 % of the answer window and ≥ 2 selectable options.
 
 ## Amendment (M2, 2026-10-06): how it was built, and the details the text above left open
+- **Superseded in part by ADR-0022:** the single prep window is now `RISK_PICK` (stake, Double Down) followed by
+  `SABOTAGE_PICK` (sabotage), with `COMMIT_RISK` / `COMMIT_SABOTAGE` in place of `COMMIT_PREP` and their own timers;
+  the text below describes the original single window.
 - **One atomic commitment.** `COMMIT_PREP { stake, doubleDown, sabotage }` replaces separate
   stake / Double Down / sabotage messages. It is validated as a whole (nothing is spent when any
   part is refused), final, and counts the player as "ready": QUESTION_PREP ends early once every

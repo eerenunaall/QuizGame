@@ -18,8 +18,10 @@ server interprets them.
 | WAITING | room exists, display attached, nobody joined | first player joins → LOBBY |
 | LOBBY | players join, ready up, host picks settings | host `START_GAME` (validated) → COUNTDOWN |
 | COUNTDOWN | 3-2-1 | timer → ROUND_INTRO |
-| ROUND_INTRO | "ROUND n · base pts · round kind" | timer → QUESTION_PREP |
-| QUESTION_PREP | category + difficulty tag shown, **question hidden**; private stake/power/sabotage commitments | timer or all active players committed → QUESTION |
+| ROUND_INTRO | "ROUND n · base pts · round kind" | timer → RISK_PICK (or the next pick phase / QUESTION when skipped) |
+| RISK_PICK | (ADR-0022) category + difficulty shown, **question hidden**; private stake + Double Down commitments, own timer; skipped when nobody can choose | timer or every online player confirmed → SABOTAGE_PICK (skipped → QUESTION) |
+| SABOTAGE_PICK | (ADR-0022) own timer; private sabotage commitments or a pass; skipped when sabotage is closed or nobody holds a usable token | timer or every online player who can sabotage confirmed → QUESTION |
+| QUESTION_PREP | retired by ADR-0022; never entered, kept in the enum so old data parses (treated as RISK_PICK) | — |
 | QUESTION | question **text** presented on the TV (reading beat, 2–5 s from text length); options not yet delivered | timer → ANSWERING |
 | ANSWERING | options delivered, answer window open (`answerOpensAt` … `answerDeadlineAt`) | deadline passed or every eligible player answered → LOCKED |
 | LOCKED | input closed; server computes outcomes privately (nothing sent) | timer (≈1 s) → REVEAL |
@@ -28,7 +30,7 @@ server interprets them.
 | SCORE_UPDATE | `SCORE_DELTA` + `SCOREBOARD` released | timer → MICRO_INTERMISSION (or RESULTS after the last round) |
 | MICRO_INTERMISSION | short teaser of the next round | timer → NEXT_ROUND |
 | NEXT_ROUND | transient: Director runs, next question chosen | immediately → ROUND_INTRO, or FINAL for the last round |
-| FINAL | dramatic rule-change intro for the last round | timer → QUESTION_PREP (round kind `FINAL`) |
+| FINAL | dramatic rule-change intro for the last round | timer → RISK_PICK (round kind `FINAL`) |
 | RESULTS | podium + stats | host `REMATCH` → COUNTDOWN, `BACK_TO_LOBBY` → LOBBY, `END_ROOM`/idle → ROOM_CLOSED |
 | ROOM_CLOSED | terminal | — |
 
