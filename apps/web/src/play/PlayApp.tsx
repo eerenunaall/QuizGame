@@ -183,7 +183,14 @@ export function PlayApp({ code }: { code: string }) {
     makeLeader: (playerId) =>
       void client.transferLeader(playerId).catch((cause: unknown) => flash(describe(cause))),
     commitRisk: (choice) =>
-      client.commitRisk({ stake: choice.stake, doubleDown: choice.doubleDown }),
+      client.commitRisk({
+        stake: choice.stake,
+        doubleDown: choice.doubleDown,
+        ...(choice.cover ? { cover: true } : {}),
+        ...(choice.pot ? { pot: true } : {}),
+        ...(choice.duel ? { duel: choice.duel } : {}),
+      }),
+    respondDuel: (challengerId, accept) => client.respondDuel({ challengerId, accept }),
     commitSabotage: (choice) => client.commitSabotage({ sabotage: choice.sabotage }),
     report: canReport
       ? (questionId, reason) => client.reportQuestion(questionId, reason)

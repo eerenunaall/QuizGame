@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
 import type { Outcome, PhaseDataOf, PowerResolutionItem, RoomView } from '@quizparty/protocol';
 import { Avatar } from '../../ui/Avatar';
+import { PowerIcon } from '../../ui/PowerIcon';
 import { Sticker } from '../../ui/Sticker';
 import { sfx } from '../../lib/audio';
 import { useI18n } from '../../lib/i18n';
-import { JOKER_STICKER, SABOTAGE_STICKER, STAKE_STICKER } from '../../play/powers';
+import { JOKER_STICKER, RISK_ICON, SABOTAGE_STICKER, STAKE_STICKER } from '../../play/powers';
 import styles from './TvPower.module.css';
 import { cx } from '../../lib/cx';
 
@@ -41,7 +42,16 @@ export function TvPowerResolution({ room, data }: { room: RoomView; data: PowerD
   useEffect(() => {
     const timers = data.items.map((item, index) =>
       window.setTimeout(
-        () => sfx.play(item.kind === 'SABOTAGE' ? (item.blocked ? 'shield' : 'sabotage') : 'power'),
+        () =>
+          sfx.play(
+            item.kind === 'SABOTAGE'
+              ? item.blocked
+                ? 'shield'
+                : 'sabotage'
+              : item.kind === 'CUT'
+                ? 'sabotage'
+                : 'power',
+          ),
         itemDelay(index),
       ),
     );
@@ -113,6 +123,115 @@ export function TvPowerResolution({ room, data }: { room: RoomView; data: PowerD
             <OutcomePill outcome={item.outcome} />
           </div>
         );
+      case 'COVER':
+        return (
+          <div
+            key={`${item.kind}-${item.playerId}`}
+            className={cx(styles.card, styles.cover)}
+            style={style}
+            data-testid="power-item"
+            data-kind="COVER"
+          >
+            {face(item.playerId)}
+            <PowerIcon id={RISK_ICON.cover} size={72} className={styles.icon} />
+            <span className={styles.text}>
+              {t('tv.power.cover', { name: nameOf(item.playerId), fee: item.fee })}
+              <span className={styles.sub}>
+                {item.saved > 0
+                  ? t('tv.power.cover.saved', { saved: item.saved })
+                  : t('tv.power.cover.paid')}
+              </span>
+            </span>
+            <OutcomePill outcome={item.outcome} />
+          </div>
+        );
+      case 'POT':
+        return (
+          <div
+            key={`${item.kind}-pot`}
+            className={cx(styles.card, styles.pot)}
+            style={style}
+            data-testid="power-item"
+            data-kind="POT"
+            data-refunded={item.refunded}
+          >
+            <span className={styles.faces}>
+              {item.playerIds.map((playerId) => (
+                <span key={playerId} className={styles.miniFace}>
+                  {face(playerId, 64)}
+                </span>
+              ))}
+            </span>
+            <PowerIcon id={RISK_ICON.pot} size={72} className={styles.icon} />
+            <span className={styles.text}>
+              {t('tv.power.pot', { size: item.size, count: item.playerIds.length })}
+              <span className={styles.sub}>
+                {item.refunded
+                  ? t('tv.power.pot.refunded')
+                  : t('tv.power.pot.winners', {
+                      names: item.winnerIds.map((playerId) => nameOf(playerId)).join(', '),
+                    })}
+              </span>
+            </span>
+          </div>
+        );
+      case 'DUEL':
+        return (
+          <div
+            key={`${item.kind}-${item.challengerId}-${item.rivalId}`}
+            className={cx(styles.card, styles.duel)}
+            style={style}
+            data-testid="power-item"
+            data-kind="DUEL"
+            data-accepted={item.accepted}
+          >
+            {face(item.challengerId, 84)}
+            <PowerIcon id={RISK_ICON.duel} size={64} className={cx(styles.icon, styles.arrow)} />
+            {face(item.rivalId, 84)}
+            <span className={styles.text}>
+              {!item.accepted
+                ? t('tv.power.duel.declined', { rival: nameOf(item.rivalId) })
+                : item.winnerId
+                  ? t('tv.power.duel.won', { name: nameOf(item.winnerId), points: item.points })
+                  : t('tv.power.duel.none')}
+              <span className={styles.sub}>
+                {t('tv.power.duel', {
+                  challenger: nameOf(item.challengerId),
+                  rival: nameOf(item.rivalId),
+                })}
+              </span>
+            </span>
+            {item.accepted && item.winnerId ? (
+              <span className={cx(styles.outcome, styles.hitPill)}>+{item.points}</span>
+            ) : null}
+          </div>
+        );
+      case 'CUT':
+        return (
+          <div
+            key={`${item.kind}-${item.actorId}-${item.targetId}`}
+            className={cx(styles.card, styles.cutPaid)}
+            style={style}
+            data-testid="power-item"
+            data-kind="CUT"
+          >
+            {face(item.targetId, 84)}
+            <PowerIcon
+              id={SABOTAGE_STICKER.CUT}
+              size={64}
+              className={cx(styles.icon, styles.arrow)}
+            />
+            {face(item.actorId, 84)}
+            <span className={styles.text}>
+              {t('tv.power.cut', {
+                actor: nameOf(item.actorId),
+                target: nameOf(item.targetId),
+                points: item.points,
+              })}
+            </span>
+            <span className={cx(styles.outcome, styles.hitPill)}>+{item.points}</span>
+          </div>
+        );
       case 'SABOTAGE':
         return (
           <div
@@ -124,7 +243,7 @@ export function TvPowerResolution({ room, data }: { room: RoomView; data: PowerD
             data-blocked={item.blocked}
           >
             {face(item.actorId, 84)}
-            <Sticker
+            <PowerIcon
               id={SABOTAGE_STICKER[item.effect]}
               size={64}
               className={cx(styles.icon, styles.arrow)}

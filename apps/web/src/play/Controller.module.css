@@ -545,3 +545,20 @@
   width: 100%;
   margin-top: 14px;
 }
+
+/* BLIND_CLOCK: the bar is replaced by a tile of the same height so nothing below it jumps */
+.blindClock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--qp-color-warning);
+  background: rgba(var(--qp-deep-rgb), 0.7);
+  border: 3px dashed var(--qp-color-warning);
+  border-radius: 999px;
+}
+.blindClock > svg {
+  margin-right: 8px;
+}

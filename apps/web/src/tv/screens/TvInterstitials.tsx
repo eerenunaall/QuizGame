@@ -3,8 +3,9 @@ import type { PhaseDataOf, RoundKind, RoundPublic } from '@quizparty/protocol';
 import { Button } from '../../ui/Button';
 import { CountdownRing } from '../../ui/CountdownRing';
 import { AnimatedSticker, Sticker } from '../../ui/Sticker';
+import { PowerIcon } from '../../ui/PowerIcon';
 import { useI18n } from '../../lib/i18n';
-import { SABOTAGE_ORDER, SABOTAGE_STICKER, STAKE_STICKER } from '../../play/powers';
+import { RISK_ICON, SABOTAGE_STICKER, STAKE_STICKER, sabotageKinds } from '../../play/powers';
 import styles from './TvInterstitials.module.css';
 import { cx } from '../../lib/cx';
 
@@ -178,6 +179,25 @@ export function TvRiskPick({
             {t('tv.prep.doubleDownOpen')}
           </span>
         ) : null}
+        {/* ADR-0023: the extras on offer this round (config, the same for everybody) */}
+        {data.risks?.cover ? (
+          <span className={styles.badge} data-testid="tv-extra-cover">
+            <PowerIcon id={RISK_ICON.cover} size={44} />
+            {t('risk.cover')}
+          </span>
+        ) : null}
+        {data.risks?.duel ? (
+          <span className={styles.badge} data-testid="tv-extra-duel">
+            <PowerIcon id={RISK_ICON.duel} size={44} />
+            {t('risk.duel')}
+          </span>
+        ) : null}
+        {data.risks?.pot ? (
+          <span className={styles.badge} data-testid="tv-extra-pot">
+            <PowerIcon id={RISK_ICON.pot} size={44} />
+            {t('risk.pot')}
+          </span>
+        ) : null}
       </div>
 
       <div className={styles.pickFoot}>
@@ -218,9 +238,9 @@ export function TvSabotagePick({
       <div className={styles.sabRow}>
         <Sticker id="bomb" size={200} className={styles.pop} />
         <div className={styles.sabKinds}>
-          {SABOTAGE_ORDER.map((kind) => (
+          {sabotageKinds(data).map((kind) => (
             <span key={kind} className={styles.badge}>
-              <Sticker id={SABOTAGE_STICKER[kind]} size={44} />
+              <PowerIcon id={SABOTAGE_STICKER[kind]} size={44} />
               {td(`sabotage.${kind}`)}
             </span>
           ))}

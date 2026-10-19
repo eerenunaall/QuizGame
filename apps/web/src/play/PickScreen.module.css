@@ -229,6 +229,7 @@
   background: rgba(var(--qp-surface-rgb), 0.6);
 }
 .power:disabled > img,
+.power:disabled > svg,
 .power:disabled .powerName,
 .power:disabled .powerCount {
   opacity: 0.5;
@@ -534,4 +535,82 @@
   background: rgba(var(--qp-surface-rgb), 0.9);
   border-color: var(--qp-color-danger);
   box-shadow: 0 5px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* ADR-0023: a Duel challenge aimed at this player, the rival picker and the Stake Cap note */
+.invites {
+  margin-top: 4px;
+}
+.invite {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+  padding: 8px 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 92, 138, 0.28), rgba(255, 92, 138, 0.1)),
+    rgb(var(--qp-surface-rgb));
+  border: 3px solid var(--qp-color-danger);
+  border-radius: 20px;
+  animation: qp-pop-in 260ms ease-out 1;
+}
+.invite[data-answer='ACCEPTED'],
+.invite[data-answer='DECLINED'] {
+  background: rgba(var(--qp-surface-rgb), 0.6);
+  border-color: var(--qp-color-surface-line);
+}
+.inviteText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0 10px;
+}
+.inviteBtns {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 6px;
+}
+.capNote {
+  margin-top: 6px;
+  padding: 6px 12px;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #1b1200;
+  background: var(--qp-gradient-gold);
+  border-radius: 12px;
+}
+.rivals {
+  margin-top: 12px;
+}
+.rivalFaces {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin: 8px 0;
+}
+.rival {
+  display: flex;
+  align-items: center;
+  min-height: 64px;
+  padding: 4px 10px;
+  font: inherit;
+  color: #fff;
+  cursor: pointer;
+  background: rgba(var(--qp-surface-rgb), 0.9);
+  border: 3px solid var(--qp-color-surface-line);
+  border-radius: 18px;
+}
+.rivalOn {
+  border-color: var(--qp-color-accent-a);
+}
+.rivalName {
+  min-width: 0;
+  margin-left: 8px;
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

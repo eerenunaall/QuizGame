@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Joker, PublicPlayer, SabotageKind } from '@quizparty/protocol';
 import { Avatar } from '../ui/Avatar';
 import { Button } from '../ui/Button';
+import { PowerIcon } from '../ui/PowerIcon';
 import { Sticker } from '../ui/Sticker';
 import { useI18n } from '../lib/i18n';
 import { sfx } from '../lib/audio';
@@ -10,6 +11,7 @@ import {
   JOKER_STICKER,
   SABOTAGE_ORDER,
   SABOTAGE_STICKER,
+  cutBlock,
   type SabotageChoice,
 } from './powers';
 import styles from './SabotageSheet.module.css';
@@ -20,6 +22,12 @@ type Step = 'who' | 'what';
 
 interface Props {
   players: readonly PublicPlayer[];
+  /** The menu of this round (switched on, legal now); older servers send none = the original five. */
+  kinds: readonly SabotageKind[];
+  /** Cut's share and ceiling, for its one-line rule. */
+  cutRule: { permille: number; maxPoints: number } | undefined;
+  /** The table (rank and score), for the Cut rule: never the leader, never somebody with no points. */
+  scoreboard: readonly { playerId: string; score: number; rank: number }[];
   /** The sabotage already armed, if the sheet is opened again. */
   current: SabotageChoice['sabotage'];
   onConfirm: (choice: Choice) => void;
@@ -34,7 +42,16 @@ interface Props {
  * takes the whole prep as one final message (ADR-0010), so "send" is the commit: there is no undo
  * after it, which is why the caller gives a short undo window before it goes out.
  */
-export function SabotageSheet({ players, current, onConfirm, onRemove, onClose }: Props) {
+export function SabotageSheet({
+  players,
+  kinds,
+  cutRule,
+  scoreboard,
+  current,
+  onConfirm,
+  onRemove,
+  onClose,
+}: Props) {
   const { t, td } = useI18n();
   const [step, setStep] = useState<Step>(current ? 'what' : 'who');
   const [targetId, setTargetId] = useState<string | null>(current?.targetId ?? null);
@@ -55,7 +72,9 @@ export function SabotageSheet({ players, current, onConfirm, onRemove, onClose }
   }, [onClose]);
 
   const needsJoker = effect === 'LOCKOUT';
-  const ready = Boolean(target && effect && (!needsJoker || joker));
+  const effectBlocked =
+    effect === 'CUT' && targetId ? cutBlock(scoreboard, targetId) !== null : false;
+  const ready = Boolean(target && effect && !effectBlocked && (!needsJoker || joker));
   // One line that says why the big button is still grey.
   const why = !effect
     ? t('ctl.prep.sabotage.pickEffect')
@@ -157,55 +176,70 @@ export function SabotageSheet({ players, current, onConfirm, onRemove, onClose }
                 role="radiogroup"
                 aria-label={t('ctl.prep.sabotage.what')}
               >
-                {SABOTAGE_ORDER.map((kind, index) => (
-                  <div key={kind} className={styles.cardWrap}>
-                    <button
-                      ref={index === 0 && !effect ? firstRef : undefined}
-                      type="button"
-                      role="radio"
-                      aria-checked={effect === kind}
-                      className={cx(styles.card, effect === kind && styles.cardOn)}
-                      onClick={() => {
-                        sfx.play('tap');
-                        setEffect(kind);
-                      }}
-                      data-testid={`sabotage-effect-${kind}`}
-                      data-focusable
-                    >
-                      <Sticker id={SABOTAGE_STICKER[kind]} size={46} />
-                      <span className={styles.cardText}>
-                        <span className={styles.cardName}>{td(`sabotage.${kind}`)}</span>
-                        <span className={styles.cardDesc}>{td(`sabotage.${kind}.desc`)}</span>
-                      </span>
-                    </button>
-                    {kind === 'LOCKOUT' && effect === 'LOCKOUT' ? (
-                      <div
-                        className={styles.jokers}
-                        role="radiogroup"
-                        aria-label={t('ctl.prep.sabotage.which')}
+                {SABOTAGE_ORDER.filter((kind) => kinds.includes(kind)).map((kind, index) => {
+                  // Cut never aims at the leader or at somebody with no points: the card says why.
+                  const block = kind === 'CUT' && targetId ? cutBlock(scoreboard, targetId) : null;
+                  return (
+                    <div key={kind} className={styles.cardWrap}>
+                      <button
+                        ref={index === 0 && !effect ? firstRef : undefined}
+                        type="button"
+                        role="radio"
+                        aria-checked={effect === kind}
+                        aria-disabled={block !== null}
+                        disabled={block !== null}
+                        className={cx(styles.card, effect === kind && styles.cardOn)}
+                        onClick={() => {
+                          sfx.play('tap');
+                          setEffect(kind);
+                        }}
+                        data-testid={`sabotage-effect-${kind}`}
+                        data-focusable
                       >
-                        {JOKER_ORDER.map((entry) => (
-                          <button
-                            key={entry}
-                            type="button"
-                            role="radio"
-                            aria-checked={joker === entry}
-                            className={cx(styles.joker, joker === entry && styles.jokerOn)}
-                            onClick={() => {
-                              sfx.play('tap');
-                              setJoker(entry);
-                            }}
-                            data-testid={`sabotage-joker-${entry}`}
-                            data-focusable
-                          >
-                            <Sticker id={JOKER_STICKER[entry]} size={32} />
-                            <span>{td(`joker.${entry}`)}</span>
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
+                        <PowerIcon id={SABOTAGE_STICKER[kind]} size={46} />
+                        <span className={styles.cardText}>
+                          <span className={styles.cardName}>{td(`sabotage.${kind}`)}</span>
+                          <span className={cx(styles.cardDesc, block !== null && styles.cardWhy)}>
+                            {block === 'LEADER'
+                              ? t('ctl.sabotage.cut.leader')
+                              : block === 'NO_POINTS'
+                                ? t('ctl.sabotage.cut.noPoints')
+                                : td(`sabotage.${kind}.desc`, {
+                                    percent: Math.round((cutRule?.permille ?? 200) / 10),
+                                    max: cutRule?.maxPoints ?? 30,
+                                  })}
+                          </span>
+                        </span>
+                      </button>
+                      {kind === 'LOCKOUT' && effect === 'LOCKOUT' ? (
+                        <div
+                          className={styles.jokers}
+                          role="radiogroup"
+                          aria-label={t('ctl.prep.sabotage.which')}
+                        >
+                          {JOKER_ORDER.map((entry) => (
+                            <button
+                              key={entry}
+                              type="button"
+                              role="radio"
+                              aria-checked={joker === entry}
+                              className={cx(styles.joker, joker === entry && styles.jokerOn)}
+                              onClick={() => {
+                                sfx.play('tap');
+                                setJoker(entry);
+                              }}
+                              data-testid={`sabotage-joker-${entry}`}
+                              data-focusable
+                            >
+                              <Sticker id={JOKER_STICKER[entry]} size={32} />
+                              <span>{td(`joker.${entry}`)}</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
             </div>
             <div className={styles.footer}>

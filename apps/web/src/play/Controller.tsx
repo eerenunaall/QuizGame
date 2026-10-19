@@ -16,6 +16,7 @@ import { LetterCheer } from '../ui/LetterCheer';
 import { Mascot } from '../ui/Mascot';
 import { Panel, Pill } from '../ui/Panel';
 import { AnimatedSticker, Sticker } from '../ui/Sticker';
+import { PowerIcon } from '../ui/PowerIcon';
 import { TimerBar } from '../ui/TimerBar';
 import { burst } from '../lib/confetti';
 import { useI18n } from '../lib/i18n';
@@ -61,6 +62,8 @@ export interface ControllerActions {
   commitRisk: (choice: RiskChoice) => Promise<void>;
   /** SABOTAGE_PICK: one sabotage, or none, in one final message. Rejects with the server's code. */
   commitSabotage: (choice: SabotageChoice) => Promise<void>;
+  /** RISK_PICK: accept or decline a Duel challenge (ADR-0023). Rejects with the server's code. */
+  respondDuel?: (challengerId: string, accept: boolean) => Promise<void>;
   fifty: () => void;
   setReduced: (value: boolean) => void;
   /** Who Said It, lobby: the player's one statement. Rejects with the server's code (and the reason of a refused text). */
@@ -157,6 +160,7 @@ export function Controller({ room, state, now, catalog, busy, error, actions, st
           data={{ ...data, phase: 'RISK_PICK' }}
           now={now}
           onCommit={actions.commitRisk}
+          {...(actions.respondDuel ? { onRespond: actions.respondDuel } : {})}
         />
       );
     case 'SABOTAGE_PICK':
@@ -631,12 +635,20 @@ function AnswerScreen({
       data-locked={locked || undefined}
     >
       <div className={styles.timer}>
-        <TimerBar
-          size="lg"
-          now={now}
-          startAt={data.answerOpensAt}
-          deadlineAt={personalDeadline(data.answerDeadlineAt, effects)}
-        />
+        {effects?.blindClock ? (
+          // BLIND_CLOCK (ADR-0023): the countdown is gone from this phone, the TV's clock stays.
+          <div className={styles.blindClock} role="status" data-testid="blind-clock">
+            <PowerIcon id="blind-clock" size={34} />
+            <span>{t('ctl.blindClock')}</span>
+          </div>
+        ) : (
+          <TimerBar
+            size="lg"
+            now={now}
+            startAt={data.answerOpensAt}
+            deadlineAt={personalDeadline(data.answerDeadlineAt, effects)}
+          />
+        )}
       </div>
       <HitNotices you={you} />
       {locked ? (

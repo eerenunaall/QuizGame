@@ -3,12 +3,19 @@ import type { PhaseDataOf, RoomView } from '@quizparty/protocol';
 import type { ClientRequestError } from '@quizparty/controller-client';
 import { Button } from '../ui/Button';
 import { Panel } from '../ui/Panel';
+import { PowerIcon } from '../ui/PowerIcon';
 import { Sticker } from '../ui/Sticker';
 import { useI18n } from '../lib/i18n';
 import { sfx } from '../lib/audio';
 import { SabotageSheet } from './SabotageSheet';
 import { PickHeader, PickTicks } from './PickParts';
-import { SABOTAGE_STICKER, sabotageState, sabotageTargets, type SabotageChoice } from './powers';
+import {
+  SABOTAGE_STICKER,
+  sabotageKinds,
+  sabotageState,
+  sabotageTargets,
+  type SabotageChoice,
+} from './powers';
 import styles from './PickScreen.module.css';
 import { cx } from '../lib/cx';
 
@@ -110,7 +117,7 @@ export function SabotageScreen({ room, data, now, onCommit }: Props) {
             <span className={styles.chip}>
               {committed && target ? (
                 <>
-                  <Sticker id={SABOTAGE_STICKER[committed.effect]} size={30} />
+                  <PowerIcon id={SABOTAGE_STICKER[committed.effect]} size={30} />
                   {t('ctl.prep.sabotageTo', {
                     effect: td(`sabotage.${committed.effect}`),
                     name: target.nickname,
@@ -158,7 +165,7 @@ export function SabotageScreen({ room, data, now, onCommit }: Props) {
 
       {undoable && sabotage && chosenTarget ? (
         <div className={styles.going} role="status" data-testid="sabotage-going">
-          <Sticker id={SABOTAGE_STICKER[sabotage.effect]} size={40} />
+          <PowerIcon id={SABOTAGE_STICKER[sabotage.effect]} size={40} />
           <span className={styles.goingText}>
             {t('ctl.prep.sabotage.going', {
               effect: td(`sabotage.${sabotage.effect}`),
@@ -233,6 +240,9 @@ export function SabotageScreen({ room, data, now, onCommit }: Props) {
       {sheet ? (
         <SabotageSheet
           players={sabotageTargets(room.players, you.playerId)}
+          kinds={sabotageKinds(data)}
+          cutRule={data.cutRule}
+          scoreboard={room.game?.scoreboard ?? []}
           current={sabotage}
           onClose={() => setSheet(false)}
           onConfirm={confirmSabotage}

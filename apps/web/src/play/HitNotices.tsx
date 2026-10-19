@@ -1,5 +1,5 @@
 import type { YouView } from '@quizparty/protocol';
-import { Sticker } from '../ui/Sticker';
+import { PowerIcon } from '../ui/PowerIcon';
 import { useI18n } from '../lib/i18n';
 import { SABOTAGE_STICKER, jamSeconds } from './powers';
 import styles from './HitNotices.module.css';
@@ -33,7 +33,7 @@ export function HitNotices({ you }: { you: YouView | null }) {
             className={cx(styles.notice, hit.blocked && styles.blocked)}
             role="status"
           >
-            <Sticker id={hit.blocked ? 'shield' : SABOTAGE_STICKER[hit.effect]} size={34} />
+            <PowerIcon id={hit.blocked ? 'shield' : SABOTAGE_STICKER[hit.effect]} size={34} />
             <span>{text}</span>
           </div>
         );

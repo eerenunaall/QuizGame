@@ -141,3 +141,31 @@
   animation-delay: var(--qp-delay, 0ms), calc(var(--qp-delay, 0ms) + 520ms);
   animation-fill-mode: both, none;
 }
+
+/* ADR-0023: Cover is a one-player card, Pot / Duel / a paid Cut have several faces and take the row */
+.cover {
+  border-color: var(--qp-color-accent-c);
+}
+.pot,
+.duel,
+.cutPaid {
+  width: 1660px;
+}
+.pot {
+  border-color: var(--qp-color-accent-a);
+}
+.duel {
+  border-color: var(--qp-color-danger);
+}
+.cutPaid {
+  border-color: var(--qp-color-accent-a);
+}
+.faces {
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+.miniFace {
+  display: inline-flex;
+  margin-right: -14px;
+}

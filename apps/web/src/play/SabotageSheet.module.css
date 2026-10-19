@@ -177,9 +177,22 @@
     background 140ms ease,
     border-color 140ms ease;
 }
-.card:active {
+.card:active:not(:disabled) {
   transform: translateY(3px);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+/* A card that cannot be used (Cut on the leader) is dim, but the line that says why is not. */
+.card:disabled {
+  cursor: default;
+  background: rgba(var(--qp-deep-rgb), 0.5);
+}
+.card:disabled > :not(.cardText),
+.card:disabled .cardName {
+  opacity: 0.5;
+}
+.cardWhy {
+  font-weight: 800;
+  color: var(--qp-color-warning);
 }
 .cardOn {
   border-color: var(--qp-color-accent-a);
