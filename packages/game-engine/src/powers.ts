@@ -1,15 +1,30 @@
 import type { Draft } from 'immer';
 import type { Rng } from '@quizparty/shared';
-import type {
-  ClientPayload,
-  ErrorCode,
-  Joker,
-  LadderRung,
-  PowerResolutionItem,
-  RiskTier,
-  RoundKind,
+import {
+  RISK_TIERS,
+  SABOTAGE_KINDS,
+  type ClientPayload,
+  type ErrorCode,
+  type Joker,
+  type LadderRung,
+  type PowerResolutionItem,
+  type RiskTier,
+  type RoundKind,
+  type SabotageKind,
 } from '@quizparty/protocol';
-import { defaultTier, doubleDownExcludedStakes, ladderKindFor, type GameConfig } from './config';
+import {
+  blindClockRules,
+  coverRules,
+  cutRules,
+  defaultTier,
+  doubleDownExcludedStakes,
+  duelRules,
+  ladderKindFor,
+  potRules,
+  stakeCapRules,
+  type GameConfig,
+} from './config';
+import { rankPlayers } from './rank';
 import type { PowerLedger, PresentedOption, RoomState, RoundState, TargetEffects } from './types';
 import { exemptPlayerId } from './who-said-it';
 
@@ -31,7 +46,137 @@ export function newLedger(config: GameConfig): PowerLedger {
     lastHitRound: null,
     lockout: null,
     pointTax: null,
+    // ADR-0023: a feature that is switched off at the start of a game is simply not in that game.
+    cover: coverRules(config).enabled ? coverRules(config).perGame : 0,
+    duels: duelRules(config).enabled ? duelRules(config).perGame : 0,
+    pots: potRules(config).enabled ? potRules(config).perGame : 0,
+    duelRivals: [],
+    stakeCap: null,
+    cut: null,
   };
+}
+
+/** Uses left of the ADR-0023 risks; a game stored before them has none (the counter is missing). */
+export const coverLeft = (ledger: Pick<PowerLedger, 'cover'>): number => ledger.cover ?? 0;
+export const duelsLeft = (ledger: Pick<PowerLedger, 'duels'>): number => ledger.duels ?? 0;
+export const potsLeft = (ledger: Pick<PowerLedger, 'pots'>): number => ledger.pots ?? 0;
+
+const tierIndex = (tier: RiskTier): number => RISK_TIERS.indexOf(tier);
+
+/** The highest stake STAKE_CAP allows `ledger`'s owner in `roundIndex`, or null when uncapped. */
+export function activeStakeCap(
+  ledger: Pick<PowerLedger, 'stakeCap'>,
+  roundIndex: number,
+): RiskTier | null {
+  return ledger.stakeCap && ledger.stakeCap.round === roundIndex ? ledger.stakeCap.tier : null;
+}
+
+/** Players ranked first on the current scoreboard (ties share the rank): CUT may never aim at them. */
+function leaderIds(d: Room): Set<string> {
+  const game = d.game!;
+  const entries = Object.entries(game.players)
+    .filter(([, gp]) => !gp.removed)
+    .map(([playerId, gp]) => ({
+      playerId,
+      score: gp.score,
+      correctCount: gp.correctCount,
+      totalRemainingMs: gp.totalRemainingMs,
+      joinIndex: d.players[playerId]?.joinIndex ?? Number.MAX_SAFE_INTEGER,
+    }));
+  return new Set(
+    rankPlayers(entries)
+      .filter((entry) => entry.rank === 1)
+      .map((entry) => entry.playerId),
+  );
+}
+
+/** Whether the question after this one is still before the final stage (STAKE_CAP never reaches the finale). */
+function nextRoundBeforeFinal(d: Room, roundIndex: number): boolean {
+  const game = d.game!;
+  const next = roundIndex + 1;
+  return next < game.totalRounds - game.finalLength;
+}
+
+/** Whether STAKE_CAP would take anything away in the next ordinary round (some ladder has a higher rung). */
+function stakeCapBites(config: GameConfig): boolean {
+  const cap = tierIndex(stakeCapRules(config).maxTier);
+  return (['STANDARD', 'SPEED', 'RISK', 'CROWD'] as const).some((kind) =>
+    RISK_TIERS.some((tier) => config.scoring.ladders[kind][tier] && tierIndex(tier) > cap),
+  );
+}
+
+/**
+ * Sabotages on offer in this round's SABOTAGE_PICK (ADR-0023): the original five, plus each new one
+ * that is switched on and could act now. The same for everybody, so it is public.
+ */
+export function sabotageKindsOffered(d: Room): SabotageKind[] {
+  const round = d.game?.round;
+  return SABOTAGE_KINDS.filter((kind) => {
+    if (kind === 'STAKE_CAP') {
+      return (
+        stakeCapRules(d.config).enabled &&
+        !!round &&
+        nextRoundBeforeFinal(d, round.index) &&
+        stakeCapBites(d.config)
+      );
+    }
+    if (kind === 'CUT') return cutRules(d.config).enabled;
+    if (kind === 'BLIND_CLOCK') return blindClockRules(d.config).enabled;
+    return true; // the original five have no switch
+  });
+}
+
+/** Duel challenges aimed at `rivalId` this round, in seating order (private to that rival). */
+export function duelChallengersOf(d: Room, rivalId: string): string[] {
+  const round = d.game?.round;
+  if (!round) return [];
+  return d.playerOrder.filter((challengerId) => {
+    const commitment = round.commitments[challengerId];
+    return (
+      commitment?.duel?.targetId === rivalId &&
+      challengerId !== rivalId &&
+      !d.game!.players[challengerId]?.removed
+    );
+  });
+}
+
+type DuelAnswer = 'ACCEPTED' | 'DECLINED';
+
+/** The reply `rivalId` gave to `challengerId`, or null. A mutual challenge counts as accepted both ways. */
+export function duelAnswerOf(d: Room, rivalId: string, challengerId: string): DuelAnswer | null {
+  const round = d.game?.round;
+  if (!round) return null;
+  const given = round.duelAnswers?.[rivalId]?.[challengerId];
+  if (given) return given;
+  return round.commitments[rivalId]?.duel?.targetId === challengerId ? 'ACCEPTED' : null;
+}
+
+/** The challenger whose Duel `playerId` has accepted this round (a player holds at most one), or null. */
+export function acceptedDuelOf(d: Room, playerId: string): string | null {
+  const answers = d.game?.round?.duelAnswers?.[playerId];
+  if (!answers) return null;
+  return Object.keys(answers).find((challengerId) => answers[challengerId] === 'ACCEPTED') ?? null;
+}
+
+/** Challenges `rivalId` still has to answer: online, not the author of a Who Said It round. */
+export function pendingDuelInvites(d: Room, rivalId: string): string[] {
+  const game = d.game;
+  const rival = d.players[rivalId];
+  if (!game || !rival || rival.status !== 'ACTIVE' || rival.connection !== 'CONNECTED') return [];
+  if (exemptPlayerId(game) === rivalId) return [];
+  return duelChallengersOf(d, rivalId).filter(
+    (challengerId) => duelAnswerOf(d, rivalId, challengerId) === null,
+  );
+}
+
+/** Whether `stake` or `doubleDown` is a big gamble that a Duel cannot go with (ADR-0023 table). */
+function bigWithDuel(d: Room, stake: RiskTier, doubleDown: boolean): boolean {
+  return doubleDown || duelRules(d.config).excludedStakes.includes(stake);
+}
+
+/** Players in the running game (not removed): the head count the room-size rules look at. */
+function gamePlayerCount(d: Room): number {
+  return Object.values(d.game?.players ?? {}).filter((gp) => !gp.removed).length;
 }
 
 /** Ladder that governs `round`, as rungs players can pick (ADR-0020: mandatory only on the last question). */
@@ -179,6 +324,81 @@ export function checkRisk(d: Room, playerId: string, payload: RiskPayload): Erro
     if (doubleDownExcludedStakes(d.config).includes(payload.stake))
       return 'DOUBLE_DOWN_STAKE_CONFLICT';
   }
+
+  // STAKE_CAP (ADR-0023): the target's top rung is gone this round.
+  const cap = activeStakeCap(me.powers, round.index);
+  if (cap !== null && tierIndex(payload.stake) > tierIndex(cap)) return 'STAKE_INVALID';
+
+  // A Duel this player already accepted is a big gamble of theirs too (ADR-0023).
+  if (acceptedDuelOf(d, playerId) !== null && bigWithDuel(d, payload.stake, payload.doubleDown))
+    return 'BIG_GAMBLE_CONFLICT';
+
+  if (payload.cover) {
+    const rules = coverRules(d.config);
+    if (!rules.enabled || coverLeft(me.powers) <= 0) return 'POWER_UNAVAILABLE';
+    // Nothing to insure on a rung that loses nothing.
+    const rung = ladder.rungs.find((entry) => entry.tier === payload.stake);
+    if (!rung || rung.loss <= 0) return 'STAKE_INVALID';
+    if (payload.doubleDown && !rules.allowWithDoubleDown) return 'BIG_GAMBLE_CONFLICT';
+  }
+
+  if (payload.pot) {
+    const rules = potRules(d.config);
+    if (!rules.enabled || potsLeft(me.powers) <= 0) return 'POWER_UNAVAILABLE';
+    // The ante must be in hand and the room big enough for a pot to run.
+    if (me.score < rules.ante || gamePlayerCount(d) < rules.minPlayers) return 'POWER_UNAVAILABLE';
+  }
+
+  if (payload.duel) {
+    const rules = duelRules(d.config);
+    if (!rules.enabled || duelsLeft(me.powers) <= 0) return 'POWER_UNAVAILABLE';
+    if (gamePlayerCount(d) < rules.minPlayers) return 'POWER_UNAVAILABLE';
+    const target = d.players[payload.duel.targetId];
+    const rival = game.players[payload.duel.targetId];
+    // An offline rival is visible in the player list, so refusing one tells nothing. The author of a
+    // Who Said It statement is NOT refused: that would name the answer (ATTACK 27) - the challenge
+    // is simply never answered.
+    if (
+      payload.duel.targetId === playerId ||
+      !rival ||
+      rival.removed ||
+      !target ||
+      target.status !== 'ACTIVE' ||
+      target.connection !== 'CONNECTED'
+    )
+      return 'TARGET_INVALID';
+    if ((me.powers.duelRivals ?? []).includes(payload.duel.targetId)) return 'DUEL_LIMIT';
+    if (acceptedDuelOf(d, playerId) !== null) return 'DUEL_LIMIT';
+    if (bigWithDuel(d, payload.stake, payload.doubleDown)) return 'BIG_GAMBLE_CONFLICT';
+  }
+  return null;
+}
+
+export type DuelReplyPayload = ClientPayload<'RESPOND_DUEL'>;
+
+/**
+ * Checks the rival's reply to a Duel challenge (ADR-0023). Accepting makes the Duel one of the rival's
+ * big gambles, so it is refused if they already hold a stake or joker that conflicts, challenged
+ * somebody else themselves (unless it is each other), or accepted another challenge.
+ */
+export function checkDuelReply(
+  d: Room,
+  playerId: string,
+  payload: DuelReplyPayload,
+): ErrorCode | null {
+  const game = d.game;
+  const round = game?.round;
+  if (!game || !round || d.phase !== 'RISK_PICK') return 'INVALID_STATE';
+  if (!seated(d, playerId)) return 'POWER_UNAVAILABLE';
+  if (exemptPlayerId(game) === playerId) return 'ANSWER_NOT_ALLOWED';
+  if (!duelChallengersOf(d, playerId).includes(payload.challengerId)) return 'POWER_UNAVAILABLE';
+  if (round.duelAnswers?.[playerId]?.[payload.challengerId]) return 'ALREADY_COMMITTED';
+  if (payload.accept) {
+    if (acceptedDuelOf(d, playerId) !== null) return 'DUEL_LIMIT';
+    const own = round.commitments[playerId];
+    if (own?.duel && own.duel.targetId !== payload.challengerId) return 'BIG_GAMBLE_CONFLICT';
+    if (own && bigWithDuel(d, own.stake, own.doubleDown)) return 'BIG_GAMBLE_CONFLICT';
+  }
   return null;
 }
 
@@ -222,7 +442,27 @@ export function checkSabotage(
       // A lockout already holds this round: another would chain into the next one.
       if (target.powers.lockout?.round === round.index) return 'SABOTAGE_LIMIT';
     }
-    if (sabotage.effect === 'POINT_TAX' && target.powers.pointTax !== null) return 'SABOTAGE_LIMIT';
+    if (
+      sabotage.effect === 'POINT_TAX' &&
+      (target.powers.pointTax !== null || (target.powers.cut ?? null) !== null)
+    )
+      return 'SABOTAGE_LIMIT';
+
+    // ADR-0023
+    if (!sabotageKindsOffered(d).includes(sabotage.effect)) {
+      // STAKE_CAP that is on but cannot bite (the next question is in the final stage) is a limit,
+      // everything else that is not on offer is simply unavailable.
+      return sabotage.effect === 'STAKE_CAP' && stakeCapRules(d.config).enabled
+        ? 'SABOTAGE_LIMIT'
+        : 'POWER_UNAVAILABLE';
+    }
+    if (sabotage.effect === 'CUT') {
+      // Never the player in front (their rank is on every screen, so a refusal reveals nothing), and
+      // nothing to cut from a player with no points.
+      if (leaderIds(d).has(sabotage.targetId) || target.score <= 0) return 'TARGET_INVALID';
+      if ((target.powers.cut ?? null) !== null || target.powers.pointTax !== null)
+        return 'SABOTAGE_LIMIT';
+    }
   }
   return null;
 }
@@ -309,6 +549,19 @@ export function resolveSabotage(d: Room, rng: Rng): void {
       case 'POINT_TAX':
         target.powers.pointTax = { expiresAfterRound: round.index + cfg.pointTaxRounds - 1 };
         break;
+      case 'STAKE_CAP':
+        // Next question's ladder loses its top rungs; the target learns of it in that RISK_PICK.
+        target.powers.stakeCap = { tier: stakeCapRules(d.config).maxTier, round: round.index + 1 };
+        break;
+      case 'CUT':
+        target.powers.cut = {
+          by: actorId,
+          expiresAfterRound: round.index + cutRules(d.config).rounds - 1,
+        };
+        break;
+      case 'BLIND_CLOCK':
+        effects.blindClock = true;
+        break;
     }
   }
 }
@@ -361,6 +614,29 @@ export function buildPowerItems(d: Room): PowerResolutionItem[] {
       items.push({ kind: 'FIFTY_FIFTY', playerId, outcome: resultOf(playerId) });
     }
   }
+  // ADR-0023: what Cover, Pot and Duel did (the answers are public by now, so these are too).
+  const settlement = round.settlement;
+  if (settlement) {
+    for (const cover of settlement.covers) {
+      items.push({
+        kind: 'COVER',
+        playerId: cover.playerId,
+        outcome: resultOf(cover.playerId),
+        fee: cover.fee,
+        saved: cover.saved,
+      });
+    }
+    if (settlement.pot) {
+      items.push({
+        kind: 'POT',
+        playerIds: [...settlement.pot.playerIds],
+        winnerIds: [...settlement.pot.winnerIds],
+        size: settlement.pot.size,
+        refunded: settlement.pot.refunded,
+      });
+    }
+    for (const duel of settlement.duels) items.push({ kind: 'DUEL', ...duel });
+  }
   for (const record of round.sabotages) {
     items.push({
       kind: 'SABOTAGE',
@@ -370,5 +646,6 @@ export function buildPowerItems(d: Room): PowerResolutionItem[] {
       blocked: record.blocked,
     });
   }
+  for (const cut of settlement?.cuts ?? []) items.push({ kind: 'CUT', ...cut });
   return items;
 }

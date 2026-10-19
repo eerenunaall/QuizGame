@@ -6,13 +6,28 @@ import type {
   ScoreboardEntry,
   YouView,
 } from '@quizparty/protocol';
-import { doubleDownExcludedStakes, maxRoundsFor } from './config';
 import {
+  coverRules,
+  cutRules,
+  doubleDownExcludedStakes,
+  duelRules,
+  maxRoundsFor,
+  potRules,
+} from './config';
+import {
+  activeStakeCap,
   canSabotage,
+  coverLeft,
   doubleDownOffered,
+  duelChallengersOf,
+  duelAnswerOf,
+  duelsLeft,
   jokerLockedOut,
   nextTokenStreak,
+  pendingDuelInvites,
+  potsLeft,
   roundLadder,
+  sabotageKindsOffered,
   sabotageOpen,
   sabotagePicksOf,
 } from './powers';
@@ -135,12 +150,41 @@ export function prepCounts(state: RoomState): { committedCount: number; eligible
   const round = game?.round;
   if (!game || !round) return { committedCount: 0, eligibleCount: 0 };
   const entries = state.phase === 'SABOTAGE_PICK' ? sabotagePicksOf(round) : round.commitments;
+  // RISK_PICK: a player with a Duel challenge still to answer is not done yet (ADR-0023). It is one more
+  // tick that stays empty; nothing says why, or for whom.
   const committedCount = Object.keys(entries).filter(
-    (playerId) => state.players[playerId]?.status === 'ACTIVE' && !game.players[playerId]?.removed,
+    (playerId) =>
+      state.players[playerId]?.status === 'ACTIVE' &&
+      !game.players[playerId]?.removed &&
+      (state.phase === 'SABOTAGE_PICK' || pendingDuelInvites(state, playerId).length === 0),
   ).length;
   return {
     committedCount,
     eligibleCount: Math.max(prepEligibleIds(state).length, committedCount),
+  };
+}
+
+/** What RISK_PICK offers beyond stake and Double Down: config only, the same for everybody. */
+function risksOffered(state: RoomState) {
+  const cover = coverRules(state.config);
+  const duel = duelRules(state.config);
+  const pot = potRules(state.config);
+  return {
+    cover: cover.enabled,
+    duel: duel.enabled ? { win: duel.win, bothRight: duel.bothRight } : null,
+    pot: pot.enabled ? { ante: pot.ante, minPlayers: pot.minPlayers } : null,
+  };
+}
+
+/** The sabotage menu of this round's SABOTAGE_PICK, and Cut's numbers when it is on it (config only). */
+function sabotageMenu(state: RoomState) {
+  const offered = sabotageKindsOffered(state);
+  const cut = cutRules(state.config);
+  return {
+    offered,
+    ...(offered.includes('CUT')
+      ? { cutRule: { permille: cut.permille, maxPoints: cut.maxPoints } }
+      : {}),
   };
 }
 
@@ -174,11 +218,17 @@ export function phaseDataFor(state: RoomState): PhaseData {
         round: roundPublic(state),
         category: { id: deckQuestion.category.id, label: deckQuestion.category.label },
         difficulty: deckQuestion.difficulty,
-        riskLadder: ladder.rungs.map((rung) => ({ ...rung })),
+        riskLadder: ladder.rungs.map((rung) => ({
+          ...rung,
+          ...(coverRules(state.config).enabled
+            ? { coverFee: Math.floor((rung.loss * coverRules(state.config).feePermille) / 1000) }
+            : {}),
+        })),
         stakeMandatory: ladder.mandatory,
         doubleDownEnabled: doubleDownOffered(state.config),
         doubleDownExcludedStakes: [...doubleDownExcludedStakes(state.config)],
         sabotageEnabled: sabotageOpen(state.config, round!),
+        risks: risksOffered(state),
         ...prepCounts(state),
       };
     }
@@ -189,6 +239,7 @@ export function phaseDataFor(state: RoomState): PhaseData {
         round: roundPublic(state),
         category: { id: deckQuestion.category.id, label: deckQuestion.category.label },
         difficulty: deckQuestion.difficulty,
+        ...sabotageMenu(state),
         ...prepCounts(state),
       };
     }
@@ -292,6 +343,14 @@ export function phaseDataFor(state: RoomState): PhaseData {
   }
 }
 
+function duelInvitesView(state: RoomState, playerId: string) {
+  const invites = duelChallengersOf(state, playerId).map((challengerId) => ({
+    challengerId,
+    answer: duelAnswerOf(state, playerId, challengerId),
+  }));
+  return invites.length > 0 ? { duelInvites: invites } : {};
+}
+
 export function youView(state: RoomState, playerId: string): YouView | null {
   const player = state.players[playerId];
   if (!player || player.status !== 'ACTIVE') return null;
@@ -318,6 +377,13 @@ export function youView(state: RoomState, playerId: string): YouView | null {
                   jokerLockedOut(gamePlayer.powers, joker, round.index),
                 ) ?? null)
               : null,
+          // ADR-0023, own counts only; absent for a game stored before them.
+          ...(gamePlayer.powers.cover !== undefined ? { cover: coverLeft(gamePlayer.powers) } : {}),
+          ...(gamePlayer.powers.duels !== undefined ? { duel: duelsLeft(gamePlayer.powers) } : {}),
+          ...(gamePlayer.powers.pots !== undefined ? { pot: potsLeft(gamePlayer.powers) } : {}),
+          ...(round && roundIsLive && activeStakeCap(gamePlayer.powers, round.index)
+            ? { stakeCap: activeStakeCap(gamePlayer.powers, round.index) }
+            : {}),
         }
       : null;
   const commitment = roundIsLive ? (round.commitments[playerId] ?? null) : null;
@@ -353,8 +419,15 @@ export function youView(state: RoomState, playerId: string): YouView | null {
             sabotage: pick?.sabotage
               ? { targetId: pick.sabotage.targetId, effect: pick.sabotage.effect }
               : null,
+            ...(commitment?.cover ? { cover: true } : {}),
+            ...(commitment?.pot ? { pot: true } : {}),
+            ...(commitment?.duel ? { duel: { targetId: commitment.duel.targetId } } : {}),
           }
         : null,
+    // Challenges aimed at this player, private to them (never for the author of a Who Said It round).
+    ...(roundIsLive && exemptPlayerId(game ?? null) !== playerId
+      ? duelInvitesView(state, playerId)
+      : {}),
     sabotage:
       roundIsLive && (state.phase === 'SABOTAGE_PICK' || pick)
         ? { ready: canSabotage(state, playerId), decided: pick !== null }
@@ -371,6 +444,7 @@ export function youView(state: RoomState, playerId: string): YouView | null {
             order: effects.order ? [...effects.order] : null,
             fogOptionId: effects.fogOptionId,
             fogMs: effects.fogMs,
+            ...(effects.blindClock ? { blindClock: true } : {}),
           }
         : null,
     hits: effects && questionLive ? effects.hits.map((hit) => ({ ...hit })) : [],

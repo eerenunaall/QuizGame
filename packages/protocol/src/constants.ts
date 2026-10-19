@@ -54,8 +54,20 @@ export type RiskTier = (typeof RISK_TIERS)[number];
 export const JOKERS = ['FIFTY_FIFTY', 'DOUBLE_DOWN'] as const;
 export type Joker = (typeof JOKERS)[number];
 
-/** The sabotage subset (ADR-0010). NOISE is deliberately absent. */
-export const SABOTAGE_KINDS = ['JAM', 'SHUFFLE', 'FOG', 'LOCKOUT', 'POINT_TAX'] as const;
+/**
+ * The sabotage subset (ADR-0010). NOISE is deliberately absent. STAKE_CAP, CUT and BLIND_CLOCK were
+ * added by ADR-0023 (each can be switched off in the game config).
+ */
+export const SABOTAGE_KINDS = [
+  'JAM',
+  'SHUFFLE',
+  'FOG',
+  'LOCKOUT',
+  'POINT_TAX',
+  'STAKE_CAP',
+  'CUT',
+  'BLIND_CLOCK',
+] as const;
 export type SabotageKind = (typeof SABOTAGE_KINDS)[number];
 
 export const CLOSE_REASONS = [

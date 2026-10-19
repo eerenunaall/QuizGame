@@ -77,9 +77,9 @@ describe('RISK_PICK offers', () => {
     h.runUntil('RISK_PICK');
     const data = prepData(h);
     expect(data.riskLadder).toEqual([
-      { tier: 'SAFE', multiplier: 1, loss: 0 },
-      { tier: 'RISK', multiplier: 2, loss: 100 },
-      { tier: 'HIGH', multiplier: 3, loss: 200 },
+      { tier: 'SAFE', multiplier: 1, loss: 0, coverFee: 0 },
+      { tier: 'RISK', multiplier: 2, loss: 100, coverFee: 50 },
+      { tier: 'HIGH', multiplier: 3, loss: 200, coverFee: 100 },
     ]);
     expect(data.stakeMandatory).toBe(false);
     expect(data.doubleDownEnabled).toBe(true);
@@ -746,11 +746,15 @@ describe('sabotage effects', () => {
     const { h, ids } = bare();
     toSabotage(h, 2);
     sabotage(h, ids[0]!, ids[1]!, 'SHUFFLE');
-    const during = JSON.stringify([
-      youOf(h, ids[1]!),
-      h.view({ role: 'DISPLAY' }),
-      h.view({ role: 'PLAYER', playerId: ids[2]! }),
-    ]);
+    // `offered` is the menu of what may be picked (config, ADR-0023), not anybody's pick.
+    const during = JSON.stringify(
+      [
+        youOf(h, ids[1]!),
+        h.view({ role: 'DISPLAY' }),
+        h.view({ role: 'PLAYER', playerId: ids[2]! }),
+      ],
+      (key, value: unknown) => (key === 'offered' ? undefined : value),
+    );
     expect(during).not.toContain('SHUFFLE');
     h.runUntil('ANSWERING');
     // The attacker's id may appear in the roster, but never as a source of the hit.

@@ -60,6 +60,21 @@ export const CLIENT_PAYLOADS = {
   COMMIT_RISK: z.strictObject({
     stake: RiskTierSchema,
     doubleDown: z.boolean(),
+    /** Cover (ADR-0023): pay a fee now, a miss costs nothing. Absent = off. */
+    cover: z.boolean().optional(),
+    /** Pot (ADR-0023): ante into the question's pot. Absent = off. */
+    pot: z.boolean().optional(),
+    /** Duel (ADR-0023): challenge one rival, who may accept or decline in the same phase. */
+    duel: z.strictObject({ targetId: PlayerIdSchema }).nullable().optional(),
+  }),
+  /**
+   * RISK_PICK: the rival of a Duel challenge accepts or declines it (ADR-0023). Final per challenger;
+   * an unanswered challenge counts as declined when the phase ends. Refused unless that player really
+   * challenged you (`POWER_UNAVAILABLE`).
+   */
+  RESPOND_DUEL: z.strictObject({
+    challengerId: PlayerIdSchema,
+    accept: z.boolean(),
   }),
   /**
    * SABOTAGE_PICK: at most one sabotage, final once sent; `sabotage: null` confirms "no sabotage" so

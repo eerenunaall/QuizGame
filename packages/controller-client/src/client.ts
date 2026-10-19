@@ -711,6 +711,10 @@ export class GameClient {
   commitRisk(choice: ClientPayload<'COMMIT_RISK'>): Promise<void> {
     return this.request('COMMIT_RISK', choice);
   }
+  /** RISK_PICK: accept or decline a Duel challenge aimed at this player (ADR-0023). Final per challenger. */
+  respondDuel(reply: ClientPayload<'RESPOND_DUEL'>): Promise<void> {
+    return this.request('RESPOND_DUEL', reply);
+  }
   /** SABOTAGE_PICK: at most one sabotage, final; `{ sabotage: null }` confirms "none" so nobody waits. */
   commitSabotage(choice: ClientPayload<'COMMIT_SABOTAGE'>): Promise<void> {
     return this.request('COMMIT_SABOTAGE', choice);

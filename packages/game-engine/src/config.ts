@@ -31,6 +31,50 @@ export type Ladder = z.infer<typeof LadderSchema>;
 
 const ms = (min: number, max: number) => z.int().min(min).max(max);
 
+/** Cover (Örtü): a fee now, a miss costs nothing. Fee = `feePermille` of the stake's loss. */
+const CoverRulesSchema = z.strictObject({
+  enabled: z.boolean(),
+  perGame: z.int().min(0).max(5),
+  feePermille: z.int().min(0).max(1000),
+  /** Off by default: Cover would waive Double Down's extra loss too and make the stack nearly free. */
+  allowWithDoubleDown: z.boolean(),
+});
+/** Duel (Düello): opt-in on both sides; points move between the two players only (conserved). */
+const DuelRulesSchema = z.strictObject({
+  enabled: z.boolean(),
+  /** Challenges a player may send per game (a declined one is spent too). */
+  perGame: z.int().min(0).max(5),
+  /** Moved when exactly one side is right. */
+  win: z.int().min(0).max(1000),
+  /** Moved to the faster side when both are right. */
+  bothRight: z.int().min(0).max(1000),
+  /** Stakes that cannot go with a Duel ("one big gamble per question", ADR-0021/0023). */
+  excludedStakes: z.array(z.enum(RISK_TIERS)).max(4),
+  minPlayers: z.int().min(2).max(8),
+});
+/** Pot (Havuz): everyone who antes puts the same amount in; the right answers share it. */
+const PotRulesSchema = z.strictObject({
+  enabled: z.boolean(),
+  perGame: z.int().min(0).max(5),
+  ante: z.int().min(1).max(1000),
+  minPlayers: z.int().min(2).max(8),
+});
+/** Stake Cap (Bahis Sınırı): the target's highest stake next round is `maxTier`. */
+const StakeCapRulesSchema = z.strictObject({
+  enabled: z.boolean(),
+  maxTier: z.enum(RISK_TIERS),
+});
+/** Cut (Kesme): `permille` of the target's next gain, at most `maxPoints`, goes to the attacker. */
+const CutRulesSchema = z.strictObject({
+  enabled: z.boolean(),
+  permille: z.int().min(0).max(1000),
+  maxPoints: z.int().min(0).max(1000),
+  /** Lapses after this many rounds if no gain consumed it, like POINT_TAX. */
+  rounds: z.int().min(1).max(10),
+});
+/** Blind Clock (Kör Saat): the target's phone hides its countdown for the question. */
+const BlindClockRulesSchema = z.strictObject({ enabled: z.boolean() });
+
 export const GameConfigSchema = z.strictObject({
   version: z.int().positive(),
   maxPlayers: z.int().min(1).max(8),
@@ -123,6 +167,17 @@ export const GameConfigSchema = z.strictObject({
      * Optional for old snapshots; read it via `doubleDownExcludedStakes`.
      */
     doubleDownExcludedStakes: z.array(z.enum(RISK_TIERS)).max(4).optional(),
+    /**
+     * ADR-0023: each new risk and sabotage has its own switch (`enabled`) and numbers. All optional so
+     * snapshots stored before they existed still parse; read them via `coverRules`, `duelRules`,
+     * `potRules`, `stakeCapRules`, `cutRules` and `blindClockRules`, which fall back to the defaults.
+     */
+    cover: CoverRulesSchema.optional(),
+    duel: DuelRulesSchema.optional(),
+    pot: PotRulesSchema.optional(),
+    stakeCap: StakeCapRulesSchema.optional(),
+    cut: CutRulesSchema.optional(),
+    blindClock: BlindClockRulesSchema.optional(),
     sabotage: z.strictObject({
       enabled: z.boolean(),
       startTokens: z.int().min(0).max(3),
@@ -189,7 +244,7 @@ const STANDARD_LADDER: Ladder = {
 };
 
 export const DEFAULT_GAME_CONFIG: GameConfig = {
-  version: 2,
+  version: 3,
   maxPlayers: 8,
   minPlayersToStart: 2,
   defaultRounds: 10,
@@ -263,6 +318,19 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     doubleDownPerGame: 2,
     shieldPerGame: 1,
     doubleDownExcludedStakes: ['HIGH', 'ALL_IN'],
+    cover: { enabled: true, perGame: 1, feePermille: 500, allowWithDoubleDown: false },
+    duel: {
+      enabled: true,
+      perGame: 2,
+      win: 80,
+      bothRight: 40,
+      excludedStakes: ['HIGH', 'ALL_IN'],
+      minPlayers: 2,
+    },
+    pot: { enabled: true, perGame: 2, ante: 30, minPlayers: 3 },
+    stakeCap: { enabled: true, maxTier: 'RISK' },
+    cut: { enabled: true, permille: 200, maxPoints: 30, rounds: 3 },
+    blindClock: { enabled: true },
     sabotage: {
       enabled: true,
       startTokens: 1,
@@ -384,6 +452,23 @@ export function doubleDownExcludedStakes(config: GameConfig): readonly RiskTier[
     config.powers.doubleDownExcludedStakes ?? DEFAULT_GAME_CONFIG.powers.doubleDownExcludedStakes!
   );
 }
+
+type Rules<K extends 'cover' | 'duel' | 'pot' | 'stakeCap' | 'cut' | 'blindClock'> = NonNullable<
+  GameConfig['powers'][K]
+>;
+const rulesOf = <K extends 'cover' | 'duel' | 'pot' | 'stakeCap' | 'cut' | 'blindClock'>(
+  config: GameConfig,
+  key: K,
+): Rules<K> =>
+  ({ ...DEFAULT_GAME_CONFIG.powers[key], ...config.powers[key] }) as unknown as Rules<K>;
+
+/** Rules of the ADR-0023 risks and sabotages; old snapshots without them get the defaults (all on). */
+export const coverRules = (config: GameConfig) => rulesOf(config, 'cover');
+export const duelRules = (config: GameConfig) => rulesOf(config, 'duel');
+export const potRules = (config: GameConfig) => rulesOf(config, 'pot');
+export const stakeCapRules = (config: GameConfig) => rulesOf(config, 'stakeCap');
+export const cutRules = (config: GameConfig) => rulesOf(config, 'cut');
+export const blindClockRules = (config: GameConfig) => rulesOf(config, 'blindClock');
 
 /** How long every active player may be disconnected before the room closes (old snapshots fall back to the default). */
 export function allPlayersGoneMsFor(config: GameConfig): number {

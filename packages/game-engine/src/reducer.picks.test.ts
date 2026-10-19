@@ -245,13 +245,24 @@ describe('progress is counts only (ATTACK 27)', () => {
     sabotage(h, ids[2]!, ids[0]!);
     const data = display();
     expect(data).toMatchObject({ committedCount: 1, eligibleCount: 4 });
-    const wire = JSON.stringify([data, h.events('PREP_PROGRESS')]);
+    // `offered` is the sabotage menu (config, ADR-0023): the same list whoever picked what.
+    const wire = JSON.stringify([{ ...data, offered: undefined }, h.events('PREP_PROGRESS')]);
     expect(wire).not.toContain(ids[2]!);
     expect(wire).not.toContain('JAM');
     expect(wire).not.toContain('targetId');
     expect(Object.keys(data).sort()).toEqual(
-      ['category', 'committedCount', 'difficulty', 'eligibleCount', 'phase', 'round'].sort(),
+      [
+        'category',
+        'committedCount',
+        'cutRule',
+        'difficulty',
+        'eligibleCount',
+        'offered',
+        'phase',
+        'round',
+      ].sort(),
     );
+    expect(JSON.stringify(data)).toEqual(JSON.stringify(display()));
     // Other phones learn nothing either.
     expect(h.view({ role: 'PLAYER', playerId: ids[1]! }).you!.commitment).toBeNull();
     expect(JSON.stringify(h.view({ role: 'PLAYER', playerId: ids[1]! }))).not.toContain(

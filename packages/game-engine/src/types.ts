@@ -117,6 +117,20 @@ export interface PowerLedger {
   lockout: { joker: Joker; round: number } | null;
   /** A pending POINT_TAX, lapsing after `expiresAfterRound`. */
   pointTax: { expiresAfterRound: number } | null;
+  /**
+   * ADR-0023, all optional so a game stored before them loads unchanged (read through the helpers in
+   * `powers.ts`; a missing counter means the feature is not part of that game).
+   */
+  /** Cover / Duel challenge / Pot uses left this game. */
+  cover?: number;
+  duels?: number;
+  pots?: number;
+  /** Rivals this player has already fought a formed Duel with (never twice against the same one). */
+  duelRivals?: string[];
+  /** STAKE_CAP: the highest stake allowed in `round`. */
+  stakeCap?: { tier: RiskTier; round: number } | null;
+  /** A pending CUT: a share of this player's next gain goes to `by`, lapsing after `expiresAfterRound`. */
+  cut?: { by: string; expiresAfterRound: number } | null;
 }
 
 /** What a player decided in RISK_PICK. PRIVATE until POWER_RESOLUTION. */
@@ -124,6 +138,10 @@ export interface Commitment {
   stake: RiskTier;
   doubleDown: boolean;
   committedAt: EpochMs;
+  /** ADR-0023 extras, present only when chosen. */
+  cover?: boolean;
+  pot?: boolean;
+  duel?: { targetId: string };
 }
 
 /** What a player decided in SABOTAGE_PICK (`sabotage: null` = confirmed without one). PRIVATE until POWER_RESOLUTION. */
@@ -139,6 +157,8 @@ export interface TargetEffects {
   order: string[] | null;
   fogOptionId: string | null;
   fogMs: number;
+  /** BLIND_CLOCK: this phone hides its countdown. */
+  blindClock?: boolean;
   /** What landed on this player, without naming the attacker. */
   hits: { effect: SabotageKind; blocked: boolean }[];
 }
@@ -148,6 +168,20 @@ export interface SabotageRecord {
   targetId: string;
   effect: SabotageKind;
   blocked: boolean;
+}
+
+/** What the risks of ADR-0023 did when the round locked. Plain data: it is persisted with the room. */
+export interface Settlement {
+  covers: { playerId: string; fee: number; saved: number }[];
+  pot: { playerIds: string[]; winnerIds: string[]; size: number; refunded: boolean } | null;
+  duels: {
+    challengerId: string;
+    rivalId: string;
+    accepted: boolean;
+    winnerId: string | null;
+    points: number;
+  }[];
+  cuts: { actorId: string; targetId: string; points: number }[];
 }
 
 export interface RoundState {
@@ -178,6 +212,13 @@ export interface RoundState {
   /** The two options 50/50 leaves, chosen once per question and shared by everyone who uses it. */
   fiftyFifty: { keep: string[] } | null;
   fiftyFiftyUsers: Record<string, true>;
+  /**
+   * Rival replies to Duel challenges, `[rivalId][challengerId]`. PRIVATE until POWER_RESOLUTION.
+   * Optional so rounds stored before ADR-0023 load.
+   */
+  duelAnswers?: Record<string, Record<string, 'ACCEPTED' | 'DECLINED'>>;
+  /** Transfers settled when the round locked (Cover, Pot, Duel, Cut); public at POWER_RESOLUTION. */
+  settlement?: Settlement;
   /** What the POWER_RESOLUTION screen shows (built when the reveal ends). */
   powerItems: PowerResolutionItem[];
   /** PRIVATE until REVEAL (results) / SCORE_UPDATE (deltas). */
@@ -289,6 +330,7 @@ export type EngineCommandType =
   | 'SET_NICKNAME'
   | 'SUBMIT_ANSWER'
   | 'COMMIT_RISK'
+  | 'RESPOND_DUEL'
   | 'COMMIT_SABOTAGE'
   | 'USE_FIFTY_FIFTY'
   | 'SET_PREFERENCES'

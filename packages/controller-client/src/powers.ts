@@ -17,6 +17,10 @@ import type {
 export interface RiskChoice {
   stake: RiskTier;
   doubleDown: boolean;
+  /** ADR-0023 extras; absent = off. */
+  cover?: boolean;
+  pot?: boolean;
+  duel?: { targetId: string } | null;
 }
 
 /** What the phone sends for SABOTAGE_PICK: at most one sabotage; null confirms "none". Final once sent. */
@@ -30,7 +34,12 @@ export const SABOTAGE_ORDER: readonly SabotageKind[] = [
   'FOG',
   'LOCKOUT',
   'POINT_TAX',
+  'STAKE_CAP',
+  'CUT',
+  'BLIND_CLOCK',
 ];
+/** What older servers offer (before ADR-0023): the phone shows these when the server sends no list. */
+export const ORIGINAL_SABOTAGES: readonly SabotageKind[] = SABOTAGE_ORDER.slice(0, 5);
 export const JOKER_ORDER: readonly Joker[] = ['FIFTY_FIFTY', 'DOUBLE_DOWN'];
 
 type PrepData = PhaseDataOf<'RISK_PICK'>;
@@ -128,4 +137,117 @@ export function stakeSummary(rung: { multiplier: number; loss: number }): {
   loss: number;
 } {
   return { multiplier: rung.multiplier, loss: rung.loss };
+}
+
+// ───────────────────────── ADR-0023: Cover, Duel, Pot, Stake Cap, Cut, Blind Clock
+
+/** Why an extra cannot be chosen right now; the phone shows the matching one-line reason. */
+export type ExtraBlock =
+  'OFF' | 'NONE_LEFT' | 'NEEDS_STAKE' | 'BIG_GAMBLE' | 'POINTS' | 'ROOM_SIZE' | 'NO_RIVAL' | null;
+
+type Offer = NonNullable<PrepData['risks']>;
+type Choice = Pick<RiskChoice, 'stake' | 'doubleDown'>;
+
+const TIER_ORDER: readonly RiskTier[] = ['SAFE', 'RISK', 'HIGH', 'ALL_IN'];
+
+/** The highest stake the server lets this player take this round (STAKE_CAP), else null. */
+export function stakeCapOf(you: YouView | null): RiskTier | null {
+  return you?.powers?.stakeCap ?? null;
+}
+
+/** Whether a rung is out of reach for this player because of a STAKE_CAP. */
+export function stakeCapped(you: YouView | null, tier: RiskTier): boolean {
+  const cap = stakeCapOf(you);
+  return cap !== null && TIER_ORDER.indexOf(tier) > TIER_ORDER.indexOf(cap);
+}
+
+/** Cover: needs a rung with something to lose, a use left, and (by default) no Double Down. */
+export function coverBlock(data: PrepData, you: YouView | null, choice: Choice): ExtraBlock {
+  if (!data.risks?.cover) return 'OFF';
+  if ((you?.powers?.cover ?? 0) <= 0) return 'NONE_LEFT';
+  const rung = data.riskLadder.find((entry) => entry.tier === choice.stake);
+  if (!rung || rung.loss <= 0) return 'NEEDS_STAKE';
+  if (choice.doubleDown) return 'BIG_GAMBLE';
+  return null;
+}
+
+/** The fee Cover would cost at the chosen rung (0 when it is not on offer there). */
+export function coverFee(data: PrepData, choice: Choice): number {
+  return data.riskLadder.find((entry) => entry.tier === choice.stake)?.coverFee ?? 0;
+}
+
+/** Pot: a use left, the ante in hand and a room big enough (`playerCount` = players in the game). */
+export function potBlock(
+  data: PrepData,
+  you: YouView | null,
+  score: number,
+  playerCount: number,
+): ExtraBlock {
+  const offer: Offer['pot'] | undefined = data.risks?.pot;
+  if (!offer) return 'OFF';
+  if ((you?.powers?.pot ?? 0) <= 0) return 'NONE_LEFT';
+  if (playerCount < offer.minPlayers) return 'ROOM_SIZE';
+  if (score < offer.ante) return 'POINTS';
+  return null;
+}
+
+/** Duel: a use left, a rival online, and no other big gamble (HIGH, ALL_IN or Double Down). */
+export function duelBlock(
+  data: PrepData,
+  you: YouView | null,
+  choice: Choice,
+  rivals: number,
+  playerCount: number,
+): ExtraBlock {
+  if (!data.risks?.duel) return 'OFF';
+  if ((you?.powers?.duel ?? 0) <= 0) return 'NONE_LEFT';
+  if (playerCount < 2) return 'ROOM_SIZE';
+  if (rivals <= 0) return 'NO_RIVAL';
+  if (choice.doubleDown || bigStake(data, choice.stake)) return 'BIG_GAMBLE';
+  return null;
+}
+
+/** HIGH and ALL_IN are the big stakes: the same ones that cannot go with Double Down. */
+export function bigStake(data: PrepData, stake: RiskTier): boolean {
+  return (data.doubleDownExcludedStakes ?? ['HIGH', 'ALL_IN']).includes(stake);
+}
+
+/** Players this player may challenge: everyone else who is online. */
+export function duelRivals(players: readonly PublicPlayer[], myId: string): PublicPlayer[] {
+  return players.filter((player) => player.playerId !== myId && player.connection === 'CONNECTED');
+}
+
+/** Duel invites this player still has to answer. */
+export function openInvites(you: YouView | null): { challengerId: string }[] {
+  return (you?.duelInvites ?? []).filter((invite) => invite.answer === null);
+}
+
+/** Whether accepting is allowed given what the player has chosen (they may already hold a stake). */
+export function acceptBlock(
+  data: PrepData,
+  you: YouView | null,
+  committed: { stake: RiskTier; doubleDown: boolean; duel?: unknown } | null,
+): ExtraBlock {
+  if (!data.risks?.duel) return 'OFF';
+  if ((you?.duelInvites ?? []).some((invite) => invite.answer === 'ACCEPTED')) return 'NONE_LEFT';
+  if (committed && (committed.duel || committed.doubleDown || bigStake(data, committed.stake)))
+    return 'BIG_GAMBLE';
+  return null;
+}
+
+/** The sabotages on the menu this round (older servers send none: the five original ones). */
+export function sabotageKinds(data: PhaseDataOf<'SABOTAGE_PICK'> | null): readonly SabotageKind[] {
+  return data?.offered ?? ORIGINAL_SABOTAGES;
+}
+
+/** Why CUT cannot aim at `targetId`: they lead the table, or have no points to take from. */
+export function cutBlock(
+  scoreboard: readonly { playerId: string; score: number; rank: number }[],
+  targetId: string,
+): 'LEADER' | 'NO_POINTS' | null {
+  const entry = scoreboard.find((row) => row.playerId === targetId);
+  if (!entry) return null;
+  if (entry.rank === 1) return 'LEADER';
+  if (entry.score <= 0) return 'NO_POINTS';
+  return null;
 }

@@ -10,9 +10,11 @@ import {
 } from '@quizparty/protocol';
 import {
   allPlayersGoneMsFor,
+  duelRules,
   finalStageLength,
   ladderKindFor,
   maxRoundsFor,
+  potRules,
   presetOffset,
   resolveGameConfig,
   riskPickDecisionMsFor,
@@ -25,9 +27,11 @@ import { LEVEL_MAX, LEVEL_MIN, chooseRoundKind, direct } from './director';
 import {
   buildPowerItems,
   canSabotage,
+  checkDuelReply,
   checkRisk,
   checkSabotage,
   chooseFiftyFifty,
+  duelAnswerOf,
   earnToken,
   jamFor,
   jokerLockedOut,
@@ -39,6 +43,7 @@ import {
   sabotagePicksOf,
 } from './powers';
 import { rankPlayers } from './rank';
+import { resolveDuel, settlePot, type PotEntry } from './risks';
 import { computeScore } from './scoring';
 import { allPlayersGoneSince, isInGamePhase, leaderHandoverPossible } from './timers';
 import { exemptPlayerId, tickFor } from './who-said-it';
@@ -57,6 +62,7 @@ import type {
   RoomState,
   ResultsRecord,
   RoundOutcome,
+  Settlement,
   UpcomingRound,
 } from './types';
 import {
@@ -523,6 +529,9 @@ function onCommand(
     case 'COMMIT_RISK':
       if (!playerId) return reject(ctx, 'FORBIDDEN');
       return commitRisk(d, ctx, at, playerId, command.payload);
+    case 'RESPOND_DUEL':
+      if (!playerId) return reject(ctx, 'FORBIDDEN');
+      return respondDuel(d, ctx, at, playerId, command.payload);
     case 'COMMIT_SABOTAGE':
       if (!playerId) return reject(ctx, 'FORBIDDEN');
       return commitSabotage(d, ctx, at, playerId, command.payload);
@@ -788,9 +797,36 @@ function commitRisk(
     stake: payload.stake,
     doubleDown: payload.doubleDown,
     committedAt: at,
+    ...(payload.cover ? { cover: true } : {}),
+    ...(payload.pot ? { pot: true } : {}),
+    ...(payload.duel ? { duel: { targetId: payload.duel.targetId } } : {}),
   };
-  // Spent on commitment, even if the answer turns out wrong (ADR-0007).
+  // Spent on commitment, even if the answer turns out wrong (ADR-0007). Cover and a Duel challenge are
+  // spent too; a Pot that does not run gives its use back at the lock (ADR-0023).
   if (payload.doubleDown) me.powers.doubleDown -= 1;
+  if (payload.cover) me.powers.cover = (me.powers.cover ?? 0) - 1;
+  if (payload.pot) me.powers.pots = (me.powers.pots ?? 0) - 1;
+  if (payload.duel) me.powers.duels = (me.powers.duels ?? 0) - 1;
+  touch(d, at);
+  emitPlayerState(d, ctx, playerId);
+  // The challenged rival's phone shows the invite; nobody else hears of it.
+  if (payload.duel) emitPlayerState(d, ctx, payload.duel.targetId);
+  emit(ctx, { to: 'ALL' }, { type: 'PREP_PROGRESS', payload: prepCounts(d) });
+  if (pickPhaseComplete(d)) advancePhase(d, ctx, at);
+}
+
+function respondDuel(
+  d: Room,
+  ctx: Ctx,
+  at: number,
+  playerId: string,
+  payload: Extract<EngineCommand, { type: 'RESPOND_DUEL' }>['payload'],
+): void {
+  const refused = checkDuelReply(d, playerId, payload);
+  if (refused) return reject(ctx, refused);
+  const round = d.game!.round!;
+  const mine = ((round.duelAnswers ??= {})[playerId] ??= {});
+  mine[payload.challengerId] = payload.accept ? 'ACCEPTED' : 'DECLINED';
   touch(d, at);
   emitPlayerState(d, ctx, playerId);
   emit(ctx, { to: 'ALL' }, { type: 'PREP_PROGRESS', payload: prepCounts(d) });
@@ -1013,14 +1049,51 @@ function lockRound(d: Room, _ctx: Ctx, at: number): void {
   for (const option of question.options) outcome.distribution[option.optionId] = 0;
 
   const exempt = exemptPlayerId(game);
-  for (const [playerId, gamePlayer] of Object.entries(game.players)) {
-    // The author of a Who Said It statement has no outcome at all: no points, no streak reset, no stake lost.
-    if (gamePlayer.removed || playerId === exempt) continue;
-    const player = d.players[playerId];
-    if (!player || player.status !== 'ACTIVE') continue;
+  // The author of a Who Said It statement has no outcome at all: no points, no streak reset, no stake lost.
+  const seatedIds = Object.entries(game.players)
+    .filter(([playerId, gp]) => {
+      if (gp.removed || playerId === exempt) return false;
+      return d.players[playerId]?.status === 'ACTIVE';
+    })
+    .map(([playerId]) => playerId);
+  const online = (playerId: string): boolean => d.players[playerId]!.connection === 'CONNECTED';
+  const isRight = (playerId: string): boolean =>
+    round.answers[playerId]?.optionId === question.correctOptionId;
+  const settlement: Settlement = { covers: [], pot: null, duels: [], cuts: [] };
+
+  // Pot (ADR-0023): the antes are taken first, so a lost stake can never leave the ante unpaid. Whoever
+  // anted and is still here (answered, or online) is in; the pot runs with enough of them.
+  const pot = potRules(d.config);
+  const anted = seatedIds.filter((id) => round.commitments[id]?.pot === true);
+  const inPot = anted.filter((id) => round.answers[id] !== undefined || online(id));
+  const potRuns = inPot.length >= pot.minPlayers;
+  const joinIndexOf = (playerId: string): number =>
+    d.players[playerId]?.joinIndex ?? Number.MAX_SAFE_INTEGER;
+  const potEntries: PotEntry[] = inPot.map((id) => ({
+    playerId: id,
+    correct: isRight(id),
+    offsetMs: round.answers[id]?.offsetMs ?? Number.MAX_SAFE_INTEGER,
+    joinIndex: joinIndexOf(id),
+  }));
+  const potResult = potRuns ? settlePot(potEntries, pot.ante) : null;
+  const anteHeld = new Set(potRuns && !potResult!.refunded ? inPot : []);
+
+  const cutCredits: { actorId: string; targetId: string; points: number }[] = [];
+  for (const playerId of seatedIds) {
+    const gamePlayer = game.players[playerId]!;
+    const player = d.players[playerId]!;
     const answer = round.answers[playerId];
     const commitment = round.commitments[playerId];
     const tax = gamePlayer.powers.pointTax;
+    // CUT (ADR-0023): paid to an attacker who is still in the game and plays this question; one who
+    // sits it out (Who Said It author) is paid on a later gain, one who left lets it lapse.
+    const cut = gamePlayer.powers.cut ?? null;
+    if (cut && (game.players[cut.by]?.removed ?? true)) gamePlayer.powers.cut = null;
+    const cutPending =
+      cut !== null &&
+      gamePlayer.powers.cut !== null &&
+      round.index <= cut.expiresAfterRound &&
+      seatedIds.includes(cut.by);
     const score = computeScore(
       {
         roundKind: round.kind,
@@ -1033,12 +1106,27 @@ function lockRound(d: Room, _ctx: Ctx, at: number): void {
         doubleDown: commitment?.doubleDown ?? false,
         fiftyFifty: round.fiftyFiftyUsers[playerId] === true,
         pointTaxPending: tax !== null && round.index <= tax.expiresAfterRound,
+        cover: commitment?.cover === true,
+        cutPending,
         connectedAtLock: player.connection === 'CONNECTED',
-        currentScore: gamePlayer.score,
+        currentScore: gamePlayer.score - (anteHeld.has(playerId) ? pot.ante : 0),
       },
       d.config,
     );
     if (score.consumedPointTax) gamePlayer.powers.pointTax = null;
+    if (score.consumedCut && cut) {
+      gamePlayer.powers.cut = null;
+      if (score.cutAmount > 0) {
+        cutCredits.push({ actorId: cut.by, targetId: playerId, points: score.cutAmount });
+      }
+    }
+    if (score.coverFee > 0) {
+      settlement.covers.push({
+        playerId,
+        fee: score.coverFee,
+        saved: score.coverSaved,
+      });
+    }
     outcome.players[playerId] = {
       result: score.outcome,
       delta: score.delta,
@@ -1052,6 +1140,111 @@ function lockRound(d: Room, _ctx: Ctx, at: number): void {
     if (answer)
       outcome.distribution[answer.optionId] = (outcome.distribution[answer.optionId] ?? 0) + 1;
   }
+
+  // Settlements below only move points between players: totals never change (ADR-0023).
+  const credit = (playerId: string, kind: 'POT' | 'DUEL' | 'CUT', points: number): void => {
+    const entry = outcome.players[playerId];
+    if (!entry || points === 0) return;
+    entry.delta += points;
+    entry.components.push({ kind, points });
+  };
+
+  for (const cutPaid of cutCredits) {
+    credit(cutPaid.actorId, 'CUT', cutPaid.points);
+    settlement.cuts.push(cutPaid);
+  }
+
+  if (potResult) {
+    settlement.pot = {
+      playerIds: [...inPot],
+      winnerIds: [...potResult.winnerIds],
+      size: potResult.size,
+      refunded: potResult.refunded,
+    };
+    if (!potResult.refunded) {
+      for (const playerId of inPot)
+        credit(playerId, 'POT', potResult.payouts[playerId]! - pot.ante);
+    }
+  } else if (anted.length > 0) {
+    settlement.pot = {
+      playerIds: [...anted],
+      winnerIds: [],
+      size: pot.ante * anted.length,
+      refunded: true,
+    };
+  }
+  // A pot that did not run (too few, or nobody right) costs nobody a use; one that ran keeps the use spent.
+  for (const playerId of anted) {
+    if (!anteHeld.has(playerId)) {
+      game.players[playerId]!.powers.pots = (game.players[playerId]!.powers.pots ?? 0) + 1;
+    }
+  }
+
+  // Duels, in the order they were challenged. A pair that never formed (declined, ignored, rival gone
+  // or the author of a Who Said It statement) only gets a line on the screen.
+  const running = (playerId: string): number =>
+    game.players[playerId]!.score + (outcome.players[playerId]?.delta ?? 0);
+  const challengers = d.playerOrder
+    .filter((id) => round.commitments[id]?.duel !== undefined)
+    .sort(
+      (a, b) =>
+        round.commitments[a]!.committedAt - round.commitments[b]!.committedAt ||
+        joinIndexOf(a) - joinIndexOf(b),
+    );
+  const settled = new Set<string>();
+  for (const challengerId of challengers) {
+    const rivalId = round.commitments[challengerId]!.duel!.targetId;
+    const pair = [challengerId, rivalId].sort().join('|');
+    const mutual = round.commitments[rivalId]?.duel?.targetId === challengerId;
+    if (mutual && settled.has(pair)) continue;
+    settled.add(pair);
+    const formed =
+      duelAnswerOf(d, rivalId, challengerId) === 'ACCEPTED' &&
+      outcome.players[challengerId] !== undefined &&
+      outcome.players[rivalId] !== undefined;
+    if (!formed) {
+      settlement.duels.push({ challengerId, rivalId, accepted: false, winnerId: null, points: 0 });
+      continue;
+    }
+    for (const [mine, other] of [
+      [challengerId, rivalId],
+      [rivalId, challengerId],
+    ] as const) {
+      const ledger = game.players[mine]!.powers;
+      ledger.duelRivals = [...(ledger.duelRivals ?? []), other];
+    }
+    const rules = duelRules(d.config);
+    const result = resolveDuel(
+      {
+        playerId: challengerId,
+        correct: isRight(challengerId),
+        offsetMs: round.answers[challengerId]?.offsetMs ?? null,
+      },
+      {
+        playerId: rivalId,
+        correct: isRight(rivalId),
+        offsetMs: round.answers[rivalId]?.offsetMs ?? null,
+      },
+      rules,
+    );
+    const loserId = result.winnerId === challengerId ? rivalId : challengerId;
+    // The loser can only give what they have: nobody goes below zero.
+    const moved =
+      result.winnerId === null ? 0 : Math.min(result.points, Math.max(0, running(loserId)));
+    if (result.winnerId !== null && moved > 0) {
+      credit(result.winnerId, 'DUEL', moved);
+      credit(loserId, 'DUEL', -moved);
+    }
+    settlement.duels.push({
+      challengerId,
+      rivalId,
+      accepted: true,
+      winnerId: moved > 0 ? result.winnerId : null,
+      points: moved,
+    });
+  }
+
+  round.settlement = settlement;
   round.outcome = outcome;
   enterPhase(d, 'LOCKED', at, d.config.timings.lockedMs);
 }
@@ -1097,6 +1290,13 @@ function onTick(d: Room, ctx: Ctx, at: number): void {
     advancePhase(d, ctx, at);
   } else if (d.phase === 'ANSWERING') {
     maybeEarlyLock(d, ctx, at);
+  } else if (
+    (d.phase === 'RISK_PICK' || d.phase === 'SABOTAGE_PICK') &&
+    prepEligibleIds(d).length > 0 &&
+    pickPhaseComplete(d)
+  ) {
+    // Somebody the table was waiting for dropped: nobody left to wait for.
+    advancePhase(d, ctx, at);
   }
 }
 
@@ -1263,6 +1463,7 @@ function startRound(d: Room, ctx: Ctx, at: number, plan: UpcomingRound): void {
     effects: {},
     fiftyFifty: null,
     fiftyFiftyUsers: {},
+    duelAnswers: {},
     powerItems: [],
     outcome: null,
     scoreUpdate: null,
@@ -1355,6 +1556,9 @@ function enterScoreUpdate(d: Room, ctx: Ctx, at: number): void {
     if (gp.powers.pointTax && round.index >= gp.powers.pointTax.expiresAfterRound)
       gp.powers.pointTax = null;
     if (gp.powers.lockout && gp.powers.lockout.round <= round.index) gp.powers.lockout = null;
+    // ADR-0023: STAKE_CAP held for the round it was aimed at; an unspent CUT lapses like the tax.
+    if (gp.powers.stakeCap && gp.powers.stakeCap.round <= round.index) gp.powers.stakeCap = null;
+    if (gp.powers.cut && round.index >= gp.powers.cut.expiresAfterRound) gp.powers.cut = null;
   }
   const after = rankOf();
   for (const [playerId, rank] of after) game.players[playerId]!.rankHistory.push(rank);

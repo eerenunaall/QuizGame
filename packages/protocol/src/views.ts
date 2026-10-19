@@ -99,6 +99,11 @@ export const ScoreComponentSchema = z.strictObject({
     'CAP',
     'PENALTY',
     'FLOOR',
+    /** ADR-0023: the Cover fee, the net of a Pot, a Duel transfer and a Cut (paid or received). */
+    'COVER_FEE',
+    'POT',
+    'DUEL',
+    'CUT',
   ]),
   points: z.int(),
 });
@@ -110,6 +115,8 @@ export const LadderRungSchema = z.strictObject({
   multiplier: z.int().positive(),
   /** Points lost on a wrong (or missing) answer at this tier. */
   loss: z.int().nonnegative(),
+  /** What Cover costs at this tier, when it is on offer (ADR-0023); absent from older servers. */
+  coverFee: z.int().nonnegative().optional(),
 });
 export type LadderRung = z.infer<typeof LadderRungSchema>;
 
@@ -141,10 +148,55 @@ export const PowerResolutionItemSchema = z.discriminatedUnion('kind', [
     effect: SabotageKindSchema,
     blocked: z.boolean(),
   }),
+  /** ADR-0023: Cover paid its fee (`saved` = the loss it waived, 0 when the answer was right). */
+  z.strictObject({
+    kind: z.literal('COVER'),
+    playerId: PlayerIdSchema,
+    outcome: OutcomeSchema,
+    fee: z.int().nonnegative(),
+    saved: z.int().nonnegative(),
+  }),
+  /** ADR-0023: the pot of the question. `refunded` = it did not run (too few players or nobody right). */
+  z.strictObject({
+    kind: z.literal('POT'),
+    playerIds: z.array(PlayerIdSchema).max(8),
+    winnerIds: z.array(PlayerIdSchema).max(8),
+    size: z.int().nonnegative(),
+    refunded: z.boolean(),
+  }),
+  /** ADR-0023: a Duel that was challenged. `accepted: false` = declined or never answered. */
+  z.strictObject({
+    kind: z.literal('DUEL'),
+    challengerId: PlayerIdSchema,
+    rivalId: PlayerIdSchema,
+    accepted: z.boolean(),
+    winnerId: PlayerIdSchema.nullable(),
+    points: z.int().nonnegative(),
+  }),
+  /** ADR-0023: a Cut paid out (the target's gain went to the attacker). */
+  z.strictObject({
+    kind: z.literal('CUT'),
+    actorId: PlayerIdSchema,
+    targetId: PlayerIdSchema,
+    points: z.int().nonnegative(),
+  }),
 ]);
 export type PowerResolutionItem = z.infer<typeof PowerResolutionItemSchema>;
 
 const round = RoundPublicSchema;
+
+/**
+ * The extra choices RISK_PICK offers beyond stake and Double Down (ADR-0023). Config-derived and the
+ * same for everybody, so it is public; `null`/`false` = switched off for this venue or round.
+ */
+export const RisksOfferedSchema = z.strictObject({
+  cover: z.boolean(),
+  /** Duel: points moved when only one side is right / when both are right and one is faster. */
+  duel: z.strictObject({ win: z.int().nonnegative(), bothRight: z.int().nonnegative() }).nullable(),
+  /** Pot: the ante, and how many players must be in the room for it to run. */
+  pot: z.strictObject({ ante: z.int().positive(), minPlayers: z.int().positive() }).nullable(),
+});
+export type RisksOffered = z.infer<typeof RisksOfferedSchema>;
 const answeredIds = z.array(PlayerIdSchema).max(8);
 
 export const PhaseDataSchema = z.discriminatedUnion('phase', [
@@ -169,6 +221,8 @@ export const PhaseDataSchema = z.discriminatedUnion('phase', [
     /** Stakes that cannot be combined with Double Down; absent from older servers (ADR-0021). */
     doubleDownExcludedStakes: z.array(RiskTierSchema).max(4).optional(),
     sabotageEnabled: z.boolean(),
+    /** What else RISK_PICK offers (ADR-0023); absent from older servers = nothing else. */
+    risks: RisksOfferedSchema.optional(),
     /** Players who have made their choices / players who are expected to. */
     committedCount: z.int().nonnegative(),
     eligibleCount: z.int().nonnegative(),
@@ -185,6 +239,8 @@ export const PhaseDataSchema = z.discriminatedUnion('phase', [
     /** Stakes that cannot be combined with Double Down; absent from older servers (ADR-0021). */
     doubleDownExcludedStakes: z.array(RiskTierSchema).max(4).optional(),
     sabotageEnabled: z.boolean(),
+    /** What else RISK_PICK offers (ADR-0023); absent from older servers = nothing else. */
+    risks: RisksOfferedSchema.optional(),
     /** Players who have made their choices / players who are expected to. */
     committedCount: z.int().nonnegative(),
     eligibleCount: z.int().nonnegative(),
@@ -194,6 +250,15 @@ export const PhaseDataSchema = z.discriminatedUnion('phase', [
     round,
     category: CategoryRefSchema,
     difficulty: DifficultySchema,
+    /**
+     * The menu: sabotages switched on and legal this round, in display order (config, the same for
+     * everybody; ADR-0023). Absent from older servers = the five original ones. Never anybody's pick.
+     */
+    offered: z.array(SabotageKindSchema).max(12).optional(),
+    /** Cut's share and ceiling, present when Cut is on the menu (for its one-line rule). */
+    cutRule: z
+      .strictObject({ permille: z.int().nonnegative(), maxPoints: z.int().nonnegative() })
+      .optional(),
     /**
      * Players who confirmed / players at the table. Counts only, never who (ATTACK 27): the number of
      * players who could sabotage is not disclosed either, so this is out of everybody online.
@@ -312,6 +377,12 @@ export const PowersViewSchema = z.strictObject({
   nextTokenAtStreak: z.int().positive().nullable(),
   /** Joker that a lockout blocks this round, else null. */
   lockedJoker: JokerSchema.nullable(),
+  /** ADR-0023: Cover / Duel / Pot uses left this game; absent from older servers. */
+  cover: z.int().nonnegative().optional(),
+  duel: z.int().nonnegative().optional(),
+  pot: z.int().nonnegative().optional(),
+  /** ADR-0023: STAKE_CAP on this player this round: the highest stake they may take; else null/absent. */
+  stakeCap: RiskTierSchema.nullable().optional(),
 });
 export type PowersView = z.infer<typeof PowersViewSchema>;
 
@@ -320,6 +391,10 @@ export const CommitmentViewSchema = z.strictObject({
   stake: RiskTierSchema,
   doubleDown: z.boolean(),
   sabotage: z.strictObject({ targetId: PlayerIdSchema, effect: SabotageKindSchema }).nullable(),
+  /** ADR-0023 extras; present only when chosen. */
+  cover: z.boolean().optional(),
+  pot: z.boolean().optional(),
+  duel: z.strictObject({ targetId: PlayerIdSchema }).optional(),
 });
 export type CommitmentView = z.infer<typeof CommitmentViewSchema>;
 
@@ -336,6 +411,8 @@ export const EffectsViewSchema = z.strictObject({
   /** Option that stays hidden for the first `fogMs` of the window (FOG), else null. */
   fogOptionId: OptionIdSchema.nullable(),
   fogMs: z.int().nonnegative(),
+  /** BLIND_CLOCK (ADR-0023): hide this phone's countdown for the question (the TV's clock stays). */
+  blindClock: z.boolean().optional(),
 });
 export type EffectsView = z.infer<typeof EffectsViewSchema>;
 
@@ -358,6 +435,19 @@ export const YouViewSchema = z.strictObject({
    * whether they already confirmed. Private to this player; absent from older servers.
    */
   sabotage: z.strictObject({ ready: z.boolean(), decided: z.boolean() }).optional(),
+  /**
+   * Duel challenges aimed at this player this round (ADR-0023), private to them. `answer` is their own
+   * reply (null = not yet). Absent when nobody challenged them.
+   */
+  duelInvites: z
+    .array(
+      z.strictObject({
+        challengerId: PlayerIdSchema,
+        answer: z.enum(['ACCEPTED', 'DECLINED']).nullable(),
+      }),
+    )
+    .max(8)
+    .optional(),
   /** The two options that remain after this player used 50/50 on the current question. */
   fiftyFifty: z.strictObject({ keep: z.array(OptionIdSchema).max(8) }).nullable(),
   effects: EffectsViewSchema.nullable(),

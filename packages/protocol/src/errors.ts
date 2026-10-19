@@ -37,6 +37,10 @@ export const ERROR_CODES = {
   POWER_LOCKED_OUT: { retryable: false },
   /** Double Down cannot be combined with the top stake tiers ("one big gamble per question"). */
   DOUBLE_DOWN_STAKE_CONFLICT: { retryable: false },
+  /** Duel (or another big gamble) cannot go with the stake or joker already chosen: one big gamble per question (ADR-0023). */
+  BIG_GAMBLE_CONFLICT: { retryable: false },
+  /** A Duel limit: none left this game, this rival was already met, or you already hold a duel this question. */
+  DUEL_LIMIT: { retryable: false },
   STAKE_INVALID: { retryable: false },
   TARGET_INVALID: { retryable: false },
   /** Sabotage cooldown, per-round, per-target or per-game cap reached. */
