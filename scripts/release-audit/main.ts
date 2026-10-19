@@ -236,6 +236,8 @@ const SHOULD_BE_OFF = [
   'ai.decoys',
   'auth.apple',
   'auth.google',
+  // venue mode (ADR-0024, migration 0009): off until an owner sets up a venue
+  'venue.sessions',
 ];
 const SHOULD_BE_ON = ['auth.email_login', 'content.current_events', 'report.questions'];
 const NEVER_PUBLIC = ['ai.decoys', 'sabotage.noise'];
