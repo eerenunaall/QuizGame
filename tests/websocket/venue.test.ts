@@ -3,8 +3,11 @@ import type { ServerMessage } from '@quizparty/protocol';
 import { TestClient } from '../helpers/client';
 import { correctOptionId, wrongOptionId } from '../helpers/oracle';
 import { closeParty, createParty, type Party } from '../helpers/party';
-import { FAST_GAME_CONFIG, startServer, type TestServer } from '../helpers/server';
+import { createTestDatabase } from '@quizparty/db/testing';
+import { seedTestBank } from '../helpers/bank';
+import { FAST_GAME_CONFIG, createRoom, startServer, type TestServer } from '../helpers/server';
 import { makeVenue, setVenueFlag, staffApi, type VenueFixture } from '../helpers/venue';
+import { waitUntil } from '../helpers/wait';
 
 /**
  * Venue mode over real sockets (ADR-0024): the TV hears every change of its table live, time-up lets
@@ -224,6 +227,41 @@ describe('rewards', () => {
       stop();
       await api().end(opened.body.id);
       await closeParty(party);
+    }
+  });
+});
+
+describe('restart', () => {
+  it('brings an open table back after a crash: the room keeps its meter and time-up still fires', async () => {
+    const database = await createTestDatabase();
+    await seedTestBank(database.db);
+    const env = { VENUE_MINUTE_MS: '1500' };
+    const a = await startServer({ database, gameConfig: SLOW_ANSWER, env });
+    await setVenueFlag(a, true);
+    const fixture = await makeVenue(a);
+    const created = await createRoom(a);
+    const opened = await staffApi(a, fixture.staff, fixture.venueId).open({
+      minutes: 2,
+      roomCode: created.code,
+    });
+    expect(opened.status).toBe(201);
+    await a.built.crash();
+
+    const b = await startServer({ database, gameConfig: SLOW_ANSWER, env });
+    try {
+      const room = b.built.manager.getByCode(created.code)!;
+      expect(room.venueMeter()).toMatchObject({ state: 'RUNNING' });
+      // the server's timer was armed again: the room drops back to FREE when the time is up
+      await waitUntil(() => room.tier() === 'FREE', 6000, 'time-up after restart');
+      const tables = await staffApi(b, fixture.staff, fixture.venueId).sessions();
+      expect(tables.body.items[0]).toMatchObject({
+        id: opened.body.id,
+        timeUp: true,
+        roomLive: true,
+      });
+    } finally {
+      await b.stop();
+      await database.drop();
     }
   });
 });
