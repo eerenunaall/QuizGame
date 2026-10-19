@@ -1,6 +1,7 @@
 import { X509Certificate, createHmac } from 'node:crypto';
 import { hostname } from 'node:os';
 import { z } from 'zod';
+import type { RetentionPolicy } from './moderation/retention';
 
 const DEV_SECRET = 'dev-only-change-me-dev-only-change-me';
 const DEV_DATABASE_URL = 'postgres://quizparty:quizparty@127.0.0.1:5432/quizparty_dev';
@@ -51,6 +52,12 @@ const EnvSchema = z.object({
   RATE_LIMIT_SCALE: z.coerce.number().min(0.1).max(1000).default(1),
   /** 0 switches the background maintenance pass off (tests run it by hand). */
   MAINTENANCE_INTERVAL_MS: int(15 * 60_000, 0),
+  /** Retention periods (ADR-0018, docs/PRIVACY.md §3); the maintenance timer enforces them. */
+  RETENTION_OTP_HOURS: int(24, 1, 24 * 365),
+  RETENTION_ACCOUNT_SESSION_DAYS: int(7, 1, 3650),
+  RETENTION_SECURITY_EVENT_DAYS: int(180, 1, 3650),
+  RETENTION_TELEMETRY_DAYS: int(180, 1, 3650),
+  RETENTION_CLOSED_ROOM_DAYS: int(30, 1, 3650),
   /** Addresses that become ADMIN on their first sign-in (how the first administrator exists). */
   ADMIN_BOOTSTRAP_EMAILS: csv,
   /** Where sign-in mail goes: any service that takes a JSON POST `{to, subject, text}`. */
@@ -221,6 +228,7 @@ export interface AppConfig {
   /** Multiplies every rate-limit bucket; must stay 1 in production (tests/dev only). */
   rateLimitScale: number;
   maintenanceIntervalMs: number;
+  retention: RetentionPolicy;
   adminBootstrapEmails: string[];
   emailWebhook: { url: string; token: string | null } | null;
   payments: PaymentsConfig;
@@ -310,6 +318,13 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     adminDist: e.ADMIN_DIST ?? null,
     rateLimitScale: e.RATE_LIMIT_SCALE,
     maintenanceIntervalMs: e.NODE_ENV === 'test' ? 0 : e.MAINTENANCE_INTERVAL_MS,
+    retention: {
+      otpHours: e.RETENTION_OTP_HOURS,
+      accountSessionDays: e.RETENTION_ACCOUNT_SESSION_DAYS,
+      securityEventDays: e.RETENTION_SECURITY_EVENT_DAYS,
+      telemetryDays: e.RETENTION_TELEMETRY_DAYS,
+      closedRoomDays: e.RETENTION_CLOSED_ROOM_DAYS,
+    },
     adminBootstrapEmails: e.ADMIN_BOOTSTRAP_EMAILS.map((email) => email.trim().toLowerCase()),
     emailWebhook: e.EMAIL_WEBHOOK_URL
       ? { url: e.EMAIL_WEBHOOK_URL, token: e.EMAIL_WEBHOOK_TOKEN ?? null }

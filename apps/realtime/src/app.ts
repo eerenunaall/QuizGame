@@ -29,6 +29,7 @@ import { registerAuthRoutes } from './auth/routes';
 import { FeatureFlags } from './flags/service';
 import { BanService } from './moderation/bans';
 import { MaintenanceJob } from './moderation/maintenance';
+import { RetentionJob } from './moderation/retention';
 import { QuestionReports } from './moderation/reports';
 import { CategoryCatalogService } from './rooms/catalog';
 import { DeckBuilder } from './rooms/deck-builder';
@@ -224,6 +225,11 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     publicWebUrl: config.publicWebUrl,
   });
   maintenance.addTask(() => quizzes.purgeExpired());
+  const retention = new RetentionJob(db, clock, config.retention);
+  maintenance.addTask(async () => {
+    const report = await retention.run();
+    if (Object.values(report).some((n) => n > 0)) log.info(report, 'retention');
+  });
   const manager = new RoomManager({
     config,
     links,
