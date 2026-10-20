@@ -1,8 +1,8 @@
-/** Badge data for the original demo-category icons (rendered by category-icons.ts). */
+/** Badge data for the original category icons (demo categories and the seed/gusto additions) (rendered by category-icons.ts). */
 export interface CategoryBadge {
   /** Sticker id (`cat-…`), also the output file name. */
   id: string;
-  /** Category id in seed/demo/categories.json. */
+  /** Category id in seed/demo/categories.json or seed/gusto/categories.json. */
   category: string;
   /** Badge colour; white-on-colour contrast must stay >= 4.5:1. */
   color: string;
@@ -89,5 +89,54 @@ export const CATEGORY_BADGES: readonly CategoryBadge[] = [
     category: 'cult-films',
     color: '#2E2F45',
     glyph: `<circle cx="96" cy="96" r="62" fill="none" stroke-width="9"/><circle cx="96" cy="96" r="10" stroke="none"/><circle cx="96" cy="64" r="11" stroke="none"/><circle cx="96" cy="128" r="11" stroke="none"/><circle cx="64" cy="96" r="11" stroke="none"/><circle cx="128" cy="96" r="11" stroke="none"/>`,
+  },
+  {
+    // tulip tea glass on a saucer
+    id: 'cat-tea',
+    category: 'turkiye-kulturu',
+    color: '#6D1F3A',
+    glyph: `<path d="M62 40 H130 Q132 94 116 126 H76 Q60 94 62 40 Z" stroke-width="2"/><rect x="46" y="134" width="100" height="14" rx="7" stroke-width="2"/><rect x="60" y="66" width="72" height="7" fill="#6D1F3A" stroke="none"/>`,
+  },
+  {
+    // old television with rabbit-ear antenna
+    id: 'cat-tv-classic',
+    category: 'yesilcam-turk-dizileri',
+    color: '#7A2E0E',
+    glyph: `<rect x="32" y="68" width="128" height="86" rx="14" fill="none" stroke-width="9"/><rect x="48" y="82" width="70" height="58" rx="6" stroke-width="2"/><circle cx="138" cy="94" r="7" stroke="none"/><circle cx="138" cy="118" r="7" stroke="none"/>${line('M96 68 L66 36 M96 68 L126 36', 7)}`,
+  },
+  {
+    // ship's anchor
+    id: 'cat-anchor',
+    category: 'canakkale-ve-yoresi',
+    color: '#1F63A8',
+    glyph: `<circle cx="96" cy="44" r="12" fill="none" stroke-width="8"/>${line('M96 58 V150', 10)}${line('M70 78 H122', 9)}${line('M42 112 Q50 152 96 152 Q142 152 150 112', 10)}<path d="M30 104 L54 100 L46 126 Z M162 104 L138 100 L146 126 Z" stroke-width="2"/>`,
+  },
+  {
+    // die with five pips
+    id: 'cat-die',
+    category: 'masa-oyunlari',
+    color: '#3F6212',
+    glyph: `<rect x="38" y="38" width="116" height="116" rx="24" fill="none" stroke-width="9"/><circle cx="70" cy="70" r="9" stroke="none"/><circle cx="122" cy="70" r="9" stroke="none"/><circle cx="96" cy="96" r="9" stroke="none"/><circle cx="70" cy="122" r="9" stroke="none"/><circle cx="122" cy="122" r="9" stroke="none"/>`,
+  },
+  {
+    // wide-eyed smiling face
+    id: 'cat-toon-face',
+    category: 'anime-cizgi-film',
+    color: '#3730A3',
+    glyph: `<circle cx="96" cy="96" r="62" fill="none" stroke-width="8"/><ellipse cx="72" cy="84" rx="10" ry="16" stroke-width="2"/><ellipse cx="120" cy="84" rx="10" ry="16" stroke-width="2"/>${line('M66 118 Q96 148 126 118', 8)}`,
+  },
+  {
+    // cassette tape
+    id: 'cat-cassette',
+    category: '90lar-nostalji',
+    color: '#BE123C',
+    glyph: `<rect x="32" y="52" width="128" height="88" rx="12" fill="none" stroke-width="9"/><circle cx="68" cy="90" r="14" fill="none" stroke-width="7"/><circle cx="124" cy="90" r="14" fill="none" stroke-width="7"/><rect x="62" y="114" width="68" height="14" rx="4" stroke-width="2"/>`,
+  },
+  {
+    // football
+    id: 'cat-football',
+    category: 'futbol-turkiye',
+    color: '#15803D',
+    glyph: `<circle cx="96" cy="96" r="62" fill="none" stroke-width="8"/><path d="M96 68 L122 87 L112 117 L80 117 L70 87 Z" stroke-width="3"/>${line('M96 68 V36 M122 87 L152 77 M112 117 L130 144 M80 117 L62 144 M70 87 L40 77', 6)}`,
   },
 ];

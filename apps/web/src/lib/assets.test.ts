@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { LAUNCH_CATEGORIES } from '@quizparty/question-schema';
 import demoCategories from '../../../../seed/demo/categories.json';
+import gustoCategories from '../../../../seed/gusto/categories.json';
 import { categoryIcon, stickerUrl } from './assets';
 
 describe('category icons', () => {
@@ -33,5 +34,20 @@ describe('category icons', () => {
     expect(icons).not.toContain(fallback);
     expect(new Set(icons).size).toBe(demo.length);
     for (const icon of icons) expect(stickerUrl(icon)).not.toBe('');
+  });
+
+  it('give every category of the Gusto bank an icon of its own (only general may be the globe)', () => {
+    const all: { id: string }[] = gustoCategories;
+    const fallback = categoryIcon('no-such-category');
+    const icons = all.map((category) => categoryIcon(category.id));
+    for (const [index, category] of all.entries())
+      if (category.id !== 'general')
+        expect({ id: category.id, icon: icons[index] }).not.toEqual({
+          id: category.id,
+          icon: fallback,
+        });
+    expect(new Set(icons).size).toBe(all.length);
+    for (const icon of icons) expect(stickerUrl(icon)).not.toBe('');
+    expect(all.length).toBeGreaterThanOrEqual(35);
   });
 });

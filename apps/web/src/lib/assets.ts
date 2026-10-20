@@ -106,7 +106,14 @@ export type StickerId =
   | 'cat-hero-mask'
   | 'cat-skyline'
   | 'cat-hollywood'
-  | 'cat-reel';
+  | 'cat-reel'
+  | 'cat-tea'
+  | 'cat-tv-classic'
+  | 'cat-anchor'
+  | 'cat-die'
+  | 'cat-toon-face'
+  | 'cat-cassette'
+  | 'cat-football';
 
 export type AnimationId =
   | 'party-popper'
@@ -189,6 +196,14 @@ const CATEGORY_ICONS: Record<string, StickerId> = {
   dc: 'cat-skyline',
   hollywood: 'cat-hollywood',
   'cult-films': 'cat-reel',
+  // seed/gusto additions
+  'turkiye-kulturu': 'cat-tea',
+  'yesilcam-turk-dizileri': 'cat-tv-classic',
+  'canakkale-ve-yoresi': 'cat-anchor',
+  'masa-oyunlari': 'cat-die',
+  'anime-cizgi-film': 'cat-toon-face',
+  '90lar-nostalji': 'cat-cassette',
+  'futbol-turkiye': 'cat-football',
 };
 
 export function categoryIcon(categoryId: string): StickerId {
