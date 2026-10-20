@@ -191,9 +191,9 @@ describe('retire-dev', () => {
     await withCategories(t.db);
     await activate(t.db, 2, 'old');
     const h = harness();
-    expect(await h.exec(['retire-dev', '--keep-prefix', 'gusto-'], { NODE_ENV: 'production' })).toBe(
-      0,
-    );
+    expect(
+      await h.exec(['retire-dev', '--keep-prefix', 'gusto-'], { NODE_ENV: 'production' }),
+    ).toBe(0);
     expect(await statusCounts(t.db)).toEqual({ RETIRED: 2 });
     for (const argv of [['retire-dev'], ['retire-dev', '--keep-prefix', '']]) {
       const bad = harness();
