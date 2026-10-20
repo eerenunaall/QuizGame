@@ -1,0 +1,564 @@
+.center {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  animation: qp-fade-in 260ms ease-out 1;
+}
+
+.big {
+  margin-top: 10px;
+  font-family: var(--qp-font-display);
+  font-size: 38px;
+  line-height: 1.1;
+  text-shadow: 0 4px 0 rgba(0, 0, 0, 0.35);
+}
+
+.kicker {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--qp-color-muted-text);
+}
+
+.sub {
+  margin-top: 10px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--qp-color-muted-text);
+}
+
+.good {
+  color: var(--qp-color-success);
+}
+.bad {
+  color: var(--qp-color-danger);
+}
+
+.action {
+  margin-top: 22px;
+}
+
+.error {
+  margin: 8px 4px;
+  font-size: 16px;
+  font-weight: 800;
+  text-align: center;
+  color: var(--qp-color-danger);
+}
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+/* lobby */
+.lobby {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.lobbyHead {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.roster {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 14px -4px 6px;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  margin: 4px;
+  padding: 4px 14px 4px 6px;
+  background: rgba(var(--qp-surface-rgb), 0.85);
+  border-radius: 999px;
+}
+.offline {
+  opacity: 0.55;
+}
+
+.chipButton {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+.chipSelected {
+  border-color: var(--qp-color-accent-a);
+  background: rgba(40, 60, 140, 0.95);
+}
+
+.manage {
+  margin-top: 8px;
+  padding: 12px 14px;
+}
+.manageTitle {
+  margin-bottom: 10px;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--qp-color-muted-text);
+}
+.manageRow {
+  display: flex;
+  flex-wrap: wrap;
+}
+.manageRow > button {
+  margin: 0 8px 8px 0;
+}
+
+.chipName {
+  margin: 0 8px 0 8px;
+  max-width: 130px;
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* room for the cedilla of Ş and the dot of İ, which overflow:hidden would clip */
+  padding: 0.12em 0 0.22em;
+}
+
+.leaderPanel {
+  margin-top: 10px;
+  padding: 14px 14px 12px;
+}
+
+.groupTitle {
+  margin: 8px 2px 8px;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--qp-color-muted-text);
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+}
+.pills > button {
+  margin: 0 8px 8px 0;
+  min-width: 64px;
+  min-height: 44px;
+  padding: 2px 16px;
+  font-size: 19px;
+}
+
+.upsell {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--qp-color-warning);
+}
+
+.waiting {
+  margin: 18px 0;
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--qp-color-muted-text);
+}
+
+.startRow {
+  position: sticky;
+  bottom: -18px;
+  z-index: 5;
+  /* auto: on a short lobby the dock still sits at the bottom of the screen, in the thumb zone */
+  margin: auto -16px -18px;
+  padding: 12px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(
+    180deg,
+    rgba(var(--qp-deep-rgb), 0),
+    rgba(var(--qp-deep-rgb), 0.96) 30%
+  );
+}
+
+.startRow > button {
+  min-height: 84px;
+  padding: 10px 16px;
+  /* "OYUNU BAŞLAT" and its rocket must stay on one line on a 360 px phone */
+  font-size: clamp(24px, 7.2vw, 32px);
+}
+
+.need {
+  margin-top: 8px;
+  font-size: 15px;
+  text-align: center;
+  color: var(--qp-color-warning);
+}
+
+/* answering: clock on top, the TV hint, then four big answers that fill the thumb zone */
+.answering {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.timer {
+  flex: none;
+  padding: 2px 0 10px;
+}
+
+.options {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 0;
+}
+
+/* Each card takes an equal share of what is left, never less than 72 px (>= 64 px target) nor a slab. */
+.option {
+  display: flex;
+  flex: 1 1 72px;
+  min-height: 72px;
+  max-height: 140px;
+  margin-bottom: 12px;
+  animation: qp-slide-up 320ms ease-out 1 both;
+  animation-delay: var(--qp-delay, 0ms);
+}
+.option > button {
+  height: 100%;
+}
+.option:last-child {
+  margin-bottom: 8px;
+}
+
+/* locked in: the same four cards, the chosen one framed with a lock, a green strip on top */
+.lockedBanner {
+  display: flex;
+  flex: none;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 8px 16px 8px 10px;
+  color: #052b12;
+  background: var(--qp-gradient-success);
+  border-radius: 20px;
+  box-shadow: 0 5px 0 var(--qp-color-success-edge);
+  animation: qp-pop-in 360ms ease-out 1;
+}
+.lockedIcon {
+  flex: none;
+  margin-right: 12px;
+}
+.lockedTitle {
+  font-family: var(--qp-font-display);
+  font-size: 26px;
+  line-height: 1.05;
+}
+.lockedSub {
+  font-size: 15px;
+  font-weight: 800;
+  opacity: 0.8;
+}
+
+.confirm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(47, 227, 110, 0.35), rgba(47, 227, 110, 0) 70%);
+  border-radius: 50%;
+}
+
+.confirmIcon {
+  animation: qp-pop-in 520ms ease-out 1;
+}
+
+/* reveal & score */
+.correctCard {
+  margin-top: 22px;
+  padding: 12px 22px;
+  min-width: 240px;
+  max-width: 100%;
+}
+
+.correctText {
+  margin-top: 4px;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.delta {
+  font-family: var(--qp-font-display);
+  font-size: 84px;
+  line-height: 1;
+  animation: qp-pop-score 700ms ease-out 1 both;
+}
+
+.total {
+  margin-top: 8px;
+  font-family: var(--qp-font-display);
+  font-size: 30px;
+}
+
+.mini {
+  width: 100%;
+  max-width: 340px;
+  margin-top: 24px;
+}
+
+.miniRow {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+  padding: 4px 14px 4px 10px;
+  background: rgba(var(--qp-surface-rgb), 0.85);
+  border-radius: 999px;
+}
+
+.miniRank {
+  width: 26px;
+  font-family: var(--qp-font-display);
+  font-size: 20px;
+  color: var(--qp-color-accent-a);
+}
+
+.miniName {
+  flex: 1;
+  margin-left: 10px;
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 700;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* room for the cedilla of Ş and the dot of İ, which overflow:hidden would clip */
+  padding: 0.12em 0 0.22em;
+}
+
+.miniScore {
+  font-family: var(--qp-font-display);
+  font-size: 20px;
+}
+
+/* Room for the leader's crown above the avatar so it never covers the kicker. */
+.resultFace {
+  margin-top: 30px;
+}
+
+.rankBig {
+  margin: 4px 0;
+  font-family: var(--qp-font-display);
+  font-size: 110px;
+  line-height: 1;
+  color: var(--qp-color-accent-a);
+  text-shadow: 0 6px 0 var(--qp-color-accent-a-edge);
+}
+
+.actions {
+  width: 100%;
+  max-width: 360px;
+  margin-top: 18px;
+}
+.actions > button {
+  margin-bottom: 12px;
+}
+
+.leave {
+  margin-top: 16px;
+}
+
+/* powers on the answer screen */
+.fiftyChip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 4px 8px 4px 10px;
+  font: inherit;
+  color: #fff;
+  cursor: pointer;
+  background: var(--qp-gradient-violet);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: 0 4px 0 var(--qp-color-accent-b-edge);
+  transition: transform 90ms ease;
+}
+.fiftyChip:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--qp-color-accent-b-edge);
+}
+.fiftyLabel {
+  margin: 0 8px 0 6px;
+  font-size: 16px;
+  font-weight: 800;
+}
+.fiftyCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  font-family: var(--qp-font-display);
+  font-size: 18px;
+  color: #1b1b3a;
+  background: #fff;
+  border-radius: 999px;
+}
+.fiftyNote {
+  padding: 4px 10px;
+  font-size: 15px;
+  font-weight: 800;
+  text-align: center;
+  color: var(--qp-color-muted-text);
+}
+.removed {
+  opacity: 0.3;
+  pointer-events: none;
+}
+.shuffled {
+  animation: qp-shake 520ms ease-out 1;
+}
+
+/* accessibility preference in the lobby */
+.prefRow {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  background: rgba(var(--qp-surface-rgb), 0.6);
+  border-radius: 16px;
+}
+.prefRow > input {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  margin: 0 12px 0 0;
+  accent-color: var(--qp-color-accent-a);
+}
+.prefText {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+.prefName {
+  font-size: 16px;
+  font-weight: 800;
+}
+.prefHint {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--qp-color-muted-text);
+}
+
+/* reporting a question from the reveal screen */
+.reportLink {
+  margin-top: 18px;
+  padding: 10px 16px;
+  min-height: 44px;
+  background: transparent;
+  border: 0;
+  color: var(--qp-color-muted-text);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.reportSheet {
+  margin-top: 16px;
+  width: 100%;
+  max-width: 360px;
+}
+.reportChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 10px;
+}
+.reportChip {
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: 22px;
+  border: 2px solid var(--qp-color-muted-text);
+  background: rgb(255 255 255 / 8%);
+  color: inherit;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+}
+.reportChip:disabled {
+  opacity: 0.5;
+}
+.reportThanks {
+  margin-top: 18px;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--qp-color-success);
+}
+
+/* Mascot (winner) or a letter character (everyone else) above the final rank; dropped on short landscape phones. */
+.resultCheer {
+  margin-bottom: 10px;
+}
+@media (max-height: 520px) {
+  .resultCheer {
+    display: none;
+  }
+}
+
+/* Landscape phone (about 390 px tall): answers in a 2 x 2 grid so all four are on screen without scrolling. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .answering {
+    max-width: 820px;
+  }
+  .options {
+    flex-flow: row wrap;
+    align-content: flex-end;
+    justify-content: space-between;
+  }
+  .option {
+    flex: none;
+    width: calc(50% - 6px);
+    min-height: 60px;
+    margin-bottom: 10px;
+  }
+  .outcomeMascot img {
+    width: auto !important;
+    height: 90px !important;
+  }
+}
+
+.sitOutPeek {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  margin-top: 14px;
+}
+
+/* BLIND_CLOCK: the bar is replaced by a tile of the same height so nothing below it jumps */
+.blindClock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--qp-color-warning);
+  background: rgba(var(--qp-deep-rgb), 0.7);
+  border: 3px dashed var(--qp-color-warning);
+  border-radius: 999px;
+}
+.blindClock > svg {
+  margin-right: 8px;
+}

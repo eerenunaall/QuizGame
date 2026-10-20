@@ -1,0 +1,19 @@
+.center {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.message {
+  margin-top: 12px;
+  font-family: var(--qp-font-display);
+  font-size: 28px;
+  line-height: 1.15;
+}
+
+.action {
+  margin-top: 22px;
+}

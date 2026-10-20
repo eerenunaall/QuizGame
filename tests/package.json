@@ -1,0 +1,33 @@
+{
+  "name": "@quizparty/tests",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@quizparty/controller-client": "workspace:*",
+    "@quizparty/db": "workspace:*",
+    "@quizparty/game-engine": "workspace:*",
+    "@quizparty/i18n": "workspace:*",
+    "@quizparty/protocol": "workspace:*",
+    "@quizparty/question-bank": "workspace:*",
+    "@quizparty/question-schema": "workspace:*",
+    "@quizparty/realtime": "workspace:*",
+    "@quizparty/scripts": "workspace:*",
+    "@quizparty/shared": "workspace:*",
+    "@quizparty/validation": "workspace:*",
+    "ws": "8.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/pg": "8.23.1",
+    "@types/pngjs": "6.0.5",
+    "@types/ws": "8.18.2",
+    "jsqr": "1.4.0",
+    "kysely": "0.29.6",
+    "pg": "8.23.1",
+    "pngjs": "7.0.0"
+  }
+}

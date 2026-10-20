@@ -1,0 +1,66 @@
+/* Venue mode: a quiet pill beside the room code; it only gets loud in the last minutes. */
+.chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-right: 18px;
+  padding: 6px 22px;
+  background: rgba(var(--qp-deep-rgb), 0.62);
+  border: 3px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  opacity: 0.85;
+}
+
+.label {
+  font-size: 20px;
+  letter-spacing: 0.1em;
+  color: var(--qp-color-muted-text);
+}
+
+.value {
+  font-family: var(--qp-font-display);
+  font-size: 32px;
+  font-variant-numeric: tabular-nums;
+  color: var(--qp-color-text, #fff);
+}
+
+.amber {
+  opacity: 1;
+  border-color: #f5a524;
+}
+
+.amber .value {
+  color: #ffc861;
+}
+
+.red {
+  opacity: 1;
+  border-color: #ff5a5a;
+  animation: qp-venue-pulse 1.2s ease-in-out infinite;
+}
+
+.red .value {
+  color: #ff8a8a;
+}
+
+.paused .value,
+.up .value {
+  color: var(--qp-color-muted-text);
+}
+
+.up {
+  opacity: 1;
+  border-color: #ff5a5a;
+}
+
+@keyframes qp-venue-pulse {
+  50% {
+    box-shadow: 0 0 24px rgba(255, 90, 90, 0.55);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .red {
+    animation: none;
+  }
+}

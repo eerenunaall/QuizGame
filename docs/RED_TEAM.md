@@ -1,0 +1,63 @@
+# Red team: attack → test map
+
+Every brief §26 attack is an executable script in `tests/red-team` (plus the older regression tests
+it builds on). The attacker plays against the real server over real sockets; the assertion is always
+"the defender's state did not move" or "the defender refused and recorded it".
+
+| Attack | Expected | Test | Status |
+|---|---|---|---|
+| 1 Modify client score | server ignores | `server-authority.test.ts` › ATTACK 1 | ✅ strict schemas refuse every smuggled field, forged server-type messages and prototype tricks |
+| 2 Change client timer | server ignores | › ATTACK 2 | ✅ speed is scored from the server receive time; `clientSentAt` is diagnostic only |
+| 3 Answer after deadline | rejected | › ATTACK 3 (+ `game.test.ts`) | ✅ `ANSWER_LATE`, nothing recorded |
+| 4 Replay answer packet | rejected / idempotent | › ATTACK 4 | ✅ byte replay → `STALE_SEQUENCE`; re-sequenced replay → duplicate; cross-socket replay refused |
+| 5 Replay sabotage packet | rejected | `powers.test.ts` › ATTACK 5 | ✅ byte replay → `STALE_SEQUENCE`; re-sequenced replay → `ALREADY_COMMITTED`; another socket cannot use the frame; replayed next round it meets an empty token pouch; spam of forged targets/effects/fields spends nothing; stakes after seeing the question are refused; no frame ever shows another player's powers |
+| 6 Forge host command | rejected | › ATTACK 6 | ✅ `NOT_HOST` + `HOST_COMMAND_FORBIDDEN` event; display identity cannot be borrowed; deposed leader loses powers |
+| 7 Enumerate room codes | rate limited, hard | `identity-and-network.test.ts` › ATTACK 7 | ✅ misses cost 4 tokens, identical answers, > 30 days per IP for one hit among 1 000 rooms |
+| 8 Steal reconnect token | minimal blast radius, secure invalidation | › ATTACK 8 | ✅ thief = one ordinary slot; victim's return after the grace window revokes the session; nothing else touched |
+| 9 Fake purchase | no entitlement | `red-team/payments.test.ts` › ATTACK 9 | ✅ forged receipts of 14 shapes (alg none, stripped/short/foreign chains, swapped payloads, junk) give nothing; the client cannot assert price/product/tier/account; a genuine receipt replayed by another account never entitles it; 25 concurrent redemptions end in one transaction and one entitlement and two accounts racing for one transaction id have one winner; Google purchases for another account/product or pending give nothing; forged refund notices change nothing; guessing is rate limited |
+| 10 Creator requests Blind Quiz raw answers | authorization failure | `red-team/blind-quiz.test.ts` › ATTACK 10 (+ `integration/blind-canary.test.ts`) | ✅ the invite link, which the creator holds, opens only the consent step: after it every read, write, approval, suggestion and delete needs the claim cookie the target's browser got at consent (403 otherwise, forged cookies included); rotating the invite after the claim is refused; a creator who claims first only locks themselves in and reads nothing; every registered route replayed as creator, another player, nobody and each staff role carries no answer, with a live personal-quiz report in the moderation queue (`/v1/admin/personal-reports` shows ids only, ADMIN/MODERATOR only); planted answer/decoy/statement are in no log line (trace level), metric, error body, header or database cell (plain, hex, base64) |
+| 11 Malicious deep-link parameters | safe rejection | › ATTACK 11 + `packages/validation` link tests | ✅ links, HTTP params, WS params and nicknames |
+| 12 Join from another network | success | › ATTACK 12 | ✅ phones bound to different source addresses join and roam mid-game |
+| 13 Drop connection mid-question | restore state | `websocket/reconnect.test.ts`, `websocket/client.test.ts` | ✅ answer preserved, token rotated |
+| 14 Restart realtime process | recover within limits | `websocket/recovery.test.ts` | ✅ snapshot + log replay, clock frozen during the outage, acknowledged answers survive |
+| 15 Poison the bank with reports | bounded, anonymous, only the round's question | `red-team/moderation.test.ts` › ATTACK 15 | ✅ a flood costs one report; no other question can be named; TV, lobby and open questions cannot report; reporter pseudonym is keyed and never shown |
+| 16 Evade or probe a ban | identical answers, no spoofing | › ATTACK 16 | ✅ real room, closed room and nonsense answer the same; spoofed `X-Forwarded-For` does not move a ban; nothing about who or why leaks |
+| 17 Read or change the switches | public flags only, read-only | › ATTACK 17 | ✅ declared shape, no write route, rate limited |
+| 18 Route table is the policy | every admin route has roles + a limit | `red-team/admin-access.test.ts` › ATTACK 18 | ✅ boot refuses an undeclared route; each role reaches exactly its routes (the personal-quiz report queue included); only short ADMIN sessions reach the console. The public API inventory did not change for the legal pages: `/privacy`, `/terms`, `/support` are static client routes of the web shell (ws `static.test.ts`: same strict CSP), not API routes |
+| 19 CSRF | cookie writes need Origin + header | › ATTACK 19 | ✅ every state change by cookie without proof is refused; no session from URL or invented header |
+| 20 Climb: roles, mass assignment, ids | refused | › ATTACK 20 | ✅ editors cannot promote; undeclared fields refuse the request; bad ids end 400/404 |
+| 21 Garbage: injection, bombs, prototype tricks | no 5xx, no side effect | › ATTACK 21 | ✅ every list parameter, every write body, import bombs, inert stored markup |
+| 22 Guess the sign-in | per-mailbox limit, uniform answers | › ATTACK 22 | ✅ guesses are limited per mailbox however many addresses they come from; wrong code and unknown mailbox are indistinguishable |
+| 23 Keep a session that should be dead | immediate | › ATTACK 23 | ✅ revoked, suspended, signed-out tokens and removed roles stop at once |
+| 24 Hammer the console | limited per account | › ATTACK 24 | ✅ reads and writes limited apart without hurting others |
+| 25 Abuse the TV unlock link | no entitlement from the QR alone | `red-team/payments.test.ts` › ATTACK 25 | ✅ a stranger who claims the link without owning the game unlocks nothing; token guessing is 404/429 with one identical answer; no claim without a sign-in |
+| 26 Read a Who Said It statement early / answer for yourself | statement hidden until its question, author exempt | `red-team/who-said-it.test.ts` › ATTACK 26 | ✅ no frame of any client carries a statement before its question is on screen (checked per frame, the TV did get each at its question); no author id anywhere; the author's answer, stake and 50/50 are refused and score/streak do not move; text is moderated, TV/classic room/late sends refused, flood limited |
+| 27 Read the author off the progress strip | who answered is shown as a count only | `red-team/recent-surface.test.ts` › ATTACK 27 | ✅ FOUND AND FIXED: the strip (view and `ANSWER_LOCKED`) listed real answerers, so the one seat that never ticked, held back by a guesser who answers last, was the author. It now ticks seats in seating order |
+| 28 Hide words from moderation with invisible letters | refused | › ATTACK 28 | ✅ FOUND AND FIXED: Hangul/Khmer fillers, braille blank, CGJ and stacked combining marks passed `sanitizeUserText`, defeating profanity and link screens and allowing blank statements/answers. Refused now; emoji selectors, Turkish letters and accents still pass |
+| 29 Burn the model budget through suggest-decoys | metered | › ATTACK 29 | ✅ FOUND AND FIXED: only the generic per-address limit applied (about 3 600 paid calls an hour). Now 6 per invite and 20 per address per 10 minutes, charged only after the claim is proven (the creator cannot drain the target's allowance) |
+| 30 `?theme=` and venue-logo injection | allow-list only | › ATTACK 30 | ✅ theme ids are allow-listed (prototype names, arrays, markup, 100 kB values all fall back). FOUND AND FIXED: a logo address `/\\host/x.svg` (browsers read `/\` as `//`) or one with `user@` switched host; refused. The CSP (`img-src 'self'`) is the second layer |
+| 31 Static server / association files | only the two files | › ATTACK 31 | ✅ traversal, encoded and double-encoded dots, case, NUL, backslash, absolute-form targets, dotfiles and a symlink beside the files serve nothing. FOUND AND FIXED (minor): `/%2ewell-known/apple-app-site-association` was typed by raw spelling (octet-stream, or the HTML shell when absent); now judged by the resolved path |
+| 32 Hostile `quiznight://` and `/j/CODE` links | null or one validated id | › ATTACK 32 | ✅ 15 schemes/hosts x 11 kinds x 28 values x 10 suffixes: every accepted link is on our host and carries only a room code or intent id |
+| 33 Senseless intents in every phase | no INTERNAL, nobody removed | › ATTACK 33 | ✅ a player and the TV fire all 24 message types at each phase of a full game: no 5xx-class error, leader and roster unchanged |
+| 34 Rotate IPv6 addresses to dodge limits | one bucket per /64 | › ATTACK 34 | ✅ FOUND AND FIXED: limits were charged per single address, so a /64 (2^64 addresses) was unlimited, room-code guessing included. `limitKey` reduces IPv6 to /64 and IPv4-mapped to IPv4 |
+| 36 Take from a café table (venue mode, ADR-0024) | stranger/other venue refused, codes unguessable and single-use, nothing leaks | `red-team/venue.test.ts` › ATTACK 36 | ✅ every venue route walked with no credentials (401), a stranger and a player app (404, same as an unknown venue), an admin-console session (403); cookie writes without the CSRF proof; staff of venue A against venue B by B's path and by A's path with B's session id (404, B unchanged), stealing B's TV with a second table (409); random, malformed and injected session ids, dead link tokens, a link already claimed by a guest (404), a TV mid-game (`GAME_IN_PROGRESS`); no wire message can set the meter; reward guessing stopped per account and per venue across several waiters (wrong guesses cost double); 12 simultaneous redeems → exactly one wins and one audit row; A's code unknown at B; payload scan: the code, the reward text, the venue's name, staff and settings appear in no frame of the TV or another phone |
+| 35 Abuse the ADR-0023 risks and sabotages | server-judged, nothing private leaks | `red-team/risks.test.ts` › ATTACK 35 | ✅ wrong phase (Cover/Pot/challenge outside RISK_PICK, replies and new sabotages in the wrong phase); wrong target (self, stranger, TV, offline rival; Cut at the leader or at a player with no points); replayed challenge costs one use and a replayed reply cannot flip a decline; forged replies (nobody challenged you, answering for somebody else, a forged rival field); every illegal pair of the big-gamble table, smuggled and mistyped fields; Stake Cap cannot be dodged; no challenge, Cover or Pot reaches the TV or another phone before the resolution, counts only |
+
+Findings from running these attacks that changed the code:
+
+- ATTACK 10 found a real hole in M5-a..c: the creator receives the invite link (to pass it on), and
+  the target routes accepted the link alone, so the creator could read every answer through it, or
+  rotate the invite after the target answered and read through the fresh link. Fix (migration 0007):
+  the first consent mints a claim secret that only the target's browser keeps (HttpOnly,
+  SameSite=Strict cookie; keyed hash in `blind_targets.claim_hash`); everything after consent needs it,
+  and rotation is refused once claimed. Cost: a target who loses the cookie (new device) is locked out;
+  the creator removes and re-adds them, which destroys the answers instead of exposing them.
+
+- A NUL byte in a query or body reached PostgreSQL and became a 500; a `preValidation` hygiene hook now
+  refuses it for every route (`http/hygiene.ts`).
+- Admin create mapped a duplicate to a 500; it is a 409 with the outcome.
+- Row-level duplicate detection compared identical text across tests; the red-team seeds distinct rows.
+
+- Malformed URLs (`%ff%fe`) were answered by Fastify's built-in handler without our security
+  headers; `frameworkErrors` now returns the standard error shape and headers.
+- Security events are written off the request path by design; tests poll for them.

@@ -1,0 +1,46 @@
+.avatar {
+  position: relative;
+  flex: none;
+  transition:
+    opacity 200ms ease,
+    filter 200ms ease;
+}
+
+.ring {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: var(--ring-w, 5px) solid var(--ring);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #31468f 0%, #17275f 70%);
+  box-shadow:
+    0 6px 0 rgba(0, 0, 0, 0.3),
+    0 0 0 3px rgba(0, 0, 0, 0.18);
+}
+
+.face {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 8%;
+  object-fit: contain;
+}
+
+.crown {
+  position: absolute;
+  top: -34%;
+  left: 50%;
+  z-index: 2;
+  margin-left: -23%;
+  transform: rotate(-8deg);
+  filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.3));
+}
+
+.dim {
+  opacity: 0.45;
+  filter: grayscale(0.7);
+}
+
+.bounce {
+  animation: qp-bounce 620ms ease-out 1;
+}
