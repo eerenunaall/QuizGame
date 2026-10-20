@@ -91,7 +91,7 @@
 .hint {
   position: absolute;
   left: 0;
-  bottom: 68px;
+  bottom: 100px;
   z-index: 3;
   width: 100%;
   text-align: center;
@@ -102,7 +102,8 @@
 .legal {
   position: absolute;
   left: 0;
-  bottom: 22px;
+  /* Inside the TV safe area (5% of the 1080 px stage = 54 px): overscan can clip anything lower. */
+  bottom: 60px;
   z-index: 3;
   width: 100%;
 }
