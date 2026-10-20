@@ -6,7 +6,7 @@ import { sql } from 'kysely';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createTestDatabase, type TestDatabase } from '@quizparty/db/testing';
 import { run, type Env, type Io } from '@quizparty/scripts/question/cli';
-import { answerKey, importRows, statusCounts } from '../helpers/question-bank';
+import { activate, answerKey, importRows, statusCounts } from '../helpers/question-bank';
 import { startModelServer, wellBehavedModel } from '../helpers/model-server';
 import { cleanRows, jsonl, NOW, SEED_PATH, withCategories } from '../helpers/questions';
 
@@ -154,6 +154,52 @@ describe('import', () => {
     const again = harness({ [SEED_PATH]: readFileSync(SEED_PATH, 'utf8') });
     expect(await again.exec(['seed', '--seed-file', SEED_PATH])).toBe(0);
     expect(again.out[0]).toBe('seed: 340 UNCHANGED');
+  });
+});
+
+describe('retire-dev', () => {
+  const externalIds = async () =>
+    Object.fromEntries(
+      (
+        await t.db.selectFrom('questions').select(['external_id', 'status', 'retired_at']).execute()
+      ).map((row) => [row.external_id, row.status]),
+    );
+
+  it('retires every active question outside the kept prefix, never deletes, and says how many', async () => {
+    await withCategories(t.db);
+    await activate(t.db, 3, 'old');
+    await activate(t.db, 2, 'gusto', 20);
+    const dry = harness();
+    expect(await dry.exec(['retire-dev', '--keep-prefix', 'gusto-', '--dry-run'])).toBe(0);
+    expect(dry.text()).toContain('[dry run] retire-dev: 3 retired, 2 kept');
+    expect(await statusCounts(t.db)).toEqual({ ACTIVE: 5 });
+
+    const h = harness();
+    expect(await h.exec(['retire-dev', '--keep-prefix', 'gusto'])).toBe(0);
+    expect(h.text()).toContain('retire-dev: 3 retired, 2 kept');
+    expect(await statusCounts(t.db)).toEqual({ ACTIVE: 2, RETIRED: 3 });
+    const byId = await externalIds();
+    expect(Object.entries(byId).filter(([id]) => id?.startsWith('gusto'))).toSatisfy(
+      (entries: [string, string][]) => entries.every(([, status]) => status === 'ACTIVE'),
+    );
+    const again = harness();
+    expect(await again.exec(['retire-dev', '--keep-prefix', 'gusto'])).toBe(0);
+    expect(again.text()).toContain('retire-dev: 0 retired, 2 kept');
+  });
+
+  it('works in production too, and needs a non-empty prefix', async () => {
+    await withCategories(t.db);
+    await activate(t.db, 2, 'old');
+    const h = harness();
+    expect(await h.exec(['retire-dev', '--keep-prefix', 'gusto-'], { NODE_ENV: 'production' })).toBe(
+      0,
+    );
+    expect(await statusCounts(t.db)).toEqual({ RETIRED: 2 });
+    for (const argv of [['retire-dev'], ['retire-dev', '--keep-prefix', '']]) {
+      const bad = harness();
+      expect(await bad.exec(argv)).toBe(2);
+      expect(bad.err.join('\n')).toContain('--keep-prefix');
+    }
   });
 });
 

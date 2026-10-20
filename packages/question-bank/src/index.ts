@@ -10,6 +10,7 @@ export * from './providers/embeddings-http';
 export * from './providers/prompts';
 export * from './queue';
 export * from './reports';
+export * from './retire';
 export * from './repository';
 export * from './results-import';
 export * from './review';

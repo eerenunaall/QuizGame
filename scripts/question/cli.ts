@@ -14,6 +14,7 @@ import {
   llmProviders,
   parseImportText,
   parseResults,
+  retireOutsidePrefix,
   renderCsv,
   renderJsonl,
   runAudit,
@@ -73,6 +74,7 @@ Commands
                 (also writes <out>.instructions.md for the manual audit round)
   import-results <file> --source label
   maintain
+  retire-dev   --keep-prefix <prefix> [--dry-run]   (ACTIVE -> RETIRED for every question whose external id lacks the prefix; never deletes)
   seed         [--seed-file seed/questions.tr.jsonl] [--categories-file cats.json] [--dry-run]
   categories   [--categories-file cats.json]   (extra categories: [{id,tr,en}], e.g. seed/demo/categories.json)
 
@@ -205,6 +207,7 @@ export async function run(
         source: { type: 'string' },
         'seed-file': { type: 'string' },
         'categories-file': { type: 'string' },
+        'keep-prefix': { type: 'string' },
       },
     });
     const now = options.now ?? (() => new Date());
@@ -357,6 +360,17 @@ export async function run(
           report.ran
             ? `maintenance: ${report.expired} expired, ${report.reverify} due for re-verification, ${report.telemetry} flagged by answer statistics`
             : 'maintenance: another instance holds the lock',
+        );
+        return 0;
+      }
+
+      case 'retire-dev': {
+        const prefix = values['keep-prefix'];
+        if (!prefix) throw new UsageError('retire-dev needs a non-empty --keep-prefix');
+        const dryRun = values['dry-run'] ?? false;
+        const result = await retireOutsidePrefix(db, prefix, { dryRun });
+        io.out(
+          `${dryRun ? '[dry run] ' : ''}retire-dev: ${result.retired} retired, ${result.kept} kept (prefix ${prefix})`,
         );
         return 0;
       }
