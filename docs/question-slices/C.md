@@ -63,12 +63,13 @@ are not launch material.
 pnpm --filter @quizparty/scripts run question import ../seed/gusto/questions.C.tr.jsonl --dry-run
 [dry run] 277 rows: 277 CREATED
 automatic review of the new questions: 277 -> 264 PASS / 13 REVIEW / 0 REJECT
-batch warning: CORRECT_LONGEST_BIAS
+(no batch warning after the distractor rebalance)
 ```
 
 The 13 REVIEW rows are all `SIMILAR_QUESTION` (or one option-punctuation hint): they resemble the old demo rows
-they replace and clear once those are retired. `CORRECT_LONGEST_BIAS` is a batch hint (the correct option is
-the longest in 66 of 187 eligible rows, mostly names and phrases); fix by padding wrong options in the next pass.
+they replace and clear once those are retired. The `CORRECT_LONGEST_BIAS` batch warning (66 of 187 rows had the correct option longest) was fixed by rewriting the distractors of
+66 rows to the same length and detail as the answer (answers untouched); the correct option is now strictly longest in 8 of 259 rows.
+New rows must keep distractors as long as the answer and target 40 percent easy, 40 medium, 20 hard.
 A profanity filter false positive on the title "Battle of the Bastards" and on a poet's name were rephrased.
 
 ## Still open
