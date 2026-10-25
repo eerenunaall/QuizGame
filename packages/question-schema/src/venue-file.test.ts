@@ -114,7 +114,7 @@ describe('parseVenueText', () => {
 
   it('accepts a Turkish Excel file: BOM, semicolons, Turkish headers, answer as text or "B)"', () => {
     const csv =
-      '﻿Kategori;Zorluk;Soru;Şık A;Şık B;Şık C;Şık D;Doğru;Açıklama\r\n' +
+      '\uFEFFKategori;Zorluk;Soru;Şık A;Şık B;Şık C;Şık D;Doğru;Açıklama\r\n' +
       "Genel Kültür;kolay;Türkiye'nin başkenti neresidir?;İstanbul;Ankara;İzmir;Bursa;Ankara;Çünkü\r\n" +
       'Genel Kültür;orta;Dünyanın en büyük okyanusu hangisidir?;Atlas;Hint;Pasifik;Arktik;C);Sığ değil\r\n';
     const rows = rowsOf(parseVenueText(csv.slice(1), 'CSV'));
