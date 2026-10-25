@@ -69,6 +69,7 @@ const REQUIRED_DOCS = [
   'ARCHITECTURE',
   'ADMIN',
   'MOBILE',
+  'GUSTO_GO_LIVE',
 ];
 function docsPresent(): Result {
   const missing = REQUIRED_DOCS.filter(
@@ -79,6 +80,8 @@ function docsPresent(): Result {
     'Caddyfile',
     'env.production.example',
     'Dockerfile',
+    'entrypoint.sh',
+    'load-bank.sh',
   ].filter((name) => !exists(`infra/deployment/${name}`));
   return missing.length + infra.length === 0
     ? pass(
@@ -424,6 +427,170 @@ function noModelIdsOrSecrets(): Result {
         `${tracked.length} tracked files and ${messages.length - 1} commit messages: no model identifiers, no key/token/credential-shaped strings, no tracked .env file (pattern scan, not a substitute for GitHub secret scanning)`,
       )
     : fail(problems.join('; '));
+}
+
+// ───────────── the production blueprint (render.production.yaml) ─────────────
+
+interface BlueprintVar {
+  key: string;
+  value?: string;
+  sync: boolean;
+  generate: boolean;
+  fromDatabase: boolean;
+}
+
+/** The `envVars` list of the blueprint's web service; the file is simple enough for a line reader. */
+function blueprintVars(text: string): BlueprintVar[] {
+  const vars: BlueprintVar[] = [];
+  let current: BlueprintVar | null = null;
+  let inEnv = false;
+  for (const raw of text.split('\n')) {
+    const line = raw.replace(/\s+#.*$/u, '');
+    if (/^\s*#/u.test(raw) || line.trim() === '') continue;
+    if (/^\s{4}envVars:/u.test(line)) {
+      inEnv = true;
+      continue;
+    }
+    if (!inEnv) continue;
+    const key = /^\s{6}- key: (\S+)\s*$/u.exec(line);
+    if (key) {
+      current = { key: key[1]!, sync: false, generate: false, fromDatabase: false };
+      vars.push(current);
+      continue;
+    }
+    if (!current) continue;
+    const value = /^\s{8}value: (.*)$/u.exec(line);
+    if (value) current.value = value[1]!.trim().replace(/^'(.*)'$/u, '$1');
+    if (/^\s{8}sync: false\s*$/u.test(line)) current.sync = true;
+    if (/^\s{8}generateValue: true\s*$/u.test(line)) current.generate = true;
+    if (/^\s{8}fromDatabase:/u.test(line)) current.fromDatabase = true;
+  }
+  return vars;
+}
+
+const BLUEPRINT_SECRETS = [
+  'SERVER_SECRET',
+  'METRICS_TOKEN',
+  'ADMIN_BOOTSTRAP_EMAILS',
+  'PUBLIC_WEB_URL',
+  'ALLOWED_ORIGINS',
+  'EMAIL_PROVIDER',
+  'EMAIL_API_KEY',
+  'EMAIL_FROM',
+  'BLIND_DATA_KEYS',
+];
+const FORBIDDEN_IN_PRODUCTION = [
+  'VENUE_MINUTE_MS',
+  'RATE_LIMIT_SCALE',
+  'GAME_CONFIG_OVERRIDE',
+  'VALIDATE_OUTBOUND',
+  'DEFAULT_ROOM_TIER',
+  'PAYMENTS_ACCEPT_SANDBOX',
+  'EMAIL_API_BASE',
+  'EMAIL_WEBHOOK_URL',
+];
+
+function productionBlueprint(): Result {
+  const file = 'render.production.yaml';
+  if (!exists(file)) return fail(`${file} is missing`);
+  const text = read(file);
+  const vars = blueprintVars(text);
+  const get = (key: string): BlueprintVar | undefined => vars.find((v) => v.key === key);
+  const problems: string[] = [];
+
+  const must = (key: string, expected: string): void => {
+    if (get(key)?.value !== expected) problems.push(`${key} must be '${expected}'`);
+  };
+  must('NODE_ENV', 'production');
+  must('QP_ALLOW_DEV_SEED', '0');
+  must('QP_SEED_DEV', '0');
+  must('QP_SEED_DEMO', '0');
+  must('SERVE_WEB', '1');
+  must('SERVE_ADMIN', '1');
+  for (const key of FORBIDDEN_IN_PRODUCTION)
+    if (get(key)) problems.push(`${key} must not be set in the production blueprint`);
+  if (get('QP_BANK_DIR')?.value?.includes('demo') || get('QP_BANK_DIR')?.value === '/app/seed')
+    problems.push('QP_BANK_DIR points at a development bank');
+
+  for (const name of BLUEPRINT_SECRETS) {
+    const v = get(name);
+    if (!v) problems.push(`${name} is not declared`);
+    else if (v.value !== undefined || !(v.sync || v.generate))
+      problems.push(`${name} must be \`sync: false\` or \`generateValue: true\`, never a value`);
+  }
+  // Anything that looks like a secret by name must not carry an inline value, declared or not.
+  for (const v of vars)
+    if (/(SECRET|KEY|TOKEN|PASSWORD|CREDENTIAL)/u.test(v.key) && v.value !== undefined)
+      if (v.key !== 'QP_BANK_KEEP_PREFIX') problems.push(`${v.key} carries an inline value`);
+  if (/^\s*plan:\s*free\b/mu.test(text)) problems.push('a free plan (it sleeps / expires)');
+  if (!/^\s{4}numInstances:\s*1\s*$/mu.test(text)) problems.push('numInstances must be 1');
+  if (!/^\s{4}healthCheckPath:\s*\/healthz\s*$/mu.test(text))
+    problems.push('no /healthz health check');
+  if (!/^\s{4}ipAllowList:\s*\[\]\s*$/mu.test(text))
+    problems.push('the database must not be open to the internet (ipAllowList: [])');
+  if (!get('DATABASE_URL')?.fromDatabase) problems.push('DATABASE_URL must come from the database');
+  if (get('VITE_DEFAULT_THEME')?.value !== 'gusto')
+    problems.push('VITE_DEFAULT_THEME is not gusto');
+
+  // The blueprint's environment, with plausible secrets typed in, must boot the real config in production.
+  const env: Record<string, string> = {
+    DATABASE_URL: DATABASE_PROBE,
+    SERVER_SECRET: 'a'.repeat(44),
+    METRICS_TOKEN: 'm'.repeat(32),
+    ADMIN_BOOTSTRAP_EMAILS: 'owner@audit.invalid',
+    PUBLIC_WEB_URL: 'https://gusto.audit.invalid',
+    ALLOWED_ORIGINS: 'https://gusto.audit.invalid',
+    EMAIL_PROVIDER: 'resend',
+    EMAIL_API_KEY: 'k'.repeat(24),
+    EMAIL_FROM: 'Gusto <giris@gusto.audit.invalid>',
+  };
+  for (const v of vars) if (v.value !== undefined) env[v.key] = v.value;
+  try {
+    const config = loadConfig(env);
+    if (config.env !== 'production') problems.push('does not load as production');
+    if (config.allowDevSeed) problems.push('dev seed allowed');
+    if (!config.emailProvider) problems.push('no mail provider in the loaded config');
+    if (config.blindKeys !== null) problems.push('blind keys unexpectedly present');
+  } catch (error) {
+    problems.push(`loadConfig refuses the blueprint environment: ${String(error)}`);
+  }
+  // Leaving the owner-typed values empty must be refused or harmless, never silently unsafe.
+  try {
+    const loose = loadConfig({ ...env, EMAIL_PROVIDER: '', EMAIL_API_KEY: '', EMAIL_FROM: '' });
+    if (loose.emailProvider) problems.push('an empty mail setting still produced a sender');
+  } catch {
+    // refusing is fine as well
+  }
+  // The entrypoint must not be able to load a development bank in production.
+  const entry = read('infra/deployment/entrypoint.sh');
+  if (!/NODE_ENV:-development\}" = "production"/u.test(entry) || !/QP_SEED_DEV=0/u.test(entry))
+    problems.push('entrypoint.sh does not switch QP_SEED_DEV/QP_SEED_DEMO off in production');
+  if (!/load-bank\.sh/u.test(entry)) problems.push('entrypoint.sh does not call load-bank.sh');
+  const loader = read('infra/deployment/load-bank.sh');
+  if (
+    /--allow-dev-seed|--dev-activate|\bseed\b.*--seed-file/u.test(loader.replace(/^\s*#.*$/gmu, ''))
+  )
+    problems.push('load-bank.sh uses a development flag');
+
+  return problems.length === 0
+    ? pass(
+        `${file}: NODE_ENV=production, every dev flag 0, ${BLUEPRINT_SECRETS.length} secrets declared as sync:false / generateValue (none inlined), no test-only variable, paid plans, one instance, private database, /healthz, Gusto theme; its environment loads in production; the entrypoint cannot load a development bank`,
+      )
+    : fail(`${file}: ${problems.join('; ')}`);
+}
+
+function goLiveBankPresent(): Result {
+  const dir = `${ROOT}seed/gusto`;
+  const files = existsSync(dir)
+    ? tracked.filter((f) => /^seed\/gusto\/questions\..*\.tr\.jsonl$/u.test(f))
+    : [];
+  return files.length > 0
+    ? pass(`${files.length} verified bank file(s) in seed/gusto/ for QP_BANK_DIR`)
+    : {
+        status: 'OPEN',
+        detail:
+          'seed/gusto/questions.*.tr.jsonl is not committed yet: the production service would start with no questions',
+      };
 }
 
 // ───────────── the running application ─────────────
@@ -851,6 +1018,8 @@ async function main(): Promise<void> {
     await cliRefusesDevSeedInProduction(),
   );
   const flags = flagDefaults();
+  add('blueprint', 'Production blueprint (render.production.yaml)', productionBlueprint());
+  add('gusto-bank', 'Gusto question bank committed for the production start', goLiveBankPresent());
   add('flags', 'Feature-flag defaults', flags.result);
   add('csp', 'CSP and security headers (static policy and built HTML)', csp());
   add('lockfile', 'Lockfile and pinned dependencies', lockfile());

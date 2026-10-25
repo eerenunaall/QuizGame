@@ -1,6 +1,7 @@
 import { X509Certificate, createHmac } from 'node:crypto';
 import { hostname } from 'node:os';
 import { z } from 'zod';
+import { parseFrom } from './auth/http-email';
 import type { RetentionPolicy } from './moderation/retention';
 
 const DEV_SECRET = 'dev-only-change-me-dev-only-change-me';
@@ -60,11 +61,19 @@ const EnvSchema = z.object({
   RETENTION_CLOSED_ROOM_DAYS: int(30, 1, 3650),
   /** Venue mode (ADR-0024): length of one metered minute. Tests and demos only; production refuses another value. */
   VENUE_MINUTE_MS: int(60_000, 100, 60_000),
+  /** Distinct recently played questions per category a venue deck avoids (ADR-0025 §9). */
+  VENUE_FRESH_WINDOW: int(300, 0, 5000),
   /** Addresses that become ADMIN on their first sign-in (how the first administrator exists). */
   ADMIN_BOOTSTRAP_EMAILS: csv,
   /** Where sign-in mail goes: any service that takes a JSON POST `{to, subject, text}`. */
   EMAIL_WEBHOOK_URL: z.string().url().optional(),
   EMAIL_WEBHOOK_TOKEN: z.string().min(8).optional(),
+  /** Sign-in mail through a transactional-mail API (HttpEmailSender): provider, key and sender go together. */
+  EMAIL_PROVIDER: z.enum(['resend', 'brevo']).optional(),
+  EMAIL_API_KEY: z.string().min(8).optional(),
+  EMAIL_FROM: z.string().min(5).max(200).optional(),
+  /** Tests only: production refuses it (a key must never be sent to a look-alike host). */
+  EMAIL_API_BASE: z.string().url().optional(),
   /** Model-backed audit passes (ADR-0014): without a key the passes stay NOT_RUN. Names are never built in. */
   /** Store purchases (ADR-0013). Off by default; each store is configured separately. */
   PAYMENTS_ENABLED: flag('0'),
@@ -234,7 +243,14 @@ export interface AppConfig {
   adminBootstrapEmails: string[];
   /** Venue mode: milliseconds in one metered minute (60 000 except in tests). */
   venueMinuteMs: number;
+  venueFreshWindow: number;
   emailWebhook: { url: string; token: string | null } | null;
+  emailProvider: {
+    provider: 'resend' | 'brevo';
+    apiKey: string;
+    from: string;
+    apiBase: string | null;
+  } | null;
   payments: PaymentsConfig;
   /** Sealing keys for personal answers; the first is the active one. Null = personal quizzes are off. */
   blindKeys: { id: string; key: Buffer }[] | null;
@@ -272,9 +288,20 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     if (e.QP_ALLOW_DEV_SEED) problems.push('QP_ALLOW_DEV_SEED must be 0 in production');
     if (e.RATE_LIMIT_SCALE !== 1) problems.push('RATE_LIMIT_SCALE must be 1 in production');
     if (e.VENUE_MINUTE_MS !== 60_000) problems.push('VENUE_MINUTE_MS must be 60000 in production');
+    if (e.EMAIL_API_BASE) problems.push('EMAIL_API_BASE must not be set in production');
     if (problems.length > 0)
       throw new Error(`Unsafe production configuration: ${problems.join('; ')}`);
   }
+
+  const mailParts = [e.EMAIL_PROVIDER, e.EMAIL_API_KEY, e.EMAIL_FROM];
+  if (mailParts.some(Boolean) && !mailParts.every(Boolean))
+    throw new Error(
+      'Invalid configuration: EMAIL_PROVIDER, EMAIL_API_KEY and EMAIL_FROM go together',
+    );
+  if (e.EMAIL_PROVIDER && e.EMAIL_WEBHOOK_URL)
+    throw new Error('Invalid configuration: set EMAIL_PROVIDER or EMAIL_WEBHOOK_URL, not both');
+  if (e.EMAIL_FROM && !parseFrom(e.EMAIL_FROM))
+    throw new Error('Invalid configuration: EMAIL_FROM is not an email address');
 
   let gameConfigOverride: unknown = {};
   if (e.GAME_CONFIG_OVERRIDE) {
@@ -331,10 +358,20 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       closedRoomDays: e.RETENTION_CLOSED_ROOM_DAYS,
     },
     venueMinuteMs: e.VENUE_MINUTE_MS,
+    venueFreshWindow: e.VENUE_FRESH_WINDOW,
     adminBootstrapEmails: e.ADMIN_BOOTSTRAP_EMAILS.map((email) => email.trim().toLowerCase()),
     emailWebhook: e.EMAIL_WEBHOOK_URL
       ? { url: e.EMAIL_WEBHOOK_URL, token: e.EMAIL_WEBHOOK_TOKEN ?? null }
       : null,
+    emailProvider:
+      e.EMAIL_PROVIDER && e.EMAIL_API_KEY && e.EMAIL_FROM
+        ? {
+            provider: e.EMAIL_PROVIDER,
+            apiKey: e.EMAIL_API_KEY,
+            from: e.EMAIL_FROM,
+            apiBase: e.EMAIL_API_BASE ?? null,
+          }
+        : null,
     payments: paymentsConfig(e, production),
     blindKeys: blindKeys(e.BLIND_DATA_KEYS, e.SERVER_SECRET ?? DEV_SECRET, production),
     aiDecoys:

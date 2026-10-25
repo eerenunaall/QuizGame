@@ -1,0 +1,110 @@
+# PRODUCTION blueprint for ONE paying venue (Gusto Board Game Cafe) on Render: https://render.com
+# New + > Blueprint > pick this repository > "Blueprint file path": render.production.yaml
+# Step-by-step for the owner (Turkish, phone only): docs/GUSTO_GO_LIVE.md. Background: docs/DEPLOYMENT.md section 12.
+#
+# Next to render.yaml (the free DEMO: development mode, dev question bank, dev conveniences). This one:
+#  - runs NODE_ENV=production, so the server refuses to start on unsafe settings (config.ts) and never
+#    serves or accepts development questions (ADR-0014);
+#  - needs PAID plans. The free web service sleeps after 15 minutes without traffic (a table would wait
+#    about a minute for the first phone) and a free Postgres expires after 30 days and is then deleted.
+#    "starter" web (always on) + "basic-256mb" Postgres (persistent, backed up) is the minimum;
+#  - keeps every secret out of git: values marked `sync: false` are typed into the Render dashboard
+#    once, `generateValue: true` is filled in by Render itself.
+# Run exactly ONE instance (numInstances 1): rooms live in the process memory (docs/DEPLOYMENT.md section 0).
+databases:
+  - name: quiznight-gusto-db
+    plan: basic-256mb
+    diskSizeGB: 5
+    databaseName: quizparty
+    user: quizparty
+    # Empty list = reachable only from inside Render (the game server), not from the internet.
+    ipAllowList: []
+
+services:
+  - type: web
+    name: gusto-quiznight
+    runtime: docker
+    plan: starter
+    numInstances: 1
+    dockerfilePath: ./infra/deployment/Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    # A release redeploy only after the new build is healthy (default); keep old instance until then.
+    autoDeploy: false
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: quiznight-gusto-db
+          property: connectionString
+      - key: PORT
+        value: '8080'
+      - key: NODE_ENV
+        value: production
+      # Development content and conveniences: OFF. The server refuses to boot if QP_ALLOW_DEV_SEED is 1.
+      - key: QP_ALLOW_DEV_SEED
+        value: '0'
+      - key: QP_SEED_DEV
+        value: '0'
+      - key: QP_SEED_DEMO
+        value: '0'
+      # The verified Gusto question bank (seed/gusto/) is loaded at every start through the normal
+      # import path; development questions are switched off for good by `question retire-dev`.
+      - key: QP_BANK_DIR
+        value: /app/seed/gusto
+      - key: QP_BANK_KEEP_PREFIX
+        value: gusto-
+      - key: LOG_LEVEL
+        value: info
+      - key: SERVE_WEB
+        value: '1'
+      - key: SERVE_ADMIN
+        value: '1'
+      # Render's load balancer is one proxy in front of the server: it gives each visitor their own
+      # rate-limit bucket instead of one shared bucket.
+      - key: TRUST_PROXY_HOPS
+        value: '1'
+      # Every phone in the cafe shares the cafe's Wi-Fi address: allow a full room of phones plus TVs.
+      - key: MAX_WS_PER_IP
+        value: '150'
+
+      # ---- Secrets and owner settings: typed into the Render dashboard, never committed ----
+      # Keys every stored hash (sign-in codes, sessions, reward codes). Render generates a random one.
+      # Never change it afterwards (docs/RUNBOOK.md section 5): everybody is signed out and open reward codes stop working.
+      - key: SERVER_SECRET
+        generateValue: true
+      # Protects /metrics (off without it). Render generates a random one.
+      - key: METRICS_TOKEN
+        generateValue: true
+      # Addresses that become ADMIN on their first sign-in, comma separated, lower case. The owner's real mailbox.
+      - key: ADMIN_BOOTSTRAP_EMAILS
+        sync: false
+      # The address people open, with https://, no trailing slash: https://gusto-quiznight.onrender.com
+      # (or your own domain). Goes into the QR codes on the TV. Must be https.
+      - key: PUBLIC_WEB_URL
+        sync: false
+      # The same address again (browsers from any other address are refused). Comma separated if several.
+      - key: ALLOWED_ORIGINS
+        sync: false
+      # Sign-in code mail through a transactional-mail API. resend (recommended) or brevo.
+      - key: EMAIL_PROVIDER
+        sync: false
+      - key: EMAIL_API_KEY
+        sync: false
+      # `Gusto QuizNight <giris@your-domain.com>` : an address on a domain you verified at the mail provider.
+      - key: EMAIL_FROM
+        sync: false
+      # Keys that seal Blind Quiz (personal quiz) answers: id:base64key. Venue mode does not need it:
+      # leave the value EMPTY and personal quizzes stay off (docs/BACKUP.md section 5).
+      - key: BLIND_DATA_KEYS
+        sync: false
+
+      # ---- Build-time look: Gusto theme (Vite reads these while the web app builds) ----
+      - key: VITE_DEFAULT_THEME
+        value: gusto
+      - key: VITE_VENUE_NAME
+        value: Gusto Board Game
+      - key: VITE_VENUE_CREDIT
+        value: by Eren Ünal
+      # Venue mode (ADR-0024) is NOT an environment variable: after the first admin sign-in, switch the
+      # database flag `venue.sessions` on in /admin -> Özellik anahtarları (docs/GUSTO_GO_LIVE.md, adım 8).
+      # Never set VENUE_MINUTE_MS here: production refuses it.

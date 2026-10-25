@@ -42,6 +42,9 @@ services:
       ADMIN_BOOTSTRAP_EMAILS: ${ADMIN_BOOTSTRAP_EMAILS:?set ADMIN_BOOTSTRAP_EMAILS in .env}
       EMAIL_WEBHOOK_URL: ${EMAIL_WEBHOOK_URL:-}
       EMAIL_WEBHOOK_TOKEN: ${EMAIL_WEBHOOK_TOKEN:-}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-}
+      EMAIL_API_KEY: ${EMAIL_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
       BLIND_DATA_KEYS: ${BLIND_DATA_KEYS:-}
       # Retention periods (docs/PRIVACY.md section 3); empty keeps the defaults the privacy page states.
       RETENTION_OTP_HOURS: ${RETENTION_OTP_HOURS:-}

@@ -82,18 +82,51 @@ production`, `RATE_LIMIT_SCALE must be 1 in production` (`loadConfig`, verified 
 
 ## 5. E-mail for sign-in codes (the one part that needs a service)
 
-The server does not speak SMTP. It sends each sign-in code to a web address you provide
-(`EMAIL_WEBHOOK_URL`) as `POST` with JSON `{"to": "...", "subject": "...", "text": "..."}` and, if
-`EMAIL_WEBHOOK_TOKEN` is set, the header `Authorization: Bearer <token>` (`WebhookEmailSender`,
-`apps/realtime/src/auth/email.ts`; a non-2xx answer counts as a failure). The code is in the subject and text.
+Two transports exist; set exactly one (the server refuses both). In production **with neither**, e-mail sign-in is
+switched off (fail closed): nobody could log in to `/admin` or `/staff`. Outside production the code is printed in the
+log (`ConsoleEmailSender`) - never in production, and the Render/compose production settings never enable that.
 
-- In production **without** `EMAIL_WEBHOOK_URL` e-mail sign-in is switched off (fail closed): you could not log in
-  to the admin console. Outside production the code is printed in the log instead.
-- Pick one: (a) a no-code automation tool (Make, Zapier, n8n) with a "webhook" start and a "send e-mail" step -
-  paste the webhook address as `EMAIL_WEBHOOK_URL`; (b) a transactional-mail provider whose API accepts exactly this
-  shape, or a few lines of adapter code at a small serverless endpoint. **No mail service has been tested against
-  this server `[UNTESTED HERE]`.** Test it by signing in once (section 7) before relying on it.
-- The sender address and domain authentication (SPF, DKIM) are set in that service, not here.
+**A. Transactional-mail API (recommended): `HttpEmailSender`** (`apps/realtime/src/auth/http-email.ts`)
+
+| Variable | Value |
+|---|---|
+| `EMAIL_PROVIDER` | `resend` or `brevo` |
+| `EMAIL_API_KEY` | the API key from the provider (min. 8 characters; never logged) |
+| `EMAIL_FROM` | `Gusto QuizNight <giris@your-domain>`; the address must be on a domain verified at the provider |
+
+All three must be set together. One HTTPS call per mail, 8 s timeout, up to 3 attempts with 0.4 s / 0.8 s backoff on
+network errors, timeouts, 408/425/429 and 5xx (never on 401/403/422: a wrong key or sender is not fixed by retrying),
+a circuit breaker (5 failed mails in a row stop calls for 60 s, so an outage cannot pile up connections), redirects
+refused so the key never travels to another host. The mail text is the Turkish or English sign-in text from
+`packages/i18n` (the language the person's browser asked with). Failures are logged as `resend answered 422
+(validation_error)`: provider, status and the provider's short label only - never the code, the address, the key or
+the provider's message. The answer to the person asking for a code is always the same `202`, whatever the provider
+does (an outage must not reveal which addresses have accounts).
+
+*Why Resend is the default:* one endpoint (`POST https://api.resend.com/emails`), one `Authorization: Bearer` header,
+a flat JSON body, clean error labels and an `Idempotency-Key` (a retry after a lost answer cannot send two codes);
+the free plan (100 mails/day, 3 000/month at the time of writing, verify on the pricing page) is far above what a
+café's staff sign-ins need; and it is reachable from Turkey. *Its catch:* it only sends from a domain you own and have
+verified (below). *Brevo* (`POST https://api.brevo.com/v3/smtp/email`, header `api-key`) has a larger free plan (300
+mails/day) and can send from one verified single address without owning a domain, but a free-mail sender such as
+`@gmail.com` will often land in spam (DMARC), and new Brevo accounts may restrict API calls by IP address
+(Security > Authorized IPs): Render's outgoing addresses change, so deactivate that restriction. Mailgun, Postmark and
+MailerSend were not chosen: no permanent free tier or a longer review before the first mail.
+**Neither provider was exercised from the build sandbox; the wire formats are tested against local doubles written
+from the providers' documentation `[UNTESTED HERE]`.** Send yourself one real code before opening the venue.
+
+**Sender domain (SPF / DKIM / DMARC), once, at the provider and your DNS host.** Use a subdomain of a domain you own,
+e.g. `mail.your-domain.com`. At the provider: Domains > Add domain; it shows 2-3 DNS records. At your DNS host add them
+exactly: an **SPF** record (TXT, `v=spf1 include:... ~all`, or the MX/TXT pair the provider shows for its bounce
+subdomain), a **DKIM** record (TXT or CNAME with a long key, name like `resend._domainkey`) and optionally **DMARC** (TXT
+`_dmarc` = `v=DMARC1; p=none; rua=mailto:you@your-domain.com`, tighten to `quarantine` after a week). Wait for the
+provider to show "Verified" (minutes to a day). Until then mail is rejected (`422`) or lands in spam. If you own no
+domain, buy a cheap one (a `.com` or `.com.tr` at any registrar) or use Brevo with a single verified sender address.
+Do **not** use the provider's test sender (`onboarding@resend.dev`): it only delivers to your own sign-up address.
+
+**B. Generic webhook** (unchanged): `EMAIL_WEBHOOK_URL` receives `POST` JSON `{"to","subject","text"}` with
+`Authorization: Bearer <EMAIL_WEBHOOK_TOKEN>`; a non-2xx answer counts as a failure (`WebhookEmailSender`). Use it
+with Make/Zapier/n8n or an adapter of your own.
 
 ## 6. Load the questions
 
@@ -135,7 +168,9 @@ Set in `docker-compose.prod.yml` (not by you) unless the column says "you". Sour
 | `SERVER_SECRET` (you) | 32+ chars | keys all stored hashes; **do not change casually** (RUNBOOK) |
 | `METRICS_TOKEN` (you) | 16+ chars | `/metrics` answers 401 without `Authorization: Bearer <token>` and is off when unset |
 | `ADMIN_BOOTSTRAP_EMAILS` (you) | list | section 7 |
+| `EMAIL_PROVIDER`, `EMAIL_API_KEY`, `EMAIL_FROM` (you) | see section 5 | all three or none; not together with the webhook; `EMAIL_API_BASE` exists for tests and production refuses it |
 | `EMAIL_WEBHOOK_URL`, `EMAIL_WEBHOOK_TOKEN` (you) | see section 5 | token at least 8 chars |
+| `QP_BANK_DIR`, `QP_BANK_KEEP_PREFIX` | unset / `gusto-` | folder of a verified bank loaded at start (section 12); `infra/deployment/load-bank.sh` |
 | `BLIND_DATA_KEYS` (you) | `id:base64key,...` | empty = personal quizzes unavailable in production; ids `[A-Za-z0-9_-]{1,32}`, keys exactly 32 bytes |
 | `TRUST_PROXY_HOPS` | `1` | number of proxies in front; with `0` every visitor looks like the proxy's address and shares one rate-limit bucket |
 | `SERVE_WEB`, `SERVE_ADMIN` | `1` | the image contains both built apps |
@@ -183,3 +218,40 @@ TLS other than Caddy's automatic certificates, several servers, a managed databa
 in front of the static files), an IP allow-list for `/admin` (ADR-0018 mentions it; it is **not implemented** in
 the server - Caddy `@admin path /admin* /v1/admin*` with `remote_ip` matchers can do it `[UNTESTED HERE]`),
 store submission (`docs/MOBILE.md`), legal texts (`docs/EXTERNAL_CHECKLIST.md`).
+
+## 12. Render, one paying venue (`render.production.yaml`)
+
+The demo blueprint `render.yaml` runs development mode with the development bank; **never use it for a paying venue.**
+`render.production.yaml` is the production counterpart; the owner's phone-only walk-through is `docs/GUSTO_GO_LIVE.md`
+(Turkish). What it sets and why:
+
+- `NODE_ENV=production` (fail-closed config checks), `QP_ALLOW_DEV_SEED=0`, `QP_SEED_DEV=0`, `QP_SEED_DEMO=0`. The
+  entrypoint additionally ignores the two seed flags in production, and the question CLI refuses `seed` and
+  `--allow-dev-seed` there; the server never serves `is_dev_seed` rows (ADR-0014).
+- **Paid plans:** web `starter` (always on; the free plan sleeps after 15 idle minutes, so the first guest waits about
+  a minute for a cold start and open tables could be disturbed) and Postgres `basic-256mb` (persistent, with Render's
+  backups; a free Postgres expires after 30 days and is deleted). Plan names change: if Render rejects one, pick the
+  cheapest paid web and Postgres plans in the dashboard `[UNTESTED HERE]`.
+- One instance only (`numInstances: 1`), database reachable only from inside Render (`ipAllowList: []`),
+  `/healthz` health check, `autoDeploy: false` (a push never changes the live venue; deploy by hand after a rehearsal).
+- Secrets: `SERVER_SECRET` and `METRICS_TOKEN` are generated by Render (`generateValue`); `ADMIN_BOOTSTRAP_EMAILS`,
+  `PUBLIC_WEB_URL`, `ALLOWED_ORIGINS`, `EMAIL_PROVIDER`, `EMAIL_API_KEY`, `EMAIL_FROM`, `BLIND_DATA_KEYS` are
+  `sync: false`: typed in the dashboard once, not in git. `pnpm release:audit` fails if a dev flag appears, a secret
+  is inlined, a free plan or a second instance is declared, or the environment no longer loads in production.
+- Look: build arguments `VITE_DEFAULT_THEME=gusto`, `VITE_VENUE_NAME`, `VITE_VENUE_CREDIT` (the Dockerfile passes them to
+  the web build).
+- Bank: `QP_BANK_DIR=/app/seed/gusto` makes the entrypoint run `load-bank.sh` at every start: categories, every
+  `questions.*.tr.jsonl` through the normal importer (it accepts `AI_ASSISTED`/`HUMAN` rows with sources, refuses
+  `DEV_SEED`), optional external audit verdicts `audits.*.jsonl` (`question import-results`, the fact-check
+  evidence), then `question audit --no-models --auto-activate` (only an arbiter PASS becomes ACTIVE; the rest waits in
+  REVIEW), then `question retire-dev --keep-prefix gusto-` (a no-op with a log line if the CLI has no such command).
+  Re-running is idempotent. Rows without a PASS verdict never reach players.
+- Venue mode: the flag `venue.sessions` (database, off by default) is switched in `/admin` after the first sign-in.
+- Rate limits: `TRUST_PROXY_HOPS=1` (Render's load balancer) and `MAX_WS_PER_IP=150` (all guests share the café's Wi-Fi
+  address). If Render puts a second proxy in front, every guest shares one rate-limit bucket (harmless, but check
+  `/metrics` `qp_security_events_total` after the rehearsal) `[UNTESTED HERE]`.
+
+Custom domains: the server derives CSP `connect-src`, the QR address and the allowed origins from `PUBLIC_WEB_URL` and
+`ALLOWED_ORIGINS`; sessions use host-bound `__Host-` cookies (`SameSite=Strict`) and the CSP says `frame-ancestors
+'none'`. So a custom domain needs **no code change**, only those two variables; embedding the game in an iframe is
+unsupported by design (`docs/GUSTO_GO_LIVE.md` section "Kendi alan adınla yayınlamak").

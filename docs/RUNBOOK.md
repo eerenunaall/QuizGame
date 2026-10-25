@@ -125,6 +125,17 @@ When someone writes to you instead:
 - Updates: `docs/DEPLOYMENT.md` section 9. OS security updates: `sudo apt update && sudo apt upgrade`, reboot at a quiet hour.
 - Backups: nightly, off-server, restore drill each quarter (`docs/BACKUP.md`).
 
+## 8b. On Render (the Gusto venue)
+
+Commands above assume Docker. On Render (`render.production.yaml`, guide `docs/GUSTO_GO_LIVE.md`): logs = service > Logs;
+restart = service > Manual Deploy > "Restart service"; update = Manual Deploy > "Deploy latest commit" (auto-deploy is
+off on purpose); variables = service > Environment (saving restarts the service; running tables survive a restart,
+ADR-0006/0024); shell = service > Shell (paid plans); rollback = Events > an earlier deploy > Rollback (database
+migrations are forward-only: roll back only to a build that matches the current database, else restore a backup).
+Sign-in mails missing: logs show `resend answered 401` (key wrong/revoked), `422` (sender domain not verified),
+`429` (daily free limit), `circuit open` (provider outage; it recovers by itself after 60 s). Rotating `EMAIL_API_KEY`:
+new key at the provider, paste into Environment, save.
+
 ## 9. Who to call
 
 Fill in before launch: hosting provider support, domain registrar, mail service, the person who can approve a security

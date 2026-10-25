@@ -22,6 +22,7 @@ import { Sealer } from './blind/sealer';
 import { DecoySuggester, HttpDecoyProvider } from './blind/decoys';
 import { BlindVault } from './blind/vault';
 import { ConsoleEmailSender, WebhookEmailSender, type EmailSender } from './auth/email';
+import { HttpEmailSender } from './auth/http-email';
 import { installAuthGuard } from './auth/guard';
 import { OtpService } from './auth/otp';
 import { AccountPrivacy, registerPrivacyRoutes } from './auth/privacy';
@@ -47,6 +48,7 @@ import { DbTelemetrySink } from './telemetry/sink';
 import { systemClock, type Clock } from './util/clock';
 import { createMetrics } from './util/metrics';
 import { Gateway } from './ws/gateway';
+import { registerVenueContentRoutes } from './venue/content-routes';
 import { registerVenueRoutes } from './venue/routes';
 import { VenueService } from './venue/service';
 
@@ -167,7 +169,12 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   const store = new PgRoomStore(db, config.instanceId, config.leaseMs, clock);
   const flags = new FeatureFlags(db, clock);
   const bans = new BanService(db);
-  const deckBuilder = new DeckBuilder(db, { allowDevSeed: config.allowDevSeed, clock, flags });
+  const deckBuilder = new DeckBuilder(db, {
+    allowDevSeed: config.allowDevSeed,
+    clock,
+    flags,
+    freshWindow: config.venueFreshWindow,
+  });
   const catalog = new CategoryCatalogService(db, deckBuilder, {
     allowDevSeed: config.allowDevSeed,
     clock,
@@ -180,14 +187,21 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   const accountSessions = new AccountSessionService(db, accounts, config.serverSecret, clock);
   const mail: EmailSender | null =
     options.emailSender ??
-    (config.emailWebhook
-      ? new WebhookEmailSender({
-          url: config.emailWebhook.url,
-          ...(config.emailWebhook.token ? { token: config.emailWebhook.token } : {}),
+    (config.emailProvider
+      ? new HttpEmailSender({
+          provider: config.emailProvider.provider,
+          apiKey: config.emailProvider.apiKey,
+          from: config.emailProvider.from,
+          ...(config.emailProvider.apiBase ? { apiBase: config.emailProvider.apiBase } : {}),
         })
-      : config.env === 'production'
-        ? null // fail closed: no way to deliver a code means no email sign-in
-        : new ConsoleEmailSender((line) => log.info(line)));
+      : config.emailWebhook
+        ? new WebhookEmailSender({
+            url: config.emailWebhook.url,
+            ...(config.emailWebhook.token ? { token: config.emailWebhook.token } : {}),
+          })
+        : config.env === 'production'
+          ? null // fail closed: no way to deliver a code means no email sign-in
+          : new ConsoleEmailSender((line) => log.info(line)));
   const otp = mail ? new OtpService(db, config.serverSecret, clock, mail, onError) : null;
   const reports = new QuestionReports(db, flags, config.serverSecret, telemetry, clock);
   const maintenance = new MaintenanceJob(
@@ -379,6 +393,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     venues,
   });
   registerVenueRoutes(app, { config, venues, limiter, security });
+  registerVenueContentRoutes(app, { config, db, venues, limiter, security, clock });
   registerBlindRoutes(app, { config, quizzes, vault, flags, limiter });
   registerPrivacyRoutes(app, {
     sessions: accountSessions,

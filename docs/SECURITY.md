@@ -55,6 +55,13 @@ forbidden key such as an unrevealed answer).
 | Safari/Firefox/Edge/real TVs and real networks were not exercised | see `docs/BROWSER_MATRIX.md` | owner device pass |
 | Blind-Quiz-specific reports (a moderator-only snapshot of a personal question) are not built | acceptance AC partial | personal questions are refused by the bank report path; moderate by closing rooms and banning |
 
+### Production mail sender (HttpEmailSender)
+The provider key lives only in the environment (`EMAIL_API_KEY`); the code is never logged (the console sender is
+development only, production without a sender turns e-mail sign-in off); delivery errors carry provider, status and
+label only; redirects are refused; `EMAIL_API_BASE` (test seam) is refused in production so the key cannot be pointed at
+another host. Tests: `tests/integration/email-provider.test.ts`. A leaked key: revoke it at the provider, create a new
+one, change `EMAIL_API_KEY`, redeploy.
+
 ## 4. Reporting a vulnerability
 
 Publish a contact address (security@ your domain or a GitHub private advisory) and say so on the support page;
