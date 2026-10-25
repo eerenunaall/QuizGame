@@ -47,8 +47,8 @@ shared web-search budget (about 200 calls per turn for all agents) and by facts 
 
 ## Difficulty mix
 
-The first session ran too hard; this session's target was 40% easy / 40% medium / 20% hard. Achieved overall: 63 easy,
-138 medium, 53 hard (geography, written first, is the hardest slice and is left as it was apart from the R1 fixes).
+The first session ran too hard; this session's target was 40% easy / 40% medium / 20% hard. Achieved overall: 73 easy,
+138 medium, 43 hard (geography, written first, is the hardest slice and is left as it was apart from the R1 fixes).
 
 ## Dry-run audit
 
