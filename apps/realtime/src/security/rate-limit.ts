@@ -126,5 +126,11 @@ export const LIMITS = {
    */
   venueRedeem: { capacity: 10, refillPerSec: 10 / 300 },
   venueRedeemVenue: { capacity: 30, refillPerSec: 30 / 600 },
+  /**
+   * Uploading a question file (ADR-0025 §7; dry-run and import share it): a file is analysed against the
+   * whole bank, so a handful per ten minutes per account and, apart, an hour's allowance per venue.
+   */
+  venueContent: { capacity: 6, refillPerSec: 6 / 600 },
+  venueContentVenue: { capacity: 20, refillPerSec: 20 / 3600 },
   invalidMessage: { capacity: 8, refillPerSec: 0.2 },
 } as const satisfies Record<string, BucketSpec>;

@@ -29,8 +29,21 @@ export const RewardSettingsSchema = z.strictObject({
   rematchCooldownMinutes: rewardFields.rematchCooldownMinutes.default(5),
 });
 
+/** Where a venue room draws its questions from (ADR-0025 §8). */
+export const QUESTION_SOURCES = ['MIXED', 'VENUE_ONLY', 'GLOBAL_ONLY'] as const;
+export type QuestionSource = (typeof QUESTION_SOURCES)[number];
+const questionFields = {
+  source: z.enum(QUESTION_SOURCES),
+  venueSharePercent: z.int().min(5).max(95),
+};
+export const QuestionSettingsSchema = z.strictObject({
+  source: questionFields.source.default('MIXED'),
+  venueSharePercent: questionFields.venueSharePercent.default(30),
+});
+
 export const VenueSettingsSchema = z.strictObject({
   reward: RewardSettingsSchema.default(RewardSettingsSchema.parse({})),
+  questions: QuestionSettingsSchema.default(QuestionSettingsSchema.parse({})),
   defaultMinutes: minutesField.default(60),
   extendSteps: stepsField.default([15, 30, 60]),
   timezone: zoneField.default('Europe/Istanbul'),
@@ -40,6 +53,7 @@ export type VenueSettings = z.infer<typeof VenueSettingsSchema>;
 /** What an owner may send: any subset, merged over the stored settings and validated as a whole. */
 export const VenueSettingsPatchSchema = z.strictObject({
   reward: z.strictObject(rewardFields).partial().optional(),
+  questions: z.strictObject(questionFields).partial().optional(),
   defaultMinutes: minutesField.optional(),
   extendSteps: stepsField.optional(),
   timezone: zoneField.optional(),
@@ -68,6 +82,7 @@ export function mergeSettings(
     ...current,
     ...patch,
     reward: { ...current.reward, ...(patch.reward ?? {}) },
+    questions: { ...current.questions, ...(patch.questions ?? {}) },
   });
   if (!merged.success) return null;
   // An enabled reward needs words to show: an empty text would hand out a code for nothing.

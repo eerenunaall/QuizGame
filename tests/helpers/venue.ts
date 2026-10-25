@@ -98,3 +98,129 @@ export interface SessionLike {
   roomLive: boolean;
   error?: { code: string };
 }
+
+// ───────────── venue question sets (ADR-0025) ─────────────
+
+/* eslint-disable @typescript-eslint/no-explicit-any -- the reports are inspected loosely by the tests */
+
+export const toBase64 = (text: string | Uint8Array): string =>
+  Buffer.from(typeof text === 'string' ? text : text).toString('base64');
+
+/** The owner's question-set calls, as a bearer-token client. */
+export function contentApi(server: TestServer, who: { token: string } | null, venueId: string) {
+  const base = `/v1/venues/${venueId}/questions`;
+  const send = <T = Record<string, unknown>>(method: string, path: string, body?: unknown) =>
+    call<T>(server, method, path, {
+      cookies: false,
+      ...(who ? { token: who.token } : {}),
+      ...(body !== undefined ? { body } : {}),
+    });
+  const upload = (path: string, file: string | Uint8Array, fileName = 'sorular.csv') =>
+    send<any>('POST', `${base}/${path}`, { fileName, data: toBase64(file) });
+  return {
+    list: () => send<any>('GET', base),
+    dryRun: (file: string | Uint8Array, fileName?: string) => upload('dry-run', file, fileName),
+    import: (file: string | Uint8Array, fileName?: string) => upload('import', file, fileName),
+    retire: (uploadId: string) => send<any>('POST', `${base}/uploads/${uploadId}/retire`, {}),
+    reports: () => send<any>('GET', `${base}/reports`),
+    resolve: (reportId: string, action: 'DISMISS' | 'RETIRE') =>
+      send<any>('POST', `${base}/reports/${reportId}/resolve`, { action }),
+    prompt: (format = 'csv') => send<any>('GET', `${base}/prompt?format=${format}`),
+    raw: async (path: string) => {
+      const response = await fetch(`${server.httpUrl}${base}/${path}`, {
+        headers: who ? { authorization: `Bearer ${who.token}` } : {},
+      });
+      return { status: response.status, headers: response.headers, text: await response.text() };
+    },
+  };
+}
+
+/** Inserts ACTIVE venue-owned questions straight into the database (for deck and isolation tests). */
+export async function seedVenueQuestions(
+  server: TestServer,
+  venueId: string,
+  count: number,
+  options: { category?: string; label?: string; prefix?: string } = {},
+): Promise<string[]> {
+  const db = server.db.db;
+  const category = options.category ?? `v${venueId.replace(/-/gu, '').slice(0, 8)}-ozel`;
+  await db
+    .insertInto('categories')
+    .values({
+      id: category,
+      label_tr: options.label ?? 'Özel',
+      label_en: options.label ?? 'Özel',
+      free_rotation: false,
+      source_required: false,
+      owner_venue_id: venueId,
+    })
+    .onConflict((oc) => oc.doNothing())
+    .execute();
+  const ids: string[] = [];
+  const prefix = options.prefix ?? 'Kafe';
+  for (let i = 0; i < count; i++) {
+    const text = `${prefix} sorusu ${i + 1} için doğru cevap hangisidir?`;
+    const q = await db
+      .insertInto('questions')
+      .values({
+        language: 'tr',
+        category_id: category,
+        difficulty: (['EASY', 'MEDIUM', 'HARD', 'EXPERT'] as const)[i % 4]!,
+        text,
+        status: 'DRAFT',
+        author_type: 'AI_ASSISTED',
+        pool: 'VENUE',
+        owner_venue_id: venueId,
+        lexical_fingerprint: `${venueId}:${prefix}:${i}`,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await db
+      .insertInto('question_options')
+      .values(
+        [0, 1, 2, 3].map((position) => ({
+          question_id: q.id,
+          position,
+          text: `${prefix} ${i + 1} şık ${position + 1}`,
+          is_correct: position === i % 4,
+        })),
+      )
+      .execute();
+    const { revision } = await db
+      .selectFrom('questions')
+      .select('revision')
+      .where('id', '=', q.id)
+      .executeTakeFirstOrThrow();
+    await db
+      .insertInto('question_audits')
+      .values({
+        question_id: q.id,
+        question_revision: revision,
+        pass: 'HEURISTIC',
+        provider: 'heuristics@1',
+        status: 'PASS',
+      })
+      .execute();
+    await db.updateTable('questions').set({ status: 'ACTIVE' }).where('id', '=', q.id).execute();
+    ids.push(q.id);
+  }
+  return ids;
+}
+
+/** An open metered table row for a (fake) room id, enough for the deck builder to see a venue. */
+export async function attachRoom(
+  server: TestServer,
+  venueId: string,
+  roomId: string,
+): Promise<void> {
+  await server.db.db
+    .insertInto('venue_sessions')
+    .values({
+      venue_id: venueId,
+      room_id: roomId,
+      room_code: 'ABCDEF',
+      purchased_seconds: 3600,
+      started_at: new Date(),
+    })
+    .execute();
+}

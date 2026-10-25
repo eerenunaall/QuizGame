@@ -13,6 +13,7 @@ describe('venue settings', () => {
   it('reads an empty or broken row as the documented defaults (reward off)', () => {
     const defaults = {
       reward: { enabled: false, text: '', minPlayers: 3, maxPerDay: 10, rematchCooldownMinutes: 5 },
+      questions: { source: 'MIXED', venueSharePercent: 30 },
       defaultMinutes: 60,
       extendSteps: [15, 30, 60],
       timezone: 'Europe/Istanbul',
@@ -32,6 +33,23 @@ describe('venue settings', () => {
       maxPerDay: 3,
       rematchCooldownMinutes: 5,
     });
+  });
+
+  it('merges the question source without touching the reward, and refuses nonsense', () => {
+    const current = readSettings({ reward: { enabled: true, text: 'Çay' } });
+    const merged = mergeSettings(
+      current,
+      VenueSettingsPatchSchema.parse({ questions: { source: 'VENUE_ONLY' } }),
+    );
+    expect(merged?.questions).toEqual({ source: 'VENUE_ONLY', venueSharePercent: 30 });
+    expect(merged?.reward.text).toBe('Çay');
+    expect(
+      VenueSettingsPatchSchema.safeParse({ questions: { source: 'EVERYTHING' } }).success,
+    ).toBe(false);
+    for (const bad of [0, 100, 30.5, -1])
+      expect(
+        VenueSettingsPatchSchema.safeParse({ questions: { venueSharePercent: bad } }).success,
+      ).toBe(false);
   });
 
   it('refuses an enabled reward with no text', () => {

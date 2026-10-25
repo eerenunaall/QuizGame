@@ -23,7 +23,12 @@ export const DEFAULT_CSV_LIMITS: CsvLimits = {
   maxCellChars: 4_000,
 };
 
-export function parseCsv(input: string, limits: CsvLimits = DEFAULT_CSV_LIMITS): string[][] {
+export function parseCsv(
+  input: string,
+  limits: CsvLimits = DEFAULT_CSV_LIMITS,
+  /** Turkish spreadsheets write `;` (the comma is their decimal mark); the caller detects it. */
+  delimiter: ',' | ';' | '\t' = ',',
+): string[][] {
   if (input.length > limits.maxBytes) throw new CsvError('input too large', 1);
   const text = input.charCodeAt(0) === 0xfeff ? input.slice(1) : input;
   const rows: string[][] = [];
@@ -61,7 +66,7 @@ export function parseCsv(input: string, limits: CsvLimits = DEFAULT_CSV_LIMITS):
       if (cell.length > 0) throw new CsvError('quote inside an unquoted cell', line);
       quoted = true;
       cellStartLine = line;
-    } else if (char === ',') {
+    } else if (char === delimiter) {
       endCell();
       cellStartLine = line;
     } else if (char === '\r') {

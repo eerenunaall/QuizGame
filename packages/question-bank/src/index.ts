@@ -14,3 +14,4 @@ export * from './retire';
 export * from './repository';
 export * from './results-import';
 export * from './review';
+export * from './venue-import';

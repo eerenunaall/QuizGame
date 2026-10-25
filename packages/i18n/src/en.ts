@@ -1,4 +1,5 @@
 import type { MessageKey } from './tr';
+import { venueContentEn } from './venue-content.en';
 
 export const en: Record<MessageKey, string> = {
   'brand.name': 'QUIZNIGHT',
@@ -761,4 +762,5 @@ export const en: Record<MessageKey, string> = {
   'staff.people.STAFF': 'Staff',
   'staff.people.hint': 'The person gets in once they sign in with this address.',
   'unlock.staff': 'Venue staff? Open this TV as a table',
+  ...venueContentEn,
 };

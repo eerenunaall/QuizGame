@@ -49,6 +49,9 @@ export class CategoryCatalogService {
       ])
       .select((eb) => eb.fn.countAll<number>().as('questions'))
       .where('categories.enabled', '=', true)
+      // The public catalog is anonymous: a venue's own categories and questions are never in it (ADR-0025).
+      .where('categories.owner_venue_id', 'is', null)
+      .where('questions.owner_venue_id', 'is', null)
       .where('questions.status', '=', 'ACTIVE')
       .where('questions.language', '=', language)
       .where((eb) =>

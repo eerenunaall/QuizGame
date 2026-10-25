@@ -294,6 +294,12 @@ export async function loadManyByIds(
 export async function loadIndex(
   db: Database,
   provider: string | null,
+  /**
+   * Whose questions are compared. Without a venue, only the global bank: a venue's questions are its
+   * own (ADR-0025) and must not show up as "duplicates" of a public import. With a venue: the global
+   * bank and that venue's live questions, never another venue's.
+   */
+  venueId: string | null = null,
 ): Promise<MemorySimilarityIndex> {
   const rows = await db
     .selectFrom('questions')
@@ -301,6 +307,17 @@ export async function loadIndex(
       join
         .onRef('question_options.question_id', '=', 'questions.id')
         .on('question_options.is_correct', '=', true),
+    )
+    .where((eb) =>
+      venueId === null
+        ? eb('questions.owner_venue_id', 'is', null)
+        : eb.or([
+            eb('questions.owner_venue_id', 'is', null),
+            eb.and([
+              eb('questions.owner_venue_id', '=', venueId),
+              eb('questions.status', '!=', 'RETIRED'),
+            ]),
+          ]),
     )
     .select([
       'questions.id as id',
@@ -336,6 +353,8 @@ export interface NewQuestionRow {
   fingerprints: Fingerprints;
   status: QuestionStatus;
   isDevSeed: boolean;
+  /** A venue's own question (ADR-0025): pool VENUE, no external id. Only the venue importer sets it. */
+  venue?: { venueId: string; uploadId: string };
 }
 
 /** Inserts a question with its options and sources inside the caller's transaction. */
@@ -347,7 +366,7 @@ export async function insertQuestion(
   const inserted = await trx
     .insertInto('questions')
     .values({
-      external_id: question.externalId,
+      external_id: input.venue ? null : question.externalId,
       language: question.language,
       category_id: question.category,
       subcategory: question.subcategory,
@@ -355,7 +374,9 @@ export async function insertQuestion(
       difficulty: question.difficulty,
       text: question.text,
       explanation: question.explanation,
-      pool: question.pool,
+      pool: input.venue ? 'VENUE' : question.pool,
+      owner_venue_id: input.venue?.venueId ?? null,
+      venue_upload_id: input.venue?.uploadId ?? null,
       expires_at: question.expiresAt,
       last_verified_at: question.lastVerifiedAt,
       status: input.status,

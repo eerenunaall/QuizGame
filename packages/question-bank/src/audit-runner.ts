@@ -263,7 +263,11 @@ export async function selectQuestionIds(
   selection: AuditSelection,
 ): Promise<string[]> {
   if (selection.ids) return [...selection.ids];
-  let query = db.selectFrom('questions').select('questions.id as id');
+  // A venue's own questions (ADR-0025) are not part of the central bank's audit rounds.
+  let query = db
+    .selectFrom('questions')
+    .select('questions.id as id')
+    .where('questions.owner_venue_id', 'is', null);
   if (selection.statuses && selection.statuses.length > 0)
     query = query.where('questions.status', 'in', [...selection.statuses]);
   if (selection.category) query = query.where('questions.category_id', '=', selection.category);

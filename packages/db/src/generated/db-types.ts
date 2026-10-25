@@ -124,6 +124,7 @@ export interface Categories {
   id: string;
   label_en: string;
   label_tr: string;
+  owner_venue_id: string | null;
   sort_order: Generated<number>;
   source_required: Generated<boolean>;
 }
@@ -352,6 +353,7 @@ export interface Questions {
   last_verified_at: Timestamp | null;
   lexical_fingerprint: string;
   minhash: number[] | null;
+  owner_venue_id: string | null;
   pool: Generated<string>;
   quality_score: Numeric | null;
   report_count: Generated<number>;
@@ -369,6 +371,7 @@ export interface Questions {
   total_answer_ms: Generated<Int8>;
   updated_at: Generated<Timestamp>;
   usage_count: Generated<number>;
+  venue_upload_id: string | null;
   verification_status: Generated<string>;
 }
 
@@ -485,6 +488,43 @@ export interface TelemetryEvents {
   props: Generated<Json>;
 }
 
+export interface VenueContentEvents {
+  actor_account_id: string | null;
+  at: Generated<Timestamp>;
+  detail: Generated<Json>;
+  id: Generated<Int8>;
+  kind: string;
+  upload_id: string | null;
+  venue_id: string;
+}
+
+export interface VenueQuestionHistory {
+  played_at: Timestamp;
+  question_id: string;
+  venue_id: string;
+}
+
+export interface VenueQuestionUploads {
+  by_category: Generated<Json>;
+  bytes: number;
+  file_hash: string;
+  file_name: string;
+  format: string;
+  id: Generated<string>;
+  retired_at: Timestamp | null;
+  retired_by: string | null;
+  rows_duplicate: Generated<number>;
+  rows_imported: number;
+  rows_invalid: Generated<number>;
+  rows_rejected: Generated<number>;
+  rows_review: Generated<number>;
+  rows_total: number;
+  state: Generated<string>;
+  uploaded_at: Generated<Timestamp>;
+  uploaded_by: string | null;
+  venue_id: string;
+}
+
 export interface VenueRewards {
   code_hash: string;
   expires_at: Timestamp;
@@ -579,6 +619,9 @@ export interface DB {
   security_events: SecurityEvents;
   store_notifications: StoreNotifications;
   telemetry_events: TelemetryEvents;
+  venue_content_events: VenueContentEvents;
+  venue_question_history: VenueQuestionHistory;
+  venue_question_uploads: VenueQuestionUploads;
   venue_rewards: VenueRewards;
   venue_session_events: VenueSessionEvents;
   venue_sessions: VenueSessions;

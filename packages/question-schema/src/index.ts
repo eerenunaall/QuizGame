@@ -14,3 +14,5 @@ export * from './sha256';
 export * from './similarity';
 export * from './stats';
 export * from './text';
+export * from './venue-file';
+export * from './venue-template';

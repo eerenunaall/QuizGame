@@ -12,6 +12,7 @@ import type { AuditEngine } from './engine';
 import { registerModerationRoutes } from './moderation';
 import { registerQuestionRoutes } from './questions';
 import { registerSystemRoutes } from './system';
+import { registerVenueContentAdminRoutes } from './venue-content';
 import { registerVenueAdminRoutes } from './venues';
 
 export interface AdminDeps {
@@ -52,4 +53,5 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminDeps): void
     audit,
   });
   registerVenueAdminRoutes(app, { venues: deps.venues, audit, now: () => deps.clock.now() });
+  registerVenueContentAdminRoutes(app, { db: deps.db, audit, now: () => deps.clock.now() });
 }

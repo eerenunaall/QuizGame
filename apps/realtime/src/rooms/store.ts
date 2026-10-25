@@ -351,6 +351,19 @@ export class PgRoomStore {
               }))
               .where('id', '=', record.questionId)
               .execute();
+            // A venue table remembers what it played, so the next deck prefers other questions
+            // (ADR-0025 §9). Same guard as the counters above: a replayed round writes nothing twice.
+            await sql`
+              INSERT INTO venue_question_history (venue_id, question_id, played_at)
+              SELECT s.venue_id, ${record.questionId}::uuid, now()
+              FROM games g
+              JOIN venue_sessions s ON s.room_id = g.room_id
+              WHERE g.id = ${record.gameId}
+              ORDER BY s.started_at DESC
+              LIMIT 1
+              ON CONFLICT (venue_id, question_id) DO UPDATE SET played_at = EXCLUDED.played_at`.execute(
+              trx,
+            );
             const picks = new Map<string, number>();
             for (const p of answered) picks.set(p.optionKey!, (picks.get(p.optionKey!) ?? 0) + 1);
             for (const [optionKey, count] of picks) {
