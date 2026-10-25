@@ -1,20 +1,23 @@
 # Slice A: Gusto question bank (general, geography, history, science, nature, math-logic, technology)
 
 Output: `seed/gusto/questions.A.tr.jsonl` (`externalId` prefix `gusto-a-<category>-NNN`, `authorType: AI_ASSISTED`).
-Owner target: 100 verified questions per category. Status at the end of the second session (254 rows):
+Owner decision (final round): about 1000 verified questions are enough for launch, so slice A stops here. Final
+status (310 rows):
 
-| Category | Delivered | Easy / Medium / Hard | Target | Note |
-|---|---|---|---|---|
-| geography | 81 | 11 / 49 / 21 | 100 | fixes from review round R1 applied |
-| math-logic | 58 | 22 / 27 / 9 | 100 | verified by computation; the computation is in each explanation |
-| history | 39 | 13 / 20 / 6 | 100 | |
-| science | 33 | 10 / 20 / 3 | 100 | |
-| general | 15 | 5 / 9 / 1 | 100 | |
-| nature | 15 | 9 / 5 / 1 | 100 | |
-| technology | 13 | 3 / 8 / 2 | 100 | |
+| Category | Delivered | Easy / Medium / Hard |
+|---|---|---|
+| geography | 81 | 11 / 49 / 21 |
+| math-logic | 58 | 22 / 27 / 9 |
+| history | 39 | 13 / 20 / 6 |
+| technology | 34 | 7 / 22 / 5 |
+| science | 33 | 10 / 20 / 3 |
+| nature | 33 | 14 / 14 / 5 |
+| general | 32 | 9 / 21 / 2 |
 
-Every category is short of 100. No unverified question was added to pad the count; the shortfall is caused by the
-shared web-search budget (about 200 calls per turn for all agents) and by facts that sources did not confirm.
+The original 100-per-category target was not reached. No unverified question was added to pad the count.
+
+Longest-correct-option check: the correct option is the single longest option in 15 percent of rows overall
+(geography 16, general 28, history 18, science 3, nature 27, math-logic 2, technology 21), under the 25-30 percent limit.
 
 ## Verification method
 
@@ -47,13 +50,13 @@ shared web-search budget (about 200 calls per turn for all agents) and by facts 
 
 ## Difficulty mix
 
-The first session ran too hard; this session's target was 40% easy / 40% medium / 20% hard. Achieved overall: 73 easy,
-138 medium, 43 hard (geography, written first, is the hardest slice and is left as it was apart from the R1 fixes).
+The first session ran too hard; this session's target was 40% easy / 40% medium / 20% hard. Achieved overall: 96 easy,
+163 medium, 51 hard (geography, written first, is the hardest slice and is left as it was apart from the R1 fixes).
 
 ## Dry-run audit
 
-`question import ../seed/gusto/questions.A.tr.jsonl --dry-run` (no `--allow-dev-seed` needed): 254 rows, 254 CREATED,
-**223 PASS / 31 REVIEW / 0 REJECT**. The 31 REVIEW rows are all soft findings that are not factual errors:
+`question import ../seed/gusto/questions.A.tr.jsonl --dry-run` (no `--allow-dev-seed` needed): 310 rows, 310 CREATED,
+**271 PASS / 39 REVIEW / 0 REJECT** (310 rows, final). The 31 REVIEW rows are all soft findings that are not factual errors:
 SIMILAR_QUESTION (20; the row resembles a row of the older dev seed or another sequence/arithmetic row of this file),
 OPTIONS_NEARLY_IDENTICAL / OVERLAPPING_OPTIONS (numeric answer sets such as dates, unit conversions or percentages,
 unavoidable for the question type), ABSOLUTE_CLAIM (the "kesinlikle doğru" logic row) and ANSWER_STEM_IN_QUESTION
