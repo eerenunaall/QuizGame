@@ -3,21 +3,29 @@
 Target: 100 web-verified Turkish questions per category (`seed/gusto/questions.B.tr.jsonl`,
 ids `gusto-b-<category>-NNN`, `authorType: AI_ASSISTED`). Rule: an unverified question is dropped, never padded.
 
-## Status (end of first turn)
+## Status (end of second turn)
 
 | Category | Delivered (verified) | Note |
 |---|---|---|
-| art-culture | 88 (18 easy / 39 medium / 31 hard) | 12 short of 100 |
-| literature | 0 | not started: web-search budget exhausted |
-| language-words | 0 | same |
-| mythology-folklore | 0 | same |
-| music | 0 | same |
-| sports | 0 | same |
-| food-drink | 0 | same |
+| art-culture | 88 | 12 short of 100 |
+| literature | 18 | 82 short |
+| language-words | 14 | 86 short |
+| mythology-folklore | 31 | 69 short |
+| music | 14 | 86 short |
+| sports | 21 | 79 short |
+| food-drink | 18 | 82 short |
+| Total | 204 | see below |
 
-The shared WebSearch budget (200 calls per turn, all agents) ran out after about 60 calls spent on art-culture.
-The other six categories need a new turn with budget. Plan: verify by cluster (one authoritative list or overview
-page per 5-10 facts).
+Difficulty of the 204 rows is skewed toward HARD/MEDIUM (about 36 easy, 94 medium, 74 hard) because the
+verified clusters yielded mostly specific facts. More easy, well-sourced items are needed in the next turn.
+
+The shared WebSearch budget limited each turn (about 60 searches in turn 1, 35 in turn 2). Verification was
+done by cluster (one overview query per 5-10 facts). Facts a cluster did not confirm were dropped: Pamuk's Nobel
+year, Dylan 2016, Huzur and Saatleri Ayarlama Enstitusu dates, Cıralikusu and Ask-i Memnu book dates (serial vs book
+ambiguity), Nazim Hikmet, Yunus Emre, Fuzuli, Esperanto, Braille, Cyrillic attribution, Sefiller-type unchecked
+items, Moby-Dick and 1984 years, Zeybek/UNESCO, FIFA Klose and Maradona items, Hidayet Turkoglu 2008, FIBA and NBA
+founding years, Gastronomic Meal of the French, Kimjang, "Gelibolu sardalyasi" GI, Kaldi details beyond the
+legend, plus any Kirkpinar founding year (1360/1361/1362 disputed).
 
 ## Evidence note
 
@@ -62,8 +70,8 @@ Read in full. Judgement, not machine scoring:
 ## Dry-run audit
 
 `pnpm --filter @quizparty/scripts run question import ../seed/gusto/questions.B.tr.jsonl --dry-run`:
-88 rows, 88 CREATED, 0 DUPLICATE, 0 REJECT, 85 PASS, 3 REVIEW (all `CATEGORY_MISMATCH_SUSPECT`:
-Globe/Wanamaker, Mevlevi ayin, Ankara State Conservatory/Hindemith, because the stems mention theatre or music
-terms and cross-cut art-culture).
+204 rows, 204 CREATED, 0 DUPLICATE, 0 REJECT, 200 PASS, 4 REVIEW (all `CATEGORY_MISMATCH_SUSPECT`:
+Globe/Wanamaker, Mevlevi ayin, Ankara State Conservatory/Hindemith inside art-culture, and the Ode to Joy poet
+question in music; they cross-cut art-culture and music).
 
 Correct index is rotated by position (`(n-1) mod 4`) so it is evenly distributed.
