@@ -16,7 +16,7 @@ ids `gusto-b-<category>-NNN`, `authorType: AI_ASSISTED`). Rule: an unverified qu
 | food-drink | 18 | 82 short |
 | Total | 204 | see below |
 
-Difficulty of the 204 rows is skewed toward HARD/MEDIUM (about 36 easy, 94 medium, 74 hard) because the
+Difficulty of the 204 rows is skewed toward HARD/MEDIUM (36 easy, 78 medium, 90 hard) because the
 verified clusters yielded mostly specific facts. More easy, well-sourced items are needed in the next turn.
 
 The shared WebSearch budget limited each turn (about 60 searches in turn 1, 35 in turn 2). Verification was
