@@ -17,6 +17,20 @@ Branch: `claude/cloud-session-infrastructure-ln57mp` · Last updated: 2026-10-19
 | M6 Mobile | DONE in the sandbox (device/store parts are external) | `apps/mobile` Expo SDK 58 + expo-router, TypeScript strict: Home, Join (code / nickname / avatar, deep links `quiznight://join/CODE`, `https://host/j/CODE`), Lobby, Prep (Risk stake, Double Down, Sabotage), Question (50/50, SHUFFLE/FOG/JAM), Reveal/Score/Results, Reconnect banner, Purchase (`PurchaseProvider` over `expo-iap`, account-bound), Unlock link, Profile (email OTP as MOBILE session, export, delete). Shared `controller-client`/`i18n`/`ui-tokens`; Jest 132 tests; ws test drives the app runtime against the real server. See `docs/MOBILE.md` |
 | M7 Polish, hardening, release | TODO | |
 
+## Venue question sets (ADR-0025, same flag `venue.sessions`)
+A café's owner uploads CSV/JSONL questions from `/staff` → Sorular (owner only; staff see counts): dry-run with per-row
+Turkish fix messages, then import; passing rows are ACTIVE at once (heuristic audit PASS, owner-attested, no fact check),
+REVIEW/REJECT/invalid/duplicate rows are listed and never stored. Migration 0011 (`questions.owner_venue_id`, pool `VENUE`,
+venue categories, uploads journal, append-only content events, `venue_question_history`, guard amendment). Served only in
+rooms with an open table of that venue (`question source` MIXED 30 % / VENUE_ONLY / GLOBAL_ONLY); freshness ranking over the
+venue's last 300 played per category (`VENUE_FRESH_WINDOW`) for venue and global questions. Limits 2000 rows / 2 MB per file,
+5000 questions and 20 categories per venue, per-account and per-venue rate limits, idempotent by file hash. Owner reports
+list + retire; admin console lists/retire sets. Guide `docs/VENUE.md`, template/prompt `docs/venue-question-template.md`.
+Tests: schema `venue-file`/`venue-template`, `freshness` (property), i18n coverage `venue/messages`; integration
+`venue-questions`, `venue-deck`; ws `venue-questions`; red-team ATTACK 37; web `venue-questions.test.tsx`; e2e `venue-questions.spec.ts`.
+Known limits: venue categories are not in the public lobby picker (played under "all categories"); `retire-dev` style bank
+switches must skip `owner_venue_id IS NOT NULL` rows.
+
 ## Test inventory (all run locally and in CI)
 | Layer | Command | Count |
 |---|---|---|

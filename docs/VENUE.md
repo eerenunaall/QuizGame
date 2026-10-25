@@ -81,6 +81,76 @@ Yönetim konsolunda **Mekanlar → Mekan oturumları**: her gün için açılan 
 (açılış + uzatmalar), uzatma sayısı, verilen ve kullanılan ödül. **CSV indir** ile tabloya aktarılabilir.
 Raporda oyuncu bilgisi yoktur, yalnızca sayılar. Ücretlendirme ve kasa kaydı sizin sisteminizde kalır.
 
+## Kafenizin kendi soruları (yalnızca sahip)
+
+Kafenize özel sorular (kutu oyunlarınız, semtiniz, mekân şakalarınız) yükleyebilirsiniz. Yüklediğiniz sorular
+**yalnızca sizin masalarınızda** çıkar; herkese açık oyunda ve başka kafelerde asla görünmez. Kod değişikliği ya da
+yeniden kurulum gerekmez: içe aktarılan sorular hemen sonraki oyunda kullanılır. Teknik karar kaydı:
+`docs/ADR/0025-venue-question-sets.md`. Şablon ve yapay zekâ yazısı: `docs/venue-question-template.md`.
+
+**Kim yükler?** Yalnızca **sahip** yükler, kaldırır, dışa aktarır ve soru kaynağını seçer. Görevli **Sorular**
+sekmesinde yüklemelerin listesini ve soru sayılarını görür, başka bir şey yapamaz.
+
+### Adım adım
+
+1. Telefonunuzda `https://<sunucu>/staff` adresini açın, e-postanıza gelen kodla giriş yapın, **Sorular** sekmesine girin.
+2. **Dosyayı nasıl hazırlarım?** bölümünü açın:
+   - **CSV şablonunu indir** ile örnek dosyayı alıp Excel / Google E-Tablolar'da kendiniz doldurabilirsiniz, ya da
+   - **Yapay zekâya yapıştırılacak yazıyı kopyala** düğmesine basın, yazıyı ChatGPT, Claude, Gemini gibi bir yapay zekâ
+     asistanına yapıştırın. Yazının başındaki `[KONU]` ve `[SORU SAYISI]` yerlerini doldurun (ör. "kutu oyunları, 60").
+     Asistan size bir CSV kod bloğu verir; bunu kopyalayın.
+3. **Soru yükle** altında dosyayı seçin **ya da** yapay zekânın verdiği metni "buraya yapıştır" kutusuna yapıştırın.
+   Excel kullanıyorsanız **Dosya → Farklı Kaydet → CSV UTF-8** seçin (Türkçe Excel'in noktalı virgüllü CSV'si de okunur;
+   `.xlsx` dosyası yüklenemez).
+4. **Kontrol et**'e basın. Henüz hiçbir şey kaydedilmez; bir **rapor** görürsünüz:
+   - kaç soru yayına girecek, kaç soru düzeltme bekliyor / reddedildi / okunamadı / tekrar, kategori başına sayılar,
+     oluşacak yeni kategoriler;
+   - her sorunlu satır için **ne yanlış ve nasıl düzelir** (Türkçe): ör. "Doğru şık belirtilmemiş. correct sütununa A, B, C
+     veya D yaz."
+5. Sorunlu satırları dosyada düzeltin ya da yapay zekâdan düzeltmesini isteyin (raporu yapıştırabilirsiniz). Hazır olunca
+   **İçe aktar**'a basın. Sorunsuz satırlar **otomatik yayına girer**; düzeltme isteyenler yayına girmez ve listelenir.
+   Düzelttiğiniz dosyayı yeniden yüklediğinizde zaten yayında olan sorular "tekrar" sayılıp atlanır, yalnızca yeni
+   düzeltilenler eklenir. Aynı dosyayı iki kez yüklemek hiçbir şeyi değiştirmez.
+6. Masayı her zamanki gibi açın (**Yeni masa**). Oyun, **Soru kaynağı** ayarınıza göre sorularınızı kullanır.
+
+### Soru kaynağı (Sorular sekmesi, sahip)
+
+| Seçenek | Ne olur |
+| --- | --- |
+| **Karışık** (varsayılan) | Her oyunda soruların yaklaşık %30'u sizin setinizden, kalanı ortak havuzdan gelir (oranı %5-95 arası değiştirebilirsiniz). |
+| **Yalnızca kafenin soruları** | Sizin sorularınız öncelikli; yetmezse oyun durmasın diye eksik kısım ortak havuzdan tamamlanır. |
+| **Yalnızca ortak havuz** | Sorularınız kullanılmaz (silinmez). |
+
+Kafeye özel kategoriler (en çok 20) "tüm kategoriler" ile oynanan oyunlarda çıkar; herkese açık kategori seçim
+ekranında görünmezler.
+
+### Tekrar eden soru olmasın
+
+Sistem masanızda oynanan soruları hatırlar ve yeni oyunları **kafenizde yakın zamanda çıkmamış** sorulardan kurar
+(her kategoride son 300 soru "yakın" sayılır). Havuz küçükse en uzun zamandır çıkmayan sorular önce gelir; oyun hiçbir
+zaman beklemez. Bu, ortak havuz sorularında da geçerlidir.
+
+### Yüklemeyi kaldırmak, dışa aktarmak, bildirimler
+
+- **Bu yüklemeyi kaldır** o dosyadaki tüm soruları oyundan çıkarır (silinmez; iki dokunuşla onaylanır). Aynı dosyayı
+  sonradan yeniden yükleyebilirsiniz.
+- **Soruları CSV olarak indir** yayındaki sorularınızı aynı biçimde verir; düzenleyip yeniden yükleyebilirsiniz.
+- Oyuncular bir soruyu "bildir" ile işaretleyebilir. Sizin sorularınıza gelen bildirimleri **Oyuncu bildirimleri**
+  bölümünde görürsünüz (kimin bildirdiği görünmez): **Yoksay** ya da **Soruyu kaldır**. Birkaç ciddi bildirim soruyu
+  kendiliğinden oyundan çıkarır. Yönetici de aynı bildirimleri görür ve bir yüklemeyi ya da soruyu oyundan çıkarabilir.
+
+### Sınırlar
+
+Dosya başına en fazla **2000 soru** ve **2 MB**; kafe başına en fazla **5000 soru** ve **20 özel kategori**; kısa sürede
+çok sayıda yükleme denemesi geçici olarak engellenir. Metinlerde görünmeyen karakterler, bağlantılar ve uygunsuz
+ifadeler sistem tarafından temizlenir ya da soru reddedilir. Sorular ekranlarda her zaman düz yazı olarak gösterilir.
+
+### Dikkat: doğruluk sizin sorumluluğunuzdadır
+
+Merkezi soru havuzundaki sorular kaynaklarla denetlenir; **sizin yüklediğiniz sorular denetlenmez**: sistem yalnızca
+biçimi, yazımı, tekrarı ve uygunsuz içeriği kontrol eder, bilginin doğruluğunu kontrol edemez. Yapay zekânın verdiği
+bilgileri yayına almadan önce gözden geçirin; yanlış çıkan soruyu kaldırın.
+
 ## Sık sorulanlar
 
 - **Süre oyunun ortasında biterse?** O soru cevaplanır, gösterilir, puanlar yazılır; sonra sonuçlar gelir.
