@@ -9,19 +9,33 @@ futbol-turkiye. Target: 100 web-verified questions per category (`gusto-d-<categ
 | Category | Verified questions | Target |
 | --- | --- | --- |
 | marvel | 39 | 100 |
-| dc, hollywood, cult-films | 0 | 100 each |
-| 7 new categories | 0 | 100 each |
+| dc | 12 | 100 |
+| hollywood | 13 | 100 |
+| cult-films | 9 | 100 |
+| turkiye-kulturu | 11 | 100 |
+| yesilcam-turk-dizileri | 11 | 100 |
+| canakkale-ve-yoresi | 11 | 100 |
+| masa-oyunlari | 11 | 100 |
+| anime-cizgi-film | 10 | 100 |
+| 90lar-nostalji | 10 | 100 |
+| futbol-turkiye | 11 | 100 |
 
-`seed/gusto/questions.D.tr.jsonl` holds only the 39 marvel rows. Dry-run: 0 REJECT, a handful of
-REVIEW (SIMILAR_QUESTION between the "director of film X" rows, which is by design).
+`seed/gusto/questions.D.tr.jsonl` holds 148 rows (generated from per-category tables; no row without
+sources). Dry-run: 0 REJECT, 10 REVIEW (mostly SIMILAR_QUESTION between sibling rows of one sub-topic).
+Search results were summaries of reputable pages (Wikipedia, Britannica, UEFA, TFF, UNESCO WHC, Anzac
+Portal, Hürriyet, TheWrap); where a summary flagged a conflict (Ticket to Ride 2004 vs 2005, Hababam
+release year, Ebru/Nevruz dates, Tamagotchi dates) the row was dropped or phrased around it. Weaker
+sources (fan wikis, aggregators) are the second source only for settled basics.
 
 ## Why the rest is missing (honest status)
 
 Verification needs WebSearch. The harness caps WebSearch at 200 calls per turn, shared by every agent
-of the turn, and the cap was already reached after 11 calls of this slice (WebFetch is blocked: DNS
-does not resolve). Rule: an unverified question is dropped, never kept. Nothing was written from memory.
-To finish: raise `CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION` (or send follow-up turns) and re-run the
-slice with the sub-topic plan below. Search snippets from reputable domains (Wikipedia, Britannica,
+of the turn (first turn: 11 calls of this slice before the cap; second turn: 30 cluster searches).
+WebFetch is blocked: DNS does not resolve. Rule: an unverified question is dropped, never kept.
+Nothing was written from memory. Facts a search did not confirm (Pandemic 2008, Green Lantern and
+Aquaman debut issues, Jazz Singer, Wings, Blade Runner and Back to the Future details, Bozcaada and
+Gokceada facts, club founding years) were left out. To finish: further turns with fresh search budget,
+following the sub-topic plan below (about 90 more rows per category). Search snippets from reputable domains (Wikipedia, Britannica,
 TheWrap, Marvel.com) are what the marvel sources are; fan wikis were used only as a second source for
 release years and directors.
 
