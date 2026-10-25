@@ -50,13 +50,13 @@ Longest-correct-option check: the correct option is the single longest option in
 
 ## Difficulty mix
 
-The first session ran too hard; this session's target was 40% easy / 40% medium / 20% hard. Achieved overall: 96 easy,
-163 medium, 51 hard (geography, written first, is the hardest slice and is left as it was apart from the R1 fixes).
+The first session ran too hard; this session's target was 40% easy / 40% medium / 20% hard. Achieved overall: 86 easy,
+173 medium, 51 hard (geography, written first, is the hardest slice and is left as it was apart from the R1 fixes).
 
 ## Dry-run audit
 
 `question import ../seed/gusto/questions.A.tr.jsonl --dry-run` (no `--allow-dev-seed` needed): 310 rows, 310 CREATED,
-**271 PASS / 39 REVIEW / 0 REJECT** (310 rows, final). The 31 REVIEW rows are all soft findings that are not factual errors:
+**271 PASS / 39 REVIEW / 0 REJECT** (310 rows, final). The 39 REVIEW rows are all soft findings that are not factual errors:
 SIMILAR_QUESTION (20; the row resembles a row of the older dev seed or another sequence/arithmetic row of this file),
 OPTIONS_NEARLY_IDENTICAL / OVERLAPPING_OPTIONS (numeric answer sets such as dates, unit conversions or percentages,
 unavoidable for the question type), ABSOLUTE_CLAIM (the "kesinlikle doğru" logic row) and ANSWER_STEM_IN_QUESTION
