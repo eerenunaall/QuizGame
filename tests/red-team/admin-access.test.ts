@@ -106,6 +106,15 @@ describe('ATTACK 18 — the route table is the access policy', () => {
         'GET /v1/venues/:venueId/staff [session]',
         'POST /v1/venues/:venueId/staff [session]',
         'POST /v1/venues/:venueId/staff/:accountId/remove [session]',
+        'GET /v1/venues/:venueId/questions [session]',
+        'GET /v1/venues/:venueId/questions/template [session]',
+        'GET /v1/venues/:venueId/questions/prompt [session]',
+        'POST /v1/venues/:venueId/questions/dry-run [session]',
+        'POST /v1/venues/:venueId/questions/import [session]',
+        'POST /v1/venues/:venueId/questions/uploads/:uploadId/retire [session]',
+        'GET /v1/venues/:venueId/questions/export [session]',
+        'GET /v1/venues/:venueId/questions/reports [session]',
+        'POST /v1/venues/:venueId/questions/reports/:reportId/resolve [session]',
       ].sort(),
     );
   });

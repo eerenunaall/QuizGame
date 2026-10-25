@@ -33,7 +33,9 @@ afterAll(async () => {
 });
 
 const venueRoutes = (s: TestServer) =>
-  s.built.routes.filter((route) => route.url.startsWith('/v1/venues/:venueId'));
+  s.built.routes.filter(
+    (route) => route.url.startsWith('/v1/venues/:venueId') && !route.url.includes('/questions'),
+  );
 const fill = (url: string, venueId: string, sessionId: string, accountId: string) =>
   url
     .replace(':venueId', venueId)

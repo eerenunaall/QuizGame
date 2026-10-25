@@ -167,6 +167,7 @@ export async function seedVenueQuestions(
         category_id: category,
         difficulty: (['EASY', 'MEDIUM', 'HARD', 'EXPERT'] as const)[i % 4]!,
         text,
+        explanation: `${prefix} açıklaması ${i + 1}`,
         status: 'DRAFT',
         author_type: 'AI_ASSISTED',
         pool: 'VENUE',

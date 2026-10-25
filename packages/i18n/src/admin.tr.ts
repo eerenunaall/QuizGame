@@ -399,4 +399,17 @@ export const adminTr = {
   'admin.venues.col.issued': 'Verilen ödül',
   'admin.venues.col.redeemed': 'Kullanılan ödül',
   'admin.venues.total': 'Toplam',
+  'admin.venues.sets.title': 'Mekanın soru setleri',
+  'admin.venues.sets.intro':
+    'Mekan sahibinin yüklediği sorular yalnızca bu mekanın masalarında çıkar. Bir yüklemeyi ya da tek bir soruyu buradan oyundan çıkarabilirsin (silinmez).',
+  'admin.venues.sets.totals': 'Yayında {active} · incelemede {review} · kaldırılan {retired}',
+  'admin.venues.sets.empty': 'Bu mekan henüz soru yüklemedi.',
+  'admin.venues.sets.file': 'Dosya',
+  'admin.venues.sets.when': 'Yüklendi',
+  'admin.venues.sets.imported': 'Alınan',
+  'admin.venues.sets.active': 'Yayında',
+  'admin.venues.sets.state': 'Durum',
+  'admin.venues.sets.retire': 'Bu yüklemeyi kaldır',
+  'admin.venues.sets.retireConfirm': '{file} yüklemesindeki sorular oyundan çıkarılsın mı?',
+  'admin.venues.sets.retired': '{count} soru oyundan çıkarıldı.',
 } as const;

@@ -7,9 +7,10 @@ import { useLocation } from '../lib/router';
 import { SignInForm, useAccount } from '../pages/useAccount';
 import { venueApi, type StaffRole, type StaffTable, type VenueSettingsView } from './api';
 import { formatLeft, useTicker } from './meter';
+import { VenueQuestions } from './VenueQuestions';
 import styles from './StaffPage.module.css';
 
-type Tab = 'tables' | 'new' | 'redeem' | 'settings';
+type Tab = 'tables' | 'new' | 'redeem' | 'questions' | 'settings';
 type Venue = { id: string; name: string; role: StaffRole };
 
 /** What a refusal means for the person at the counter (never a code or a status number). */
@@ -119,6 +120,7 @@ export function StaffPage(): ReactNode {
                   'tables',
                   'new',
                   'redeem',
+                  'questions',
                   ...(venue.role === 'OWNER' ? ['settings'] : []),
                 ] as Tab[]
               ).map((id) => (
@@ -138,6 +140,7 @@ export function StaffPage(): ReactNode {
               <NewTable venueId={venue.id} link={link} onOpened={() => setTab('tables')} />
             ) : null}
             {tab === 'redeem' ? <Redeem venueId={venue.id} /> : null}
+            {tab === 'questions' ? <VenueQuestions venueId={venue.id} role={venue.role} /> : null}
             {tab === 'settings' && venue.role === 'OWNER' ? <Settings venueId={venue.id} /> : null}
             <Button variant="ghost" size="md" block onClick={signOut} className={styles.signOut}>
               {t('staff.signOut')}
