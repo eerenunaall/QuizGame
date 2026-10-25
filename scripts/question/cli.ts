@@ -347,7 +347,7 @@ export async function run(
         });
         writeReport(report);
         io.out(
-          `${report.applied} of ${report.total} results applied; verdicts: ${formatSummary(report.summary)}`,
+          `${report.applied} of ${report.total} results applied${report.unchanged > 0 ? ` (${report.unchanged} already stored)` : ''}; verdicts: ${formatSummary(report.summary)}`,
         );
         for (const skipped of report.skipped.slice(0, 20))
           io.err(`line ${skipped.line}: ${skipped.reason} ${skipped.key ?? ''}`);

@@ -9,7 +9,10 @@
 # Layout of QP_BANK_DIR (default seed/gusto):
 #   categories.json           optional  [{id,tr,en}]
 #   questions.*.tr.jsonl      rows with authorType AI_ASSISTED (or HUMAN) and sources
-#   audits.*.jsonl            optional  external audit verdicts (`question import-results` format)
+#   audits.*.jsonl            optional  external audit verdicts (`question import-results` format), keyed by externalId
+#   audits.*.source           optional  one line: the auditor label for the same-named file (e.g. audits.R1.source);
+#                                       default QP_BANK_AUDIT_SOURCE, then gusto-verified
+# Re-applying an audits file is idempotent (an identical verdict for the same revision and auditor is not stored again).
 set -euo pipefail
 
 DIR="${1:-${QP_BANK_DIR:-}}"
@@ -43,7 +46,9 @@ done
 for f in "$DIR"/audits.*.jsonl; do
   echo "bank: applying audit verdicts $f"
   # Exit 1 = some lines skipped (e.g. already applied revision); the questions still get judged below.
-  "${Q[@]}" import-results "$f" --source "${QP_BANK_AUDIT_SOURCE:-gusto-verified}" || echo "bank: some audit lines were skipped (continuing)"
+  source_label="${QP_BANK_AUDIT_SOURCE:-gusto-verified}"
+  if [ -f "${f%.jsonl}.source" ]; then source_label="$(head -n1 "${f%.jsonl}.source" | tr -d '\r\n')"; fi
+  "${Q[@]}" import-results "$f" --source "$source_label" || echo "bank: some audit lines were skipped (continuing)"
 done
 
 # Only questions whose arbiter verdict is PASS become ACTIVE; the rest stay in REVIEW for a person.

@@ -360,6 +360,26 @@ describe('manual audit rounds and maintenance', () => {
     expect(back.err[0]).toContain('line 3: question_not_found nobody');
     expect(await statusCounts(t.db)).toEqual({ APPROVED: 2 });
 
+    // The production loader re-applies audits.*.jsonl on every start: a second run stores nothing new.
+    const auditRows = async () =>
+      Number(
+        (
+          await t.db
+            .selectFrom('question_audits')
+            .select(t.db.fn.countAll().as('n'))
+            .executeTakeFirstOrThrow()
+        ).n,
+      );
+    const before = await auditRows();
+    const again = harness({
+      'results.jsonl': jsonl(results),
+    });
+    expect(await again.exec(['import-results', 'results.jsonl', '--source', 'round-1'])).toBe(0);
+    expect(again.out[0]).toBe(
+      '0 of 2 results applied (2 already stored); verdicts: 0 → 0 PASS / 0 REVIEW / 0 REJECT',
+    );
+    expect(await auditRows()).toBe(before);
+
     const maintain = harness();
     expect(await maintain.exec(['maintain'])).toBe(0);
     expect(maintain.out[0]).toBe(

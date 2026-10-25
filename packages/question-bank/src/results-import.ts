@@ -1,4 +1,5 @@
 import type { Database } from '@quizparty/db';
+import { sql } from 'kysely';
 import {
   ExternalAuditRowSchema,
   externalRowToPass,
@@ -73,6 +74,8 @@ export interface ResultsImportOptions {
 export interface ResultsImportReport {
   total: number;
   applied: number;
+  /** Verdicts identical to one already stored for this revision and auditor (a re-run of the same file). */
+  unchanged: number;
   skipped: { line: number; reason: string; key?: string }[];
   summary: BatchSummary;
 }
@@ -96,6 +99,7 @@ export async function importAuditResults(
   const report: ResultsImportReport = {
     total: lines.length,
     applied: 0,
+    unchanged: 0,
     skipped: [],
     summary: summarize([]),
   };
@@ -135,6 +139,25 @@ export async function importAuditResults(
     };
     if (Object.keys(pass.dimensions).length === 0)
       pass.dimensions = dimensionsFromScores(pass.scores);
+    // Idempotent: the production loader re-applies audits.*.jsonl on every start; an identical verdict
+    // for the same revision and auditor must not grow the append-only history.
+    const duplicate = await db
+      .selectFrom('question_audits')
+      .select('id')
+      .where('question_id', '=', stored.id)
+      .where('question_revision', '=', stored.revision)
+      .where('pass', '=', pass.pass)
+      .where('provider', '=', pass.provider)
+      .where('status', '=', pass.status)
+      .where(sql<boolean>`scores = ${JSON.stringify(pass.scores)}::jsonb`)
+      .where(sql<boolean>`review_reasons = ${pass.reviewReasons}::text[]`)
+      .where(sql<boolean>`hard_reject_reasons = ${pass.hardRejectReasons}::text[]`)
+      .limit(1)
+      .executeTakeFirst();
+    if (duplicate) {
+      report.unchanged++;
+      continue;
+    }
     const outcome = await db.transaction().execute(async (trx) => {
       await appendAudit(trx, stored.id, stored.revision, pass, actor.accountId);
       return auditQuestionTx(trx, stored, context, { actor });
