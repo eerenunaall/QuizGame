@@ -158,12 +158,10 @@ describe('import', () => {
 });
 
 describe('retire-dev', () => {
-  const externalIds = async () =>
-    Object.fromEntries(
-      (
-        await t.db.selectFrom('questions').select(['external_id', 'status', 'retired_at']).execute()
-      ).map((row) => [row.external_id, row.status]),
-    );
+  const statusByExternalId = async (): Promise<[string, string][]> => {
+    const rows = await t.db.selectFrom('questions').select(['external_id', 'status']).execute();
+    return rows.map((row): [string, string] => [row.external_id ?? '', row.status]);
+  };
 
   it('retires every active question outside the kept prefix, never deletes, and says how many', async () => {
     await withCategories(t.db);
@@ -178,10 +176,9 @@ describe('retire-dev', () => {
     expect(await h.exec(['retire-dev', '--keep-prefix', 'gusto'])).toBe(0);
     expect(h.text()).toContain('retire-dev: 3 retired, 2 kept');
     expect(await statusCounts(t.db)).toEqual({ ACTIVE: 2, RETIRED: 3 });
-    const byId = await externalIds();
-    expect(Object.entries(byId).filter(([id]) => id?.startsWith('gusto'))).toSatisfy(
-      (entries: [string, string][]) => entries.every(([, status]) => status === 'ACTIVE'),
-    );
+    const kept = (await statusByExternalId()).filter(([id]) => id.startsWith('gusto'));
+    expect(kept).toHaveLength(2);
+    expect(kept.every(([, status]) => status === 'ACTIVE')).toBe(true);
     const again = harness();
     expect(await again.exec(['retire-dev', '--keep-prefix', 'gusto'])).toBe(0);
     expect(again.text()).toContain('retire-dev: 0 retired, 2 kept');
