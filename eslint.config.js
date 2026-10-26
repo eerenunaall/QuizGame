@@ -14,6 +14,8 @@ export default tseslint.config(
       '**/node_modules/**',
       'docs/**',
       'seed/**',
+      // self-contained static studio site with its own browser/node scripts
+      'sites/archonbite/**',
       'playwright-report/**',
       'test-results/**',
       'packages/db/src/generated/**',
