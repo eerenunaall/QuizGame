@@ -21,6 +21,7 @@ import type { RoomManager } from '../rooms/manager';
 import { hmacHex } from '../security/crypto';
 import type { Clock } from '../util/clock';
 import {
+  localDate,
   localDay,
   mergeSettings,
   newRewardCode,
@@ -99,6 +100,8 @@ export interface VenueDeps {
  */
 export class VenueService {
   private readonly timers = new Map<string, NodeJS.Timeout>();
+  private readonly pushes = new Map<string, Promise<void>>();
+  private sweeper: NodeJS.Timeout | null = null;
   private stopped = false;
 
   constructor(private readonly deps: VenueDeps) {}
@@ -468,11 +471,33 @@ export class VenueService {
    * Tells the room what its table looks like now and keeps its tier in step through the existing
    * entitlement input (ADR-0024 §5): FULL while time runs, back to FREE when it is up or ended, unless a
    * guest's own account (who owns the game) is linked to the room.
+   *
+   * Pushes of one table run one after another and each reads the row afresh: two waiters extending at
+   * once commit in one order but their continuations may run in the other, and the older row must never
+   * overwrite the newer meter on the TV. With the feature switched off the room is let go instead.
    */
-  private async push(row: SessionRow, reopenReason: 'LINKED' | 'GRANTED'): Promise<void> {
-    this.disarm(row.id);
+  private push(row: SessionRow, reopenReason: 'LINKED' | 'GRANTED'): Promise<void> {
+    const previous = this.pushes.get(row.id) ?? Promise.resolve();
+    const next = previous.then(() => this.pushNow(row, reopenReason));
+    const settled = next.catch(() => undefined);
+    this.pushes.set(row.id, settled);
+    void settled.then(() => {
+      if (this.pushes.get(row.id) === settled) this.pushes.delete(row.id);
+    });
+    return next;
+  }
+
+  private async pushNow(known: SessionRow, reopenReason: 'LINKED' | 'GRANTED'): Promise<void> {
+    this.disarm(known.id);
+    const row =
+      (await this.deps.db
+        .selectFrom('venue_sessions')
+        .selectAll()
+        .where('id', '=', known.id)
+        .executeTakeFirst()) ?? known;
     const room = this.liveRoom(row.room_id);
     if (!room) return;
+    if (!(await this.enabled())) return this.letGo(room);
     const now = this.now();
     const meter = meterOf(this.record(row), now);
     await room.applyVenueMeter(meter);
@@ -487,6 +512,31 @@ export class VenueService {
       room.tier() === 'FULL'
     ) {
       await room.applyEntitlement('FREE', null, 'EXPIRED');
+    }
+  }
+
+  /**
+   * `venue.sessions` is off (ADR-0024 §1: no room carries a meter then). Every staff route answers 404, so
+   * a table left behind could neither be extended nor ended: the room goes back to the base product. The
+   * table stays in the database; switching the feature on again lets staff extend it, which re-attaches it.
+   */
+  private async letGo(room: LiveRoom): Promise<void> {
+    if (room.venueMeter() !== null) await room.applyVenueMeter(null);
+    if (room.hostAccountId() === null && room.tier() === 'FULL')
+      await room.applyEntitlement('FREE', null, 'EXPIRED');
+  }
+
+  /** While the feature is off, rooms that still carry a table are let go (the flag has no change event). */
+  async sweep(): Promise<void> {
+    if (this.stopped || (await this.enabled())) return;
+    const rows = await this.deps.db
+      .selectFrom('venue_sessions')
+      .selectAll()
+      .where('state', '<>', 'ENDED')
+      .execute();
+    for (const row of rows) {
+      const room = this.liveRoom(row.room_id);
+      if (room && room.venueMeter() !== null) await this.push(row, 'GRANTED');
     }
   }
 
@@ -525,11 +575,14 @@ export class VenueService {
       .where('state', '<>', 'ENDED')
       .execute();
     for (const row of rows) await this.push(row, 'GRANTED').catch(this.deps.onError);
+    this.sweeper = setInterval(() => void this.sweep().catch(this.deps.onError), 20_000);
+    this.sweeper.unref();
     return rows.length;
   }
 
   stop(): void {
     this.stopped = true;
+    if (this.sweeper) clearInterval(this.sweeper);
     for (const timer of this.timers.values()) clearTimeout(timer);
     this.timers.clear();
   }
@@ -747,14 +800,16 @@ export class VenueService {
 
   /**
    * Per local day: tables opened, minutes sold (opening minutes plus extensions), extensions, rewards
-   * issued and redeemed. Counts only; nothing about players.
+   * issued and redeemed. Counts only; nothing about players. Without dates: the last 30 days of the
+   * venue's own calendar (a UTC "today" would leave out everything after local midnight).
    */
   async report(
     venueId: string,
-    from: string,
-    to: string,
+    range: { from?: string | undefined; to?: string | undefined } = {},
   ): Promise<{
     venue: { id: string; name: string; timezone: string };
+    from: string;
+    to: string;
     days: {
       date: string;
       sessions: number;
@@ -771,6 +826,9 @@ export class VenueService {
       .executeTakeFirst();
     if (!venue) throw new VenueError(404, 'NOT_FOUND');
     const tz = readSettings(venue.settings).timezone;
+    const now = this.now();
+    const to = range.to ?? localDate(now, tz);
+    const from = range.from ?? localDate(now - 30 * 86_400_000, tz);
     const day = (column: string) =>
       sql<string>`to_char((${sql.ref(column)} AT TIME ZONE ${tz})::date, 'YYYY-MM-DD')`;
     const inRange = (column: string) =>
@@ -840,6 +898,8 @@ export class VenueService {
     for (const row of redeemed) at(row.date).rewardsRedeemed = row.n;
     return {
       venue: { id: venue.id, name: venue.name, timezone: tz },
+      from,
+      to,
       days: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)),
     };
   }

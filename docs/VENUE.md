@@ -19,7 +19,8 @@ olarak çalıştıranlar içindir. Teknik karar kaydı: `docs/ADR/0024-venue-mod
 
 1. Yönetici, yönetim konsolunda (`/admin` → **Mekanlar**) mekanınızı oluşturur ve sahibin e-posta adresini girer.
 2. Yönetici **Özellik anahtarları** sayfasında `venue.sessions` anahtarını açar. Kapalıyken mekan paneli
-   "Mekan modu bu sunucuda kapalı" der ve oyun eskisi gibi çalışır.
+   "Mekan modu bu sunucuda kapalı" der ve oyun eskisi gibi çalışır. Anahtar kapatıldığında açık masalar da bırakılır (en geç 20 saniyede TV
+   normal oyuna döner, süre ve ödül işlemez); anahtarı yeniden açıp masayı uzattığınızda masa kaldığı yerden devam eder.
 3. Sahip, telefonundan `https://<sunucu>/staff` adresini açar, e-postasına gelen 6 haneli kodla giriş yapar.
 4. Sahip **Ayarlar** sekmesinden görevlileri e-posta adresiyle ekler. Eklenen kişi aynı adresle giriş
    yaptığında panele girer (davet e-postası gönderilmez; adresi siz söylersiniz).

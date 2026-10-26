@@ -236,6 +236,51 @@ describe('a table', () => {
     expect(kinds).toEqual(['OPEN', 'EXTEND', 'PAUSE', 'RESUME', 'EXTEND', 'END']);
   });
 
+  it('a late push of an older row cannot roll the TV back (two waiters extending at once)', async () => {
+    const room = await createRoom(server);
+    const live = server.built.manager.get(room.roomId)!;
+    const opened = await api(venue.staff).open({ minutes: 2, roomCode: room.code });
+    const id = opened.body.id;
+    const older = await server.db.db
+      .selectFrom('venue_sessions')
+      .selectAll()
+      .where('id', '=', id)
+      .executeTakeFirstOrThrow();
+    const extended = await api(venue.owner).extend(id, 30);
+    expect(extended.status).toBe(200);
+    const fresh = live.venueMeter()!.endsAt!;
+    // the first waiter's continuation runs after the second one's push, with the row it committed
+    const service = server.built.venues as unknown as {
+      push(row: typeof older, reason: 'GRANTED'): Promise<void>;
+    };
+    await service.push(older, 'GRANTED');
+    expect(live.venueMeter()!.endsAt!).toBeGreaterThanOrEqual(fresh);
+    await api(venue.staff).end(id);
+  });
+
+  it('the kill switch lets go of running tables: a TV does not wait for staff who can no longer reach it', async () => {
+    const room = await createRoom(server);
+    const live = server.built.manager.get(room.roomId)!;
+    const opened = await api(venue.staff).open({ minutes: 1, roomCode: room.code });
+    const id = opened.body.id;
+    await waitUntil(() => live.tier() === 'FULL', 3000, 'tier FULL');
+    await setVenueFlag(server, false);
+    try {
+      await server.built.venues.sweep();
+      // base product again: no meter on the room, no time-up screen, nothing to extend
+      expect(live.venueMeter()).toBeNull();
+      await waitUntil(() => live.tier() === 'FREE', 3000, 'tier back to the free game');
+    } finally {
+      await setVenueFlag(server, true);
+    }
+    // switched on again, the same table is the staff's to extend
+    const back = await api(venue.staff).extend(id, 5);
+    expect(back.status).toBe(200);
+    await waitUntil(() => live.venueMeter()?.state === 'RUNNING', 3000, 'meter is back');
+    await waitUntil(() => live.tier() === 'FULL', 3000, 'full game is back');
+    await api(venue.staff).end(id);
+  });
+
   it('caps the minutes one table may hold', async () => {
     const room = await createRoom(server);
     const opened = await api(venue.staff).open({ minutes: 720, roomCode: room.code });
@@ -372,5 +417,42 @@ describe('the admin console', () => {
     expect(
       (await support.get(`/v1/admin/venues/${venue.venueId}/report?from=2026-13-01`)).status,
     ).toBe(400);
+    // right shape, not a date: a bad request, never a failed query
+    expect(
+      (await support.get(`/v1/admin/venues/${venue.venueId}/report?from=2026-02-31&to=2026-03-01`))
+        .status,
+    ).toBe(400);
+  });
+
+  it("reports tonight's tables after local midnight by default: the venue's day, not UTC's", async () => {
+    // 01:30 in Istanbul is still 22:30 of the day before in UTC; a café is open at that hour.
+    const offset = Date.parse('2026-10-26T22:30:00Z') - Date.now();
+    const late = await startServer({ seed: false, clock: { now: () => Date.now() + offset } });
+    try {
+      await setVenueFlag(late, true);
+      const cafe = await makeVenue(late);
+      const room = await createRoom(late);
+      const opened = await staffApi(late, cafe.staff, cafe.venueId).open({
+        minutes: 60,
+        roomCode: room.code,
+      });
+      expect(opened.status).toBe(201);
+      const admin = adminApi(late, await adminStaff(late, ['SUPPORT']));
+      const report = await admin.get<{
+        from: string;
+        to: string;
+        days: { date: string; sessions: number; minutesSold: number }[];
+      }>(`/v1/admin/venues/${cafe.venueId}/report`);
+      expect(report.status).toBe(200);
+      expect(report.body.to).toBe('2026-10-27');
+      expect(report.body.from).toBe('2026-09-27');
+      expect(report.body.days).toEqual([
+        expect.objectContaining({ date: '2026-10-27', sessions: 1, minutesSold: 60 }),
+      ]);
+      const csv = await admin.get(`/v1/admin/venues/${cafe.venueId}/report?format=csv`);
+      expect(csv.text).toContain('\n2026-10-27,1,60,0,0,0\n');
+    } finally {
+      await late.dispose();
+    }
   });
 });
