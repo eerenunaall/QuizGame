@@ -6,7 +6,15 @@ import { sql } from 'kysely';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createTestDatabase, type TestDatabase } from '@quizparty/db/testing';
 import { run, type Env, type Io } from '@quizparty/scripts/question/cli';
-import { activate, answerKey, importRows, statusCounts } from '../helpers/question-bank';
+import {
+  activate,
+  answerKey,
+  importClean,
+  importRows,
+  statusCounts,
+} from '../helpers/question-bank';
+import { panel } from '../helpers/audit';
+import { runAudit } from '@quizparty/question-bank';
 import { startModelServer, wellBehavedModel } from '../helpers/model-server';
 import { cleanRows, jsonl, NOW, SEED_PATH, withCategories } from '../helpers/questions';
 
@@ -191,12 +199,14 @@ describe('retire-dev', () => {
       .values({ name: 'Test Café' })
       .returning('id')
       .executeTakeFirstOrThrow();
-    const own = await activate(t.db, 2, 'cafe');
+    // Venue questions are stored DRAFT with no external id and the VENUE pool, then audited like any other.
+    const own = await importClean(t.db, 2, 'cafe');
     await t.db
       .updateTable('questions')
-      .set({ owner_venue_id: venue.id, external_id: null })
+      .set({ owner_venue_id: venue.id, external_id: null, pool: 'VENUE' })
       .where('id', 'in', own)
       .execute();
+    await runAudit(t.db, own, { now: NOW, providers: panel(), autoActivate: true });
     await activate(t.db, 1, 'old', 40);
     await activate(t.db, 1, 'gusto', 60);
     const h = harness();
