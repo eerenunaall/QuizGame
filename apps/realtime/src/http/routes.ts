@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { migrationsCurrent } from '@quizparty/db';
@@ -99,7 +100,7 @@ export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
     { config: { auth: 'metrics-token', limit: 'none' } },
     async (request, reply) => {
       const header = request.headers.authorization ?? '';
-      if (!config.metricsToken || header !== `Bearer ${config.metricsToken}`)
+      if (!config.metricsToken || !sameSecret(header, `Bearer ${config.metricsToken}`))
         return apiError(reply, 401, 'UNAUTHORIZED');
       void reply.header('Content-Type', deps.metrics.registry.contentType);
       return deps.metrics.registry.metrics();
@@ -190,4 +191,10 @@ export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
       };
     },
   );
+}
+
+/** Constant-time comparison; hashing first makes both sides the same length so nothing leaks through it. */
+function sameSecret(given: string, expected: string): boolean {
+  const digest = (value: string) => createHash('sha256').update(value).digest();
+  return timingSafeEqual(digest(given), digest(expected));
 }
