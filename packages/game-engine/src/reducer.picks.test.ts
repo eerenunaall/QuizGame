@@ -178,6 +178,26 @@ describe('early advance', () => {
     expect(h.state.phase).not.toBe('RISK_PICK');
   });
 
+  it('keeps RISK_PICK open for an online player when somebody who confirmed has dropped', () => {
+    // Regression: the count of confirmations included the dropped phone, so 2 of 2 "online" looked done
+    // and the third player lost their stake choice.
+    const { h, ids } = setup(3);
+    h.runUntil('RISK_PICK');
+    risk(h, ids[0]!);
+    h.apply({ kind: 'PLAYER_CONNECTION', playerId: ids[0]!, connected: false });
+    risk(h, ids[1]!);
+    expect(h.state.phase).toBe('RISK_PICK');
+    const data = h.view({ role: 'DISPLAY' }).phaseData as {
+      committedCount: number;
+      eligibleCount: number;
+    };
+    expect(data.committedCount).toBeLessThan(data.eligibleCount);
+    h.tickAt(h.now + 1); // a tick on the way does not end it either
+    expect(h.state.phase).toBe('RISK_PICK');
+    expect(risk(h, ids[2]!, 'RISK').ok).toBe(true);
+    expect(h.state.phase).not.toBe('RISK_PICK');
+  });
+
   it('leaves SABOTAGE_PICK when every player who can act has confirmed, passing included', () => {
     const { h, ids } = setup(3);
     toSabotage(h, 2);

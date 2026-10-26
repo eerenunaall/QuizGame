@@ -151,18 +151,17 @@ export function prepCounts(state: RoomState): { committedCount: number; eligible
   const round = game?.round;
   if (!game || !round) return { committedCount: 0, eligibleCount: 0 };
   const entries = state.phase === 'SABOTAGE_PICK' ? sabotagePicksOf(round) : round.commitments;
+  // Only the players online now count, on both sides of the fraction: a phone that confirmed and then
+  // dropped must not fill the tick of one that is still choosing (the early advance reads these counts).
+  const eligible = prepEligibleIds(state);
   // RISK_PICK: a player with a Duel challenge still to answer is not done yet (ADR-0023). It is one more
   // tick that stays empty; nothing says why, or for whom.
-  const committedCount = Object.keys(entries).filter(
+  const committedCount = eligible.filter(
     (playerId) =>
-      state.players[playerId]?.status === 'ACTIVE' &&
-      !game.players[playerId]?.removed &&
+      entries[playerId] !== undefined &&
       (state.phase === 'SABOTAGE_PICK' || pendingDuelInvites(state, playerId).length === 0),
   ).length;
-  return {
-    committedCount,
-    eligibleCount: Math.max(prepEligibleIds(state).length, committedCount),
-  };
+  return { committedCount, eligibleCount: eligible.length };
 }
 
 /** What RISK_PICK offers beyond stake and Double Down: config only, the same for everybody. */
