@@ -10,6 +10,7 @@ import { waitUntil } from '../helpers/wait';
  * authentication races and the room lifecycle behind it (ATTACK 38 onward).
  */
 
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 const device = () => `device-${randomUUID().replaceAll('-', '')}`;
 
 function joinFrame(code: string, nickname: string, deviceId = device()): string {
@@ -48,7 +49,7 @@ describe('ATTACK 38 — one socket, many seats; seats that outlive their socket'
     attacker.sendRaw(joinFrame(created.code, 'Ghost2'));
     attacker.sendRaw(joinFrame(other.code, 'Ghost3'));
     await attacker.nextOfType('ROOM_JOINED');
-    await attacker.idle(400);
+    await sleep(400);
     expect(attacker.messages.filter((m) => m.type === 'ROOM_JOINED')).toHaveLength(1);
     const all = [...seats(created.roomId), ...seats(other.roomId)];
     expect(all).toHaveLength(1);
@@ -77,7 +78,7 @@ describe('ATTACK 38 — one socket, many seats; seats that outlive their socket'
     }
     const honest = await TestClient.connect(server.wsUrl);
     await honest.join(server.wsUrl, created.code, 'Honest');
-    await honest.idle(300);
+    await sleep(300);
     // Whatever got seated must be offline (so leadership, "everyone gone" and early locks work) and
     // must not be holding a dead socket in the room's connection table.
     await waitUntil(
@@ -93,7 +94,36 @@ describe('ATTACK 38 — one socket, many seats; seats that outlive their socket'
   });
 });
 
-describe('ATTACK 39 — look-alike letters that are "Latin" slip past the name rules', () => {
+describe('ATTACK 40 — flip a lobby switch to grow the durable event log', () => {
+  let strict: TestServer;
+  beforeAll(async () => {
+    // Production limits: the shared test server scales them up so ordinary tests never trip them.
+    strict = await startServer({ env: { RATE_LIMIT_SCALE: '1' } });
+  });
+  afterAll(async () => {
+    await strict.dispose();
+  });
+
+  it('bills lobby state changes apart from chatter, so a toggle loop cannot write thousands of rows', async () => {
+    const created = await createRoom(strict);
+    const display = await TestClient.connect(strict.wsUrl);
+    await display.attachDisplay(created);
+    const player = await TestClient.connect(strict.wsUrl);
+    await player.join(strict.wsUrl, created.code, 'Toggler');
+    const before = liveRoom(strict, created.roomId).state.version;
+    // Every flip is a real state change: one durable event, one fan-out to every screen.
+    for (let i = 0; i < 38; i++) player.send('READY', { ready: i % 2 === 0 });
+    await sleep(800);
+    const written = liveRoom(strict, created.roomId).state.version - before;
+    expect(written).toBeLessThanOrEqual(24);
+    expect(
+      player.messages.some((m) => m.type === 'ERROR' && m.payload.code === 'RATE_LIMITED'),
+    ).toBe(true);
+    await Promise.all([display.close(), player.close()]);
+  });
+});
+
+describe('ATTACK 39— look-alike letters that are "Latin" slip past the name rules', () => {
   let server: TestServer;
   beforeAll(async () => {
     server = await startServer();

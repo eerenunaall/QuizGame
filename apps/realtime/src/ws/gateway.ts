@@ -93,6 +93,13 @@ const POWER_COMMANDS: ReadonlySet<string> = new Set([
   'SET_PREFERENCES',
 ]);
 
+const LOBBY_COMMANDS: ReadonlySet<string> = new Set([
+  'READY',
+  'SET_NICKNAME',
+  'SET_SETTINGS',
+  'TRANSFER_LEADER',
+]);
+
 export class Gateway {
   private readonly wss = new WebSocketServer({
     noServer: true,
@@ -300,6 +307,13 @@ export class Gateway {
       !this.deps.limiter.take(`link:${connection.sessionId}`, LIMITS.linkCreate).allowed
     ) {
       connection.error('RATE_LIMITED', message.messageId, { retryAfterMs: 60_000 });
+      return;
+    }
+    if (
+      LOBBY_COMMANDS.has(message.type) &&
+      !this.deps.limiter.take(`lobby:${connection.sessionId}`, LIMITS.lobbyChange).allowed
+    ) {
+      connection.error('RATE_LIMITED', message.messageId, { retryAfterMs: 2000 });
       return;
     }
     if (
