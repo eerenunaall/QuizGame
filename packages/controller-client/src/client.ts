@@ -27,6 +27,8 @@ import {
 
 const OPEN = 1;
 const DEFAULT_BACKOFF = [300, 700, 1500, 3000, 5000] as const;
+/** How long a probe sent when the page comes back may stay unanswered before the socket is recycled. */
+const WAKE_PONG_TIMEOUT_MS = 2_500;
 
 const KEYS = {
   device: 'qp.device',
@@ -591,28 +593,39 @@ export class GameClient {
     this.pingTimer = setInterval(() => this.ping(), this.config.pingIntervalMs ?? 5_000);
   }
 
-  private ping(): void {
+  /**
+   * `urgent` (the page just came back): a socket that went quiet while the phone slept is usually
+   * half open and never says so, so its answer is awaited for seconds, not for the full timeout.
+   */
+  private ping(urgent = false): void {
     if (!this.socket || this.socket.readyState !== OPEN) return;
     this.lastPingStamp = Math.max(this.lastPingStamp + 1, this.now());
     this.pings.set(this.lastPingStamp, this.perf());
     this.sendFrame('PING', { clientSentAt: this.lastPingStamp });
-    if (this.pongTimer) return;
+    if (this.pongTimer) {
+      if (!urgent) return;
+      clearTimeout(this.pongTimer);
+    }
+    const timeout = this.config.pongTimeoutMs ?? 10_000;
     // A connection that silently died (Wi-Fi ↔ 5G switch, sleeping tab) never answers: recycle it.
-    this.pongTimer = setTimeout(() => {
-      this.pongTimer = null;
-      const socket = this.socket;
-      this.socket = null;
-      this.generation += 1;
-      if (socket) {
-        socket.onclose = null;
-        try {
-          socket.close(4000, 'pong timeout');
-        } catch {
-          // ignore
+    this.pongTimer = setTimeout(
+      () => {
+        this.pongTimer = null;
+        const socket = this.socket;
+        this.socket = null;
+        this.generation += 1;
+        if (socket) {
+          socket.onclose = null;
+          try {
+            socket.close(4000, 'pong timeout');
+          } catch {
+            // ignore
+          }
         }
-      }
-      this.scheduleReconnect(0);
-    }, this.config.pongTimeoutMs ?? 10_000);
+        this.scheduleReconnect(0);
+      },
+      urgent ? Math.min(timeout, WAKE_PONG_TIMEOUT_MS) : timeout,
+    );
   }
 
   /** Call when the page becomes visible or the network comes back: reconnect now / probe liveness. */
@@ -623,7 +636,7 @@ export class GameClient {
       this.reconnectTimer = null;
       if (state.session) void this.connectWith(state.session);
     } else if (state.transport === 'ONLINE') {
-      this.ping();
+      this.ping(true);
     }
   }
 
@@ -684,20 +697,33 @@ export class GameClient {
     });
   }
 
-  /** Intent: lock in an answer. The tap is reflected locally at once; the server confirms the lock. */
+  /**
+   * Intent: lock in an answer. The tap is reflected locally at once; the server confirms the lock.
+   * One answer per question leaves this client: a second tap before the first is confirmed (a
+   * double tap lands before the buttons re-render) or after it is refused here, with the code the
+   * server would have used. A send that fails frees the buttons again so the player can retry.
+   */
   submitAnswer(optionId: string): Promise<void> {
-    const data = this.store.get().room?.phaseData;
+    const state = this.store.get();
+    const data = state.room?.phaseData;
     if (!data || data.phase !== 'ANSWERING')
       return Promise.reject(new ClientRequestError('INVALID_STATE'));
-    this.store.update((s) => ({
-      ...s,
-      pendingAnswer: { questionId: data.questionId, optionId },
-      answerRejection: null,
-    }));
+    if (
+      state.pendingAnswer?.questionId === data.questionId ||
+      state.room?.you?.answer?.questionId === data.questionId
+    )
+      return Promise.reject(new ClientRequestError('ANSWER_DUPLICATE'));
+    const pending = { questionId: data.questionId, optionId };
+    this.store.update((s) => ({ ...s, pendingAnswer: pending, answerRejection: null }));
     return this.request('SUBMIT_ANSWER', {
       questionId: data.questionId,
       optionId,
       clientSentAt: this.now(),
+    }).catch((error: unknown) => {
+      // Not delivered or never confirmed (the server's own refusal already cleared it): do not
+      // leave the options greyed out behind a "sending" that will never end.
+      this.store.update((s) => (s.pendingAnswer === pending ? { ...s, pendingAnswer: null } : s));
+      throw error;
     });
   }
 

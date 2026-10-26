@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GameClient } from './client';
-import { message, roomView } from './fixtures';
+import { answeringData, message, roomView } from './fixtures';
 import type { ClientConfig, KeyValueStorage, SocketLike } from './types';
 
 class FakeSocket implements SocketLike {
@@ -305,6 +305,112 @@ describe('GameClient', () => {
     await expect(env.client.submitAnswer('optionAAAA')).rejects.toMatchObject({
       code: 'INVALID_STATE',
     });
+  });
+
+  describe('answering', () => {
+    async function answering(env: ReturnType<typeof setup>): Promise<void> {
+      await joinAs(env);
+      env.latest().receive(
+        message(
+          'ROOM_STATE',
+          {
+            room: roomView({ phase: 'ANSWERING', phaseData: answeringData() }),
+          },
+          { sequence: 2 },
+        ),
+      );
+    }
+    const submits = (env: ReturnType<typeof setup>): number =>
+      env.latest().types().filter((type) => type === 'SUBMIT_ANSWER').length;
+
+    // A thumb that lands twice before React has re-rendered the disabled buttons.
+    it('sends one answer per question however fast the player taps', async () => {
+      const env = setup();
+      await answering(env);
+      const first = env.client.submitAnswer('optionAAAA');
+      const second = env.client.submitAnswer('optionBBBB');
+      await expect(second).rejects.toMatchObject({ code: 'ANSWER_DUPLICATE' });
+      expect(submits(env)).toBe(1);
+      expect(env.client.state.pendingAnswer?.optionId).toBe('optionAAAA');
+      const frame = env.latest().last('SUBMIT_ANSWER');
+      env.latest().receive(
+        message(
+          'ANSWER_ACCEPTED',
+          {
+            messageId: frame.messageId,
+            questionId: 'q1',
+            optionId: 'optionAAAA',
+            lockedAt: 5_000,
+          },
+          { sequence: 3 },
+        ),
+      );
+      await expect(first).resolves.toBeUndefined();
+      await expect(env.client.submitAnswer('optionBBBB')).rejects.toMatchObject({
+        code: 'ANSWER_DUPLICATE',
+      });
+      expect(submits(env)).toBe(1);
+    });
+
+    // Tapping while the connection is down must not leave the options greyed out for good.
+    it('lets the player tap again when the answer could not be sent', async () => {
+      const env = setup();
+      await answering(env);
+      env.latest().serverClose(1006); // Wi-Fi hiccup: the socket is gone, the banner is up
+      await expect(env.client.submitAnswer('optionAAAA')).rejects.toMatchObject({
+        code: 'INTERNAL',
+      });
+      expect(env.client.state.pendingAnswer).toBeNull();
+    });
+
+    it('lets the player tap again when the server never confirmed the answer', async () => {
+      const env = setup();
+      await answering(env);
+      const sent = env.client.submitAnswer('optionAAAA');
+      const failure = expect(sent).rejects.toMatchObject({ code: 'INTERNAL' });
+      await vi.advanceTimersByTimeAsync(8_100);
+      await failure;
+      expect(env.client.state.pendingAnswer).toBeNull();
+    });
+  });
+
+  it('probes a silent connection quickly when the page comes back, not after the full pong timeout', async () => {
+    // Phone screen lock: the socket is often half open and never says so.
+    const env = setup({ pongTimeoutMs: 10_000, pingIntervalMs: 60_000 });
+    await joinAs(env);
+    const first = env.latest().last('PING').payload as { clientSentAt: number };
+    env
+      .latest()
+      .receive(
+        message('PONG', { clientSentAt: first.clientSentAt, serverTime: Date.now() }, { sequence: 2 }),
+      );
+    const before = env.sockets.length;
+    await vi.advanceTimersByTimeAsync(20_000); // locked screen: nothing arrives, nothing is noticed
+    expect(env.client.state.transport).toBe('ONLINE');
+    env.client.nudge();
+    await vi.advanceTimersByTimeAsync(3_100);
+    expect(env.client.state.transport).toBe('RECONNECTING');
+    await vi.advanceTimersByTimeAsync(600);
+    expect(env.sockets.length).toBeGreaterThan(before);
+  });
+
+  it('keeps a healthy connection when the page comes back and the server answers', async () => {
+    const env = setup({ pongTimeoutMs: 10_000, pingIntervalMs: 60_000 });
+    await joinAs(env);
+    env.client.nudge();
+    const ping = env.latest().last('PING');
+    env.latest().receive(
+      message(
+        'PONG',
+        {
+          clientSentAt: (ping.payload as { clientSentAt: number }).clientSentAt,
+          serverTime: Date.now(),
+        },
+        { sequence: 2 },
+      ),
+    );
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(env.client.state.transport).toBe('ONLINE');
   });
 
   it('rejects a join that the server refuses', async () => {
