@@ -143,7 +143,7 @@ export function TvRiskPick({
 }) {
   const { t, td } = useI18n();
   return (
-    <div className={styles.center} data-testid="tv-risk">
+    <div className={cx(styles.center, styles.pickScreen)} data-testid="tv-risk">
       <div className={cx(styles.pickTitle, styles.pickRisk)} data-testid="tv-pick-title">
         {t('tv.risk.title')}
       </div>
@@ -225,7 +225,7 @@ export function TvSabotagePick({
 }) {
   const { t, td } = useI18n();
   return (
-    <div className={styles.center} data-testid="tv-sabotage">
+    <div className={cx(styles.center, styles.pickScreen)} data-testid="tv-sabotage">
       <div className={cx(styles.pickTitle, styles.pickSabotage)} data-testid="tv-pick-title">
         {t('tv.sabotage.title')}
       </div>

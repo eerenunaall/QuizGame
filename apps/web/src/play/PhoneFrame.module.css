@@ -83,3 +83,10 @@
     padding-bottom: 8px;
   }
 }
+
+/* Short portrait phones: the answers need the room more than the header does. */
+@media (orientation: portrait) and (max-height: 700px) {
+  .header {
+    padding-top: 10px;
+  }
+}

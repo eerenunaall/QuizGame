@@ -8,11 +8,11 @@
 
 .title {
   position: absolute;
-  top: 62px;
+  top: 100px;
   left: 0;
   width: 100%;
   font-family: var(--qp-font-display);
-  font-size: 92px;
+  font-size: 76px;
   font-weight: 400;
   text-align: center;
   color: var(--qp-color-accent-a);

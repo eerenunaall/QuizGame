@@ -516,6 +516,21 @@
   }
 }
 
+/* Short portrait phone (360x640, 320x568; the browser bar takes another ~100 px): tighter cards and gaps so the fourth answer is not under the fold of a timed question. */
+@media (orientation: portrait) and (max-height: 700px) {
+  .timer {
+    padding-bottom: 6px;
+  }
+  .option {
+    flex-basis: 60px;
+    min-height: 60px;
+    margin-bottom: 8px;
+  }
+  .option:last-child {
+    margin-bottom: 4px;
+  }
+}
+
 /* Landscape phone (about 390 px tall): answers in a 2 x 2 grid so all four are on screen without scrolling. */
 @media (orientation: landscape) and (max-height: 520px) {
   .answering {

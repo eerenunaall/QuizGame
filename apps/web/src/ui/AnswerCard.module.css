@@ -179,3 +179,12 @@ button.card:disabled {
     font-size: 24px;
   }
 }
+
+/* Short portrait phones: see Controller.module.css. */
+@media (orientation: portrait) and (max-height: 700px) {
+  .phone {
+    min-height: 60px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+}

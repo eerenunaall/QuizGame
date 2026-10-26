@@ -97,6 +97,7 @@
 }
 
 .name {
+  flex: none; /* overflow:hidden would let flex squash the name under the badge */
   max-width: 250px;
   margin-top: 12px;
   overflow: hidden;
@@ -109,9 +110,15 @@
   padding: 0.12em 0 0.22em;
 }
 
+/* A ribbon across the foot of the avatar: it takes no row of its own, so a name never loses its line to it. */
 .badge {
-  margin-top: 4px;
+  position: absolute;
+  top: 146px;
+  left: 50%;
+  z-index: 1;
   padding: 0 18px;
+  white-space: nowrap;
+  transform: translateX(-50%);
   font-family: var(--qp-font-display);
   font-size: 24px;
   color: #1b1200;

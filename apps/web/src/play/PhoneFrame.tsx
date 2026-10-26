@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import type { RoomView } from '@quizparty/protocol';
 import { Avatar } from '../ui/Avatar';
 import { Banner } from '../ui/Banner';
@@ -21,6 +21,13 @@ export function PhoneFrame({ room, reconnecting, tvLost, restored, children }: P
     ? room.players.find((player) => player.playerId === room.you?.playerId)
     : undefined;
   const entry = room?.game?.scoreboard.find((row) => row.playerId === room?.you?.playerId);
+  // One scroll container serves every screen: a phase must not inherit the previous one's scroll
+  // (a risk screen scrolled to the Pot row would open the next question below its clock).
+  const mainRef = useRef<HTMLElement>(null);
+  const phase = room?.phase ?? null;
+  useLayoutEffect(() => {
+    if (mainRef.current) mainRef.current.scrollTop = 0;
+  }, [phase]);
   return (
     <div className={styles.frame}>
       <header className={styles.header}>
@@ -64,7 +71,9 @@ export function PhoneFrame({ room, reconnecting, tvLost, restored, children }: P
           </Banner>
         ) : null}
       </div>
-      <main className={styles.main}>{children}</main>
+      <main ref={mainRef} className={styles.main}>
+        {children}
+      </main>
     </div>
   );
 }
