@@ -22,9 +22,6 @@ interface ReportDay {
   rewardsRedeemed: number;
 }
 
-const isoDay = (offsetDays = 0): string =>
-  new Date(Date.now() + offsetDays * 86_400_000).toISOString().slice(0, 10);
-
 /** Venue mode (ADR-0024): venues and their owners, and the per-day table report (counts only). */
 export function Venues({ id }: { id: string | undefined }): ReactNode {
   const list = useLoad(() => api<{ items: VenueRow[] }>('/v1/admin/venues'), 'venues');
@@ -114,16 +111,20 @@ export function Venues({ id }: { id: string | undefined }): ReactNode {
 }
 
 function VenueDetail({ venue, onChanged }: { venue: VenueRow; onChanged: () => void }): ReactNode {
-  const [from, setFrom] = useState(isoDay(-30));
-  const [to, setTo] = useState(isoDay());
+  // No dates at first: the server answers the last 30 days of the venue's own calendar (its time zone;
+  // this browser's UTC "today" would drop everything after the café's midnight) and says which.
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [range, setRange] = useState({ from, to });
   const report = useLoad(
     () =>
-      api<{ days: ReportDay[] }>(`/v1/admin/venues/${venue.id}/report`, {
+      api<{ from: string; to: string; days: ReportDay[] }>(`/v1/admin/venues/${venue.id}/report`, {
         query: { from: range.from, to: range.to },
       }),
     `venue-report:${venue.id}:${range.from}:${range.to}`,
   );
+  const shownFrom = from || report.data?.from || '';
+  const shownTo = to || report.data?.to || '';
   const download = useAction();
   const owner = useAction();
   const [newOwner, setNewOwner] = useState('');
@@ -149,16 +150,16 @@ function VenueDetail({ venue, onChanged }: { venue: VenueRow; onChanged: () => v
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          setRange({ from, to });
+          setRange({ from: shownFrom, to: shownTo });
         }}
       >
         <label>
           {t('admin.venues.from')}
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          <input type="date" value={shownFrom} onChange={(e) => setFrom(e.target.value)} />
         </label>
         <label>
           {t('admin.venues.to')}
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          <input type="date" value={shownTo} onChange={(e) => setTo(e.target.value)} />
         </label>
         <button>{t('admin.venues.show')}</button>
         <button
@@ -167,15 +168,15 @@ function VenueDetail({ venue, onChanged }: { venue: VenueRow; onChanged: () => v
           data-testid="venue-csv"
           onClick={() =>
             void download.run(async () => {
+              const days = { from: range.from || shownFrom, to: range.to || shownTo };
               const body = await apiText(`/v1/admin/venues/${venue.id}/report`, {
-                from: range.from,
-                to: range.to,
+                ...days,
                 format: 'csv',
               });
               const url = URL.createObjectURL(new Blob([body], { type: 'text/csv' }));
               const link = document.createElement('a');
               link.href = url;
-              link.download = `venue-report-${range.from}-${range.to}.csv`;
+              link.download = `venue-report-${days.from}-${days.to}.csv`;
               link.click();
               URL.revokeObjectURL(url);
             })

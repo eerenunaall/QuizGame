@@ -21,6 +21,7 @@ import type { RoomManager } from '../rooms/manager';
 import { hmacHex } from '../security/crypto';
 import type { Clock } from '../util/clock';
 import {
+  localDate,
   localDay,
   mergeSettings,
   newRewardCode,
@@ -747,14 +748,16 @@ export class VenueService {
 
   /**
    * Per local day: tables opened, minutes sold (opening minutes plus extensions), extensions, rewards
-   * issued and redeemed. Counts only; nothing about players.
+   * issued and redeemed. Counts only; nothing about players. Without dates: the last 30 days of the
+   * venue's own calendar (a UTC "today" would leave out everything after local midnight).
    */
   async report(
     venueId: string,
-    from: string,
-    to: string,
+    range: { from?: string | undefined; to?: string | undefined } = {},
   ): Promise<{
     venue: { id: string; name: string; timezone: string };
+    from: string;
+    to: string;
     days: {
       date: string;
       sessions: number;
@@ -771,6 +774,9 @@ export class VenueService {
       .executeTakeFirst();
     if (!venue) throw new VenueError(404, 'NOT_FOUND');
     const tz = readSettings(venue.settings).timezone;
+    const now = this.now();
+    const to = range.to ?? localDate(now, tz);
+    const from = range.from ?? localDate(now - 30 * 86_400_000, tz);
     const day = (column: string) =>
       sql<string>`to_char((${sql.ref(column)} AT TIME ZONE ${tz})::date, 'YYYY-MM-DD')`;
     const inRange = (column: string) =>
@@ -840,6 +846,8 @@ export class VenueService {
     for (const row of redeemed) at(row.date).rewardsRedeemed = row.n;
     return {
       venue: { id: venue.id, name: venue.name, timezone: tz },
+      from,
+      to,
       days: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)),
     };
   }

@@ -72,4 +72,23 @@ describe('venues in the console (ADR-0024)', () => {
     expect(within(report).getByText('360')).toBeTruthy();
     expect(screen.getByTestId('venue-csv')).toBeTruthy();
   });
+
+  it("asks for the venue's own days: no browser UTC date in the first request, the server's range shown", async () => {
+    const { calls } = fakeServer((call) => {
+      if (call.path === '/v1/admin/venues') return { json: { items: [row] } };
+      if (call.path.startsWith(`/v1/admin/venues/${VENUE}/report`))
+        return { json: { from: '2026-09-27', to: '2026-10-27', days: [] } };
+      return undefined;
+    });
+    render(<Venues id={VENUE} />);
+    await screen.findByTestId('venue-report');
+    const first = calls.find((c) => c.path.startsWith(`/v1/admin/venues/${VENUE}/report`))!;
+    expect(first.path).toBe(`/v1/admin/venues/${VENUE}/report`);
+    const detail = screen.getByTestId('venue-detail');
+    await waitFor(() =>
+      expect(
+        [...detail.querySelectorAll<HTMLInputElement>('input[type="date"]')].map((i) => i.value),
+      ).toEqual(['2026-09-27', '2026-10-27']),
+    );
+  });
 });

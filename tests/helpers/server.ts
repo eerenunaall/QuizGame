@@ -55,6 +55,8 @@ export interface StartOptions {
   /** Where sign-in mail goes (a mailbox double that tests read like a user would). */
   emailSender?: EmailSender;
   logStream?: { write(line: string): void };
+  /** The server's time source (a fixed offset from the wall clock keeps timers working). */
+  clock?: { now(): number };
 }
 
 export async function startServer(options: StartOptions = {}): Promise<TestServer> {
@@ -80,6 +82,7 @@ export async function startServer(options: StartOptions = {}): Promise<TestServe
     config,
     ...(options.emailSender ? { emailSender: options.emailSender } : {}),
     ...(options.logStream ? { logStream: options.logStream } : {}),
+    ...(options.clock ? { clock: options.clock } : {}),
   });
   await built.app.listen({ port: options.port ?? 0, host: '127.0.0.1' });
   const { port } = built.app.server.address() as AddressInfo;

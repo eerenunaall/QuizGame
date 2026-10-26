@@ -12,7 +12,14 @@ export interface VenueAdminDeps {
   now: () => number;
 }
 
-const Day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u);
+/** A real calendar date: `2026-02-31` has the right shape and made the report query fail with a 500. */
+const Day = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/u)
+  .refine((day) => {
+    const at = new Date(`${day}T00:00:00Z`);
+    return !Number.isNaN(at.getTime()) && at.toISOString().startsWith(day);
+  });
 const CSV_HEADER = 'date,sessions,minutes_sold,extensions,rewards_issued,rewards_redeemed';
 
 /**
@@ -86,13 +93,12 @@ export function registerVenueAdminRoutes(app: FastifyInstance, deps: VenueAdminD
     { config: { auth: 'admin', limit: 'adminRead', roles: CAN.venuesRead } },
     async (request, reply) => {
       const params = parse(IdParams, request.params, reply);
-      const today = new Date(deps.now()).toISOString().slice(0, 10);
-      const monthAgo = new Date(deps.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+      // Missing dates default to the venue's own calendar (its time zone), not the server's UTC day.
       const query = params
         ? parse(
             z.strictObject({
-              from: Day.default(monthAgo),
-              to: Day.default(today),
+              from: Day.optional(),
+              to: Day.optional(),
               format: z.enum(['json', 'csv']).default('json'),
             }),
             request.query,
@@ -100,16 +106,18 @@ export function registerVenueAdminRoutes(app: FastifyInstance, deps: VenueAdminD
           )
         : null;
       if (!params || !query) return reply;
-      if (query.from > query.to)
+      if (query.from && query.to && query.from > query.to)
         return adminError(reply, 400, 'INVALID_REQUEST', { fields: ['from'] });
       try {
-        const report = await venues.report(params.id, query.from, query.to);
-        if (query.format === 'json') return { ...report, from: query.from, to: query.to };
+        const report = await venues.report(params.id, { from: query.from, to: query.to });
+        if (report.from > report.to)
+          return adminError(reply, 400, 'INVALID_REQUEST', { fields: ['from'] });
+        if (query.format === 'json') return report;
         void reply
           .header('content-type', 'text/csv; charset=utf-8')
           .header(
             'content-disposition',
-            `attachment; filename="venue-report-${query.from}-${query.to}.csv"`,
+            `attachment; filename="venue-report-${report.from}-${report.to}.csv"`,
           );
         const lines = report.days.map((d) =>
           [
