@@ -7,7 +7,10 @@ Why: in production the arbiter never activates a question without a fact-check P
 The review is done by a model in a context separate from the writers; it is **not** a human approval, so the
 owner still samples (`docs/question-slices/OWNER-SAMPLE-CHECK.md`).
 
-Round numbering: `R1` is done. The next round is `R2`, and so on. Never edit an old `audits.R*.jsonl`.
+Round numbering: `R1` and `R2` are done. The next round is `R3`, and so on.
+R2 verdicts carry no `revision` (they apply to the row's current text). When the writers edit a row that an earlier
+round already judged, remove that row's stale line from the older `audits.R*.jsonl` (R2 did this for 65 rows),
+otherwise the arbiter merges the old, lower scores with the new ones (lowest score per key wins).
 
 ## 1. Scratch database (never the production one)
 
