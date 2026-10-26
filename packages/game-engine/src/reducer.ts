@@ -302,6 +302,7 @@ function removePlayer(
     return;
   }
   if (d.phase === 'ANSWERING') maybeEarlyLock(d, ctx, at);
+  else maybeEndPickPhase(d, ctx, at);
 }
 
 function closeRoom(d: Room, ctx: Ctx, at: number, reason: CloseReason): void {
@@ -438,6 +439,7 @@ function onPlayerConnection(
       payload: { playerId, connection: player.connection, ready: player.ready },
     },
   );
+  if (!connected) maybeEndPickPhase(d, ctx, at);
 }
 
 // ───────────────────────────── commands ─────────────────────────────
@@ -790,6 +792,16 @@ function pickPhaseComplete(d: Room): boolean {
     return eligible.every((playerId) => picks[playerId] !== undefined || !canSabotage(d, playerId));
   }
   return prepCounts(d).committedCount >= prepCounts(d).eligibleCount;
+}
+
+/**
+ * A pick phase stops waiting as soon as nobody it waits for is left (ADR-0022 §5, ADR-0023): called when
+ * a phone drops or a player leaves. Nothing else would end it early: the server only ticks at the next
+ * wake-up, which is the phase deadline. With nobody online the window simply runs out.
+ */
+function maybeEndPickPhase(d: Room, ctx: Ctx, at: number): void {
+  if (d.phase !== 'RISK_PICK' && d.phase !== 'SABOTAGE_PICK') return;
+  if (prepEligibleIds(d).length > 0 && pickPhaseComplete(d)) advancePhase(d, ctx, at);
 }
 
 function commitRisk(
@@ -1304,13 +1316,9 @@ function onTick(d: Room, ctx: Ctx, at: number): void {
     advancePhase(d, ctx, at);
   } else if (d.phase === 'ANSWERING') {
     maybeEarlyLock(d, ctx, at);
-  } else if (
-    (d.phase === 'RISK_PICK' || d.phase === 'SABOTAGE_PICK') &&
-    prepEligibleIds(d).length > 0 &&
-    pickPhaseComplete(d)
-  ) {
+  } else {
     // Somebody the table was waiting for dropped: nobody left to wait for.
-    advancePhase(d, ctx, at);
+    maybeEndPickPhase(d, ctx, at);
   }
 }
 

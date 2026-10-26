@@ -198,6 +198,26 @@ describe('early advance', () => {
     expect(h.state.phase).not.toBe('RISK_PICK');
   });
 
+  it('does not hold the table for the full window when the last player it waits for leaves or drops', () => {
+    // Regression: only a TICK re-checked the pick phase after somebody went away, and the server only
+    // ticks at the next wake-up (the phase deadline), so everybody stared at a full tick row for 12-16 s.
+    const left = setup(3, { timings: { riskPickMs: 20_000 } });
+    left.h.runUntil('RISK_PICK');
+    risk(left.h, left.ids[0]!);
+    risk(left.h, left.ids[1]!);
+    left.h.command(left.h.actor(left.ids[2]!), { type: 'LEAVE_ROOM', payload: {} });
+    expect(left.h.state.phase).not.toBe('RISK_PICK');
+
+    const dropped = setup(3);
+    toSabotage(dropped.h, 2);
+    sabotage(dropped.h, dropped.ids[0]!, null);
+    sabotage(dropped.h, dropped.ids[1]!, null);
+    const deadline = dropped.h.state.phaseDeadlineAt!;
+    dropped.h.apply({ kind: 'PLAYER_CONNECTION', playerId: dropped.ids[2]!, connected: false });
+    expect(dropped.h.state.phase).toBe('QUESTION');
+    expect(dropped.h.now).toBeLessThan(deadline);
+  });
+
   it('leaves SABOTAGE_PICK when every player who can act has confirmed, passing included', () => {
     const { h, ids } = setup(3);
     toSabotage(h, 2);
