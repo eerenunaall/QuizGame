@@ -124,3 +124,13 @@
     justify-content: center;
   }
 }
+
+/* Short portrait phones: hint and tools sit tighter. */
+@media (orientation: portrait) and (max-height: 700px) {
+  .hint {
+    padding: 0;
+  }
+  .tools {
+    margin: 2px 0 6px;
+  }
+}

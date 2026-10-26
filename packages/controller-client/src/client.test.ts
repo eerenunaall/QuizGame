@@ -321,7 +321,10 @@ describe('GameClient', () => {
       );
     }
     const submits = (env: ReturnType<typeof setup>): number =>
-      env.latest().types().filter((type) => type === 'SUBMIT_ANSWER').length;
+      env
+        .latest()
+        .types()
+        .filter((type) => type === 'SUBMIT_ANSWER').length;
 
     // A thumb that lands twice before React has re-rendered the disabled buttons.
     it('sends one answer per question however fast the player taps', async () => {
@@ -382,7 +385,11 @@ describe('GameClient', () => {
     env
       .latest()
       .receive(
-        message('PONG', { clientSentAt: first.clientSentAt, serverTime: Date.now() }, { sequence: 2 }),
+        message(
+          'PONG',
+          { clientSentAt: first.clientSentAt, serverTime: Date.now() },
+          { sequence: 2 },
+        ),
       );
     const before = env.sockets.length;
     await vi.advanceTimersByTimeAsync(20_000); // locked screen: nothing arrives, nothing is noticed

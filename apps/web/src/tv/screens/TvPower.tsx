@@ -18,6 +18,40 @@ export function itemDelay(index: number): number {
   return 350 + index * STEP_MS;
 }
 
+/** Cards with two or more faces take a whole row; the rest share a row two by two (TvPower.module.css). */
+const WIDE_KINDS: ReadonlySet<PowerResolutionItem['kind']> = new Set([
+  'SABOTAGE',
+  'POT',
+  'DUEL',
+  'CUT',
+]);
+const ROW_PX = 172; // card 150 + margin 22
+const GRID_PX = 760;
+const MIN_GRID_SCALE = 0.45;
+
+/**
+ * How much the card grid shrinks so every row fits under the title. Eight players that all gamble
+ * need more than the four rows the roomy layout holds; shrinking keeps every card visible instead
+ * of letting the first row slide under the title and the last off the stage.
+ */
+export function powerGridScale(items: readonly PowerResolutionItem[]): number {
+  let rows = 0;
+  let halfOpen = false;
+  for (const item of items) {
+    if (WIDE_KINDS.has(item.kind)) {
+      rows += 1;
+      halfOpen = false;
+    } else if (halfOpen) {
+      halfOpen = false;
+    } else {
+      rows += 1;
+      halfOpen = true;
+    }
+  }
+  const natural = rows * ROW_PX;
+  return natural <= GRID_PX ? 1 : Math.max(MIN_GRID_SCALE, GRID_PX / natural);
+}
+
 function OutcomePill({ outcome }: { outcome: Outcome }) {
   const { t } = useI18n();
   return (
@@ -272,10 +306,16 @@ export function TvPowerResolution({ room, data }: { room: RoomView; data: PowerD
     }
   };
 
+  const scale = powerGridScale(data.items);
   return (
     <div className={styles.screen} data-testid="tv-power">
       <h1 className={styles.title}>{t('tv.power.title')}</h1>
-      <div className={styles.grid}>{data.items.map(card)}</div>
+      <div
+        className={styles.grid}
+        style={scale < 1 ? { transform: `scale(${scale.toFixed(3)})` } : undefined}
+      >
+        {data.items.map(card)}
+      </div>
     </div>
   );
 }

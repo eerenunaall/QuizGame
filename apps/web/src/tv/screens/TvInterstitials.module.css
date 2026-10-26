@@ -248,10 +248,16 @@
   text-shadow: 0 6px 0 rgba(0, 0, 0, 0.4);
 }
 
+/* The pick screens are the tallest ones: start below the round pill, the Exit button and the room code (y < 125). */
+.pickScreen {
+  top: 130px;
+  height: 880px;
+}
+
 /* The loud title of a timed pick screen (ADR-0022). */
 .pickTitle {
   font-family: var(--qp-font-display);
-  font-size: 150px;
+  font-size: 140px;
   line-height: 1.05;
   letter-spacing: 0.02em;
   text-shadow: 0 9px 0 rgba(0, 0, 0, 0.42);
