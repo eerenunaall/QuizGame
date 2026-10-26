@@ -17,6 +17,23 @@ Branch: `claude/cloud-session-infrastructure-ln57mp` · Last updated: 2026-10-19
 | M6 Mobile | DONE in the sandbox (device/store parts are external) | `apps/mobile` Expo SDK 58 + expo-router, TypeScript strict: Home, Join (code / nickname / avatar, deep links `quiznight://join/CODE`, `https://host/j/CODE`), Lobby, Prep (Risk stake, Double Down, Sabotage), Question (50/50, SHUFFLE/FOG/JAM), Reveal/Score/Results, Reconnect banner, Purchase (`PurchaseProvider` over `expo-iap`, account-bound), Unlock link, Profile (email OTP as MOBILE session, export, delete). Shared `controller-client`/`i18n`/`ui-tokens`; Jest 132 tests; ws test drives the app runtime against the real server. See `docs/MOBILE.md` |
 | M7 Polish, hardening, release | TODO | |
 
+## Red-team / QA round of 2026-10-26
+Five independent passes (engine, realtime security, venue mode, player web UI, production deploy/admin/bank), every fix with a
+regression test written first. Engine: pick-phase progress counts only online players and ends as soon as the last awaited player
+leaves; the venue meter is re-read at the round boundary (no free round after time-up); the total-multiplier ceiling also holds a
+stake alone. Server: ATTACK 38 (one socket, one seat), 39 (Latin look-alike letters), 40 (lobby-state write budget); `/metrics`
+token compared in constant time. Venue: pushes of one table are ordered and re-read, switching `venue.sessions` off lets running
+tables go, the report's default range follows the venue's calendar. Web: phone countdown survives a screen lock, one answer per
+question, failed sends re-enable the options, four answers fit 320x568, TV titles clear the top bar. Deploy: SIGTERM reaches node,
+the bank loader no longer re-activates questions a moderator pulled, origins are normalised and a mismatch refuses to boot,
+malformed admin imports answer 422. Open design notes: reward expiry at venue midnight, one person with several phones,
+server downtime is billed to the table, join/leave churn growth, OTP lockout by a stranger (ADR-0012 trade-off).
+
+## Studio site (`sites/archonbite/`)
+Static, build-free, bilingual site for archonbite.com: Steam-style store pages for QuizNight and Salty Pirate (the latter is a
+placeholder driven by `data/games.json`, see `OWNER-FILL.md`), `/play/` (links to `PLAY_URL`, never an iframe), `/guide/`, legal
+draft. Deploy steps in `DEPLOY.md`; `node sites/archonbite/tools/check.mjs` validates links, metadata and i18n parity.
+
 ## Venue question sets (ADR-0025, same flag `venue.sessions`)
 A café's owner uploads CSV/JSONL questions from `/staff` → Sorular (owner only; staff see counts): dry-run with per-row
 Turkish fix messages, then import; passing rows are ACTIVE at once (heuristic audit PASS, owner-attested, no fact check),
