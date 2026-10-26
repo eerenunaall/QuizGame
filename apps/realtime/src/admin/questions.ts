@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import type { Database } from '@quizparty/db';
@@ -21,7 +21,13 @@ import {
   transitionQuestion,
   type EditPatch,
 } from '@quizparty/question-bank';
-import { AUDIT_STATUSES, POOLS, QUESTION_STATUSES } from '@quizparty/question-schema';
+import {
+  AUDIT_STATUSES,
+  CsvError,
+  JsonlLimitError,
+  POOLS,
+  QUESTION_STATUSES,
+} from '@quizparty/question-schema';
 import { DifficultySchema, LocaleSchema } from '@quizparty/protocol';
 import type { AppConfig } from '../config';
 import type { Clock } from '../util/clock';
@@ -98,6 +104,17 @@ const PatchBody = z.strictObject({
 
 const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
 const MAX_IMPORT_ROWS = 5000;
+
+/** A file the parser refuses (unterminated quote, absurd cell, too many lines) is the editor's to fix: 422, not a fault. */
+function readFile<T>(reply: FastifyReply, read: () => T): T | null {
+  try {
+    return read();
+  } catch (error) {
+    if (!(error instanceof CsvError || error instanceof JsonlLimitError)) throw error;
+    adminError(reply, 422, 'INVALID_FILE', { reason: error.message });
+    return null;
+  }
+}
 const MAX_REPORTED_ITEMS = 500;
 
 function toPatch(body: z.infer<typeof PatchBody>): EditPatch {
@@ -382,7 +399,8 @@ export function registerQuestionRoutes(app: FastifyInstance, deps: QuestionRoute
         reply,
       );
       if (!body) return reply;
-      const rows = parseImportText(body.text, body.format);
+      const rows = readFile(reply, () => parseImportText(body.text, body.format));
+      if (!rows) return reply;
       if (rows.length > MAX_IMPORT_ROWS)
         return adminError(reply, 413, 'TOO_MANY_ROWS', { max: MAX_IMPORT_ROWS });
       const report = await importQuestions(db, rows, {
@@ -633,7 +651,9 @@ export function registerQuestionRoutes(app: FastifyInstance, deps: QuestionRoute
         reply,
       );
       if (!body) return reply;
-      const report = await importAuditResults(db, parseResults(body.text), {
+      const parsedResults = readFile(reply, () => parseResults(body.text));
+      if (!parsedResults) return reply;
+      const report = await importAuditResults(db, parsedResults, {
         now: now(),
         source: body.source,
         actor: actorOf(request),

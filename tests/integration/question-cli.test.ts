@@ -14,7 +14,7 @@ import {
   statusCounts,
 } from '../helpers/question-bank';
 import { panel } from '../helpers/audit';
-import { runAudit } from '@quizparty/question-bank';
+import { runAudit, transitionQuestion } from '@quizparty/question-bank';
 import { startModelServer, wellBehavedModel } from '../helpers/model-server';
 import { cleanRows, jsonl, NOW, SEED_PATH, withCategories } from '../helpers/questions';
 
@@ -233,6 +233,41 @@ describe('retire-dev', () => {
       expect(await bad.exec(argv)).toBe(2);
       expect(bad.err.join('\n')).toContain('--keep-prefix');
     }
+  });
+});
+
+describe('the bank loader on a restart (infra/deployment/load-bank.sh)', () => {
+  // The loader used to run `audit --status DRAFT,REVIEW,APPROVED --no-models --auto-activate` on EVERY start.
+  // A question that players reported, a moderator or the telemetry pulled to REVIEW still has its PASS
+  // verdict for the current revision, so the loader would put it straight back into play at the next
+  // deploy or restart. Only a person may send a REVIEW question back to APPROVED.
+  it('does not put a question back into play that a moderator pulled out', async () => {
+    await withCategories(t.db);
+    const [pulled, untouched] = await activate(t.db, 2, 'gusto');
+    await transitionQuestion(t.db, pulled!, 'REVIEW', {
+      actor: { accountId: null, roles: ['MODERATOR'] },
+      reason: 'REPORT',
+    });
+    const boot = harness();
+    // The very command line the script runs, so the test cannot drift from it.
+    const script = readFileSync(
+      fileURLToPath(new URL('../../infra/deployment/load-bank.sh', import.meta.url)),
+      'utf8',
+    );
+    const line = script.match(/^"\$\{Q\[@\]\}" (audit .*?--auto-activate)/mu)?.[1];
+    expect(line).toBeDefined();
+    const argv = line!.split(' ');
+    expect(await boot.exec(argv)).toBe(0);
+    const status = async (id: string) =>
+      (
+        await t.db
+          .selectFrom('questions')
+          .select('status')
+          .where('id', '=', id)
+          .executeTakeFirstOrThrow()
+      ).status;
+    expect(await status(pulled!)).toBe('REVIEW');
+    expect(await status(untouched!)).toBe('ACTIVE');
   });
 });
 

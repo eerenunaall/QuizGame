@@ -146,7 +146,7 @@ The importer can also be driven from the console. (Commands: `scripts/question/c
 
 ## 7. First administrator
 
-1. `ADMIN_BOOTSTRAP_EMAILS` must contain your address (section 3). Nobody is ever promoted by clicking.
+1. `ADMIN_BOOTSTRAP_EMAILS` must contain your address (section 3). The first administrator exists only through this list (no one can promote themselves); later, an existing `ADMIN` can grant roles under Users.
 2. Open `https://<your domain>/admin/`, enter your address, then the 6-digit code from the e-mail
    (codes last 10 minutes). The first successful sign-in with a listed address creates the `ADMIN` role
    (`AccountService.signIn`). Admin sessions end after 1 hour idle or 12 hours in all.

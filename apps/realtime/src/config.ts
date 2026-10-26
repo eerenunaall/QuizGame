@@ -275,16 +275,29 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   }
   const e = parsed.data;
   const production = e.NODE_ENV === 'production';
+  // Compared with the browser's Origin header, which has no path, no trailing slash and a lower-case
+  // host: an address typed on a phone ("https://Quiz.example/") must still match it.
+  const origins = e.ALLOWED_ORIGINS.map((origin) => {
+    try {
+      const url = new URL(origin);
+      return url.origin === 'null' ? origin : url.origin;
+    } catch {
+      return origin;
+    }
+  });
 
   if (production) {
     const problems: string[] = [];
     if (!e.SERVER_SECRET || e.SERVER_SECRET === DEV_SECRET)
       problems.push('SERVER_SECRET must be set to a unique 32+ character secret');
     if (!e.DATABASE_URL) problems.push('DATABASE_URL is required');
-    if (e.ALLOWED_ORIGINS.length === 0) problems.push('ALLOWED_ORIGINS must list the web origins');
+    if (origins.length === 0) problems.push('ALLOWED_ORIGINS must list the web origins');
     if (!e.PUBLIC_WEB_URL.startsWith('https://')) problems.push('PUBLIC_WEB_URL must be https');
-    if (e.ALLOWED_ORIGINS.some((origin) => !origin.startsWith('https://')))
+    if (origins.some((origin) => !origin.startsWith('https://')))
       problems.push('ALLOWED_ORIGINS must be https origins');
+    // The TV's QR code opens PUBLIC_WEB_URL: a phone there sends exactly this Origin and would be refused.
+    if (origins.length > 0 && !origins.includes(new URL(e.PUBLIC_WEB_URL).origin))
+      problems.push('ALLOWED_ORIGINS must include the PUBLIC_WEB_URL origin');
     if (e.QP_ALLOW_DEV_SEED) problems.push('QP_ALLOW_DEV_SEED must be 0 in production');
     if (e.RATE_LIMIT_SCALE !== 1) problems.push('RATE_LIMIT_SCALE must be 1 in production');
     if (e.VENUE_MINUTE_MS !== 60_000) problems.push('VENUE_MINUTE_MS must be 60000 in production');
@@ -318,9 +331,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     throw new Error('Invalid configuration: AUDIT_API_KEY needs AUDIT_MODEL_FAST');
 
   const webOrigin = new URL(e.PUBLIC_WEB_URL).origin;
-  const allowedOrigins = Array.from(
-    new Set([...e.ALLOWED_ORIGINS, ...(production ? [] : [webOrigin])]),
-  );
+  const allowedOrigins = Array.from(new Set([...origins, ...(production ? [] : [webOrigin])]));
 
   return {
     env: e.NODE_ENV,

@@ -34,6 +34,9 @@ Postgres (Basic) ücretlidir; güncel fiyatı Render'ın fiyat sayfasından gör
    (varsayılan `render.yaml` **değil**: o demodur).
 3. Render sizden **gizli değerleri** ister (3. ve 4. adımdaki liste). Hazır değilseniz oluşturmayı durdurun, önce
    3. adımı yapın. Bu değerler GitHub'a **yazılmaz**, yalnızca Render'da durur.
+   Site adresini (`PUBLIC_WEB_URL`, `ALLOWED_ORIGINS`) henüz bilmiyorsunuz: ikisine de şimdilik
+   `https://gusto-quiznight.onrender.com` yazın. Gerçek adres bu olmazsa, 5. maddede adresi görünce Environment sayfasından **ikisini birlikte** düzeltin
+   (biri ötekinden farklıysa sunucu açılmayı reddeder ve Logs'ta `ALLOWED_ORIGINS must include the PUBLIC_WEB_URL origin` yazar).
 4. **Apply** deyin. İki şey oluşur: `quiznight-gusto-db` (veritabanı) ve `gusto-quiznight` (oyun sunucusu). İlk kurulum
    10-15 dakika sürer.
 5. Hizmet sayfasının üstünde adresi görürsünüz (örn. `https://gusto-quiznight.onrender.com`; ad doluysa sonuna
@@ -97,10 +100,10 @@ Sunucu yanlış/eksik bir ayarla **açılmayı reddeder** ve nedeni Logs'ta yaza
 
 1. `https://<adresiniz>/admin/` açın, `ADMIN_BOOTSTRAP_EMAILS` içine yazdığınız adresi girin.
 2. E-postanıza gelen **6 haneli kodu** girin (10 dakika geçerli; spam klasörüne de bakın). İlk girişte yönetici rolünüz
-   oluşur; kimse düğmeyle yönetici yapılamaz.
+   oluşur. İlk yönetici yalnızca bu listeyle doğar; sonrasında yalnızca bir yönetici, **Kişiler ve roller** sayfasından rol verebilir.
 3. Kod gelmezse: Render Logs'ta `resend answered 401` (anahtar yanlış), `422` (gönderen alan adı doğrulanmadı),
    `429` (günlük limit) arayın.
-4. Hemen ikinci bir yönetici ekleyin: **Kullanıcılar**'da (adresi önceden `ADMIN_BOOTSTRAP_EMAILS`'e koymanız ya da o
+4. Hemen ikinci bir yönetici ekleyin: **Kişiler ve roller**'da (adresi önceden `ADMIN_BOOTSTRAP_EMAILS`'e koymanız ya da o
    kişinin bir kez giriş yapması gerekir).
 
 ## 7. Mekanı oluşturun
@@ -127,7 +130,7 @@ Mekan modu varsayılan olarak **kapalıdır**. Kapalıyken `/staff` "Mekan modu 
 Yönetim konsolundan (tavsiye edilen):
 
 1. `https://<adresiniz>/admin/` > **Özellik anahtarları**.
-2. `venue.sessions` satırını bulun > **Aç** > onaylayın.
+2. `venue.sessions` satırını bulun. Düğmesi şu an **Kapalı** yazar; ona basıp sorulan onayı verin, düğme **Açık** olur.
 3. `https://<adresiniz>/staff` sayfasını yenileyin.
 
 Konsol çalışmıyorsa (yedek yol, yalnızca gerekirse): Render > gusto-quiznight > **Shell** (ücretli planlarda var) ve:
@@ -215,9 +218,9 @@ Kodda değişiklik gerekmez: CSP'nin `connect-src` kuralı, QR adresi ve izinli 
 | `/staff`: "Mekan modu kapalı" | 8. adım: `venue.sessions` açık mı? |
 | TV QR'ı yanlış adrese gidiyor | `PUBLIC_WEB_URL` yanlış; düzeltin, kaydedin. |
 | Oyun çok yavaş / bağlantı kopuyor | Render hizmet sayfasında CPU/RAM grafiği; hizmet planı Starter'dan bir üst plana alınabilir (tek örnek kalmalı). Kafe Wi-Fi'ını kontrol edin. |
-| Soru çıkmıyor / "soru bulunamadı" | Logs'ta `bank:` satırlarına bakın. `seed/gusto/` dosyaları depoda var mı? Satırlar `REVIEW`'da bekliyor olabilir (denetim PASS'i yok): yönetim konsolu > Kuyruk. |
-| Yanlış soru bildirildi | Konsol > Bildirimler > soruyu kapatın (RETIRED). Oyun sürerken güvenlidir. |
+| Soru çıkmıyor / "soru bulunamadı" | Logs'ta `bank:` satırlarına bakın. `seed/gusto/` dosyaları depoda var mı? Satırlar `REVIEW`'da bekliyor olabilir (denetim PASS'i yok): yönetim konsolu > İnceleme kuyruğu. |
+| Yanlış soru bildirildi | Konsol > Oyuncu bildirimleri > soruyu kapatın (RETIRED). Oyun sürerken güvenlidir. |
 | Her şey kötüye giderse | Son çare: Render > Events > önceki başarılı yayına **Rollback**; veri sorunuysa en yakın yedeği geri yükleyin. Masaları kasada elle tutmaya devam edin; uygulama para almaz, yalnızca süre tutar. |
-| Şüpheli erişim / sızıntı | `docs/RUNBOOK.md` bölüm 4 ve 5: anahtarları sağlayıcıda iptal edip yenileyin; yöneticiyi kullanıcılar sayfasından çıkışa zorlayın. |
+| Şüpheli erişim / sızıntı | `docs/RUNBOOK.md` bölüm 4 ve 5: anahtarları sağlayıcıda iptal edip yenileyin; yöneticiyi **Kişiler ve roller** sayfasından çıkışa zorlayın. |
 
 Teknik destek için kodu yazan kişiye Logs'tan ilgili satırları (e-posta adresi ve anahtar içermez) iletin.
