@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestDatabase, type TestDatabase } from '@quizparty/db/testing';
 import type { DeckRequest } from '@quizparty/game-engine';
+import { FeatureFlags } from '../../apps/realtime/src/flags/service';
 import { DeckBuilder } from '../../apps/realtime/src/rooms/deck-builder';
 import { seedTestBank } from '../helpers/bank';
 import { seedVenueQuestions } from '../helpers/venue';
@@ -44,8 +45,9 @@ const request = (roomId: string, over: Partial<DeckRequest> = {}): DeckRequest =
   playerCount: 3,
   ...over,
 });
-const builder = (extra: { freshWindow?: number; random?: () => number } = {}) =>
-  new DeckBuilder(t.db, { allowDevSeed: true, clock, ...extra });
+const builder = (
+  extra: { freshWindow?: number; random?: () => number; flags?: FeatureFlags } = {},
+) => new DeckBuilder(t.db, { allowDevSeed: true, clock, ...extra });
 const idsOf = (deck: { questions: Record<string, unknown> }): string[] =>
   Object.keys(deck.questions);
 const ownerOf = async (ids: string[]) =>
@@ -91,6 +93,28 @@ describe('who sees venue questions', () => {
     await expect(
       builder().build(request(crypto.randomUUID(), { categories: [category] })),
     ).rejects.toThrow();
+  });
+
+  it('with venue.sessions off a table left behind is a plain room: no venue question', async () => {
+    const room = await attach(a);
+    const flags = new FeatureFlags(t.db, clock, 1);
+    for (const [enabled, expectVenue] of [
+      [false, false],
+      [true, true],
+    ] as const) {
+      await t.db
+        .updateTable('feature_flags')
+        .set({ enabled })
+        .where('key', '=', 'venue.sessions')
+        .execute();
+      flags.invalidate();
+      let seen = 0;
+      for (let i = 0; i < 6; i++) {
+        const deck = await builder({ flags }).build(request(room));
+        for (const owner of (await ownerOf(idsOf(deck))).values()) if (owner === a) seen++;
+      }
+      expect(seen > 0).toBe(expectVenue);
+    }
   });
 
   it("a venue's table gets its own questions and never another venue's", async () => {

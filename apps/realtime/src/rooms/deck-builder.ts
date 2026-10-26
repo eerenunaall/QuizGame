@@ -72,6 +72,8 @@ export class DeckBuilder {
 
   /** The venue whose open (not ended) table this room is, or null for every other room. */
   private async venueOf(roomId: string): Promise<VenueContext | null> {
+    // Feature off (ADR-0024 §1): a table left behind is a plain room and serves no café question.
+    if (this.options.flags && !(await this.options.flags.isEnabled('venue.sessions'))) return null;
     const row = await this.db
       .selectFrom('venue_sessions')
       .innerJoin('venues', 'venues.id', 'venue_sessions.venue_id')
