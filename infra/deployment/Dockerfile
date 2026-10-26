@@ -21,8 +21,10 @@ ENV VITE_DEFAULT_THEME="$VITE_DEFAULT_THEME" VITE_VENUE_NAME="$VITE_VENUE_NAME" 
 RUN pnpm --filter @quizparty/web run build && pnpm --filter @quizparty/admin run build
 
 FROM node:22-bookworm-slim
-ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH NODE_ENV=development SERVE_WEB=1 HOST=0.0.0.0 PORT=8080
-RUN corepack enable && corepack prepare pnpm@10.28.0 --activate && apt-get update \
+# COREPACK_HOME outside /root: the image runs as `node`, which would otherwise not find the pnpm that
+# `corepack prepare` cached for root and download it again (from the npm registry) on every start.
+ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH NODE_ENV=development SERVE_WEB=1 HOST=0.0.0.0 PORT=8080 COREPACK_HOME=/usr/local/share/corepack
+RUN corepack enable && corepack prepare pnpm@10.28.0 --activate && chmod -R a+rX "$COREPACK_HOME" && apt-get update \
   && apt-get install -y --no-install-recommends tini ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app /app

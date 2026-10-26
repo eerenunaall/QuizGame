@@ -143,6 +143,33 @@ describe('questions', () => {
     expect(again.body.counts.UNCHANGED).toBe(5);
     expect((await auditRows('question.import')).length).toBe(2);
   });
+
+  it('answer a spreadsheet they cannot read with a client error, never a server fault', async () => {
+    for (const text of [
+      'question,options\n"never closed,x',
+      'a,b\nab"c,d',
+      `a\n${'x'.repeat(5000)}`,
+    ]) {
+      const res = await as(editor).post<{ error: { code: string } }>('/v1/admin/questions/import', {
+        format: 'csv',
+        text,
+      });
+      expect(res.status, text.slice(0, 20)).toBe(422);
+      expect(res.body.error.code).toBe('INVALID_FILE');
+    }
+    // More lines than the reader accepts is the same mistake in JSONL form, for questions and for audit results.
+    const tooManyLines = Array.from({ length: 100_001 }, () => '{}').join('\n');
+    const lines = await as(editor).post('/v1/admin/questions/import', {
+      format: 'jsonl',
+      text: tooManyLines,
+    });
+    expect(lines.status).toBe(422);
+    const results = await as(editor).post('/v1/admin/audit/results', {
+      source: 'round-x',
+      text: tooManyLines,
+    });
+    expect(results.status).toBe(422);
+  });
 });
 
 describe('the audit pipeline from the console', () => {

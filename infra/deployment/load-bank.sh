@@ -53,7 +53,10 @@ done
 
 # Only questions whose arbiter verdict is PASS become ACTIVE; the rest stay in REVIEW for a person.
 # `--no-models`: no model key is needed, the verdicts above are the fact check.
-"${Q[@]}" audit --status DRAFT,REVIEW,APPROVED --no-models --auto-activate || echo "bank: audit reported problems (continuing)"
+# Never REVIEW here: this runs on every start, and a question that players reported or a moderator /
+# the maintenance job pulled out of play keeps its old PASS verdict, so it would come back at the next
+# restart. Only a person sends a REVIEW question back (verdicts from a new audits file do it themselves).
+"${Q[@]}" audit --status DRAFT,APPROVED --no-models --auto-activate || echo "bank: audit reported problems (continuing)"
 
 # Switch the served bank to the verified one. Guarded: a no-op until the command exists.
 help_text="$("${Q[@]}" help 2>&1 || true)"

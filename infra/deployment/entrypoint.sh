@@ -45,4 +45,6 @@ if [ -n "${QP_BANK_DIR:-}" ]; then
   bash /app/infra/deployment/load-bank.sh "$QP_BANK_DIR"
 fi
 
-exec pnpm --filter @quizparty/realtime run start
+# node itself, not `pnpm run start`: tini forwards SIGTERM to this one process, and pnpm/sh/tsx in between
+# would not pass it on, so a Render deploy would kill the server without draining rooms (main.ts).
+exec node --import tsx apps/realtime/src/main.ts

@@ -24,6 +24,33 @@ describe('production safety', () => {
     );
     expect(loadConfig(production).env).toBe('production');
   });
+
+  // The owner types these two on a phone (docs/GUSTO_GO_LIVE.md, adım 4). A trailing slash or capital letter
+  // in the allow-list would not equal the browser's Origin header, so every phone's WebSocket and every
+  // admin sign-in would be refused with no hint in the log.
+  it('reads origins the way a browser sends them', () => {
+    const config = loadConfig({
+      ...production,
+      ALLOWED_ORIGINS: ' https://Play.Example.test/ , https://old.example.test/ ',
+    });
+    expect(config.allowedOrigins).toEqual([
+      'https://play.example.test',
+      'https://old.example.test',
+    ]);
+  });
+
+  it('refuses a public address that its own allow-list would turn away', () => {
+    expect(() =>
+      loadConfig({ ...production, ALLOWED_ORIGINS: 'https://other.example.test' }),
+    ).toThrow(/ALLOWED_ORIGINS must include the PUBLIC_WEB_URL origin/u);
+    expect(
+      loadConfig({
+        ...production,
+        PUBLIC_WEB_URL: 'https://play.example.test/',
+        ALLOWED_ORIGINS: 'https://old.example.test,https://play.example.test/',
+      }).allowedOrigins,
+    ).toEqual(['https://old.example.test', 'https://play.example.test']);
+  });
 });
 
 describe('personal quiz sealing keys (ADR-0015)', () => {
