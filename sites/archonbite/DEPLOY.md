@@ -1,7 +1,7 @@
 # Archonbite sitesini yayına alma (telefondan, kopyala-yapıştır)
 
 Bu klasör (`sites/archonbite`) **hazır bir statik sitedir**: derleme yok, komut yok, sunucu yok. Klasörü olduğu gibi
-yayınlayan her yer çalışır. İki kolay yol: **Cloudflare Pages** (önerilen) ya da **Render Static Site**.
+yayınlayan her yer çalışır. Kolay yollar: **Netlify** (senin için önerilen, site zaten orada), Cloudflare Pages ya da Render Static Site.
 
 Önce tek şeyi anla: **iki ayrı adres var.**
 
@@ -12,7 +12,29 @@ yayınlayan her yer çalışır. İki kolay yol: **Cloudflare Pages** (önerilen
 
 ---
 
-## A. Cloudflare Pages (önerilen)
+## A0. Netlify (archonbite.com şu an burada; telefondan en kolayı)
+
+Eski site çalışmaya devam eder; yenisini ayrı bir siteyle kurup beğenince adresi ona taşırsın.
+
+1. app.netlify.com → **Add new site** → **Import an existing project** → **GitHub** → `eerenunaall/QuizGame` deposunu seç.
+   (İlk seferde GitHub "Netlify'a erişim ver" diye sorar, depoyu seç.)
+2. Ayarlar:
+   - **Branch to deploy:** `claude/cloud-session-infrastructure-ln57mp` (ana dal hazır olunca `main`'e çevrilir)
+   - **Base directory:** `sites/archonbite`
+   - **Build command:** *(boş bırak)*
+   - **Publish directory:** `sites/archonbite`
+3. **Deploy**. 1 dakikada `https://<ad>.netlify.app` açılır. Telefonda aç, kontrol et.
+4. Beğendiysen: **Domain management** → **Add a domain** → `archonbite.com` ekle. Alan adı eski Netlify sitesinde ekliyse
+   önce eski sitede **Domain management → archonbite.com → Remove domain** de, sonra yenisine ekle. DNS ayarına dokunman
+   gerekmez (alan adın zaten Netlify'a bağlı). `www.archonbite.com` için de aynısını yap.
+5. `_headers` ve `404.html` Netlify'da kendiliğinden çalışır. Güvenlik başlıkları için ek ayar yok.
+6. Sonraki güncellemeler: depodaki dosyalar değişince Netlify yeniden yayınlar (sadece bu klasör değişirse).
+
+**Alan adın Google'dan:** Google Domains 2023'te Squarespace'e devredildi. `quiz` alt alan adı kaydını
+(domains.squarespace.com → alan adı → **DNS**) ya da alan adın Netlify DNS kullanıyorsa Netlify'daki **DNS** ekranından ekle.
+Hangisinde olduğunu görmek için: Netlify → **Domains** → `archonbite.com` yanında "Netlify DNS" yazıyorsa orası.
+
+## A. Cloudflare Pages (alternatif)
 
 1. dash.cloudflare.com → **Workers & Pages** → **Create** → **Pages** → **Connect to Git** → bu depoyu seç.
 2. Ayarlar:
