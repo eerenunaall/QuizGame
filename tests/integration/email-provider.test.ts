@@ -129,7 +129,7 @@ describe.each(providers)('%s wire contract', (provider) => {
 
   it('never follows a redirect with the key attached', async () => {
     const mail = sender({
-      fetch: ((url: string, init: RequestInit) => {
+      fetch: ((_url: string, init: RequestInit) => {
         expect(init.redirect).toBe('error');
         return Promise.resolve(new Response('{}', { status: 200 }));
       }) as unknown as typeof fetch,
