@@ -257,6 +257,47 @@ describe('staff desk', () => {
     expect(open.body).toEqual({ minutes: 90, link: 'tok-AAAAAAAAAAAAAAAAAAAA' });
   });
 
+  it('keeps the minutes the waiter typed when the venue default arrives late', async () => {
+    const calls = network((call) => {
+      if (call.path === '/v1/me') return { json: { account } };
+      if (call.path === '/v1/venue/me') return { json: { venues: [VENUE] } };
+      if (call.path.endsWith('/sessions') && call.method === 'GET')
+        return {
+          json: {
+            serverTime: Date.now(),
+            items: [],
+            role: 'STAFF',
+            steps: [15],
+            defaultMinutes: 60,
+          },
+        };
+      if (call.path.endsWith('/sessions'))
+        return { status: 201, json: { ...table, purchasedMinutes: 2 } };
+      return undefined;
+    });
+    wrap(<StaffPage />);
+    await waitFor(() => expect(screen.getByTestId('staff-tab-new')).toBeTruthy());
+    // From here on the defaults answer only when released: a slow network, as on a busy CI runner.
+    const fast = globalThis.fetch;
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    vi.stubGlobal('fetch', (path: string, init?: RequestInit) =>
+      (init?.method ?? 'GET') === 'GET' && path.endsWith('/sessions')
+        ? gate.then(() => fast(path, init))
+        : fast(path, init),
+    );
+    fireEvent.click(screen.getByTestId('staff-tab-new'));
+    fireEvent.change(screen.getByTestId('staff-new-minutes'), { target: { value: '2' } });
+    fireEvent.change(screen.getByTestId('staff-new-code'), { target: { value: 'ABC234' } });
+    release();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.getByTestId<HTMLInputElement>('staff-new-minutes').value).toBe('2');
+    fireEvent.click(screen.getByTestId('staff-new-open'));
+    await waitFor(() => expect(screen.getByTestId('staff-new-result')).toBeTruthy());
+    const open = calls.find((c) => c.path.endsWith('/sessions') && c.method === 'POST')!;
+    expect(open.body).toEqual({ minutes: 2, roomCode: 'ABC234' });
+  });
+
   it('says so when the account works at no venue, or when venue mode is off', async () => {
     network((call) => {
       if (call.path === '/v1/me') return { json: { account } };

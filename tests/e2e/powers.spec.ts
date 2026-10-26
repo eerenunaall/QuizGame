@@ -38,11 +38,16 @@ test.afterEach(async () => {
   await env.server.dispose();
 });
 
-const answerOf = (code: string) => {
-  const question = env.server.built.manager.getByCode(code)!.state.game!.round!.question!;
-  const right = question.options.find((option) => option.correct)!;
-  const wrong = question.options.find((option) => !option.correct)!;
-  return { right: right.text, wrong: wrong.text };
+// The question exists only once the room is in ANSWERING; a slow machine reaches it later than the
+// phones' last click, so wait for the server's own state rather than reading it blind.
+const answerOf = async (code: string) => {
+  const room = env.server.built.manager.getByCode(code)!;
+  await expect.poll(() => room.state.phase).toBe('ANSWERING');
+  const question = room.state.game!.round!.question!;
+  return {
+    right: question.options.find((option) => option.correct)!.text,
+    wrong: question.options.find((option) => !option.correct)!.text,
+  };
 };
 
 const option = (page: Page, text: string) =>
@@ -111,7 +116,7 @@ test('stakes, double down and 50/50 play out, and the last question demands a st
   await ready(merve);
 
   await expect(ece.page.getByTestId('ctl-answering')).toBeVisible();
-  const first = answerOf(code);
+  const first = await answerOf(code);
   await option(ece.page, first.right).click();
   await option(ahmet.page, first.wrong).click();
   await option(merve.page, first.right).click();
@@ -132,7 +137,7 @@ test('stakes, double down and 50/50 play out, and the last question demands a st
   await expect(ahmet.page.getByTestId('fifty-used')).toBeVisible();
   await expect(ahmet.page.locator('[data-removed="true"]')).toHaveCount(2);
   await shot(ahmet.page, '34-phone-fifty');
-  const second = answerOf(code);
+  const second = await answerOf(code);
   await option(ahmet.page, second.right).click();
   await option(ece.page, second.right).click();
   await option(merve.page, second.right).click();
@@ -147,7 +152,7 @@ test('stakes, double down and 50/50 play out, and the last question demands a st
     await expect(tv.page.getByTestId('tv-pick-title')).toHaveText(tr['tv.sabotage.title']);
     await pass(ece, ahmet, merve);
     await expect(ece.page.getByTestId('ctl-answering')).toBeVisible();
-    const pick = answerOf(code);
+    const pick = await answerOf(code);
     for (const phone of phones) await option(phone.page, pick.right).click();
     await expect(tv.page.getByTestId('tv-score')).toBeVisible();
   }
@@ -162,7 +167,7 @@ test('stakes, double down and 50/50 play out, and the last question demands a st
   await shot(tv.page, '36-tv-prep-final');
   for (const phone of phones) await ready(phone, 'ALL_IN');
   await expect(ece.page.getByTestId('ctl-answering')).toBeVisible();
-  const last = answerOf(code);
+  const last = await answerOf(code);
   for (const phone of phones) await option(phone.page, last.right).click();
   await expect(tv.page.getByTestId('tv-results')).toBeVisible();
   for (const phone of phones) await phone.context.close();
@@ -193,7 +198,7 @@ test('a sabotage the shield blocks, then one that lands on the target and nobody
     for (const phone of phones) await ready(phone);
     await expect(ece.page.getByTestId('ctl-answering')).toBeVisible();
     await expect(ece.page.getByTestId('ctl-sabotage')).toHaveCount(0);
-    const pick = answerOf(code);
+    const pick = await answerOf(code);
     for (const phone of phones) await option(phone.page, pick.right).click();
     await expect(tv.page.getByTestId('tv-score')).toBeVisible();
   }
@@ -218,7 +223,7 @@ test('a sabotage the shield blocks, then one that lands on the target and nobody
   await expect(ece.page.getByTestId('hit-notices')).toContainText('Kalkanın engelledi');
   await expect(ahmet.page.getByTestId('hit-notices')).toHaveCount(0); // nobody else is told
   await shot(ece.page, '39-phone-hit-blocked');
-  const third = answerOf(code);
+  const third = await answerOf(code);
   for (const phone of phones) await option(phone.page, third.right).click();
   await expect(tv.page.getByTestId('tv-power')).toBeVisible();
   await expect(tv.page.locator('[data-kind="SABOTAGE"][data-blocked="true"]')).toHaveCount(1);
@@ -238,7 +243,7 @@ test('a sabotage the shield blocks, then one that lands on the target and nobody
   await expect(ece.page.getByTestId('hit-notices')).toContainText('Süren');
   await expect(merve.page.getByTestId('hit-notices')).toHaveCount(0);
   await shot(ece.page, '41-phone-jam');
-  const fourth = answerOf(code);
+  const fourth = await answerOf(code);
   for (const phone of phones) await option(phone.page, fourth.right).click();
   await expect(tv.page.locator('[data-kind="SABOTAGE"][data-blocked="false"]')).toHaveCount(1);
   await expect(tv.page.getByTestId('tv-score')).toBeVisible();
@@ -271,7 +276,7 @@ test('a shuffle and a fog change what the target sees, and only the target', asy
   for (let round = 0; round < 2; round++) {
     for (const phone of phones) await ready(phone);
     await expect(ece.page.getByTestId('ctl-answering')).toBeVisible();
-    const pick = answerOf(code);
+    const pick = await answerOf(code);
     for (const phone of phones) await option(phone.page, pick.right).click();
     await expect(tv.page.getByTestId('tv-score')).toBeVisible();
   }
@@ -291,7 +296,7 @@ test('a shuffle and a fog change what the target sees, and only the target', asy
   expect([...mine].sort()).toEqual([...theirs].sort()); // the same options
   expect(mine).not.toEqual(theirs); // in a different order
   await shot(ece.page, '42-phone-shuffled');
-  const third = answerOf(code);
+  const third = await answerOf(code);
   for (const phone of phones) await option(phone.page, third.right).click();
   await expect(tv.page.getByTestId('tv-score')).toBeVisible();
 
@@ -337,7 +342,7 @@ test('a crowd round shows what share of the room chose each answer', async ({ br
     // Rounds 3 and 4 offer sabotage (its own screen): nobody uses it here.
     if (round >= 2 && round <= 3) await pass(ece, ahmet, merve);
     await expect(ece.page.getByTestId('ctl-answering')).toBeVisible();
-    const pick = answerOf(code);
+    const pick = await answerOf(code);
     await option(ece.page, pick.right).click();
     await option(ahmet.page, pick.right).click();
     await option(merve.page, pick.wrong).click();

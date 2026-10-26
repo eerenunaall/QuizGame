@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from 'react';
 import { Button } from '../ui/Button';
 import { Wordmark } from '../ui/Wordmark';
 import { AccountApiError, type AccountView } from '../lib/account';
@@ -305,6 +313,13 @@ function NewTable({
   const { t } = useI18n();
   const refusal = useRefusal();
   const [minutes, setMinutes] = useState(60);
+  // The venue's default arrives asynchronously; it must never overwrite what the waiter already chose
+  // (a slow answer used to reset a typed "2" or a tapped preset to the default, opening the wrong table).
+  const chosen = useRef(false);
+  const pickMinutes = (value: number): void => {
+    chosen.current = true;
+    setMinutes(value);
+  };
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -313,7 +328,9 @@ function NewTable({
 
   useEffect(() => {
     venueApi.tables(venueId).then(
-      (result) => setMinutes(result.defaultMinutes),
+      (result) => {
+        if (!chosen.current) setMinutes(result.defaultMinutes);
+      },
       () => undefined,
     );
   }, [venueId]);
@@ -348,7 +365,7 @@ function NewTable({
           min={1}
           max={720}
           value={minutes}
-          onChange={(event) => setMinutes(Number(event.target.value))}
+          onChange={(event) => pickMinutes(Number(event.target.value))}
           data-testid="staff-new-minutes"
         />
       </label>
@@ -358,7 +375,7 @@ function NewTable({
             key={value}
             type="button"
             className={value === minutes ? styles.tabOn : styles.tab}
-            onClick={() => setMinutes(value)}
+            onClick={() => pickMinutes(value)}
           >
             {t('staff.table.extend', { minutes: value }).replace('+', '')}
           </button>

@@ -36,8 +36,12 @@ const TIMINGS = {
 const PLAIN = { maxSpeedRounds: 0, maxCrowdRounds: 0, maxRiskRounds: 0 };
 
 const NAMES = ['Ece', 'Ahmet', 'Merve'];
-const answerOf = (code: string) => {
-  const question = env.server.built.manager.getByCode(code)!.state.game!.round!.question!;
+// The question exists only once the room is in ANSWERING; a slow machine reaches it later than the
+// phones' last click, so wait for the server's own state rather than reading it blind.
+const answerOf = async (code: string) => {
+  const room = env.server.built.manager.getByCode(code)!;
+  await expect.poll(() => room.state.phase).toBe('ANSWERING');
+  const question = room.state.game!.round!.question!;
   return {
     right: question.options.find((option) => option.correct)!.text,
     wrong: question.options.find((option) => !option.correct)!.text,
@@ -71,7 +75,7 @@ test('a Duel: the rival gets the invite, accepts, and the TV shows who took the 
 
   // ── Round 1: everybody plays safe and is right, so there is something to win and lose.
   for (const phone of phones) await phone.page.getByTestId('prep-ready').click();
-  const first = answerOf(code);
+  const first = await answerOf(code);
   for (const phone of phones) await option(phone.page, first.right).click();
   await expect(tv.page.getByTestId('tv-score')).toBeVisible();
   const before = Object.fromEntries(
@@ -106,7 +110,7 @@ test('a Duel: the rival gets the invite, accepts, and the TV shows who took the 
   await ahmet.page.getByTestId('duel-accept').click();
   await expect(ece.page.getByTestId('ctl-answering')).toBeVisible();
 
-  const second = answerOf(code);
+  const second = await answerOf(code);
   await option(ece.page, second.right).click();
   await option(ahmet.page, second.wrong).click();
   await option(merve.page, second.right).click();
@@ -145,7 +149,7 @@ test('a declined Duel does nothing, and says so on the TV', async ({ browser }) 
   const [ece, ahmet, merve] = phones;
   await ece.page.getByTestId('ctl-start').click();
   for (const phone of phones) await phone.page.getByTestId('prep-ready').click();
-  const first = answerOf(code);
+  const first = await answerOf(code);
   for (const phone of phones) await option(phone.page, first.right).click();
   await expect(tv.page.getByTestId('tv-score')).toBeVisible();
 
@@ -158,7 +162,7 @@ test('a declined Duel does nothing, and says so on the TV', async ({ browser }) 
   await ahmet.page.getByTestId('duel-decline').click();
   await ahmet.page.getByTestId('prep-ready').click();
   await expect(ece.page.getByTestId('ctl-answering')).toBeVisible();
-  const second = answerOf(code);
+  const second = await answerOf(code);
   await option(ece.page, second.right).click();
   await option(ahmet.page, second.wrong).click();
   await option(merve.page, second.right).click();
@@ -184,7 +188,7 @@ test('Blind Clock: the target’s countdown is gone from their phone, the TV nam
   const [ece, ahmet, merve] = phones;
   await ece.page.getByTestId('ctl-start').click();
   const answerRound = async (): Promise<void> => {
-    const { right } = answerOf(code);
+    const { right } = await answerOf(code);
     for (const phone of phones) await option(phone.page, right).click();
     await expect(tv.page.getByTestId('tv-score')).toBeVisible();
   };
@@ -220,7 +224,7 @@ test('Blind Clock: the target’s countdown is gone from their phone, the TV nam
   // Everybody else still has a clock, and Merve can still answer.
   await expect(ece.page.getByTestId('blind-clock')).toHaveCount(0);
   await expect(ahmet.page.getByTestId('blind-clock')).toHaveCount(0);
-  const { right } = answerOf(code);
+  const { right } = await answerOf(code);
   await option(merve.page, right).click();
   await option(ece.page, right).click();
   await option(ahmet.page, right).click();

@@ -49,6 +49,9 @@ test('risk time and sabotage time are two timed screens, with counts and no name
   const [ece, ahmet, merve] = phones as [Screen, Screen, Screen];
   await ece.page.getByTestId('ctl-start').click();
   const answerRound = async (): Promise<void> => {
+    // The question exists only once the room is ANSWERING; a slow runner gets there after the last click.
+    const room = env.server.built.manager.getByCode(code)!;
+    await expect.poll(() => room.state.phase).toBe('ANSWERING');
     const question = env.server.built.manager.getByCode(code)!.state.game!.round!.question!;
     const right = question.options.find((option) => option.correct)!;
     for (const phone of phones)
