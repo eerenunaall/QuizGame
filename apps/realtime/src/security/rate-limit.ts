@@ -85,6 +85,11 @@ export const LIMITS = {
   answer: { capacity: 6, refillPerSec: 1 },
   /** COMMIT_RISK, RESPOND_DUEL, COMMIT_SABOTAGE, USE_FIFTY_FIFTY, SET_PREFERENCES: a handful a round, never a flood. */
   power: { capacity: 8, refillPerSec: 0.5 },
+  /**
+   * READY, SET_NICKNAME, SET_SETTINGS, TRANSFER_LEADER: each accepted change is a durable event and a
+   * fan-out to every screen, and keeps the lobby "active". A person taps a few times, never in a loop (ATTACK 40).
+   */
+  lobbyChange: { capacity: 20, refillPerSec: 0.5 },
   /** Who Said It statements: a few edits in the lobby, never a flood. */
   statement: { capacity: 5, refillPerSec: 1 / 12 },
   /** A player flagging questions: a few per game, never a flood. */
