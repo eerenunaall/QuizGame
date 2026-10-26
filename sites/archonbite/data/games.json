@@ -1,0 +1,239 @@
+{
+  "_readme": "One data file drives the home page, both store pages and the carousel. Every text is {\"tr\": \"...\", \"en\": \"...\"}. Edit, save, reload. Fields listed in a game's \"todo\" array are placeholders: they get an orange TODO-OWNER frame when you open the page with ?edit=1. When you replace the content, delete the field name from \"todo\" and set \"placeholder\" to false on media you replaced. See OWNER-FILL.md.",
+  "studio": {
+    "name": "Archonbite",
+    "news": []
+  },
+  "games": [
+    {
+      "id": "quiznight",
+      "slug": "quiznight",
+      "accent": "accent-quiznight",
+      "title": "QuizNight",
+      "placeholder": false,
+      "todo": [],
+      "tagline": {
+        "tr": "TV sahne, telefon kumanda: arkadaşlarla bilgi yarışması.",
+        "en": "TV is the stage, phones are the controllers: the party quiz for friends."
+      },
+      "short": {
+        "tr": "TV'yi sahneye, telefonları kumandaya çeviren parti bilgi yarışması. QR'ı okut, bahsini seç, rakibine sabotaj yap.",
+        "en": "The party quiz that turns the TV into a stage and phones into controllers. Scan the QR, pick your stake, sabotage a rival."
+      },
+      "about": [
+        {
+          "tr": "QuizNight, arkadaşlarla oynanan TV öncelikli bir bilgi yarışması. Televizyonda ya da bilgisayarda oyunu aç, ekrandaki QR kodu telefonunla okut ve telefonun kumandan olsun. Sorular TV'de, cevaplar telefonunda; uygulama indirmek ya da aynı Wi-Fi'de olmak gerekmez.",
+          "en": "QuizNight is a TV-first trivia game for friends. Open it on a TV or computer, scan the QR code on screen with your phone, and your phone becomes the controller. Questions are on the TV, answers on your phone; there is no app to download and no need to share a Wi-Fi network."
+        },
+        {
+          "tr": "Her soruda önce Risk zamanı: bahsini seç, istersen Çifte Hak, Örtü ya da Düello gibi güçler kullan. 3. turdan itibaren Sabotaj zamanı: bir rakibin süresini kısalt, şıklarını karıştır ya da kazancından pay kes. Kimin yaptığı belli olmaz.",
+          "en": "Every question starts with Risk time: pick your stake and, if you like, use powers such as Double Down, Cover or a Duel. From round 3 comes Sabotage time: cut a rival's time, shuffle their options or take a share of their gain. Nobody sees who did it."
+        },
+        {
+          "tr": "Süreyi, cevapları ve puanı yalnızca sunucu tutar; telefonlar sadece niyetini bildirir. Oyunun son soruları finaldir: taban puan iki katıdır ve en son soruda güvenli seçenek yoktur, bu yüzden son saniyeye kadar her şey değişebilir.",
+          "en": "Only the server keeps time, answers and score; phones just report what you want to do. The last questions are the final: base points double, and on the very last question there is no safe option, so anything can change until the last second."
+        },
+        {
+          "tr": "Kutu oyunu kafeleri ve oyun barları için mekan modu da var: görevli süreli bir masa açar, süre bitince oyun düzgünce sonuçlara geçer. Arayüz Türkçe ve İngilizce; sorular şimdilik Türkçe.",
+          "en": "There is also a venue mode for board-game cafés and game bars: staff open a timed table and, when time is up, the game wraps up cleanly. The interface is in Turkish and English; the questions are Turkish for now."
+        }
+      ],
+      "tags": [
+        { "tr": "Parti oyunu", "en": "Party game" },
+        { "tr": "Bilgi yarışması", "en": "Trivia" },
+        { "tr": "Çok oyunculu", "en": "Multiplayer" },
+        { "tr": "Telefon kumanda", "en": "Phone controller" },
+        { "tr": "TV oyunu", "en": "TV game" },
+        { "tr": "Risk ve ödül", "en": "Risk and reward" },
+        { "tr": "Kurulum yok", "en": "No install" },
+        { "tr": "Türkçe", "en": "Turkish" }
+      ],
+      "meta": {
+        "developer": "Archonbite",
+        "publisher": "Archonbite",
+        "release": { "tr": "Yakında", "en": "Coming soon" },
+        "platforms": { "tr": "Web tarayıcısı (TV, bilgisayar, telefon)", "en": "Web browser (TV, computer, phone)" },
+        "status": { "tr": "Erken sürüm", "en": "Early version" },
+        "price": { "tr": "Fiyat henüz belirlenmedi", "en": "Pricing not decided yet" },
+        "players": { "tr": "2 ile 8 oyuncu", "en": "2 to 8 players" },
+        "languages": { "tr": "Arayüz: Türkçe, İngilizce. Sorular: Türkçe", "en": "Interface: Turkish, English. Questions: Turkish" }
+      },
+      "art": {
+        "capsule": "assets/quiznight/capsule.jpg",
+        "capsule_w": 920,
+        "capsule_h": 430,
+        "header": "assets/quiznight/key-art.jpg",
+        "bg": "assets/quiznight/key-art-bg.jpg",
+        "header_w": 1600,
+        "header_h": 900,
+        "square": "assets/quiznight/square.jpg"
+      },
+      "media": [
+        { "type": "image", "src": "assets/quiznight/tv-lobby.webp", "thumb": "assets/quiznight/tv-lobby-t.webp", "src_en": "assets/quiznight/en-tv-lobby.webp", "thumb_en": "assets/quiznight/en-tv-lobby-t.webp", "w": 1280, "h": 720,
+          "alt": { "tr": "TV'de lobi: büyük QR kod, oda kodu ve odaya katılan oyuncular", "en": "The lobby on the TV: a big QR code, the room code and the players who joined" } },
+        { "type": "image", "src": "assets/quiznight/tv-risk.webp", "thumb": "assets/quiznight/tv-risk-t.webp", "w": 1280, "h": 720,
+          "alt": { "tr": "Risk zamanı: Güvenli, Risk ve Yüksek bahisler, Çifte Hak, Örtü, Düello ve Havuz", "en": "Risk time: Safe, Risk and High stakes, Double Down, Cover, Duel and Pot" } },
+        { "type": "image", "src": "assets/quiznight/tv-question.webp", "thumb": "assets/quiznight/tv-question-t.webp", "w": 1280, "h": 720,
+          "alt": { "tr": "Bir soru TV'de: dört renkli şık, geri sayım halkası ve cevap veren oyuncular", "en": "A question on the TV: four coloured options, a countdown ring and the players who have answered" } },
+        { "type": "image", "src": "assets/quiznight/tv-sabotage.webp", "thumb": "assets/quiznight/tv-sabotage-t.webp", "w": 1280, "h": 720,
+          "alt": { "tr": "Sabotaj zamanı: sekiz sabotaj türü ve kimin kilitlediğini gösteren sayaç", "en": "Sabotage time: the eight sabotage types and a counter of who has locked in" } },
+        { "type": "image", "src": "assets/quiznight/tv-reveal.webp", "thumb": "assets/quiznight/tv-reveal-t.webp", "w": 1280, "h": 720,
+          "alt": { "tr": "Ortaya çıkış: doğru cevap ve \"biliyor muydun\" notu", "en": "The reveal: the correct answer and a \"did you know\" note" } },
+        { "type": "image", "src": "assets/quiznight/tv-score.webp", "thumb": "assets/quiznight/tv-score-t.webp", "w": 1280, "h": 720,
+          "alt": { "tr": "Puan durumu tablosu", "en": "The scoreboard" } },
+        { "type": "image", "src": "assets/quiznight/tv-final.webp", "thumb": "assets/quiznight/tv-final-t.webp", "w": 1280, "h": 720,
+          "alt": { "tr": "Final turu: son soru, puanlar iki katı", "en": "Final round: last question, points doubled" } },
+        { "type": "image", "src": "assets/quiznight/tv-results.webp", "thumb": "assets/quiznight/tv-results-t.webp", "w": 1280, "h": 720,
+          "alt": { "tr": "Sonuçlar: kürsü ve ödüller", "en": "Results: the podium and awards" } },
+        { "type": "image", "src": "assets/quiznight/tv-gusto.webp", "thumb": "assets/quiznight/tv-gusto-t.webp", "w": 1280, "h": 720,
+          "alt": { "tr": "Mekan teması: bir kafenin renkleri ve logosuyla başlık ekranı", "en": "Venue theme: the title screen with a café's colours and logo" } },
+        { "type": "image", "src": "assets/quiznight/phone-risk.webp", "thumb": "assets/quiznight/phone-risk-t.webp", "w": 390, "h": 844, "phone": true,
+          "alt": { "tr": "Telefonda Risk zamanı: bahis kartları ve güçler", "en": "Risk time on the phone: stake cards and powers" } },
+        { "type": "image", "src": "assets/quiznight/phone-answer.webp", "thumb": "assets/quiznight/phone-answer-t.webp", "w": 390, "h": 844, "phone": true,
+          "alt": { "tr": "Telefonda cevap ekranı: renkli, harfli ve şekilli dört şık", "en": "The answer screen on the phone: four options with colour, letter and shape" } },
+        { "type": "image", "src": "assets/quiznight/phone-sabotage.webp", "thumb": "assets/quiznight/phone-sabotage-t.webp", "w": 390, "h": 844, "phone": true,
+          "alt": { "tr": "Telefonda sabotaj seçimi", "en": "Choosing a sabotage on the phone" } }
+      ],
+      "features": [
+        { "icon": "tv", "title": { "tr": "TV sahne, telefon kumanda", "en": "TV stage, phone controller" },
+          "text": { "tr": "Sorular büyük ekranda, cevaplar ve gizli kararlar telefonda. Herkes aynı ekrana bakar, kimse kumanda kapışmaz.", "en": "Questions on the big screen, answers and hidden decisions on the phone. Everyone watches the same screen and nobody fights over a remote." } },
+        { "icon": "qr", "title": { "tr": "QR ile gir, kurulum yok", "en": "Scan to join, no install" },
+          "text": { "tr": "Kameranı QR koda tut ya da oda kodunu yaz. Uygulama indirme, hesap açma, Bluetooth ve aynı Wi-Fi şartı yok.", "en": "Point your camera at the QR or type the room code. No app, no account, no Bluetooth and no same-Wi-Fi rule." } },
+        { "icon": "dice", "title": { "tr": "Risk ve bahis", "en": "Risk and stakes" },
+          "text": { "tr": "Güvenli, Risk ya da Yüksek: doğruysa puanın katlanır, yanlışsa bahsin gider. Finalin son sorusunda herkes mecburen bahse girer.", "en": "Safe, Risk or High: right and your points multiply, wrong and the stake is gone. On the final's last question everyone must bet." } },
+        { "icon": "bolt", "title": { "tr": "Sabotaj ve güçler", "en": "Sabotage and powers" },
+          "text": { "tr": "Sekiz sabotaj, Çifte Hak, 50/50, Kalkan, Örtü, Düello ve Havuz. Hepsinin sınırı var; kimse tüm turu oynayamaz hâle gelmez.", "en": "Eight sabotages, Double Down, 50/50, Shield, Cover, Duel and Pot. All have limits, so nobody is locked out of a whole round." } },
+        { "icon": "crown", "title": { "tr": "Final ve geri dönüş", "en": "A final that flips the table" },
+          "text": { "tr": "Son sorular iki kat taban puan verir. Geri dönüş, saklı bir yardımla değil, oyuncunun kendi kararıyla gelir.", "en": "The last questions pay double base points. Comebacks come from the player's own decisions, not from hidden help." } },
+        { "icon": "globe", "title": { "tr": "Türkçe ve İngilizce arayüz", "en": "Turkish and English interface" },
+          "text": { "tr": "Her cihaz kendi dilinde: karışık dilli odalar çalışır. Sorular şimdilik Türkçe.", "en": "Each device uses its own language, so mixed-language rooms work. Questions are Turkish for now." } },
+        { "icon": "store", "title": { "tr": "Mekan modu", "en": "Venue mode" },
+          "text": { "tr": "Kafeler için süreli masalar, +15/+30/+60 dk uzatma, isteğe bağlı kazanan ödülü ve mekana özel sorular. Sistem para almaz.", "en": "Timed tables for cafés, +15/+30/+60 min extensions, an optional winner's reward and venue-only questions. The system never takes money." } },
+        { "icon": "palette", "title": { "tr": "Temalar", "en": "Themes" },
+          "text": { "tr": "Parti teması, mekan temaları (örneğin kafe renkleri ve logosu) ve yüksek kontrastlı sahne.", "en": "A party theme, venue themes (for example a café's colours and logo) and a high-contrast stage." } }
+      ],
+      "requirements": {
+        "devices": [
+          {
+            "name": { "tr": "Ekran: TV ya da bilgisayar", "en": "Screen: TV or computer" },
+            "min": [
+              { "k": { "tr": "Tarayıcı", "en": "Browser" }, "v": { "tr": "Güncel bir Chromium tabanlı tarayıcı (Chrome, Edge)", "en": "A current Chromium-based browser (Chrome, Edge)" } },
+              { "k": { "tr": "Ekran", "en": "Display" }, "v": { "tr": "1280×720, yatay", "en": "1280×720, landscape" } },
+              { "k": { "tr": "Bağlantı", "en": "Connection" }, "v": { "tr": "İnternet", "en": "Internet" } }
+            ],
+            "rec": [
+              { "k": { "tr": "Tarayıcı", "en": "Browser" }, "v": { "tr": "Güncel Chrome ya da Edge, tam ekran", "en": "Current Chrome or Edge, full screen" } },
+              { "k": { "tr": "Ekran", "en": "Display" }, "v": { "tr": "1920×1080 (4K ölçeklenir)", "en": "1920×1080 (4K scales)" } },
+              { "k": { "tr": "Bağlantı", "en": "Connection" }, "v": { "tr": "Kablolu ya da güçlü Wi-Fi", "en": "Wired or strong Wi-Fi" } }
+            ]
+          },
+          {
+            "name": { "tr": "Kumanda: telefon", "en": "Controller: phone" },
+            "min": [
+              { "k": { "tr": "Cihaz", "en": "Device" }, "v": { "tr": "Tarayıcılı herhangi bir akıllı telefon", "en": "Any smartphone with a browser" } },
+              { "k": { "tr": "Bağlantı", "en": "Connection" }, "v": { "tr": "Wi-Fi ya da mobil veri (TV ile aynı ağda olması gerekmez)", "en": "Wi-Fi or mobile data (it need not be the TV's network)" } }
+            ],
+            "rec": [
+              { "k": { "tr": "Cihaz", "en": "Device" }, "v": { "tr": "Kamerası olan telefon (QR okutmak için), güncel Chrome", "en": "A phone with a camera (to scan the QR) and current Chrome" } },
+              { "k": { "tr": "Oyuncu", "en": "Players" }, "v": { "tr": "2 ile 8 telefon", "en": "2 to 8 phones" } }
+            ]
+          }
+        ],
+        "note": {
+          "tr": "Dürüst not: QuizNight şimdilik yalnızca Chromium tabanlı tarayıcılarda denendi. Hedeflenen en eski sürümler Chrome 63, Edge 79, Firefox 67 ve Safari 12'dir ama Safari, Firefox ve TV tarayıcılarında cihaz testleri sürüyor; bunlar henüz garanti edilmiyor.",
+          "en": "Honest note: so far QuizNight has only been tried in Chromium-based browsers. The oldest targeted versions are Chrome 63, Edge 79, Firefox 67 and Safari 12, but device tests on Safari, Firefox and TV browsers are ongoing and not yet guaranteed."
+        }
+      },
+      "news": [
+        {
+          "date": "2026-10-26",
+          "title": { "tr": "Archonbite sitesi yenilendi", "en": "The Archonbite site is redesigned" },
+          "body": { "tr": "Yeni sitede her oyunun mağaza sayfası, QuizNight için nasıl oynanır kılavuzu ve tarayıcıda oyna sayfası var. Çerez ve izleyici yok.", "en": "The new site has a store page per game, a how-to-play guide for QuizNight and a play-in-browser page. No cookies, no trackers." }
+        },
+        {
+          "date": "2026-10-19",
+          "title": { "tr": "Mekan modu: kafeler için süreli masalar", "en": "Venue mode: timed tables for cafés" },
+          "body": { "tr": "Kutu oyunu kafeleri için süreli masa, uzatma, isteğe bağlı kazanan ödülü ve mekana özel soru yükleme geldi. İlk mekan ortağımız Gusto Board Game Cafe (Çanakkale).", "en": "Timed tables, extensions, an optional winner's reward and venue-only question uploads arrived for board-game cafés. Our first venue partner is Gusto Board Game Cafe (Çanakkale)." }
+        },
+        {
+          "date": "2026-10-19",
+          "title": { "tr": "Yeni riskler ve sabotajlar", "en": "New risks and sabotages" },
+          "body": { "tr": "Örtü, Düello ve Havuz risk zamanına; Bahis sınırı, Kesme ve Kör saat sabotaj zamanına eklendi. \"Soru başına tek büyük kumar\" kuralı hepsini kapsıyor.", "en": "Cover, Duel and Pot joined Risk time; Stake cap, Cut and Blind clock joined Sabotage time. The \"one big gamble per question\" rule covers them all." }
+        }
+      ],
+      "links": { "play": "play/", "guide": "guide/", "steam": null },
+      "og": "assets/img/og-quiznight.jpg"
+    },
+    {
+      "id": "salty-pirate",
+      "slug": "salty-pirate",
+      "accent": "accent-salty-pirate",
+      "title": "Salty Pirate",
+      "placeholder": true,
+      "todo": ["tagline", "short", "about", "tags", "meta", "media", "features", "requirements", "news", "art", "links"],
+      "tagline": {
+        "tr": "Archonbite'ın diğer oyunu. Hikâyesi, görselleri ve oynanışı çok yakında burada.",
+        "en": "Archonbite's other game. Its story, art and gameplay are coming here soon."
+      },
+      "short": {
+        "tr": "Salty Pirate, Archonbite'ın ikinci oyunu. Bu sayfa, oyunun gerçek bilgileri ve görselleri eklendikçe dolacak.",
+        "en": "Salty Pirate is Archonbite's second game. This page fills up as the game's real details and art are added."
+      },
+      "about": [
+        {
+          "tr": "Salty Pirate hakkındaki ayrıntılar (hikâye, oynanış, platformlar ve çıkış durumu) stüdyo tarafından henüz yayımlanmadı. Bu sayfa hazır bir mağaza şablonudur: bilgiler eklendikçe aşağıdaki bölümler gerçek içerikle dolacak.",
+          "en": "Details about Salty Pirate (story, gameplay, platforms and release status) have not been published by the studio yet. This page is a ready-made store template: the sections below will fill with real content as it is added."
+        }
+      ],
+      "tags": [
+        { "tr": "Bağımsız", "en": "Indie" }
+      ],
+      "meta": {
+        "developer": "Archonbite",
+        "publisher": "Archonbite",
+        "release": { "tr": "Açıklanacak", "en": "To be announced" },
+        "platforms": { "tr": "Açıklanacak", "en": "To be announced" },
+        "status": { "tr": "Bilgiler yakında", "en": "Details soon" },
+        "price": { "tr": "Açıklanacak", "en": "To be announced" }
+      },
+      "art": {
+        "capsule": "assets/salty-pirate/capsule.svg",
+        "capsule_w": 920,
+        "capsule_h": 430,
+        "header": "assets/salty-pirate/key-art.svg",
+        "header_w": 1600,
+        "header_h": 900,
+        "square": "assets/salty-pirate/key-art.svg"
+      },
+      "media": [
+        { "type": "video", "provider": "youtube", "id": "", "poster": "assets/salty-pirate/shot-1.svg", "w": 1280, "h": 720, "placeholder": true,
+          "alt": { "tr": "Fragman yer tutucusu", "en": "Trailer placeholder" },
+          "caption": { "tr": "Fragman yakında", "en": "Trailer coming soon" } },
+        { "type": "image", "src": "assets/salty-pirate/shot-1.svg", "thumb": "assets/salty-pirate/shot-1.svg", "w": 1280, "h": 720, "placeholder": true,
+          "alt": { "tr": "Yer tutucu konsept görseli: ay ışığında denizde bir geminin silueti", "en": "Placeholder concept art: a ship's silhouette at sea under the moon" } },
+        { "type": "image", "src": "assets/salty-pirate/shot-2.svg", "thumb": "assets/salty-pirate/shot-2.svg", "w": 1280, "h": 720, "placeholder": true,
+          "alt": { "tr": "Yer tutucu konsept görseli: ufukta bir ada", "en": "Placeholder concept art: an island on the horizon" } },
+        { "type": "image", "src": "assets/salty-pirate/shot-3.svg", "thumb": "assets/salty-pirate/shot-3.svg", "w": 1280, "h": 720, "placeholder": true,
+          "alt": { "tr": "Yer tutucu konsept görseli: fırtına bulutları", "en": "Placeholder concept art: storm clouds" } },
+        { "type": "image", "src": "assets/salty-pirate/shot-4.svg", "thumb": "assets/salty-pirate/shot-4.svg", "w": 1280, "h": 720, "placeholder": true,
+          "alt": { "tr": "Yer tutucu konsept görseli: bir fener ve harita", "en": "Placeholder concept art: a lantern and a map" } },
+        { "type": "image", "src": "assets/salty-pirate/shot-5.svg", "thumb": "assets/salty-pirate/shot-5.svg", "w": 1280, "h": 720, "placeholder": true,
+          "alt": { "tr": "Yer tutucu konsept görseli: kuru kafalı bayrak", "en": "Placeholder concept art: a skull flag" } }
+      ],
+      "features": [
+        { "icon": "book", "title": { "tr": "Hikâye", "en": "Story" },
+          "text": { "tr": "Oyunun hikâyesi yakında burada anlatılacak.", "en": "The game's story will be told here soon." } },
+        { "icon": "bolt", "title": { "tr": "Oynanış", "en": "Gameplay" },
+          "text": { "tr": "Oynanış mantığı ve özellikleri stüdyo tarafından eklenecek.", "en": "Gameplay logic and features will be added by the studio." } },
+        { "icon": "palette", "title": { "tr": "Görseller", "en": "Visuals" },
+          "text": { "tr": "Ekran görüntüleri ve fragman hazır olunca bu sayfada.", "en": "Screenshots and a trailer will be on this page when they are ready." } },
+        { "icon": "devices", "title": { "tr": "Platformlar", "en": "Platforms" },
+          "text": { "tr": "Hangi cihazlarda çıkacağı açıklanınca burada yazacak.", "en": "Which devices it comes to will be listed here once announced." } }
+      ],
+      "requirements": { "devices": [], "note": null },
+      "news": [],
+      "links": { "play": null, "guide": null, "steam": null },
+      "og": "assets/img/og-salty-pirate.jpg"
+    }
+  ]
+}
