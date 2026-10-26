@@ -9,8 +9,8 @@ export interface RetireOutsidePrefixResult {
 /**
  * Switches the served bank: every ACTIVE question whose external id does not start with `keepPrefix`
  * (including rows without one, and all DEV_SEED rows) goes ACTIVE -> RETIRED through the normal
- * lifecycle, so the status log records it. Rows are never deleted and rows with the prefix are never
- * touched. Allowed in every NODE_ENV: it only ever removes content from play.
+ * lifecycle, so the status log records it. Rows are never deleted, rows with the prefix are never
+ * touched, and questions owned by a venue are out of scope. Allowed in every NODE_ENV: it only ever removes content from play.
  */
 export async function retireOutsidePrefix(
   db: Database,
@@ -22,6 +22,8 @@ export async function retireOutsidePrefix(
     .selectFrom('questions')
     .select(['id', 'external_id'])
     .where('status', '=', 'ACTIVE')
+    // A café's own questions (ADR-0025) never carry the public bank's prefix and are not ours to retire.
+    .where('owner_venue_id', 'is', null)
     .execute();
   const doomed = active.filter((row) => !(row.external_id ?? '').startsWith(keepPrefix));
   if (!options.dryRun && doomed.length > 0)

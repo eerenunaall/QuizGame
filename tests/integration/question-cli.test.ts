@@ -184,6 +184,32 @@ describe('retire-dev', () => {
     expect(again.text()).toContain('retire-dev: 0 retired, 2 kept');
   });
 
+  it("never retires a café's own questions: they have no external id but belong to a venue", async () => {
+    await withCategories(t.db);
+    const venue = await t.db
+      .insertInto('venues')
+      .values({ name: 'Test Café' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const own = await activate(t.db, 2, 'cafe');
+    await t.db
+      .updateTable('questions')
+      .set({ owner_venue_id: venue.id, external_id: null })
+      .where('id', 'in', own)
+      .execute();
+    await activate(t.db, 1, 'old', 40);
+    await activate(t.db, 1, 'gusto', 60);
+    const h = harness();
+    expect(await h.exec(['retire-dev', '--keep-prefix', 'gusto'])).toBe(0);
+    expect(h.text()).toContain('retire-dev: 1 retired, 1 kept');
+    const rows = await t.db
+      .selectFrom('questions')
+      .select(['id', 'status'])
+      .where('id', 'in', own)
+      .execute();
+    expect(rows.map((row) => row.status)).toEqual(['ACTIVE', 'ACTIVE']);
+  });
+
   it('works in production too, and needs a non-empty prefix', async () => {
     await withCategories(t.db);
     await activate(t.db, 2, 'old');
