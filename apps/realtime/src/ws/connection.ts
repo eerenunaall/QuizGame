@@ -23,6 +23,8 @@ export class Connection {
   ready = false;
   alive = true;
   closed = false;
+  /** A JOIN_ROOM or RECONNECT is being handled; a second one waits its turn (ATTACK 38). */
+  authenticating = false;
   strikes = 0;
   private sequence = 0;
 

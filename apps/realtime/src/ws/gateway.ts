@@ -243,10 +243,26 @@ export class Gateway {
       return;
     }
     if (!connection.sessionId) {
-      if (message.type === 'JOIN_ROOM') return this.join(connection, message);
-      if (message.type === 'RECONNECT') return this.reconnect(connection, message);
-      connection.strikes += 1;
-      connection.error('UNAUTHORIZED', message.messageId);
+      if (message.type !== 'JOIN_ROOM' && message.type !== 'RECONNECT') {
+        connection.strikes += 1;
+        connection.error('UNAUTHORIZED', message.messageId);
+        return;
+      }
+      // One handshake per socket at a time: a second JOIN_ROOM/RECONNECT sent before the first is
+      // answered would also see "no session yet" and seat this one socket twice, leaving the first
+      // seat "connected" for ever once the socket goes (ATTACK 38).
+      if (connection.authenticating) {
+        connection.strikes += 1;
+        connection.error('INVALID_STATE', message.messageId);
+        return;
+      }
+      connection.authenticating = true;
+      try {
+        if (message.type === 'JOIN_ROOM') await this.join(connection, message);
+        else await this.reconnect(connection, message);
+      } finally {
+        connection.authenticating = false;
+      }
       return;
     }
     const room = connection.roomId ? this.deps.manager.get(connection.roomId) : undefined;

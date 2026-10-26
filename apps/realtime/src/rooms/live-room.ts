@@ -405,6 +405,9 @@ export class LiveRoom {
   ): Promise<JoinOutcome> {
     return this.enqueue(async (): Promise<JoinOutcome> => {
       const state = this.state;
+      // A socket holds one seat (ATTACK 38); a closed one never gets a seat it could not give back.
+      if (connection.sessionId) return { ok: false, code: 'INVALID_STATE' };
+      if (connection.closed) return { ok: false, code: 'SESSION_EXPIRED' };
       if (state.phase === 'ROOM_CLOSED') return { ok: false, code: 'ROOM_CLOSED' };
       if (state.phase !== 'WAITING' && state.phase !== 'LOBBY')
         return { ok: false, code: 'GAME_IN_PROGRESS' };
@@ -452,8 +455,17 @@ export class LiveRoom {
         },
       });
       connection.ready = true;
+      this.detachIfGone(connection);
       return { ok: true };
     });
+  }
+
+  /**
+   * The socket may have closed while it was being seated: its close event saw no room yet, so
+   * nobody else will take the seat offline (ATTACK 38). Runs inside the queue, after `register`.
+   */
+  private detachIfGone(connection: Connection): void {
+    if (connection.closed) this.detach(connection);
   }
 
   /** Existing session (token already validated and rotated): attach, mark online, send snapshot. */
@@ -494,6 +506,7 @@ export class LiveRoom {
       });
       connection.ready = true;
       this.resendVenueReward(connection);
+      this.detachIfGone(connection);
       return { ok: true };
     });
   }
