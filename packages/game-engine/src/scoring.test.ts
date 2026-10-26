@@ -132,6 +132,18 @@ describe('computeScore — total multiplier ceiling (ADR-0021)', () => {
   });
 });
 
+describe('computeScore — ceiling without Double Down (ADR-0021 §2)', () => {
+  it('also holds a stake alone to ceiling x (base + speed), e.g. under a config override', () => {
+    // Regression: the backstop sat inside the Double Down branch, so a ladder rung above the ceiling
+    // paid in full. HIGH 3x at full speed is 400; a ceiling of 1 allows 1 x (100 + 100) = 200.
+    const tight = resolveGameConfig({ scoring: { maxTotalMultiplier: { STANDARD: 1 } } });
+    const result = score({ stake: 'HIGH', remainingMs: 15_000 }, tight);
+    expect(result.delta).toBe(200);
+    expect(result.components).toContainEqual({ kind: 'CAP', points: -200 });
+    expect(sumComponents(result.components)).toBe(result.delta);
+  });
+});
+
 describe('computeScore — losses', () => {
   it.each([
     ['SAFE costs nothing', { stake: 'SAFE' as const }, 0, 500],

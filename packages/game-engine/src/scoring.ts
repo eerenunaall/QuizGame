@@ -79,13 +79,14 @@ export function computeScore(input: ScoreInput, config: GameConfig): ScoreResult
       const doubled = gain * scoring.doubleDown.multiplier;
       components.push({ kind: 'DOUBLE_DOWN', points: doubled - gain });
       gain = doubled;
-      // Backstop of "one big gamble per question": no stack of stake and Double Down may pay more
-      // than ceiling × (base + speed), whatever the config allows (ADR-0021).
-      const ceiling = maxTotalMultiplierFor(config, kind) * (base + speed);
-      if (gain > ceiling) {
-        components.push({ kind: 'CAP', points: ceiling - gain });
-        gain = ceiling;
-      }
+    }
+    // Backstop of "one big gamble per question": after the stake and Double Down steps no stack may pay
+    // more than ceiling × (base + speed), whatever the config allows (ADR-0021 §2). It also bounds a
+    // ladder rung that an override raised above the ceiling.
+    const ceiling = maxTotalMultiplierFor(config, kind) * (base + speed);
+    if (gain > ceiling) {
+      components.push({ kind: 'CAP', points: ceiling - gain });
+      gain = ceiling;
     }
     if (input.fiftyFifty) {
       const reduced = Math.floor(
