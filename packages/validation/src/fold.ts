@@ -58,6 +58,50 @@ const CONFUSABLES: Readonly<Record<string, string>> = {
   æ: 'e',
 };
 
+/**
+ * Letters that are Latin by script (so the single-script rule lets them through) yet are drawn like
+ * a plain ASCII letter: small capitals, the single-storey a/g, the dental click read as an l.
+ * NFKC leaves them alone, so without this "ɑdmin" is neither reserved nor a twin of "admin" and
+ * "ꜰᴜᴄᴋ" is not profanity (ATTACK 39).
+ */
+const LATIN_LOOKALIKES: Readonly<Record<string, string>> = {
+  ᴀ: 'a',
+  ʙ: 'b',
+  ᴄ: 'c',
+  ᴅ: 'd',
+  ᴇ: 'e',
+  ꜰ: 'f',
+  ɢ: 'g',
+  ʜ: 'h',
+  ɪ: 'i',
+  ᴊ: 'j',
+  ᴋ: 'k',
+  ʟ: 'l',
+  ᴍ: 'm',
+  ɴ: 'n',
+  ᴏ: 'o',
+  ᴘ: 'p',
+  ʀ: 'r',
+  ꜱ: 's',
+  ᴛ: 't',
+  ᴜ: 'u',
+  ᴠ: 'v',
+  ᴡ: 'w',
+  ʏ: 'y',
+  ᴢ: 'z',
+  ɑ: 'a',
+  ɡ: 'g',
+  ǀ: 'l',
+  ɩ: 'i',
+  ɋ: 'q',
+};
+
+function foldLookalikes(input: string): string {
+  let out = '';
+  for (const char of input) out += LATIN_LOOKALIKES[char] ?? char;
+  return out;
+}
+
 /** Lower-case that treats Turkish İ/I/ı/i as one letter (all fold to "i"). */
 export function foldCase(input: string): string {
   return input.replace(/[İIı]/g, 'i').toLowerCase();
@@ -69,7 +113,7 @@ export function stripDiacritics(input: string): string {
 
 /** Folded key: case, diacritics, confusables, separators and repeated letters removed. */
 export function skeleton(input: string): string {
-  const base = stripDiacritics(foldCase(input.normalize('NFKC')));
+  const base = foldLookalikes(stripDiacritics(foldCase(input.normalize('NFKC'))));
   let out = '';
   for (const char of base) {
     const mapped = CONFUSABLES[char] ?? char;
@@ -81,5 +125,5 @@ export function skeleton(input: string): string {
 
 /** Folds Turkish letters to ASCII for the profanity matcher (ş→s, ğ→g, ç→c, ö→o, ü→u, ı/İ→i). */
 export function foldForModeration(input: string): string {
-  return stripDiacritics(foldCase(input.normalize('NFKC')));
+  return foldLookalikes(stripDiacritics(foldCase(input.normalize('NFKC'))));
 }

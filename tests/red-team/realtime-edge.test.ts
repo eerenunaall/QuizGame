@@ -92,3 +92,43 @@ describe('ATTACK 38 — one socket, many seats; seats that outlive their socket'
     await Promise.all([display.close(), honest.close()]);
   });
 });
+
+describe('ATTACK 39 — look-alike letters that are "Latin" slip past the name rules', () => {
+  let server: TestServer;
+  beforeAll(async () => {
+    server = await startServer();
+  });
+  afterAll(async () => {
+    await server.dispose();
+  });
+
+  async function tryJoin(code: string, nickname: string): Promise<string> {
+    const phone = await TestClient.connect(server.wsUrl);
+    phone.sendRaw(joinFrame(code, nickname));
+    const reply = await phone.next(
+      (m) => m.type === 'ROOM_JOINED' || m.type === 'ERROR',
+      5_000,
+      'join answer',
+    );
+    phone.drop();
+    return reply.type === 'ERROR' ? reply.payload.code : 'JOINED';
+  }
+
+  it('refuses reserved names, twins of a seated player and hidden profanity written in them', async () => {
+    const created = await createRoom(server);
+    const display = await TestClient.connect(server.wsUrl);
+    await display.attachDisplay(created);
+    const alice = await TestClient.connect(server.wsUrl);
+    await alice.join(server.wsUrl, created.code, 'Alice');
+
+    // small capitals, single-storey a/g and a dental click all draw like ASCII letters
+    expect(await tryJoin(created.code, 'ɑdmin')).toBe('NICKNAME_INVALID');
+    expect(await tryJoin(created.code, 'ᴀdmin')).toBe('NICKNAME_INVALID');
+    expect(await tryJoin(created.code, 'ꜰᴜᴄᴋ')).toBe('NICKNAME_INVALID');
+    expect(await tryJoin(created.code, 'Aǀice')).toBe('NICKNAME_TAKEN');
+    expect(await tryJoin(created.code, 'ᴀlice')).toBe('NICKNAME_TAKEN');
+    // honest names with accents or other letters still pass
+    expect(await tryJoin(created.code, 'Ayşe')).toBe('JOINED');
+    await Promise.all([display.close(), alice.close()]);
+  });
+});
