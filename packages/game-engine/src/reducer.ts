@@ -1376,6 +1376,9 @@ function advancePhase(d: Room, ctx: Ctx, at: number): void {
     }
     case 'MICRO_INTERMISSION': {
       const game = d.game!;
+      // Venue mode: read the meter again at the boundary itself. A pause in the intermission, or time
+      // running out while the boundary was held for a lost TV, must not buy a whole extra round.
+      if (meterBlock(d.venue, at)) return enterResults(d, ctx, at, true);
       d.phase = 'NEXT_ROUND';
       return startRound(d, ctx, at, game.upcoming ?? planRound(d, ctx, game.roundIndex + 1));
     }

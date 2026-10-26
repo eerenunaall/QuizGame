@@ -127,6 +127,35 @@ describe('time-up during a game', () => {
     expect(h.state.game!.results!.cutShort).toBe(true);
   });
 
+  it('no new round starts after time-up or a pause in the gap between rounds', () => {
+    // Regression: the meter was only read when SCORE_UPDATE ended, so a pause in the intermission, or
+    // time running out while the round boundary was held for a lost TV, still played a whole round.
+    const paused = venueRoom();
+    setMeter(paused.h, running(paused.h, 3_600_000));
+    paused.h.start();
+    paused.h.runUntil('MICRO_INTERMISSION');
+    setMeter(paused.h, { state: 'PAUSED', endsAt: null, remainingMs: 3_000_000 });
+    paused.h.step();
+    expect(paused.h.state.phase).toBe('RESULTS');
+    expect(paused.h.state.game!.roundIndex).toBe(0);
+    expect(paused.h.state.game!.results!.cutShort).toBe(true);
+
+    const held = venueRoom();
+    setMeter(held.h, running(held.h, 3_600_000));
+    held.h.start();
+    held.h.runUntil('MICRO_INTERMISSION');
+    held.h.apply({ kind: 'DISPLAY_CONNECTION', connected: false });
+    held.h.tickAt(held.h.now + DEFAULT_GAME_CONFIG.timings.displayGraceMs + 1);
+    expect(held.h.state.awaitingDisplay).toBe(true);
+    // the paid time runs out while the table waits for its TV
+    setMeter(held.h, running(held.h, 1_000));
+    held.h.tickAt(held.h.now + 2_000);
+    held.h.apply({ kind: 'DISPLAY_CONNECTION', connected: true });
+    held.h.step();
+    expect(held.h.state.phase).toBe('RESULTS');
+    expect(held.h.state.game!.results!.cutShort).toBe(true);
+  });
+
   it('a game with time to spare plays every round and is not cut short', () => {
     const { h } = venueRoom();
     setMeter(h, running(h, 3_600_000));
