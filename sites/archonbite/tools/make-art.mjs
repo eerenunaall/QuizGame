@@ -44,13 +44,13 @@ const pages = {
   // --- QuizNight art
   'assets/quiznight/key-art.jpg': { w: 1600, h: 900, html: qn(1600, 900) +
     `<img class="logo" src="${A('assets/quiznight/logo.webp')}" style="left:900px;top:14px;width:620px">
-     <div class="tv" style="left:800px;top:290px;width:700px"><img src="${A('assets/quiznight/tv-question.webp')}"></div>
-     <div class="ph" style="left:1360px;top:440px;width:200px"><img src="${A('assets/quiznight/phone-risk.webp')}"></div>
+     <div class="tv" style="left:800px;top:290px;width:700px"><img src="${A('assets/quiznight/tv-team-lobby.webp')}"></div>
+     <div class="ph" style="left:1360px;top:440px;width:200px"><img src="${A('assets/quiznight/phone-team-picker.webp')}"></div>
      <img class="mascot" src="${A('assets/quiznight/mascot.webp')}" style="left:660px;top:520px;height:350px">`, q: 84 },
   'assets/quiznight/capsule.jpg': { w: 920, h: 430, html: qn(920, 430, { small: true }) +
     `<img class="logo" src="${A('assets/quiznight/logo.webp')}" style="left:30px;top:16px;width:380px">
-     <div class="tv" style="left:380px;top:150px;width:420px"><img src="${A('assets/quiznight/tv-question.webp')}"></div>
-     <div class="ph" style="left:770px;top:215px;width:110px"><img src="${A('assets/quiznight/phone-risk.webp')}"></div>
+     <div class="tv" style="left:380px;top:150px;width:420px"><img src="${A('assets/quiznight/tv-team-lobby.webp')}"></div>
+     <div class="ph" style="left:770px;top:215px;width:110px"><img src="${A('assets/quiznight/phone-team-picker.webp')}"></div>
      <img class="mascot" src="${A('assets/quiznight/mascot.webp')}" style="left:40px;top:150px;height:260px">`, q: 84 },
   'assets/quiznight/square.jpg': { w: 192, h: 192, html: `<style>${FONTS}body{width:192px;height:192px;background:radial-gradient(80% 80% at 50% 40%,#4a2a9a,#0a0a22)}</style>
      <img src="${A('assets/quiznight/mascot.webp')}" style="position:absolute;left:34px;top:8px;height:176px">`, q: 84 },
@@ -58,8 +58,8 @@ const pages = {
   'assets/img/og-quiznight.jpg': { w: 1200, h: 630, html: qn(1200, 630, { small: true }) +
     `<img class="logo" src="${A('assets/quiznight/logo.webp')}" style="left:44px;top:60px;width:560px">
      <p class="sub" style="left:56px;top:250px;width:520px">TV sahne, telefon kumanda.<br>Parti bilgi yarışması.</p>
-     <div class="tv" style="left:560px;top:150px;width:560px"><img src="${A('assets/quiznight/tv-question.webp')}"></div>
-     <div class="ph" style="left:1000px;top:300px;width:150px"><img src="${A('assets/quiznight/phone-risk.webp')}"></div>
+     <div class="tv" style="left:560px;top:150px;width:560px"><img src="${A('assets/quiznight/tv-team-lobby.webp')}"></div>
+     <div class="ph" style="left:1000px;top:300px;width:150px"><img src="${A('assets/quiznight/phone-team-picker.webp')}"></div>
      <div style="position:absolute;left:56px;bottom:44px;font:800 30px Bricolage;letter-spacing:.14em"><img src="${A('assets/img/mark.svg')}" style="width:40px;vertical-align:middle;margin-right:12px">ARCHON<span style="color:#f1b445">BITE</span></div>`, q: 86 },
   'assets/img/og-home.jpg': { w: 1200, h: 630, html: `<style>${FONTS}
      body{width:1200px;height:630px;background:#07080d;position:relative}
@@ -82,8 +82,8 @@ const pages = {
   'assets/img/og-play.jpg': { w: 1200, h: 630, html: qn(1200, 630, { small: true }) +
     `<h1 style="left:56px;top:150px;width:520px">QuizNight'ı<br>şimdi oyna</h1>
      <p class="sub" style="left:60px;top:370px;width:480px">TV'de aç, QR'ı okut, telefonla yarış. Kurulum yok.</p>
-     <div class="tv" style="left:600px;top:150px;width:540px"><img src="${A('assets/quiznight/tv-lobby.webp')}"></div>
-     <div class="ph" style="left:1010px;top:310px;width:140px"><img src="${A('assets/quiznight/phone-answer.webp')}"></div>`, q: 86 },
+     <div class="tv" style="left:600px;top:150px;width:540px"><img src="${A('assets/quiznight/tv-team-lobby.webp')}"></div>
+     <div class="ph" style="left:1010px;top:310px;width:140px"><img src="${A('assets/quiznight/phone-team-answer.webp')}"></div>`, q: 86 },
   'assets/img/og-guide.jpg': { w: 1200, h: 630, html: qn(1200, 630, { small: true }) +
     `<h1 style="left:56px;top:150px;width:520px">QuizNight<br>nasıl oynanır</h1>
      <p class="sub" style="left:60px;top:370px;width:480px">Risk, sabotaj ve jokerlerin tüm kuralları.</p>
@@ -91,10 +91,12 @@ const pages = {
      <div class="ph" style="left:1010px;top:310px;width:140px"><img src="${A('assets/quiznight/phone-sabotage.webp')}"></div>`, q: 86 },
 };
 
+const only = process.argv[2]; // `quiznight`: rebuild only the QuizNight outputs, leave other share images and the icons alone
 const browser = await chromium.launch();
 const tmp = mkdtempSync(join(tmpdir(), 'ab-art-'));
 let n = 0;
 for (const [file, spec] of Object.entries(pages)) {
+  if (only === 'quiznight' && !/quiznight|og-(play|guide)/.test(file)) continue;
   const page = await browser.newPage({ viewport: { width: spec.w, height: spec.h } });
   const f = join(tmp, `p${n++}.html`);
   writeFileSync(f, `<!doctype html><meta charset="utf-8">${spec.html}`);
@@ -105,6 +107,7 @@ for (const [file, spec] of Object.entries(pages)) {
   await page.close();
   console.log('wrote', file);
 }
+if (only === 'quiznight') { await browser.close(); process.exit(0); }
 // favicons / app icons from the SVG mark
 const icon = async (name, size, svgFile, bg) => {
   const page = await browser.newPage({ viewport: { width: size, height: size } });
