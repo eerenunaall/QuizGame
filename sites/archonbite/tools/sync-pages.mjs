@@ -27,9 +27,9 @@ const pages = [
   { file: 'legal/index.html', path: '/legal/', page: 'legal', nav: '', og: 'og-home.jpg', ld: [] },
   {
     file: 'games/quiznight/index.html', path: '/games/quiznight/', page: 'game', nav: 'quiznight', og: 'og-quiznight.jpg',
-    extraHead: ['<link rel="preload" href="{P}data/games.json" as="fetch" crossorigin>', '<link rel="preload" href="{P}assets/quiznight/tv-lobby.webp" as="image" fetchpriority="high">'],
+    extraHead: ['<link rel="stylesheet" href="{P}assets/quiznight.css">', '<script src="{P}assets/quiznight/quiznight.js" defer></script>', '<link rel="preload" href="{P}data/games.json" as="fetch" crossorigin>', '<link rel="preload" href="{P}assets/quiznight/tv-team-lobby.webp" as="image" fetchpriority="high">'],
     title: 'QuizNight | Archonbite',
-    desc: "TV'yi sahneye, telefonları kumandaya çeviren parti bilgi yarışması. QR'ı okut, bahsini seç, rakibine sabotaj yap.",
+    desc: "TV'yi sahneye, telefonları kumandaya çeviren bilgi yarışması. QR'ı okut, takımını seç, soruyu ekranda izle, cevabı telefonundan ver. Kurulum ve hesap yok.",
     ld: [{
       '@context': 'https://schema.org', '@type': 'VideoGame', name: 'QuizNight', url: SITE + '/games/quiznight/',
       description: "TV'yi sahneye, telefonları kumandaya çeviren parti bilgi yarışması. / The party quiz that turns the TV into a stage and phones into controllers.",

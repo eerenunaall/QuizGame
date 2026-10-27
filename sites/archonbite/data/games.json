@@ -13,29 +13,33 @@
       "placeholder": false,
       "todo": [],
       "tagline": {
-        "tr": "TV sahne, telefon kumanda: arkadaşlarla bilgi yarışması.",
-        "en": "TV is the stage, phones are the controllers: the party quiz for friends."
+        "tr": "TV sahne, telefon kumanda: masadaki herkesin oynadığı bilgi yarışması.",
+        "en": "TV is the stage, phones are the controllers: the quiz everyone at the table plays."
       },
       "short": {
-        "tr": "TV'yi sahneye, telefonları kumandaya çeviren parti bilgi yarışması. QR'ı okut, bahsini seç, rakibine sabotaj yap.",
-        "en": "The party quiz that turns the TV into a stage and phones into controllers. Scan the QR, pick your stake, sabotage a rival."
+        "tr": "TV'yi sahneye, telefonları kumandaya çeviren bilgi yarışması. QR'ı okut, takımını seç, soruyu ekranda izle, cevabı telefonundan ver. Kurulum ve hesap yok.",
+        "en": "The quiz that turns the TV into a stage and phones into controllers. Scan the QR, pick your team, watch the question on screen, answer on your phone. No install, no account."
       },
       "about": [
         {
-          "tr": "QuizNight, arkadaşlarla oynanan TV öncelikli bir bilgi yarışması. Televizyonda ya da bilgisayarda oyunu aç, ekrandaki QR kodu telefonunla okut ve telefonun kumandan olsun. Sorular TV'de, cevaplar telefonunda; uygulama indirmek ya da aynı Wi-Fi'de olmak gerekmez.",
-          "en": "QuizNight is a TV-first trivia game for friends. Open it on a TV or computer, scan the QR code on screen with your phone, and your phone becomes the controller. Questions are on the TV, answers on your phone; there is no app to download and no need to share a Wi-Fi network."
+          "tr": "QuizNight, aynı odadaki insanlar için yapılmış bir bilgi yarışması. Televizyonu ya da bilgisayarı açarsın, ekrandaki QR kodu telefonunla okutursun; ekran sahne olur, telefonun kumandan. Soru büyük ekranda yazar, dört şık telefonunda belirir. Uygulama indirmek, hesap açmak ya da aynı Wi-Fi'ye bağlanmak gerekmez.",
+          "en": "QuizNight is a quiz made for people in the same room. Open it on a TV or a computer, scan the QR code on the screen with your phone, and the screen becomes the stage and your phone the controller. The question is on the big screen and four options appear on your phone. There is nothing to install, no account to make and no shared Wi-Fi to join."
         },
         {
-          "tr": "Her soruda önce Risk zamanı: bahsini seç, istersen Çifte Hak, Örtü ya da Düello gibi güçler kullan. 3. turdan itibaren Sabotaj zamanı: bir rakibin süresini kısalt, şıklarını karıştır ya da kazancından pay kes. Kimin yaptığı belli olmaz.",
-          "en": "Every question starts with Risk time: pick your stake and, if you like, use powers such as Double Down, Cover or a Duel. From round 3 comes Sabotage time: cut a rival's time, shuffle their options or take a share of their gain. Nobody sees who did it."
+          "tr": "Bir akşam şöyle geçer: biri TV'de oyunu açar, herkes QR'ı okutup takma adını ve karakterini seçer. İstersen oyuncular Kaplanlar ve Baykuşlar gibi takımlara ayrılır; takım adlarını, simgelerini ve renklerini biz belirleriz, sen yalnızca bir düğmeye dokunursun. Sonra turlar başlar: soru, cevap, ortaya çıkış, puan tablosu. En sonda kürsü ve revanş.",
+          "en": "A night goes like this: someone opens the game on the TV, everyone scans the QR and picks a nickname and a character. If you like, players split into teams such as the Tigers and the Owls; we choose the team names, icons and colours and you just tap a chip. Then the rounds begin: question, answer, reveal, scoreboard. At the end the podium and a rematch."
         },
         {
-          "tr": "Süreyi, cevapları ve puanı yalnızca sunucu tutar; telefonlar sadece niyetini bildirir. Oyunun son soruları finaldir: taban puan iki katıdır ve en son soruda güvenli seçenek yoktur, bu yüzden son saniyeye kadar her şey değişebilir.",
-          "en": "Only the server keeps time, answers and score; phones just report what you want to do. The last questions are the final: base points double, and on the very last question there is no safe option, so anything can change until the last second."
+          "tr": "İki oyun biçimi var. Basit mod kafe masaları ve kalabalık gruplar için: bahis yok, üç kısa sabotaj, soru yalnızca TV'de. Tam mod bahis, güç ve sabotajla dolu: Güvenli, Risk ya da Yüksek diye bahsini seçer, Çifte Hak, Örtü, Düello ya da Havuz kullanır, 3. turdan itibaren bir rakibin süresini kısaltır ya da şıklarını karıştırırsın. Kimin yaptığı belli olmaz.",
+          "en": "There are two ways to play. Simple mode is for café tables and big groups: no stakes, three short sabotages, the question on the TV only. Full mode is packed with stakes, powers and sabotage: pick a Safe, Risk or High stake, use Double Down, Cover, a Duel or the Pot, and from round 3 cut a rival's time or shuffle their options. Nobody sees who did it."
         },
         {
-          "tr": "Kutu oyunu kafeleri ve oyun barları için mekan modu da var: görevli süreli bir masa açar, süre bitince oyun düzgünce sonuçlara geçer. Arayüz Türkçe ve İngilizce; sorular şimdilik Türkçe.",
-          "en": "There is also a venue mode for board-game cafés and game bars: staff open a timed table and, when time is up, the game wraps up cleanly. The interface is in Turkish and English; the questions are Turkish for now."
+          "tr": "Süreyi, cevabı ve puanı yalnızca sunucu tutar; telefon sadece ne yapmak istediğini bildirir, yani puanla oynanamaz. Doğru cevap açılırken yanlış şıklar tek tek kararır, doğru şık parlar, sonra kısa bir \"biliyor muydun\" notu çıkar. Sesler tarayıcıda üretilen özgün bir paletten gelir; hiçbir ses dosyası yoktur.",
+          "en": "Only the server keeps time, answers and score; the phone just says what you want to do, so the score cannot be tampered with. When the answer opens, wrong options dim one by one, the right one lights up and a short \"did you know\" note follows. The sounds come from an original palette synthesised in the browser; there are no sound files."
+        },
+        {
+          "tr": "Kutu oyunu kafeleri ve oyun barları için mekan modu da var: görevli telefonundan TV'de süreli bir masa açar, kazanana isteğe bağlı bir ödül kodu çıkar, kafe kendi sorularını yükleyebilir. İlk mekan ortağımız Gusto Board Game Cafe (Çanakkale). Arayüz Türkçe ve İngilizce; sorular şimdilik Türkçe.",
+          "en": "For board-game cafés and game bars there is a venue mode: staff open a timed table on the TV from their phone, the winner can get an optional reward code and the café can upload its own questions. Our first venue partner is Gusto Board Game Cafe (Çanakkale). The interface is Turkish and English; the questions are Turkish for now."
         }
       ],
       "tags": [
@@ -70,6 +74,14 @@
         {
           "tr": "Türkçe",
           "en": "Turkish"
+        },
+        {
+          "tr": "Takım modu",
+          "en": "Team mode"
+        },
+        {
+          "tr": "Kafe modu",
+          "en": "Venue mode"
         }
       ],
       "meta": {
@@ -108,20 +120,190 @@
         "bg": "assets/quiznight/key-art-bg.jpg",
         "header_w": 1600,
         "header_h": 900,
-        "square": "assets/quiznight/square.jpg"
+        "square": "assets/quiznight/square.jpg",
+        "logo": "assets/quiznight/logo.webp",
+        "logo_w": 1000,
+        "logo_h": 333,
+        "hero_video": {
+          "poster": "assets/quiznight/tv-team-lobby.webp",
+          "sources": [
+            {
+              "src": "assets/quiznight/video/hero-party.webm",
+              "type": "video/webm"
+            },
+            {
+              "src": "assets/quiznight/video/hero-party.mp4",
+              "type": "video/mp4"
+            }
+          ]
+        }
       },
       "media": [
         {
+          "type": "video",
+          "provider": "file",
+          "poster": "assets/quiznight/clip-team-lobby-poster.webp",
+          "thumb": "assets/quiznight/clip-team-lobby-poster.webp",
+          "w": 960,
+          "h": 540,
+          "sources": [
+            {
+              "src": "assets/quiznight/clip-team-lobby.mp4",
+              "type": "video/mp4"
+            }
+          ],
+          "alt": {
+            "tr": "Kısa klip: oyuncular katılır, takımlar dolar",
+            "en": "Short clip: players join and the teams fill up"
+          }
+        },
+        {
           "type": "image",
-          "src": "assets/quiznight/tv-lobby.webp",
-          "thumb": "assets/quiznight/tv-lobby-t.webp",
-          "src_en": "assets/quiznight/en-tv-lobby.webp",
-          "thumb_en": "assets/quiznight/en-tv-lobby-t.webp",
+          "src": "assets/quiznight/tv-team-lobby.webp",
+          "thumb": "assets/quiznight/tv-team-lobby-t.webp",
           "w": 1280,
           "h": 720,
           "alt": {
-            "tr": "TV'de lobi: büyük QR kod, oda kodu ve odaya katılan oyuncular",
-            "en": "The lobby on the TV: a big QR code, the room code and the players who joined"
+            "tr": "TV'de takım lobisi: QR kod, oda kodu, Kaplanlar ve Baykuşlar takımları",
+            "en": "The team lobby on the TV: QR code, room code, the Tigers and Owls teams"
+          }
+        },
+        {
+          "type": "image",
+          "src": "assets/quiznight/phone-team-picker.webp",
+          "thumb": "assets/quiznight/phone-team-picker-t.webp",
+          "w": 390,
+          "h": 844,
+          "alt": {
+            "tr": "Telefonda takım seçimi",
+            "en": "Choosing a team on the phone"
+          },
+          "phone": true
+        },
+        {
+          "type": "image",
+          "src": "assets/quiznight/tv-team-question.webp",
+          "thumb": "assets/quiznight/tv-team-question-t.webp",
+          "w": 1280,
+          "h": 720,
+          "alt": {
+            "tr": "Bir soru TV'de: dört renkli şık, geri sayım halkası ve cevap veren oyuncular",
+            "en": "A question on the TV: four coloured options, a countdown ring and the players who have answered"
+          }
+        },
+        {
+          "type": "image",
+          "src": "assets/quiznight/phone-team-answer.webp",
+          "thumb": "assets/quiznight/phone-team-answer-t.webp",
+          "w": 390,
+          "h": 844,
+          "alt": {
+            "tr": "Telefonda cevap ekranı: renkli, harfli ve şekilli dört şık, soru metni yok",
+            "en": "The answer screen on the phone: four options with colour, letter and shape, no question text"
+          },
+          "phone": true
+        },
+        {
+          "type": "image",
+          "src": "assets/quiznight/tv-team-reveal.webp",
+          "thumb": "assets/quiznight/tv-team-reveal-t.webp",
+          "w": 1280,
+          "h": 720,
+          "alt": {
+            "tr": "Ortaya çıkış: yanlış şıklar kararır, doğru cevap parlar",
+            "en": "The reveal: wrong options dim and the correct answer lights up"
+          }
+        },
+        {
+          "type": "video",
+          "provider": "file",
+          "poster": "assets/quiznight/clip-staged-reveal-poster.webp",
+          "thumb": "assets/quiznight/clip-staged-reveal-poster.webp",
+          "w": 960,
+          "h": 540,
+          "sources": [
+            {
+              "src": "assets/quiznight/clip-staged-reveal.mp4",
+              "type": "video/mp4"
+            }
+          ],
+          "alt": {
+            "tr": "Kısa klip: cevaplar kilitlenir, kademeli ortaya çıkış",
+            "en": "Short clip: answers lock in and the staged reveal plays"
+          }
+        },
+        {
+          "type": "image",
+          "src": "assets/quiznight/tv-team-board.webp",
+          "thumb": "assets/quiznight/tv-team-board-t.webp",
+          "w": 1280,
+          "h": 720,
+          "alt": {
+            "tr": "Takım puanları: ortalama ve toplam",
+            "en": "Team standings: average and total"
+          }
+        },
+        {
+          "type": "image",
+          "src": "assets/quiznight/tv-team-podium.webp",
+          "thumb": "assets/quiznight/tv-team-podium-t.webp",
+          "w": 1280,
+          "h": 720,
+          "alt": {
+            "tr": "Takım kürsüsü: kazanan takım, oyuncu sıralaması ve ödüller",
+            "en": "The team podium: the winning team, the player ranking and awards"
+          }
+        },
+        {
+          "type": "video",
+          "provider": "file",
+          "poster": "assets/quiznight/clip-team-podium-poster.webp",
+          "thumb": "assets/quiznight/clip-team-podium-poster.webp",
+          "w": 960,
+          "h": 540,
+          "sources": [
+            {
+              "src": "assets/quiznight/clip-team-podium.mp4",
+              "type": "video/mp4"
+            }
+          ],
+          "alt": {
+            "tr": "Kısa klip: kürsü ve konfeti",
+            "en": "Short clip: the podium and confetti"
+          }
+        },
+        {
+          "type": "image",
+          "src": "assets/quiznight/tv-simple-prep.webp",
+          "thumb": "assets/quiznight/tv-simple-prep-t.webp",
+          "w": 1280,
+          "h": 720,
+          "alt": {
+            "tr": "Basit modda Hazırlan ekranı: Çifte Hak, Süre kes, Karıştır, Kör saat",
+            "en": "Prep screen in Simple mode: Double Down, Time Cut, Shuffle, Blind Clock"
+          }
+        },
+        {
+          "type": "image",
+          "src": "assets/quiznight/phone-simple-prep.webp",
+          "thumb": "assets/quiznight/phone-simple-prep-t.webp",
+          "w": 390,
+          "h": 790,
+          "alt": {
+            "tr": "Telefonda hazırlık: Çifte Hak, üç sabotaj ve hedef takım",
+            "en": "Prep on the phone: Double Down, three sabotages and the target team"
+          },
+          "phone": true
+        },
+        {
+          "type": "image",
+          "src": "assets/quiznight/tv-gusto-team-lobby.webp",
+          "thumb": "assets/quiznight/tv-gusto-team-lobby-t.webp",
+          "w": 1280,
+          "h": 720,
+          "alt": {
+            "tr": "Mekan teması: kafenin logosu ve renkleriyle takım lobisi",
+            "en": "Venue theme: the team lobby with a café's logo and colours"
           }
         },
         {
@@ -137,17 +319,6 @@
         },
         {
           "type": "image",
-          "src": "assets/quiznight/tv-question.webp",
-          "thumb": "assets/quiznight/tv-question-t.webp",
-          "w": 1280,
-          "h": 720,
-          "alt": {
-            "tr": "Bir soru TV'de: dört renkli şık, geri sayım halkası ve cevap veren oyuncular",
-            "en": "A question on the TV: four coloured options, a countdown ring and the players who have answered"
-          }
-        },
-        {
-          "type": "image",
           "src": "assets/quiznight/tv-sabotage.webp",
           "thumb": "assets/quiznight/tv-sabotage-t.webp",
           "w": 1280,
@@ -155,85 +326,6 @@
           "alt": {
             "tr": "Sabotaj zamanı: sekiz sabotaj türü ve kimin kilitlediğini gösteren sayaç",
             "en": "Sabotage time: the eight sabotage types and a counter of who has locked in"
-          }
-        },
-        {
-          "type": "image",
-          "src": "assets/quiznight/tv-reveal.webp",
-          "thumb": "assets/quiznight/tv-reveal-t.webp",
-          "w": 1280,
-          "h": 720,
-          "alt": {
-            "tr": "Ortaya çıkış: doğru cevap ve \"biliyor muydun\" notu",
-            "en": "The reveal: the correct answer and a \"did you know\" note"
-          }
-        },
-        {
-          "type": "image",
-          "src": "assets/quiznight/tv-score.webp",
-          "thumb": "assets/quiznight/tv-score-t.webp",
-          "w": 1280,
-          "h": 720,
-          "alt": {
-            "tr": "Puan durumu tablosu",
-            "en": "The scoreboard"
-          }
-        },
-        {
-          "type": "image",
-          "src": "assets/quiznight/tv-final.webp",
-          "thumb": "assets/quiznight/tv-final-t.webp",
-          "w": 1280,
-          "h": 720,
-          "alt": {
-            "tr": "Final turu: son soru, puanlar iki katı",
-            "en": "Final round: last question, points doubled"
-          }
-        },
-        {
-          "type": "image",
-          "src": "assets/quiznight/tv-results.webp",
-          "thumb": "assets/quiznight/tv-results-t.webp",
-          "w": 1280,
-          "h": 720,
-          "alt": {
-            "tr": "Sonuçlar: kürsü ve ödüller",
-            "en": "Results: the podium and awards"
-          }
-        },
-        {
-          "type": "image",
-          "src": "assets/quiznight/tv-gusto.webp",
-          "thumb": "assets/quiznight/tv-gusto-t.webp",
-          "w": 1280,
-          "h": 720,
-          "alt": {
-            "tr": "Mekan teması: bir kafenin renkleri ve logosuyla başlık ekranı",
-            "en": "Venue theme: the title screen with a café's colours and logo"
-          }
-        },
-        {
-          "type": "image",
-          "src": "assets/quiznight/phone-risk.webp",
-          "thumb": "assets/quiznight/phone-risk-t.webp",
-          "w": 390,
-          "h": 844,
-          "phone": true,
-          "alt": {
-            "tr": "Telefonda Risk zamanı: bahis kartları ve güçler",
-            "en": "Risk time on the phone: stake cards and powers"
-          }
-        },
-        {
-          "type": "image",
-          "src": "assets/quiznight/phone-answer.webp",
-          "thumb": "assets/quiznight/phone-answer-t.webp",
-          "w": 390,
-          "h": 844,
-          "phone": true,
-          "alt": {
-            "tr": "Telefonda cevap ekranı: renkli, harfli ve şekilli dört şık",
-            "en": "The answer screen on the phone: four options with colour, letter and shape"
           }
         },
         {
@@ -257,7 +349,7 @@
             "en": "TV stage, phone controller"
           },
           "text": {
-            "tr": "Sorular büyük ekranda, cevaplar ve gizli kararlar telefonda. Herkes aynı ekrana bakar, kimse kumanda kapışmaz.",
+            "tr": "Soru büyük ekranda, cevaplar ve gizli kararlar telefonda. Herkes aynı ekrana bakar; kimse kumanda kapışmaz.",
             "en": "Questions on the big screen, answers and hidden decisions on the phone. Everyone watches the same screen and nobody fights over a remote."
           }
         },
@@ -268,8 +360,19 @@
             "en": "Scan to join, no install"
           },
           "text": {
-            "tr": "Kameranı QR koda tut ya da oda kodunu yaz. Uygulama indirme, hesap açma, Bluetooth ve aynı Wi-Fi şartı yok.",
+            "tr": "Kameranı QR koda tut ya da oda kodunu yaz. Uygulama, hesap, Bluetooth ve aynı Wi-Fi şartı yok.",
             "en": "Point your camera at the QR or type the room code. No app, no account, no Bluetooth and no same-Wi-Fi rule."
+          }
+        },
+        {
+          "icon": "devices",
+          "title": {
+            "tr": "Soru TV'de, şıklar telefonda",
+            "en": "Question on the TV, options on the phone"
+          },
+          "text": {
+            "tr": "Telefonda büyük, renkli, harfli ve şekilli dört düğme var. Basit modda soru metni telefona hiç gönderilmez; gözler ekranda kalır.",
+            "en": "The phone has four big buttons with colour, letter and shape. In Simple mode the question text is never sent to phones, so eyes stay on the screen."
           }
         },
         {
@@ -279,8 +382,8 @@
             "en": "Risk and stakes"
           },
           "text": {
-            "tr": "Güvenli, Risk ya da Yüksek: doğruysa puanın katlanır, yanlışsa bahsin gider. Finalin son sorusunda herkes mecburen bahse girer.",
-            "en": "Safe, Risk or High: right and your points multiply, wrong and the stake is gone. On the final's last question everyone must bet."
+            "tr": "Tam modda Güvenli, Risk ya da Yüksek: doğruysa puanın katlanır, yanlışsa bahsin gider. Finalin son sorusunda herkes mecburen bahse girer.",
+            "en": "In Full mode, Safe, Risk or High: right and your points multiply, wrong and the stake is gone. On the final's last question everyone must bet."
           }
         },
         {
@@ -297,12 +400,67 @@
         {
           "icon": "crown",
           "title": {
-            "tr": "Final ve geri dönüş",
-            "en": "A final that flips the table"
+            "tr": "Basit mod: beş saniyede anlaşılır",
+            "en": "Simple mode: understood in five seconds"
           },
           "text": {
-            "tr": "Son sorular iki kat taban puan verir. Geri dönüş, saklı bir yardımla değil, oyuncunun kendi kararıyla gelir.",
-            "en": "The last questions pay double base points. Comebacks come from the player's own decisions, not from hidden help."
+            "tr": "Bahis yok; Çifte Hak, 50/50 ve üç sabotaj (Süre kes, Karıştır, Kör saat). Soru başına tek kısa hazırlık ekranı. Kafe masaları ve ilk kez oynayanlar için.",
+            "en": "No stakes; Double Down, 50/50 and three sabotages (Time Cut, Shuffle, Blind Clock). One short prep screen per question. For café tables and first-timers."
+          }
+        },
+        {
+          "icon": "devices",
+          "title": {
+            "tr": "Takım modu",
+            "en": "Team mode"
+          },
+          "text": {
+            "tr": "2 ile 4 takım; adlarını, simgelerini ve renklerini biz seçeriz, oyuncular bir takım düğmesine dokunur. Takımlar oyuncu başına ortalamayla sıralanır; bireysel oyun da duruyor.",
+            "en": "2 to 4 teams; we choose names, icons and colours and players tap a team chip. Teams are ranked by the average per player, and individual play is still there."
+          }
+        },
+        {
+          "icon": "store",
+          "title": {
+            "tr": "Kafeler için mekan modu",
+            "en": "Venue mode for cafés"
+          },
+          "text": {
+            "tr": "Süreli masa (+15/+30/+60 dk uzatma), isteğe bağlı kazanan ödül kodu, CSV ile kafeye özel sorular ve telefondan Mekan paneli. Sistem hiçbir zaman para almaz.",
+            "en": "Timed tables (+15/+30/+60 min extensions), an optional winner's reward code, venue-only questions by CSV and a staff panel on the phone. The system never takes money."
+          }
+        },
+        {
+          "icon": "book",
+          "title": {
+            "tr": "Türkçe soru bankası",
+            "en": "Turkish question bank"
+          },
+          "text": {
+            "tr": "35 kategoride 900'den fazla Türkçe soru; hepsinin \"biliyor muydun\" notu var, büyük çoğunluğunun kaynağı kayıtlı. Bağımsız bir yapay zekâ incelemesinden geçti; insan onayı sürüyor.",
+            "en": "Over 900 Turkish questions in 35 categories, each with a \"did you know\" note and most with recorded sources. Reviewed by an independent AI pass; human sign-off is still under way."
+          }
+        },
+        {
+          "icon": "palette",
+          "title": {
+            "tr": "Ses ve animasyon",
+            "en": "Sound and animation"
+          },
+          "text": {
+            "tr": "Tarayıcıda üretilen özgün ses paleti, kademeli ortaya çıkış, seri alevleri, ışıklı kürsü ve konfeti. Temalar: parti, mekan ve yüksek kontrast.",
+            "en": "An original sound palette synthesised in the browser, a staged reveal, streak flames, a spotlit podium and confetti. Themes: party, venue and high contrast."
+          }
+        },
+        {
+          "icon": "info",
+          "title": {
+            "tr": "Erişilebilirlik",
+            "en": "Accessibility"
+          },
+          "text": {
+            "tr": "Şıklar renkle birlikte harf ve şekille ayrılır; yüksek kontrast teması, renk körlüğüne uygun palet ve hareketi azaltma desteği var.",
+            "en": "Options carry a letter and shape as well as colour; there is a high-contrast theme, colour-blind-safe palettes and reduced-motion support."
           }
         },
         {
@@ -314,28 +472,6 @@
           "text": {
             "tr": "Her cihaz kendi dilinde: karışık dilli odalar çalışır. Sorular şimdilik Türkçe.",
             "en": "Each device uses its own language, so mixed-language rooms work. Questions are Turkish for now."
-          }
-        },
-        {
-          "icon": "store",
-          "title": {
-            "tr": "Mekan modu",
-            "en": "Venue mode"
-          },
-          "text": {
-            "tr": "Kafeler için süreli masalar, +15/+30/+60 dk uzatma, isteğe bağlı kazanan ödülü ve mekana özel sorular. Sistem para almaz.",
-            "en": "Timed tables for cafés, +15/+30/+60 min extensions, an optional winner's reward and venue-only questions. The system never takes money."
-          }
-        },
-        {
-          "icon": "palette",
-          "title": {
-            "tr": "Temalar",
-            "en": "Themes"
-          },
-          "text": {
-            "tr": "Parti teması, mekan temaları (örneğin kafe renkleri ve logosu) ve yüksek kontrastlı sahne.",
-            "en": "A party theme, venue themes (for example a café's colours and logo) and a high-contrast stage."
           }
         }
       ],
@@ -468,6 +604,17 @@
         }
       },
       "news": [
+        {
+          "date": "2026-10-27",
+          "title": {
+            "tr": "Takım modu ve Basit mod",
+            "en": "Team mode and Simple mode"
+          },
+          "body": {
+            "tr": "Oyuncular Kaplanlar, Baykuşlar gibi takımlara ayrılabiliyor; takımlar oyuncu başına ortalamayla sıralanıyor. Kafe masaları için bahissiz, beş saniyede anlaşılır Basit mod da eklendi.",
+            "en": "Players can now split into teams such as the Tigers and the Owls, ranked by the average per player. A stake-free Simple mode that is understood in five seconds joined it for café tables."
+          }
+        },
         {
           "date": "2026-10-26",
           "title": {

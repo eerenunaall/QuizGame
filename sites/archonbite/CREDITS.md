@@ -24,6 +24,10 @@ derived product name.
 | Home hero layers (`assets/img/hero-*.svg`, `grain.svg`) | Generated SVG by `tools/gen-hero-art.mjs` |
 | Salty Pirates placeholder art (`assets/salty-pirate/*.svg`) | Generated SVG by `tools/gen-salty-art.mjs`. **Placeholder only**; generic pirate-sea scenery, not from the real game |
 | Share images (`assets/img/og-*.jpg`), QuizNight key art, capsule, square (`assets/quiznight/key-art.jpg`, `capsule.jpg`, `square.jpg`) | Composed by `tools/make-art.mjs` from the assets in this table and the QuizNight screenshots below |
+| `assets/quiznight/tv-team-*.webp`, `tv-simple-prep*.webp`, `tv-gusto-team-lobby*.webp`, `phone-team-*.webp`, `phone-simple-prep*.webp` | Real screenshots of the current QuizNight web app (team mode, Simple ruleset; party and café "gusto" themes), captured with headless Chromium while four simulated players played a real game on a local server fed with questions from `seed/gusto`. The QR code and the address under it encode `https://quiz.archonbite.com` (the server was started with that public address, so no local test address appears). The game's own avatars, stickers and mascot belong to the QuizNight project; the Gusto name and logo in `tv-gusto-team-lobby*.webp` need the café's permission (see `OWNER-FILL.md`). |
+| `assets/quiznight/clip-*.mp4`, `clip-*-poster.webp`, `assets/quiznight/video/hero-party.mp4 and hero-party.webm` | Short muted clips cut from the screen recording of the same game session (H.264 and WebM). Hero loop = lobby, question, reveal, podium. |
+| `assets/quiznight/teams/*.webp` | The eight team icons are the game's avatar artwork (`apps/web/src/assets/avatars`, Microsoft Fluent Emoji 3D, MIT licence, notice in `apps/web/src/assets/NOTICE.md`), resized to 160 px. |
+| QuizNight section illustrations (icon strip and venue drawing in `games/quiznight/index.html`) | Original inline SVG drawn for this site. |
 | Interface icons (inline in `assets/app.js`) | Simple line icons drawn for this site |
 
 ## QuizNight material
