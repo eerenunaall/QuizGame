@@ -14,9 +14,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const A = (p) => pathToFileURL(ROOT + p).href;
 const FONTS = `
-@font-face{font-family:Bricolage;font-weight:200 800;src:url(${A('assets/fonts/bricolage-latin.woff2')}) format('woff2');unicode-range:U+0000-00FF,U+2013-2026}
+@font-face{font-family:Bricolage;font-weight:200 800;src:url(${A('assets/fonts/bricolage-latin-2.woff2')}) format('woff2');unicode-range:U+0000-00FF,U+2013-2026}
 @font-face{font-family:Bricolage;font-weight:200 800;src:url(${A('assets/fonts/bricolage-latin-ext.woff2')}) format('woff2');unicode-range:U+0100-017F}
-@font-face{font-family:Inter;font-weight:100 900;src:url(${A('assets/fonts/inter-latin.woff2')}) format('woff2');unicode-range:U+0000-00FF,U+2013-2026}
+@font-face{font-family:Inter;font-weight:100 900;src:url(${A('assets/fonts/inter-latin-2.woff2')}) format('woff2');unicode-range:U+0000-00FF,U+2013-2026}
 @font-face{font-family:Inter;font-weight:100 900;src:url(${A('assets/fonts/inter-latin-ext.woff2')}) format('woff2');unicode-range:U+0100-017F}
 *{box-sizing:border-box;margin:0}body{font-family:Inter,sans-serif;color:#f6efde;overflow:hidden}`;
 

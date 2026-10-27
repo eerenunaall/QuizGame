@@ -92,7 +92,7 @@ function head(p) {
     `<link rel="icon" href="${P}assets/img/favicon-32.png" type="image/png" sizes="32x32">`,
     `<link rel="apple-touch-icon" href="${P}assets/img/apple-touch-icon.png">`,
     `<link rel="manifest" href="${P}site.webmanifest">`,
-    `<link rel="preload" href="${P}assets/fonts/bricolage-latin.woff2" as="font" type="font/woff2" crossorigin>`,
+    `<link rel="preload" href="${P}assets/fonts/bricolage-latin-2.woff2" as="font" type="font/woff2" crossorigin>`,
     `<link rel="stylesheet" href="${P}assets/site.css">`,
     `<script src="${P}assets/config.js"></script>`,
     `<script src="${P}assets/boot.js"></script>`,

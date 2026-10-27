@@ -7,12 +7,12 @@
 
 /* ------------------------------------------------------------ fonts */
 @font-face { font-family: "Bricolage"; font-weight: 200 800; font-display: swap;
-  src: url("fonts/bricolage-latin.woff2") format("woff2");
+  src: url("fonts/bricolage-latin-2.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2013-2026, U+20AC, U+2190-2193, U+2212, U+2713; }
 @font-face { font-family: "Bricolage"; font-weight: 200 800; font-display: swap;
   src: url("fonts/bricolage-latin-ext.woff2") format("woff2"); unicode-range: U+0100-0130, U+0132-0151, U+0154-017F; }
 @font-face { font-family: "Inter"; font-weight: 100 900; font-display: swap;
-  src: url("fonts/inter-latin.woff2") format("woff2");
+  src: url("fonts/inter-latin-2.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2013-2026, U+20AC, U+2190-2193, U+2212, U+2713; }
 @font-face { font-family: "Inter"; font-weight: 100 900; font-display: swap;
   src: url("fonts/inter-latin-ext.woff2") format("woff2"); unicode-range: U+0100-0130, U+0132-0151, U+0154-017F; }
