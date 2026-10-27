@@ -1,0 +1,140 @@
+/*
+ * QuizNight store page only (linked from games/quiznight/index.html). The studio theme in site.css is a deep-sea layer
+ * that belongs to the Salty Pirates page owner; QuizNight keeps its own party identity (indigo, violet, gold, a little
+ * pink) by re-declaring the tokens under html:has(main[data-game-page="quiznight"]). Nothing here touches another page.
+ */
+html:has(main[data-game-page="quiznight"]) {
+  --bg: #120a2e; --bg2: #1a1042; --surface: rgba(255, 255, 255, .07); --surface2: rgba(255, 255, 255, .11);
+  --line: rgba(255, 255, 255, .14); --line2: rgba(255, 255, 255, .26);
+  --text: #fff7e6; --muted: #d3cae8; --faint: #a79dc4; --gold-text: #ffd25e;
+  --accent: #ffcb3d; --accent2: #8f3dff; --pink: #ff7ac8; --aqua: #4fd9c8;
+  --shadow: 0 24px 60px rgba(8, 2, 30, .55);
+  --glass: none; --glass-edge: none;
+  color-scheme: dark; background: #0d0724;
+}
+html:has(main[data-game-page="quiznight"]) .scope-dark,
+html:has(main[data-game-page="quiznight"]) body {
+  --bg: #120a2e; --bg2: #1a1042; --surface: rgba(255, 255, 255, .07); --surface2: rgba(255, 255, 255, .11);
+  --line: rgba(255, 255, 255, .14); --line2: rgba(255, 255, 255, .26);
+  --text: #fff7e6; --muted: #d3cae8; --faint: #a79dc4; --gold-text: #ffd25e; --shadow: 0 24px 60px rgba(8, 2, 30, .55);
+  color: var(--text);
+}
+html:has(main[data-game-page="quiznight"]) body {
+  background: radial-gradient(90% 55% at 85% -5%, rgba(143, 61, 255, .45), transparent 60%),
+              radial-gradient(70% 45% at 5% 30%, rgba(255, 122, 200, .16), transparent 60%),
+              radial-gradient(80% 50% at 80% 75%, rgba(255, 203, 61, .12), transparent 60%),
+              linear-gradient(180deg, #170c3b 0%, #120a2e 45%, #0d0724 100%);
+  background-attachment: fixed;
+}
+html:has(main[data-game-page="quiznight"]) body::before, html:has(main[data-game-page="quiznight"]) body::after { display: none; }
+html:has(main[data-game-page="quiznight"]) main > section, html:has(main[data-game-page="quiznight"]) main .band { background: transparent; }
+
+/* ---- hero: the real gameplay loop behind the logo (video element comes from data/games.json art.hero_video) */
+main[data-game-page="quiznight"] .qn-hero { min-height: clamp(460px, 78vh, 820px); display: flex; align-items: center; padding-block: 56px; background: #0d0724; }
+main[data-game-page="quiznight"] .qn-hero > .wrap { width: min(1240px, 100% - 32px); }
+main[data-game-page="quiznight"] .qn-hero .store-hero-bg { display: none; }
+main[data-game-page="quiznight"] .qn-hero .store-hero-video { filter: saturate(1.15) brightness(1); object-position: 70% 50%; }
+main[data-game-page="quiznight"] .qn-hero::after {
+  background: linear-gradient(90deg, rgba(13, 7, 36, .94) 0%, rgba(13, 7, 36, .8) 34%, rgba(13, 7, 36, .15) 68%, rgba(13, 7, 36, 0) 100%),
+              linear-gradient(180deg, rgba(13, 7, 36, .35) 0%, transparent 22%, transparent 62%, #120a2e 100%);
+}
+main[data-game-page="quiznight"] .store-logo { max-height: clamp(110px, 20vw, 210px); max-width: min(560px, 86vw); margin: 6px 0 14px; filter: drop-shadow(0 12px 28px rgba(0, 0, 0, .5)); }
+main[data-game-page="quiznight"] .store-tagline { font: 700 clamp(1.2rem, 2.6vw, 1.9rem)/1.25 var(--font-display); color: #fff3d0; max-width: 24ch; text-shadow: 0 2px 18px rgba(0, 0, 0, .6); }
+
+/* ---- full-width statements between the acts */
+.qn-statement {
+  margin: 0; text-align: center; text-wrap: balance;
+  padding: clamp(44px, 8vw, 104px) 16px clamp(22px, 4vw, 44px);
+  font: 800 clamp(2.1rem, 8vw, 6.4rem)/1 var(--font-display); letter-spacing: -.02em;
+  color: #ffd25e;
+  background: linear-gradient(100deg, #ffe58f 0%, #ffcb3d 34%, #ff7ac8 68%, #a56bff 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+@supports not (background-clip: text) { .qn-statement { -webkit-text-fill-color: currentColor; background: none; } }
+.qn-act { position: relative; padding-bottom: clamp(36px, 6vw, 80px); }
+.qn-act .section-head { max-width: 820px; }
+.qn-act .eyebrow { color: var(--pink); }
+.qn-act h2 { font-size: clamp(1.7rem, 4.2vw, 2.9rem); }
+.qn-act .prose p { color: var(--muted); }
+.qn-act .ticks li { color: var(--text); }
+.qn-act .note, .qn-act .fine { color: var(--faint); }
+.qn-act-show, .qn-act-bank, .qn-act-access, .qn-act-faq { padding-top: clamp(40px, 6vw, 76px); }
+
+/* ---- five-step icon strip */
+.qn-strip { list-style: none; margin: 0 0 clamp(30px, 5vw, 56px); padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+.qn-strip li { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; font: 700 .95rem/1.25 var(--font-body); padding: 16px 8px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.qn-strip svg { width: 46px; height: 46px; color: var(--accent); }
+.qn-strip li:nth-child(even) svg { color: var(--pink); }
+
+/* ---- three step cards (real screens) */
+.qn-cards { list-style: none; margin: 0; padding: 18px 0 0; display: grid; gap: 26px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.qn-card { background: linear-gradient(160deg, rgba(255, 255, 255, .12), rgba(255, 255, 255, .04)); border: 1px solid var(--line2); border-radius: 22px; overflow: hidden; box-shadow: var(--shadow); transition: transform .35s ease, box-shadow .35s ease; }
+.qn-card figure { margin: 0; aspect-ratio: 16 / 9; overflow: hidden; background: #0d0724; }
+.qn-card img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.qn-card-body { position: relative; padding: 30px 22px 24px; }
+.qn-num { position: absolute; top: -22px; left: 20px; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 14px; background: linear-gradient(180deg, #ffe58f, #ffb81c); color: #2a1600; font: 800 1.45rem var(--font-display); box-shadow: 0 8px 20px rgba(255, 184, 28, .4); }
+.qn-card h3 { font-size: 1.5rem; margin: 0 0 10px; }
+.qn-steps { margin: 0; padding-left: 1.2em; color: var(--muted); display: grid; gap: 8px; }
+.qn-steps li::marker { color: var(--accent); font-weight: 800; }
+@media (min-width: 900px) {
+  .qn-card-1 { transform: rotate(-2.2deg) translateY(10px); } .qn-card-2 { transform: rotate(1.2deg); } .qn-card-3 { transform: rotate(-1deg) translateY(14px); }
+  .qn-card:hover, .qn-card:focus-within { transform: rotate(0) translateY(-6px); box-shadow: 0 30px 70px rgba(8, 2, 30, .7), 0 0 0 2px var(--accent); }
+}
+
+/* ---- panels, splits, shots */
+.qn-two { display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 980px) { .qn-two { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.qn-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: clamp(20px, 3vw, 34px); }
+.qn-panel h3 { font-size: 1.7rem; margin: 0 0 6px; color: var(--accent); }
+.qn-panel > p { color: var(--muted); margin-top: 0; }
+.qn-split { display: grid; gap: clamp(24px, 4vw, 48px); grid-template-columns: minmax(0, 1fr); align-items: center; }
+@media (min-width: 900px) { .qn-split { grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); } }
+.qn-shot { margin: 0; }
+.qn-shot img, .qn-shot video { display: block; width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--line2); box-shadow: var(--shadow); background: #0d0724; }
+.qn-shot.is-phone img { border-radius: 24px; border-width: 3px; }
+.qn-pair { display: grid; gap: 16px; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); align-items: end; margin-top: 20px; }
+.qn-pair-col { grid-template-columns: minmax(0, 1fr); margin-top: 0; }
+.qn-pair-col .is-phone { max-width: 220px; margin-inline: auto; }
+@media (max-width: 520px) { .qn-pair { grid-template-columns: minmax(0, 1fr); } .qn-pair .is-phone { max-width: 200px; margin-inline: auto; } }
+
+/* ---- the eight team icons (repo avatar artwork) */
+.qn-badges-title { margin: clamp(30px, 5vw, 52px) 0 14px; font-size: 1.05rem; color: var(--faint); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.qn-badges { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); }
+.qn-badges li { --c: var(--accent); display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 6px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); font-weight: 700; }
+.qn-badges img { width: 68px; height: 68px; border-radius: 50%; border: 3px solid var(--c); background: #0d0724; }
+.qn-badges li:nth-child(1) { --c: #ff6b6b; } .qn-badges li:nth-child(2) { --c: #3fd0e0; } .qn-badges li:nth-child(3) { --c: #ff9f43; } .qn-badges li:nth-child(4) { --c: #ffcb3d; }
+.qn-badges li:nth-child(5) { --c: #b98a5e; } .qn-badges li:nth-child(6) { --c: #6ee7a8; } .qn-badges li:nth-child(7) { --c: #5b9dff; } .qn-badges li:nth-child(8) { --c: #d6e4ff; }
+
+.qn-chips { list-style: none; margin: 18px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+.qn-chips li { padding: 8px 16px; border-radius: 999px; background: rgba(255, 203, 61, .14); border: 1px solid rgba(255, 203, 61, .4); color: #ffe9a8; font-weight: 700; font-size: .92rem; }
+.qn-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; }
+.qn-list h3 { font-size: 1.12rem; margin: 0 0 4px; color: var(--accent); }
+.qn-list p { margin: 0; color: var(--muted); }
+.qn-stats { list-style: none; margin: 0 0 clamp(26px, 4vw, 44px); padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.qn-stats li { text-align: center; padding: 22px 10px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); }
+.qn-stats b { display: block; font: 800 clamp(2.4rem, 6vw, 4.2rem)/1 var(--font-display); color: var(--accent); }
+.qn-stats span { color: var(--muted); font-weight: 600; }
+.qn-narrow { width: min(820px, 100% - 32px); }
+.qn-venue { display: grid; gap: 32px; grid-template-columns: minmax(0, 1fr); align-items: center; padding: clamp(24px, 4vw, 52px); border-radius: 28px; border: 1px solid var(--line2); background: linear-gradient(135deg, rgba(143, 61, 255, .32), rgba(255, 122, 200, .12) 55%, rgba(255, 203, 61, .12)); }
+@media (min-width: 900px) { .qn-venue { grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); } }
+.qn-venue h2 { margin-top: 0; }
+.qn-venue-art { width: 100%; height: auto; color: var(--text); }
+
+@media (prefers-reduced-motion: reduce) { .qn-card { transition: none; transform: none !important; } }
+html.motion-off .qn-card { transition: none; }
+@media print { .qn-card { transform: none !important; } }
+
+.qn-act-night .fine { margin-top: 48px; }
+/* small screens show only the poster: calm it down so the title stays readable */
+@media (max-width: 700px) {
+  main[data-game-page="quiznight"] .qn-hero::after { background: linear-gradient(180deg, rgba(13, 7, 36, .78) 0%, rgba(13, 7, 36, .9) 70%, #120a2e 100%); }
+}
+html:has(main[data-game-page="quiznight"]) .feature .ic { color: var(--accent); background: rgba(255, 203, 61, .14); }
+/* no sea moss or teal glass on this page: the shared panels take the party surface instead */
+html:has(main[data-game-page="quiznight"]) .btn::before { display: none; }
+html:has(main[data-game-page="quiznight"]) :is(.steps li, .news-item, .capsule-box, .feature, .req, .mini, .play-card, .buybox, .venue-box) {
+  background-color: rgba(255, 255, 255, .06); background-image: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+html:has(main[data-game-page="quiznight"]) .site-footer { background: linear-gradient(180deg, #120a2e, #0a0520); }
+/* the store side boxes follow the party palette instead of the sea glass */
+html:has(main[data-game-page="quiznight"]) .buybox, html:has(main[data-game-page="quiznight"]) .capsule-box {
+  background: linear-gradient(160deg, rgba(143, 61, 255, .28), rgba(255, 255, 255, .06)); background-image: linear-gradient(160deg, rgba(143, 61, 255, .28), rgba(255, 255, 255, .06)); border-color: var(--line2); }

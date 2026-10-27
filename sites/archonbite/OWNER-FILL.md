@@ -45,3 +45,8 @@ sahne resimleridir (sayfada "Yer tutucu görsel" etiketi var). Aşağıdakileri 
 * **Stüdyo hakkında**: istersen kuruluş yılı, şehir, kurucu adı/fotoğrafı ve sosyal medya bağlantıları (şimdilik yok).
 * **Fiyat**: QuizNight için henüz karar yok; karar verince `data/games.json` → `quiznight` → `meta.price` ve kılavuzdaki SSS.
 * **İngilizce metinler**: çevirileri bir kez okuyup onayla (`assets/i18n/en.json`).
+* **QuizNight sayfası (yeni metin ve görseller)**: sayfadaki metinleri bir kez oku. Şunları ben uyduramadım, senden lazım:
+  yaş sınıflandırması (SSS'de "resmî bir yaş sınıflandırması henüz yok" yazıyor), fiyat, çıkış tarihi, gerçek TV'lerde deneme sonuçları.
+  Soru sayısı için yalnızca depoda kanıtlı olan yazıldı: 35 kategoride 900'den fazla soru (939); "doğrulanmış" denmedi, çünkü inceleme
+  bir yapay zekâ turuydu, insan onayı değildi. Yeni ekran görüntüleri Türkçe arayüzle çekildi; İngilizce arayüzlü görüntüler istenirse
+  yeniden çekilebilir. Gusto adı/logosu `tv-gusto-team-lobby.webp` ve haberde geçiyor: izin al ya da kaldır.
