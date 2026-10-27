@@ -152,6 +152,15 @@ test('phone answer buttons are at least 48 px tall, also on a landscape phone', 
   await b.page.getByTestId('ctl-answering').waitFor();
   const buttons = a.page.locator('button[data-answer-index]');
   await expect(buttons).toHaveCount(4);
+  // The cards slide up while they enter; measure the layout they rest in (ambient loops never end, so skip them).
+  await a.page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((x) => x.effect?.getComputedTiming().iterations !== Infinity)
+        .map((x) => x.finished.catch(() => undefined)),
+    ),
+  );
   for (const box of await buttons.evaluateAll((els) =>
     els.map((e) => {
       const r = e.getBoundingClientRect();
