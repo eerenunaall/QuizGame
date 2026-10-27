@@ -246,10 +246,10 @@
 
 @keyframes qp-bar-grow {
   from {
-    transform: scaleX(var(--qp-from));
+    transform: translateX(calc((var(--qp-from) - 1) * 100%));
   }
   to {
-    transform: scaleX(var(--qp-to));
+    transform: translateX(calc((var(--qp-to) - 1) * 100%));
   }
 }
 

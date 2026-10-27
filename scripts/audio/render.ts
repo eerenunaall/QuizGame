@@ -200,23 +200,22 @@ async function main(): Promise<void> {
   });
   await page.goto(`${ORIGIN}/index.html`);
   await page.addScriptTag({ url: `${ORIGIN}/harness.js`, type: 'module' });
+  // (this package has no DOM lib: the page's globals are reached through `globalThis`)
+  interface Harness {
+    cueNames?: () => string[];
+    measureCue: (name: string, trimDb: number, wav: boolean) => Promise<CueReport>;
+  }
   await page.waitForFunction(
-    () => typeof (window as never as { cueNames?: unknown }).cueNames === 'function',
+    () => typeof (globalThis as unknown as Harness).cueNames === 'function',
   );
-  const names = await page.evaluate(() =>
-    (window as never as { cueNames: () => string[] }).cueNames(),
-  );
+  const names = await page.evaluate(() => (globalThis as unknown as Required<Harness>).cueNames());
 
   const measure = (name: string, trimDb: number, wav: boolean): Promise<CueReport> =>
-    page.evaluate(
-      ([n, t, w]) =>
-        (
-          window as never as {
-            measureCue: (a: string, b: number, c: boolean) => Promise<CueReport>;
-          }
-        ).measureCue(n as string, t as number, w as boolean),
-      [name, trimDb, wav] as const,
-    );
+    page.evaluate(([n, t, w]) => (globalThis as unknown as Harness).measureCue(n, t, w), [
+      name,
+      trimDb,
+      wav,
+    ] as const);
 
   const nextTrims: Record<string, number> = {};
   const reports: CueReport[] = [];

@@ -291,6 +291,9 @@ export const en: Record<MessageKey, string> = {
   'closed.SUPERSEDED': 'This room was opened on another screen.',
   'credits.title': 'Credits',
   'credits.fonts': 'Fonts',
+  'credits.sound': 'Sound and music',
+  'credits.sound.note':
+    'Original: every sound effect and the lobby music are synthesised in your browser by the game itself. No recordings or third-party audio are used.',
   'avatar.octopus': 'Octopus',
   'avatar.alien': 'Alien',
   'avatar.ghost': 'Ghost',

@@ -52,6 +52,19 @@ capability gate switch decorative loops off; animated assets are decorative (`al
   to the last final question only, so a final stage of five does not become a coin flip.
 - Credits/licence notices are a release-checklist item.
 
+## Amendment (show pass): sound is original, motion is choreographed
+- **Sound.** The "free to source" clause of decision 2 covers art only; sound is **original and generated**:
+  synthesised in the browser from one key and one timbre family, no audio files, nothing to license
+  (`docs/AUDIO.md`, `apps/web/src/lib/sound`). `sfx.play('<key>')` stays the surface; new keys are additive.
+- **Motion** (decision 3 stands): the reveal, the countdown and the podium run on one timeline shared by
+  picture and sound (`lib/sound/timeline.ts`), one orchestrated moment per phase, every animation with a
+  reduced-motion path.
+- **CSS modules must not rename the shared keyframes.** `animation: qp-pop-in` inside a module was being
+  renamed to a hashed name that matched no `@keyframes`, so no shared animation ever ran. `qp-*` names are
+  now excluded from scoping (`apps/web/css-scope.ts`), and a test fails when a module references a `qp-*`
+  keyframe that does not exist. Consequence: the "reveal turns the question card into the explanation card
+  after 1.8 s" and the other entrance animations described above now really play.
+
 ## Amendment (M1c): reveal and layout details settled while building the screens
 - **"Biliyor muydunuz?"** — when a question has an explanation, the reveal turns the question card
   into an explanation card after the answer highlight (≈ 1.9 s). The reveal lasts

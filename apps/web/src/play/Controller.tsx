@@ -221,7 +221,11 @@ export function Controller({ room, state, now, catalog, busy, error, actions, st
           report={actions.report}
           whoSaidIt={room.settings.mode === 'WHO_SAID_IT'}
           sitOut={you?.authorOfRound ?? false}
-          streak={room.game?.scoreboard.find((entry) => entry.playerId === myId)?.streak ?? 0}
+          // the board still holds the streak from before this question: a right answer adds one
+          streak={
+            (room.game?.scoreboard.find((entry) => entry.playerId === myId)?.streak ?? 0) +
+            (data.results.find((result) => result.playerId === myId)?.outcome === 'CORRECT' ? 1 : 0)
+          }
         />
       );
     case 'POWER_RESOLUTION':
@@ -776,7 +780,7 @@ function RevealScreen({
   report: ControllerActions['report'];
   whoSaidIt: boolean;
   sitOut: boolean;
-  /** Correct answers in a row, this one included (the scoreboard already counts it). */
+  /** Correct answers in a row, this one included. */
   streak: number;
 }) {
   const { t } = useI18n();

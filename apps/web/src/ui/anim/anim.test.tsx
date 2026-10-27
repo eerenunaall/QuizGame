@@ -153,7 +153,7 @@ describe('score bar', () => {
     const fill = screen.getByTestId('score-bar').firstChild as HTMLElement;
     expect(fill.style.getPropertyValue('--qp-from')).toBe('0.25');
     expect(fill.style.getPropertyValue('--qp-to')).toBe('0.75');
-    expect(fill.style.transform).toBe('scaleX(0.75)');
+    expect(fill.style.transform).toBe('translateX(-25%)');
     expect(fill.style.animationDelay).toBe('300ms');
   });
 });

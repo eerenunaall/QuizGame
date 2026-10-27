@@ -122,7 +122,7 @@ export class SoundEngine {
     }
   }
 
-  async dispose(): Promise<void> {
+  dispose(): void {
     this.stopAmbience(true);
   }
 

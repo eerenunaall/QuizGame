@@ -35,8 +35,17 @@ interface Props {
 const scoreOf = (room: RoomView, player: PublicPlayer): number =>
   room.game?.scoreboard.find((entry) => entry.playerId === player.playerId)?.score ?? 0;
 
-const streakOf = (room: RoomView, player: PublicPlayer): number =>
-  room.game?.scoreboard.find((entry) => entry.playerId === player.playerId)?.streak ?? 0;
+/**
+ * Streak on the board. The engine updates streaks when the score screen starts, so during the reveal
+ * the board still holds the streak from before this question: a right answer counts one more.
+ */
+const streakOf = (
+  room: RoomView,
+  player: PublicPlayer,
+  results?: Record<string, 'CORRECT' | 'INCORRECT' | 'NO_ANSWER'>,
+): number =>
+  (room.game?.scoreboard.find((entry) => entry.playerId === player.playerId)?.streak ?? 0) +
+  (results?.[player.playerId] === 'CORRECT' ? 1 : 0);
 
 /** Common TV chrome: backdrop, top bar (round + room code), bottom player strip. */
 export function TvFrame({
@@ -81,7 +90,7 @@ export function TvFrame({
           scoreOf={(player) => scoreOf(room, player)}
           answered={strip?.answered}
           results={strip?.results}
-          streakOf={(player) => streakOf(room, player)}
+          streakOf={(player) => streakOf(room, player, strip?.results)}
           revealAt={strip?.revealAt}
         />
       )}

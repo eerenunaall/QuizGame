@@ -198,17 +198,19 @@ export function TvQuestion({
           options.findIndex((option) => option.optionId === reveal.correctOptionId),
         )
       : null;
+  // The engine counts a streak when the score screen starts, so during the reveal a right answer adds one.
   const combos =
     reveal && room.game
       ? comboPlayers(
-          room.game.scoreboard.filter((entry) =>
-            reveal.results.some(
-              (result) => result.playerId === entry.playerId && result.outcome === 'CORRECT',
-            ),
-          ),
+          room.game.scoreboard
+            .filter((entry) =>
+              reveal.results.some(
+                (result) => result.playerId === entry.playerId && result.outcome === 'CORRECT',
+              ),
+            )
+            .map((entry) => ({ ...entry, streak: entry.streak + 1 })),
         )
       : [];
-
   return (
     <div className={styles.screen}>
       {category ? (

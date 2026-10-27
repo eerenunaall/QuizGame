@@ -8,6 +8,7 @@ import { useFlip } from '../../lib/motion';
 import { useI18n } from '../../lib/i18n';
 import styles from './TvScore.module.css';
 import { cx } from '../../lib/cx';
+import { playerColor } from '@quizparty/ui-tokens';
 
 type ScoreData = PhaseDataOf<'SCORE_UPDATE'>;
 type Delta = ScoreData['deltas'][number];
@@ -103,6 +104,7 @@ export function TvScoreUpdate({
                 to={barFraction(delta.total, top)}
                 delayMs={index * 70 + 250}
                 leader={crowned}
+                color={!crowned && player.colorSlot ? playerColor(player.colorSlot) : undefined}
               />
               <span className={styles.rank}>
                 {crowned ? <Sticker id="crown" size={Math.round(height * 0.64)} /> : rank}

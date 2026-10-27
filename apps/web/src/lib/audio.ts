@@ -139,7 +139,7 @@ export class Sfx {
 
   async dispose(): Promise<void> {
     try {
-      await this.engine?.dispose();
+      this.engine?.dispose();
       await this.context?.close();
     } catch {
       // ignore

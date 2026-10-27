@@ -306,6 +306,9 @@ export const tr = {
   'closed.SUPERSEDED': 'Bu oda başka bir ekranda açıldı.',
   'credits.title': 'Emeği geçenler',
   'credits.fonts': 'Yazı tipleri',
+  'credits.sound': 'Ses ve müzik',
+  'credits.sound.note':
+    'Özgün: tüm ses efektleri ve lobi müziği oyunun kendisi tarafından tarayıcıda sentezlenir. Kayıt ya da üçüncü taraf ses kullanılmaz.',
   'avatar.octopus': 'Ahtapot',
   'avatar.alien': 'Uzaylı',
   'avatar.ghost': 'Hayalet',

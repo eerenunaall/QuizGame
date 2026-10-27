@@ -29,7 +29,10 @@ export function powerSound(item: PowerResolutionItem): SoundName {
       return 'fifty';
     case 'DOUBLE_DOWN':
       return 'doubleDown';
-    default:
+    case 'STAKE':
+    case 'COVER':
+    case 'DUEL':
+    case 'POT':
       return 'power';
   }
 }

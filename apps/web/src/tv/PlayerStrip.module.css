@@ -8,7 +8,7 @@
   justify-content: center;
   width: 100%;
   height: 196px;
-  padding: 0 96px 54px; /* 5% overscan-safe: scores used to sit at 1066 of 1080 */
+  padding: 0 96px 60px; /* 5% overscan-safe: the score's text box (line height included) ends at 1020 of 1080 */
   background: linear-gradient(180deg, rgba(3, 8, 32, 0), rgba(3, 8, 32, 0.82) 38%);
 }
 
