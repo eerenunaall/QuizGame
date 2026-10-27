@@ -1,6 +1,6 @@
-# Salty Pirate: senden ne lazım? (kısa liste)
+# Salty Pirates: senden ne lazım? (kısa liste)
 
-Salty Pirate sayfası **hazır bir şablon**. Depoda bu oyun hakkında hiçbir bilgi yok, bu yüzden ben **hikâye, özellik,
+Salty Pirates sayfası **hazır bir şablon**. Depoda bu oyun hakkında hiçbir bilgi yok, bu yüzden ben **hikâye, özellik,
 fiyat, platform, tarih ya da ekran görüntüsü uydurmadım**. Sayfadaki pirat görselleri benim çizdiğim **yer tutucu**
 sahne resimleridir (sayfada "Yer tutucu görsel" etiketi var). Aşağıdakileri gönder, sayfa gerçek olsun.
 

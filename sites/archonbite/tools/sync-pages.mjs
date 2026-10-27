@@ -40,11 +40,11 @@ const pages = [
   },
   {
     file: 'games/salty-pirate/index.html', path: '/games/salty-pirate/', page: 'game', nav: 'salty', og: 'og-salty-pirate.jpg',
-    extraHead: ['<script src="{P}assets/storm.js" defer></script>', '<link rel="preload" href="{P}assets/fonts/pirata-one-latin.woff2" as="font" type="font/woff2" crossorigin>', '<link rel="preload" href="{P}data/games.json" as="fetch" crossorigin>'],
-    title: 'Salty Pirate | Archonbite',
-    desc: "Salty Pirate, Archonbite'ın ikinci oyunu. Bilgiler ve görseller eklendikçe bu sayfa dolacak.",
+    extraHead: ['<script src="{P}assets/storm.js" defer></script>', '<script src="{P}assets/parchment.js" defer></script>', '<link rel="preload" href="{P}assets/fonts/pirata-one-latin.woff2" as="font" type="font/woff2" crossorigin>', '<link rel="preload" href="{P}data/games.json" as="fetch" crossorigin>'],
+    title: 'Salty Pirates | Archonbite',
+    desc: "Salty Pirates, Archonbite'ın ikinci oyunu. Bilgiler ve görseller eklendikçe bu sayfa dolacak.",
     ld: [{
-      '@context': 'https://schema.org', '@type': 'VideoGame', name: 'Salty Pirate', url: SITE + '/games/salty-pirate/',
+      '@context': 'https://schema.org', '@type': 'VideoGame', name: 'Salty Pirates', url: SITE + '/games/salty-pirate/',
       description: "Archonbite'ın ikinci oyunu. / Archonbite's second game.", image: SITE + '/assets/img/og-salty-pirate.jpg', applicationCategory: 'Game', publisher, author: publisher,
     }],
   },
@@ -113,7 +113,7 @@ function header(p) {
     <button class="menu-btn only-js" type="button" aria-expanded="false" aria-controls="nav" data-i18n-attr="aria-label:nav.menu" aria-label=""><span></span></button>
     <nav class="nav" id="nav" data-i18n-attr="aria-label:nav.main" aria-label="">
       <a href="${P}games/quiznight/"${cur('quiznight')}>QuizNight</a>
-      <a href="${P}games/salty-pirate/"${cur('salty')}>Salty Pirate</a>
+      <a href="${P}games/salty-pirate/"${cur('salty')}>Salty Pirates</a>
       <a href="${P}guide/"${cur('guide')} data-i18n="nav.guide"></a>
       <a class="btn btn-gold btn-sm" href="${P}play/"${cur('play')} data-i18n="nav.play"></a>
       <div class="lang only-js" role="group" data-i18n-attr="aria-label:nav.lang" aria-label=""><button type="button" data-set-lang="tr" aria-pressed="true">TR</button><button type="button" data-set-lang="en" aria-pressed="false">EN</button></div>
@@ -133,7 +133,7 @@ function footer(p) {
       </div>
       <div><h2 data-i18n="common.games"></h2><ul>
         <li><a href="${P}games/quiznight/">QuizNight</a></li>
-        <li><a href="${P}games/salty-pirate/">Salty Pirate</a></li>
+        <li><a href="${P}games/salty-pirate/">Salty Pirates</a></li>
         <li><a href="${P}play/" data-i18n="nav.play"></a></li></ul></div>
       <div><h2 data-i18n="common.studio"></h2><ul>
         <li><a href="${P}guide/" data-i18n="nav.guide"></a></li>

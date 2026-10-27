@@ -1,4 +1,4 @@
-// Generates the Salty Pirate PLACEHOLDER art (original SVG, no third-party material).
+// Generates the Salty Pirates PLACEHOLDER art (original SVG, no third-party material).
 // Run: node tools/gen-salty-art.mjs   (writes into assets/salty-pirate/). Zero dependencies.
 // The art is deliberately generic pirate-sea scenery. It makes NO claim about the real game: when the owner has
 // real key art and screenshots, drop them into assets/salty-pirate/ and point data/games.json at them.

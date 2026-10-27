@@ -8,14 +8,14 @@
 /* ------------------------------------------------------------ fonts */
 @font-face { font-family: "Bricolage"; font-weight: 200 800; font-display: swap;
   src: url("fonts/bricolage-latin.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+2013-2026, U+20AC, U+2190-2193, U+2212, U+2713; }
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2013-2026, U+20AC, U+2190-2193, U+2212, U+2713; }
 @font-face { font-family: "Bricolage"; font-weight: 200 800; font-display: swap;
-  src: url("fonts/bricolage-latin-ext.woff2") format("woff2"); unicode-range: U+0100-017F; }
+  src: url("fonts/bricolage-latin-ext.woff2") format("woff2"); unicode-range: U+0100-0130, U+0132-0151, U+0154-017F; }
 @font-face { font-family: "Inter"; font-weight: 100 900; font-display: swap;
   src: url("fonts/inter-latin.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+2013-2026, U+20AC, U+2190-2193, U+2212, U+2713; }
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2013-2026, U+20AC, U+2190-2193, U+2212, U+2713; }
 @font-face { font-family: "Inter"; font-weight: 100 900; font-display: swap;
-  src: url("fonts/inter-latin-ext.woff2") format("woff2"); unicode-range: U+0100-017F; }
+  src: url("fonts/inter-latin-ext.woff2") format("woff2"); unicode-range: U+0100-0130, U+0132-0151, U+0154-017F; }
 
 /* ------------------------------------------------------------ tokens */
 :root {
@@ -431,7 +431,7 @@ details.faq > div { padding: 0 20px 16px; } details.faq > div p:last-child { mar
 /* ============================================================ aqua layer
  * "Liquid glass" + Aero: translucent glass panels over a slowly moving deep-sea backdrop, glossy buttons with moss
  * tufts, a wave line under the hero. It only re-skins tokens and surfaces; layout above is untouched.
- * The Salty Pirate page swaps to a dark Davy Jones palette (abyss green, ghost light) through :has(), no extra markup.
+ * The Salty Pirates page swaps to a dark Davy Jones palette (abyss green, ghost light) through :has(), no extra markup.
  * Everything here is declared last on purpose so it wins over the studio defaults without !important.
  */
 :root, .scope-dark {
@@ -521,7 +521,7 @@ body::after { inset: 0; opacity: .5;
 .site-footer::before { content: ""; position: absolute; left: 0; right: 0; top: -63px; height: 64px; pointer-events: none; transform: scaleY(-1);
   background: url("img/wave.svg") repeat-x 0 100% / 420px 64px; opacity: .7; }
 
-/* ============================================================ Salty Pirate: Davy Jones' locker
+/* ============================================================ Salty Pirates: Davy Jones' locker
  * Mood: cold, desaturated teal-grey like a rain-lashed night deck. Fog, falling rain, film grain, heavy vignette,
  * tarnished brass instead of neon. (Reference stills are only a mood guide; no film imagery is used.)
  */
@@ -576,14 +576,14 @@ html:has(main[data-game-page="salty-pirate"]) .site-footer { background: linear-
 @media (prefers-reduced-motion: reduce) { body::before, body::after, .hero::before { animation: none !important; } }
 @media print { body::before, body::after, .btn::before, .hero::before, .site-footer::before { display: none; } }
 
-/* ============================================================ Salty Pirate: stylised realism (dark fantasy)
+/* ============================================================ Salty Pirates: stylised realism (dark fantasy)
  * Overrides the glossy studio look on this page only: gothic display type from the logo's world, a readable old-style
  * serif for text, hard-edged weathered surfaces, and the WebGL storm sea (assets/storm.js) behind everything.
  */
 @font-face { font-family: "Pirata One"; font-weight: 400; font-display: swap; src: url("fonts/pirata-one-latin.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+2013-2026, U+20AC, U+2212; }
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2013-2026, U+20AC, U+2212; }
 @font-face { font-family: "Cormorant Garamond"; font-weight: 500 700; font-display: swap; src: url("fonts/cormorant-latin.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+2013-2026, U+20AC, U+2212; }
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2013-2026, U+20AC, U+2212; }
 canvas.storm { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -2; display: block; pointer-events: none; }
 html:has(main[data-game-page="salty-pirate"]) {
   --font-display: "Pirata One", "Palatino Linotype", Georgia, serif;
@@ -630,3 +630,95 @@ html:has(main[data-game-page="salty-pirate"]) .store-logo { max-height: clamp(18
   filter: drop-shadow(0 3px 2px rgba(0, 0, 0, .9)) drop-shadow(0 0 30px rgba(0, 0, 0, .7)); }
 html.storm-on .store-hero-bg { display: none; }
 html.storm-on .store-hero::after { background: linear-gradient(180deg, rgba(2, 8, 8, .25), rgba(2, 8, 8, 0) 60%); }
+
+/* ============================================================ Salty Pirates: Davy Jones pass
+ * Type: Pirata One (display), Cormorant Garamond (text, with Turkish latin-ext and italic), Cormorant SC (labels).
+ * Set pieces: tentacles rising out of the fog at the bottom corners, barnacle-crusted panels, parchment sheets that
+ * unroll (assets/parchment.js). Art is generated by tools/gen-davy-art.mjs.
+ */
+@font-face { font-family: "Pirata One"; font-weight: 400; font-display: swap; src: url("fonts/pirata-one-latin-ext.woff2") format("woff2"); unicode-range: U+0100-0130, U+0132-0151, U+0154-024F, U+1E00-1EFF, U+20A0-20C0; }
+@font-face { font-family: "Cormorant Garamond"; font-weight: 500 700; font-display: swap; src: url("fonts/cormorant-latin-ext.woff2") format("woff2"); unicode-range: U+0100-0130, U+0132-0151, U+0154-024F, U+1E00-1EFF, U+20A0-20C0; }
+@font-face { font-family: "Cormorant Garamond"; font-style: italic; font-weight: 500 700; font-display: swap; src: url("fonts/cormorant-italic-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2013-2026, U+20AC, U+2212; }
+@font-face { font-family: "Cormorant Garamond"; font-style: italic; font-weight: 500 700; font-display: swap; src: url("fonts/cormorant-italic-latin-ext.woff2") format("woff2"); unicode-range: U+0100-0130, U+0132-0151, U+0154-024F, U+1E00-1EFF, U+20A0-20C0; }
+@font-face { font-family: "Cormorant SC"; font-weight: 600; font-display: swap; src: url("fonts/cormorant-sc-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2013-2026, U+20AC, U+2212; }
+@font-face { font-family: "Cormorant SC"; font-weight: 600; font-display: swap; src: url("fonts/cormorant-sc-latin-ext.woff2") format("woff2"); unicode-range: U+0100-0130, U+0132-0151, U+0154-024F, U+1E00-1EFF, U+20A0-20C0; }
+html:has(main[data-game-page="salty-pirate"]) .nav a:not(.btn), html:has(main[data-game-page="salty-pirate"]) .eyebrow,
+html:has(main[data-game-page="salty-pirate"]) .btn, html:has(main[data-game-page="salty-pirate"]) .chip,
+html:has(main[data-game-page="salty-pirate"]) .crumbs, html:has(main[data-game-page="salty-pirate"]) .tags-label, html:has(main[data-game-page="salty-pirate"]) .stage-badge {
+  font-family: "Cormorant SC", "Cormorant Garamond", Georgia, serif; font-weight: 600; text-transform: none; letter-spacing: .08em; }
+html:has(main[data-game-page="salty-pirate"]) .btn { font-size: 1.08rem; }
+html:has(main[data-game-page="salty-pirate"]) .store-tagline { font-style: italic; font-size: clamp(1.15rem, 2.2vw, 1.45rem); color: #c9d6cf; max-width: 46ch; }
+
+/* tentacles: fixed at the bottom corners between the sea (z -2) and the page, swaying slowly in the fog */
+main[data-game-page="salty-pirate"]::before, main[data-game-page="salty-pirate"]::after {
+  content: ""; position: fixed; bottom: -6vh; z-index: -1; pointer-events: none; height: 74vh; aspect-ratio: 420 / 900;
+  background: center bottom / contain no-repeat; opacity: .9; transform-origin: 50% 100%; filter: blur(.6px); }
+main[data-game-page="salty-pirate"]::before { left: -4vh; background-image: url("img/tentacle-l.svg"); animation: sway-l 17s ease-in-out infinite alternate; }
+main[data-game-page="salty-pirate"]::after { right: -4vh; background-image: url("img/tentacle-r.svg"); animation: sway-r 21s ease-in-out infinite alternate; height: 60vh; opacity: .75; filter: blur(1.4px); }
+@keyframes sway-l { from { transform: rotate(-2.5deg) translateY(2vh); } to { transform: rotate(2deg) translateY(0); } }
+@keyframes sway-r { from { transform: rotate(2.5deg) translateY(0); } to { transform: rotate(-2deg) translateY(3vh); } }
+@media (max-width: 760px) { main[data-game-page="salty-pirate"]::before, main[data-game-page="salty-pirate"]::after { height: 46vh; opacity: .5; } }
+
+/* barnacle crust on the dark panels */
+html:has(main[data-game-page="salty-pirate"]) .buybox, html:has(main[data-game-page="salty-pirate"]) .capsule-box {
+  background-image: url("img/barnacles.svg"); background-repeat: no-repeat; background-position: -14px -14px; background-size: 104px 104px; }
+
+/* parchment sheets */
+@property --u { syntax: "<number>"; inherits: false; initial-value: 1; }
+html:has(main[data-game-page="salty-pirate"]) .store-main { filter: drop-shadow(0 16px 26px rgba(0, 0, 0, .65)); }
+html:has(main[data-game-page="salty-pirate"]) .store-main > section {
+  position: relative; margin: 0 0 36px; padding: clamp(34px, 4vw, 48px) clamp(24px, 4vw, 52px) clamp(40px, 4vw, 54px); color: #2b1d0c;
+  background: radial-gradient(120% 85% at 50% 45%, transparent 52%, rgba(70, 40, 12, .5) 100%), url("img/parchment.svg") 0 0 / 480px 480px, #d6c198;
+  -webkit-mask: url("img/parchment-mask.svg") 0 0 / 100% 100% no-repeat; mask: url("img/parchment-mask.svg") 0 0 / 100% 100% no-repeat; }
+html:has(main[data-game-page="salty-pirate"]) .store-main > section h2 { color: #551710; text-shadow: none; font-size: clamp(1.9rem, 3.6vw, 2.6rem); margin-bottom: .4em; }
+html:has(main[data-game-page="salty-pirate"]) .store-main > section p, html:has(main[data-game-page="salty-pirate"]) .store-main > section li,
+html:has(main[data-game-page="salty-pirate"]) .store-main > section .prose { color: #2e2010; font-size: 1.2rem; }
+html:has(main[data-game-page="salty-pirate"]) .store-main .feature, html:has(main[data-game-page="salty-pirate"]) .store-main .empty,
+html:has(main[data-game-page="salty-pirate"]) .store-main .req { background: none; border: 0; border-top: 1px solid rgba(85, 55, 20, .35); border-radius: 0; box-shadow: none;
+  -webkit-backdrop-filter: none; backdrop-filter: none; color: #2e2010; }
+html:has(main[data-game-page="salty-pirate"]) .store-main .feature h3 { color: #3a2410; text-shadow: none; }
+html:has(main[data-game-page="salty-pirate"]) .store-main svg { color: #6b2a16; }
+/* the roll: a shaded paper cylinder riding the open edge while the sheet unrolls, then resting at the bottom */
+html:has(main[data-game-page="salty-pirate"]) .store-main > section.sheet {
+  clip-path: inset(0 0 calc((1 - var(--u)) * (100% - 30px)) 0); transition: --u 1.5s cubic-bezier(.25, .7, .2, 1); --u: 0; }
+html:has(main[data-game-page="salty-pirate"]) .store-main > section.sheet.open { --u: 1; }
+html:has(main[data-game-page="salty-pirate"]) .store-main > section.sheet::after {
+  content: ""; position: absolute; left: 0; right: 0; height: 30px; top: calc(var(--u) * (100% - 30px)); pointer-events: none;
+  background: linear-gradient(180deg, #8a6a3c 0%, #e6d3a8 32%, #c2a571 58%, #6b4c24 100%); border-radius: 15px;
+  box-shadow: 0 6px 10px rgba(40, 20, 4, .45); }
+html:has(main[data-game-page="salty-pirate"]) .store-main > section.sheet > * { opacity: 0; transition: opacity 1s .6s; }
+html:has(main[data-game-page="salty-pirate"]) .store-main > section.sheet.open > * { opacity: 1; }
+@media print {
+  html:has(main[data-game-page="salty-pirate"]) .store-main > section.sheet { clip-path: none; }
+  html:has(main[data-game-page="salty-pirate"]) .store-main > section.sheet > * { opacity: 1; }
+  main[data-game-page="salty-pirate"]::before, main[data-game-page="salty-pirate"]::after { display: none; }
+}
+html:has(main[data-game-page="salty-pirate"]) .store-main section > h2::after { background: #7a2a16; height: 2px; width: 72px; }
+html:has(main[data-game-page="salty-pirate"]) .store-main .feature .ic { background: rgba(110, 60, 20, .14); border: 1px solid rgba(110, 60, 20, .35); border-radius: 3px; color: #6b2a16; }
+html:has(main[data-game-page="salty-pirate"]) .store-main .empty { border: 1.5px dashed rgba(85, 55, 20, .45); }
+/* barnacles grow up from the bottom-right corner so they never sit on a panel's heading */
+html:has(main[data-game-page="salty-pirate"]) .buybox, html:has(main[data-game-page="salty-pirate"]) .capsule-box {
+  background-image: url("img/barnacles-br.svg"); background-position: right -14px bottom -14px; }
+
+/* real gameplay: a muted loop fills the hero behind the logo, graded and darkened toward the text and the sea below */
+.store-hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; pointer-events: none; }
+.stage video { display: block; width: 100%; height: 100%; object-fit: cover; background: #000; cursor: pointer; }
+html:has(main[data-game-page="salty-pirate"]) .store-hero { min-height: clamp(440px, 76vh, 820px); display: flex; align-items: center; }
+html:has(main[data-game-page="salty-pirate"]) .store-hero > .wrap { width: min(1240px, 100% - 32px); }
+html:has(main[data-game-page="salty-pirate"]) .store-hero-video { filter: saturate(.85) contrast(1.06) brightness(.82); }
+html:has(main[data-game-page="salty-pirate"]) .store-hero::after, html.storm-on .store-hero::after {
+  background: linear-gradient(90deg, rgba(3, 10, 10, .78) 0%, rgba(3, 10, 10, .42) 42%, rgba(3, 10, 10, .08) 72%),
+              linear-gradient(180deg, rgba(3, 10, 10, .45) 0%, transparent 22%, transparent 58%, rgba(3, 10, 10, .92) 100%); }
+/* real art now: no more crushing of the old placeholder vectors */
+html:has(main[data-game-page="salty-pirate"]) .viewer img, html:has(main[data-game-page="salty-pirate"]) .capsule-box img, html:has(main[data-game-page="salty-pirate"]) .thumbs img { filter: none; }
+
+/* motion switch (WCAG 2.2.2): pauses the hero loop, gallery loop, storm sea and swaying set pieces */
+.motion-toggle { position: absolute; right: clamp(12px, 3vw, 32px); bottom: clamp(12px, 3vw, 28px); z-index: 3; display: inline-flex; align-items: center; gap: 8px;
+  min-height: 40px; padding: 8px 14px; border-radius: 3px; border: 1px solid rgba(196, 176, 124, .38); background: rgba(4, 12, 12, .62); color: #e3ece7;
+  font: 600 .95rem/1 "Cormorant SC", "Cormorant Garamond", Georgia, serif; letter-spacing: .06em; cursor: pointer;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.motion-toggle:hover { border-color: rgba(230, 208, 150, .7); background: rgba(10, 24, 22, .8); }
+.mt-ic { width: 12px; height: 12px; display: inline-block; border-left: 4px solid currentColor; border-right: 4px solid currentColor; }
+.motion-toggle[aria-pressed="true"] .mt-ic { width: 0; height: 0; border: 0; border-left: 11px solid currentColor; border-top: 7px solid transparent; border-bottom: 7px solid transparent; }
+html.motion-off main[data-game-page="salty-pirate"]::before, html.motion-off main[data-game-page="salty-pirate"]::after { animation-play-state: paused; }
+.stage video { cursor: auto; }

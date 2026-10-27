@@ -1,5 +1,5 @@
 /*
- * Salty Pirate backdrop: a stylised-realistic 3D storm sea (WebGL, no image or video download).
+ * Salty Pirates backdrop: a stylised-realistic 3D storm sea (WebGL, no image or video download).
  * The camera rides a few metres above the swell and looks at the horizon. The water is a height field of peaked,
  * domain-warped wave trains; rays find it with a secant search, then get a Fresnel mix of the storm sky's reflection
  * and a dark-green body colour that glows through thin crests, foam on the crests, rain rings near the camera, and
@@ -151,13 +151,16 @@
     if (slow > 45 && scale > minScale) { scale = Math.max(minScale, scale - 0.07); slow = 0; size(); }
     draw(now); raf = requestAnimationFrame(loop);
   }
-  function start() { if (reduce || run) return; run = true; lastNow = 0; raf = requestAnimationFrame(loop); }
+  function start() { if (reduce || run || off()) return; run = true; lastNow = 0; raf = requestAnimationFrame(loop); }
   function stop() { run = false; cancelAnimationFrame(raf); }
 
   document.body.insertBefore(cv, document.body.firstChild);
   document.documentElement.classList.add('storm-on');
   size(); draw(t0 + 12000);
   window.addEventListener('resize', function () { size(); if (!run) draw(performance.now()); });
+  // the page's motion switch (app.js) pauses the sea on a still frame and is remembered across visits
+  function off() { return document.documentElement.classList.contains('motion-off'); }
+  document.addEventListener('ab-motion', function (e) { if (e.detail && e.detail.off) stop(); else start(); });
   document.addEventListener('visibilitychange', function () { if (document.hidden) stop(); else start(); });
   start();
 })();

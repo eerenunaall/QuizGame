@@ -27,6 +27,6 @@
 /assets/img/*
   Cache-Control: public, max-age=2592000
 
-# Salty Pirate art is meant to be swapped by the owner: short cache so new images show up within the hour.
+# Salty Pirates art is meant to be swapped by the owner: short cache so new images show up within the hour.
 /assets/salty-pirate/*
   Cache-Control: public, max-age=3600, must-revalidate

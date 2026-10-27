@@ -98,7 +98,7 @@ Tek dosya: **`assets/config.js`** (GitHub'da dosyayı aç → kalem simgesi → 
 | `SITE_URL` | Sitenin adresi | `https://archonbite.com` |
 
 Metinleri değiştirmek: `assets/i18n/tr.json` (Türkçe) ve `assets/i18n/en.json` (İngilizce). Oyun bilgileri:
-`data/games.json`. Salty Pirate için ne gerektiği: **`OWNER-FILL.md`**.
+`data/games.json`. Salty Pirates için ne gerektiği: **`OWNER-FILL.md`**.
 
 ## E. Başka bir sitede "Oyna" düğmesi (iframe YOK)
 

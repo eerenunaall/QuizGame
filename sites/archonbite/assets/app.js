@@ -287,6 +287,23 @@
   /* ---------------------------------------------------------------- store pages */
   var store = { g: null, cur: 0 };
   function mediaSrc(m) { return url((LANG === 'en' && m.src_en) || m.src); }
+  // One switch for everything that moves by itself on a game page (gameplay loops, storm sea, swaying set pieces):
+  // WCAG 2.2.2 wants a way to pause motion that starts automatically and lasts more than five seconds.
+  // The choice is remembered; storm.js listens for the 'ab-motion' event and the html.motion-off class.
+  function motionOff() { try { return localStorage.getItem('ab-motion') === 'off'; } catch (e) { return false; } }
+  function setMotion(off) {
+    try { localStorage.setItem('ab-motion', off ? 'off' : 'on'); } catch (e) {}
+    R.classList.toggle('motion-off', off);
+    $$('video[loop]').forEach(function (v) { if (off) v.pause(); else if (v.querySelector('source')) { var p = v.play(); if (p && p.catch) p.catch(function () {}); } });
+    D.dispatchEvent(new CustomEvent('ab-motion', { detail: { off: off } }));
+  }
+  function motionToggle(host) {
+    var b = h('button', { type: 'button', class: 'motion-toggle', 'aria-pressed': 'false' }, [h('span', { class: 'mt-ic', 'aria-hidden': 'true' }), h('span', { class: 'mt-label' })]);
+    function paint() { var off = R.classList.contains('motion-off'); b.setAttribute('aria-pressed', off ? 'true' : 'false'); $('.mt-label', b).textContent = t(off ? 'motion.play' : 'motion.pause'); }
+    b.addEventListener('click', function () { setMotion(!R.classList.contains('motion-off')); paint(); });
+    if (motionOff()) setMotion(true);
+    paint(); host.appendChild(b);
+  }
   function thumbSrc(m) { return url((LANG === 'en' && m.thumb_en) || m.thumb || m.src); }
   function isTodo(g, field) { return (g.todo || []).indexOf(field) >= 0; }
   function renderStore() {
@@ -303,6 +320,18 @@
     if (h1 && g.art.logo && !$('.store-logo')) { // optional logo image replaces the visible title (the h1 stays for screen readers and search)
       h1.classList.add('sr-only'); h1.parentNode.insertBefore(h('img', { class: 'store-logo', src: url(g.art.logo), alt: '', width: g.art.logo_w, height: g.art.logo_h }), h1);
     }
+    // optional full-bleed gameplay loop behind the store hero. Skipped (poster only) for reduced motion, Save-Data and
+    // narrow screens, where a few MB of background video is not worth the visitor's data.
+    var hero = $('.store-hero');
+    if (hero && g.art.hero_video && !$('.store-hero-video')) {
+      var save = (navigator.connection && navigator.connection.saveData) || window.innerWidth < 700;
+      var hv = h('video', { class: 'store-hero-video', muted: true, loop: true, playsinline: true, preload: reduceMotion || save ? 'none' : 'auto', poster: url(g.art.hero_video.poster), 'aria-hidden': 'true', tabindex: '-1' });
+      hv.muted = true;
+      if (!reduceMotion && !save) { g.art.hero_video.sources.forEach(function (s) { hv.appendChild(h('source', { src: url(s.src), type: s.type })); }); hv.autoplay = !motionOff(); }
+      hero.insertBefore(hv, hero.firstChild);
+      if (hv.autoplay) { var hp = hv.play(); if (hp && hp.catch) hp.catch(function () {}); }
+      if (!reduceMotion) motionToggle(hero);
+    }
     renderViewer(g); renderCapsule(g); renderBuy(g); renderMain(g);
     // edit mode: outline placeholder blocks
     $$('[data-field]').forEach(function (n) { n.classList.toggle('todo', R.hasAttribute('data-edit') && isTodo(g, n.getAttribute('data-field'))); });
@@ -316,7 +345,7 @@
     var items = g.media || []; thumbs.textContent = '';
     items.forEach(function (m, i) {
       var b = h('button', { type: 'button', class: 'thumb', 'aria-label': (L(m.alt) || t('store.image')) + ' (' + (i + 1) + '/' + items.length + ')', 'aria-current': 'false' }, [
-        h('img', { src: m.type === 'video' ? url(m.poster) : thumbSrc(m), alt: '', width: 128, height: 72, loading: 'lazy', decoding: 'async' }),
+        h('img', { src: m.type === 'video' ? url(m.thumb || m.poster) : thumbSrc(m), alt: '', width: 128, height: 72, loading: 'lazy', decoding: 'async' }),
         m.type === 'video' ? h('span', { class: 'ic' }, [icon('play')]) : null]);
       b.addEventListener('click', function () { show(i); });
       thumbs.appendChild(b);
@@ -325,7 +354,16 @@
       store.cur = i; var m = items[i]; if (!m) return;
       stage.textContent = ''; stage.classList.toggle('is-phone', !!m.phone);
       if (m.placeholder) stage.appendChild(h('span', { class: 'stage-badge', text: t('store.placeholder') }));
-      if (m.type === 'video') {
+      if (m.type === 'video' && m.provider === 'file') {
+        // self-hosted gameplay loop: muted, looping, inline; reduced motion gets controls and no autoplay
+        var v = h('video', { muted: true, loop: true, playsinline: true, preload: 'metadata', poster: url(m.poster), 'aria-label': L(m.alt), width: m.w, height: m.h });
+        v.muted = true;
+        (m.sources || []).forEach(function (s) { v.appendChild(h('source', { src: url(s.src), type: s.type })); });
+        // native controls keep it keyboard-operable and pausable; autoplay only when motion is allowed
+        v.controls = true;
+        stage.appendChild(v);
+        if (!reduceMotion && !motionOff()) { v.autoplay = true; var pr = v.play(); if (pr && pr.catch) pr.catch(function () {}); }
+      } else if (m.type === 'video') {
         var ok = m.id && /^[\w-]{6,24}$/.test(m.id);
         if (!ok) {
           var tile = h('div', { class: 'poster-tile' }, [h('div', {}, [icon('play'), h('strong', { text: L(m.caption) || t('store.trailer.soon') })])]);

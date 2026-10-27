@@ -1,7 +1,7 @@
 {
   "name": "Archonbite",
   "short_name": "Archonbite",
-  "description": "Independent game studio: QuizNight and Salty Pirate.",
+  "description": "Independent game studio: QuizNight and Salty Pirates.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

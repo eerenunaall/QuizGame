@@ -168,21 +168,21 @@
       "id": "salty-pirate",
       "slug": "salty-pirate",
       "accent": "accent-salty-pirate",
-      "title": "Salty Pirate",
+      "title": "Salty Pirates",
       "placeholder": true,
-      "todo": ["tagline", "short", "about", "tags", "meta", "media", "features", "requirements", "news", "art", "links"],
+      "todo": ["about", "tags", "meta", "features", "requirements", "news", "links"],
       "tagline": {
-        "tr": "Archonbite'ın diğer oyunu. Hikâyesi, görselleri ve oynanışı çok yakında burada.",
-        "en": "Archonbite's other game. Its story, art and gameplay are coming here soon."
+        "tr": "Fırtına, top ateşi ve hayalet gemiler.",
+        "en": "Storms, cannon fire and ghost ships."
       },
       "short": {
-        "tr": "Salty Pirate, Archonbite'ın ikinci oyunu. Bu sayfa, oyunun gerçek bilgileri ve görselleri eklendikçe dolacak.",
-        "en": "Salty Pirate is Archonbite's second game. This page fills up as the game's real details and art are added."
+        "tr": "Salty Pirates, Archonbite'ın ikinci oyunu: fırtınalı bir denizde borda ateşi, yanan gemiler ve yeşil ışıkla parlayan hayalet filolar. Hikâye ve ayrıntılar yakında.",
+        "en": "Salty Pirates is Archonbite's second game: broadsides on a storm-tossed sea, burning ships and ghost fleets glowing green. Story and details soon."
       },
       "about": [
         {
-          "tr": "Salty Pirate hakkındaki ayrıntılar (hikâye, oynanış, platformlar ve çıkış durumu) stüdyo tarafından henüz yayımlanmadı. Bu sayfa hazır bir mağaza şablonudur: bilgiler eklendikçe aşağıdaki bölümler gerçek içerikle dolacak.",
-          "en": "Details about Salty Pirate (story, gameplay, platforms and release status) have not been published by the studio yet. This page is a ready-made store template: the sections below will fill with real content as it is added."
+          "tr": "Salty Pirates hakkındaki ayrıntılar (hikâye, oynanış, platformlar ve çıkış durumu) stüdyo tarafından henüz yayımlanmadı. Bu sayfa hazır bir mağaza şablonudur: bilgiler eklendikçe aşağıdaki bölümler gerçek içerikle dolacak.",
+          "en": "Details about Salty Pirates (story, gameplay, platforms and release status) have not been published by the studio yet. This page is a ready-made store template: the sections below will fill with real content as it is added."
         }
       ],
       "tags": [
@@ -197,31 +197,45 @@
         "price": { "tr": "Açıklanacak", "en": "To be announced" }
       },
       "art": {
-        "capsule": "assets/salty-pirate/capsule.svg",
+        "capsule": "assets/salty-pirate/capsule.webp",
         "capsule_w": 920,
         "capsule_h": 430,
-        "header": "assets/salty-pirate/key-art.svg",
+        "header": "assets/salty-pirate/key-art.webp",
+        "bg": "assets/salty-pirate/key-art-bg.jpg",
         "header_w": 1600,
         "header_h": 900,
-        "square": "assets/salty-pirate/key-art.svg",
+        "square": "assets/salty-pirate/key-art.webp",
         "logo": "assets/salty-pirate/logo.webp",
         "logo_w": 900,
-        "logo_h": 964
+        "logo_h": 964,
+        "hero_video": {
+          "poster": "assets/salty-pirate/key-art.webp",
+          "sources": [
+            { "src": "assets/salty-pirate/video/broadside.webm", "type": "video/webm" },
+            { "src": "assets/salty-pirate/video/broadside.mp4", "type": "video/mp4" }
+          ]
+        }
       },
       "media": [
-        { "type": "video", "provider": "youtube", "id": "", "poster": "assets/salty-pirate/shot-1.svg", "w": 1280, "h": 720, "placeholder": true,
-          "alt": { "tr": "Fragman yer tutucusu", "en": "Trailer placeholder" },
-          "caption": { "tr": "Fragman yakında", "en": "Trailer coming soon" } },
-        { "type": "image", "src": "assets/salty-pirate/shot-1.svg", "thumb": "assets/salty-pirate/shot-1.svg", "w": 1280, "h": 720, "placeholder": true,
-          "alt": { "tr": "Yer tutucu konsept görseli: ay ışığında denizde bir geminin silueti", "en": "Placeholder concept art: a ship's silhouette at sea under the moon" } },
-        { "type": "image", "src": "assets/salty-pirate/shot-2.svg", "thumb": "assets/salty-pirate/shot-2.svg", "w": 1280, "h": 720, "placeholder": true,
-          "alt": { "tr": "Yer tutucu konsept görseli: ufukta bir ada", "en": "Placeholder concept art: an island on the horizon" } },
-        { "type": "image", "src": "assets/salty-pirate/shot-3.svg", "thumb": "assets/salty-pirate/shot-3.svg", "w": 1280, "h": 720, "placeholder": true,
-          "alt": { "tr": "Yer tutucu konsept görseli: fırtına bulutları", "en": "Placeholder concept art: storm clouds" } },
-        { "type": "image", "src": "assets/salty-pirate/shot-4.svg", "thumb": "assets/salty-pirate/shot-4.svg", "w": 1280, "h": 720, "placeholder": true,
-          "alt": { "tr": "Yer tutucu konsept görseli: bir fener ve harita", "en": "Placeholder concept art: a lantern and a map" } },
-        { "type": "image", "src": "assets/salty-pirate/shot-5.svg", "thumb": "assets/salty-pirate/shot-5.svg", "w": 1280, "h": 720, "placeholder": true,
-          "alt": { "tr": "Yer tutucu konsept görseli: kuru kafalı bayrak", "en": "Placeholder concept art: a skull flag" } }
+        { "type": "video", "provider": "file", "poster": "assets/salty-pirate/video/broadside-poster.webp", "thumb": "assets/salty-pirate/video/broadside-t.webp", "w": 1920, "h": 1080,
+          "sources": [{ "src": "assets/salty-pirate/video/broadside.webm", "type": "video/webm" }, { "src": "assets/salty-pirate/video/broadside.mp4", "type": "video/mp4" }],
+          "alt": { "tr": "Oynanış: kara gemi fırtınada borda ateşi açıyor", "en": "Gameplay: the black ship fires a broadside in the storm" } },
+        { "type": "video", "provider": "file", "poster": "assets/salty-pirate/video/cannons-poster.webp", "thumb": "assets/salty-pirate/video/cannons-t.webp", "w": 1920, "h": 1080,
+          "sources": [{ "src": "assets/salty-pirate/video/cannons.webm", "type": "video/webm" }, { "src": "assets/salty-pirate/video/cannons.mp4", "type": "video/mp4" }],
+          "alt": { "tr": "Oynanış: top güllelerinin iz bıraktığı bir çatışma", "en": "Gameplay: a fight with cannonball trails" } },
+        { "type": "video", "provider": "file", "poster": "assets/salty-pirate/video/melee-poster.webp", "thumb": "assets/salty-pirate/video/melee-t.webp", "w": 1920, "h": 1080,
+          "sources": [{ "src": "assets/salty-pirate/video/melee.webm", "type": "video/webm" }, { "src": "assets/salty-pirate/video/melee.mp4", "type": "video/mp4" }],
+          "alt": { "tr": "Oynanış: hayalet gemilerle yakın dövüş", "en": "Gameplay: close quarters with ghost ships" } },
+        { "type": "image", "src": "assets/salty-pirate/shot-1.webp", "thumb": "assets/salty-pirate/shot-1-t.webp", "w": 1600, "h": 900,
+          "alt": { "tr": "Kara gemi, patlamalar ve yıldırım arasında bir düşman gemisini parçalıyor", "en": "The black ship tears an enemy apart amid explosions and lightning" } },
+        { "type": "image", "src": "assets/salty-pirate/shot-2.webp", "thumb": "assets/salty-pirate/shot-2-t.webp", "w": 1600, "h": 900,
+          "alt": { "tr": "Yağmur altında alev ve duman içinde bir deniz savaşı", "en": "A sea battle in fire and smoke under the rain" } },
+        { "type": "image", "src": "assets/salty-pirate/shot-3.webp", "thumb": "assets/salty-pirate/shot-3-t.webp", "w": 1600, "h": 900,
+          "alt": { "tr": "Yeşil parlayan hayalet gemiler kara geminin yanında", "en": "Glowing green ghost ships beside the black ship" } },
+        { "type": "image", "src": "assets/salty-pirate/shot-4.webp", "thumb": "assets/salty-pirate/shot-4-t.webp", "w": 1600, "h": 900,
+          "alt": { "tr": "Top gülleleri ve su sütunları arasında kafa kafaya bir çatışma", "en": "A head-on clash between cannonballs and water spouts" } },
+        { "type": "image", "src": "assets/salty-pirate/shot-5.webp", "thumb": "assets/salty-pirate/shot-5-t.webp", "w": 1600, "h": 900,
+          "alt": { "tr": "Hayalet gemiler ve sallar, fırtınalı denizde kara gemiyi kuşatıyor", "en": "Ghost ships and rafts close in on the black ship in a storm" } }
       ],
       "features": [
         { "icon": "book", "title": { "tr": "Hikâye", "en": "Story" },
@@ -229,7 +243,7 @@
         { "icon": "bolt", "title": { "tr": "Oynanış", "en": "Gameplay" },
           "text": { "tr": "Oynanış mantığı ve özellikleri stüdyo tarafından eklenecek.", "en": "Gameplay logic and features will be added by the studio." } },
         { "icon": "palette", "title": { "tr": "Görseller", "en": "Visuals" },
-          "text": { "tr": "Ekran görüntüleri ve fragman hazır olunca bu sayfada.", "en": "Screenshots and a trailer will be on this page when they are ready." } },
+          "text": { "tr": "Ekran görüntüleri ve oynanış videoları yukarıda; fragman yakında.", "en": "Screenshots and gameplay loops are above; a trailer is coming." } },
         { "icon": "devices", "title": { "tr": "Platformlar", "en": "Platforms" },
           "text": { "tr": "Hangi cihazlarda çıkacağı açıklanınca burada yazacak.", "en": "Which devices it comes to will be listed here once announced." } }
       ],
