@@ -62,7 +62,7 @@ function resolveRef(fromFile, ref, isAbsPage) {
   if (/^(mailto:|tel:|data:|javascript:)/.test(r)) return { ok: true };
   if (/^https?:\/\//.test(r)) return { ok: true, external: true };
   const target = r.startsWith('/') ? join(ROOT, r) : resolve(dirname(fromFile), r);
-  if (!target.startsWith(ROOT.replace(/\/$/, ''))) return { ok: false };
+  if (!target.startsWith(ROOT.replace(/[\\/]$/, ''))) return { ok: false };
   if (existsSync(target) && statSync(target).isDirectory()) return { ok: existsSync(join(target, 'index.html')) };
   return { ok: existsSync(target) };
 }
