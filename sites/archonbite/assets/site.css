@@ -521,39 +521,49 @@ body::after { inset: 0; opacity: .5;
 .site-footer::before { content: ""; position: absolute; left: 0; right: 0; top: -63px; height: 64px; pointer-events: none; transform: scaleY(-1);
   background: url("img/wave.svg") repeat-x 0 100% / 420px 64px; opacity: .7; }
 
-/* ============================================================ Salty Pirate: Davy Jones' locker (dark, cursed, ghost-green) */
+/* ============================================================ Salty Pirate: Davy Jones' locker
+ * Mood: cold, desaturated teal-grey like a rain-lashed night deck. Fog, falling rain, film grain, heavy vignette,
+ * tarnished brass instead of neon. (Reference stills are only a mood guide; no film imagery is used.)
+ */
 html:has(main[data-game-page="salty-pirate"]), html:has(main[data-game-page="salty-pirate"]) .scope-dark {
-  --bg: #010608; --bg2: #02110f; --surface: rgba(8, 40, 34, .52); --surface2: rgba(14, 58, 48, .56);
-  --line: rgba(120, 255, 190, .15); --line2: rgba(120, 255, 190, .3);
-  --text: #e3f6ec; --muted: #93b9a8; --faint: #6f9484;
-  --gold: #3dffb0; --gold-hi: #d8ffe9; --gold-lo: #0b8a60; --gold-text: #8dffc4; --on-gold: #02150e;
-  --aqua: #2fe0a0; --accent: #3dffb0; --accent2: #9a7bff;
-  --glass: linear-gradient(145deg, rgba(150, 255, 210, .12), rgba(150, 255, 210, .02) 42%, rgba(150, 255, 210, .06));
-  --glass-edge: inset 0 1px 0 rgba(170, 255, 215, .3), inset 0 -1px 0 rgba(170, 255, 215, .05);
+  --bg: #050b0c; --bg2: #08130f; --surface: rgba(18, 38, 36, .55); --surface2: rgba(28, 54, 50, .58);
+  --line: rgba(150, 190, 180, .14); --line2: rgba(150, 190, 180, .28);
+  --text: #dbe7e2; --muted: #8fa8a1; --faint: #6b827c;
+  --gold: #b99d5e; --gold-hi: #ecdcae; --gold-lo: #6a5326; --gold-text: #c9b27c; --on-gold: #14100a;
+  --aqua: #7fb0a3; --accent: #86b8aa; --accent2: #6f8fa8;
+  --glass: linear-gradient(145deg, rgba(170, 210, 200, .10), rgba(170, 210, 200, .02) 42%, rgba(170, 210, 200, .05));
+  --glass-edge: inset 0 1px 0 rgba(190, 225, 215, .22), inset 0 -1px 0 rgba(190, 225, 215, .04);
 }
-html:has(main[data-game-page="salty-pirate"]) { background: #000; }
+html:has(main[data-game-page="salty-pirate"]) { background: #020505; }
 html:has(main[data-game-page="salty-pirate"]) body {
-  background: radial-gradient(90% 55% at 50% -6%, #083b31 0%, rgba(4, 32, 26, 0) 62%), linear-gradient(180deg, #02100e 0%, #010708 50%, #000 100%);
+  background: radial-gradient(90% 55% at 50% -6%, #1a3a38 0%, rgba(14, 30, 30, 0) 64%), linear-gradient(180deg, #0a1717 0%, #050c0d 52%, #020505 100%);
   background-attachment: fixed; }
+/* fog drifting slowly behind everything */
 html:has(main[data-game-page="salty-pirate"]) body::before {
-  background: radial-gradient(34% 26% at 22% 20%, rgba(61, 255, 176, .13), transparent 70%),
-              radial-gradient(30% 24% at 80% 36%, rgba(120, 90, 255, .1), transparent 70%),
-              radial-gradient(40% 30% at 50% 86%, rgba(30, 200, 140, .12), transparent 70%);
-  animation-duration: 40s; }
-/* drifting fog bands instead of light rays */
-html:has(main[data-game-page="salty-pirate"]) body::after { opacity: .55;
-  background: radial-gradient(60% 18% at 20% 30%, rgba(150, 230, 200, .09), transparent 70%), radial-gradient(70% 16% at 80% 64%, rgba(150, 230, 200, .07), transparent 70%);
-  -webkit-mask-image: none; mask-image: none; animation: fog 46s ease-in-out infinite alternate; }
-@keyframes fog { from { transform: translateX(-4%); } to { transform: translateX(4%); } }
-html:has(main[data-game-page="salty-pirate"]) .site-header { background: var(--glass), rgba(1, 14, 12, .72); border-bottom-color: rgba(120, 255, 190, .22); }
-html:has(main[data-game-page="salty-pirate"]) h1, html:has(main[data-game-page="salty-pirate"]) h2 { text-shadow: 0 0 28px rgba(61, 255, 176, .3); }
+  background: radial-gradient(60% 22% at 25% 28%, rgba(140, 180, 170, .10), transparent 70%),
+              radial-gradient(70% 20% at 78% 58%, rgba(140, 180, 170, .08), transparent 70%),
+              radial-gradient(60% 24% at 40% 88%, rgba(120, 160, 160, .09), transparent 70%);
+  animation: fog 48s ease-in-out infinite alternate; }
+@keyframes fog { from { transform: translate3d(-5%, 0, 0); } to { transform: translate3d(5%, 1%, 0); } }
+/* rain: two streak tiles at different speeds/parallax, vertical-only loop so the tile edge never shows */
+html:has(main[data-game-page="salty-pirate"]) body::after { opacity: .55; inset: 0; -webkit-mask-image: none; mask-image: none;
+  background: url("img/rain.svg") 0 0 / 260px 260px, url("img/rain.svg") 90px 40px / 180px 180px;
+  animation: rain .75s linear infinite; }
+@keyframes rain { to { background-position: -30px 260px, 40px 220px; } }
+/* film look: grain + vignette over the whole viewport, never blocks clicks */
+html:has(main[data-game-page="salty-pirate"])::after { content: ""; position: fixed; inset: 0; z-index: 60; pointer-events: none;
+  background: radial-gradient(120% 100% at 50% 45%, transparent 55%, rgba(0, 4, 4, .62) 100%); }
+html:has(main[data-game-page="salty-pirate"])::before { content: ""; position: fixed; inset: 0; z-index: 61; pointer-events: none; opacity: .07; background: url("img/grain.svg"); }
+html:has(main[data-game-page="salty-pirate"]) .site-header { background: var(--glass), rgba(4, 12, 12, .74); border-bottom-color: rgba(150, 190, 180, .2); }
+html:has(main[data-game-page="salty-pirate"]) h1, html:has(main[data-game-page="salty-pirate"]) h2 { text-shadow: 0 2px 18px rgba(0, 0, 0, .7); }
 html:has(main[data-game-page="salty-pirate"]) .gcard, html:has(main[data-game-page="salty-pirate"]) .buybox, html:has(main[data-game-page="salty-pirate"]) .capsule-box,
 html:has(main[data-game-page="salty-pirate"]) .feature, html:has(main[data-game-page="salty-pirate"]) .req, html:has(main[data-game-page="salty-pirate"]) .news-item,
-html:has(main[data-game-page="salty-pirate"]) .fc-tab { background-color: rgba(4, 28, 24, .62); border-color: rgba(120, 255, 190, .22);
-  box-shadow: var(--glass-edge), 0 18px 44px rgba(0, 0, 0, .6), 0 0 30px rgba(61, 255, 176, .06); }
-html:has(main[data-game-page="salty-pirate"]) .btn-gold { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), inset 0 -2px 6px rgba(0, 70, 40, .3), 0 0 34px rgba(61, 255, 176, .38); }
-html:has(main[data-game-page="salty-pirate"]) .hero::before, html:has(main[data-game-page="salty-pirate"]) .site-footer::before { filter: hue-rotate(-30deg) saturate(.8) brightness(.7); }
-html:has(main[data-game-page="salty-pirate"]) .site-footer { background: linear-gradient(180deg, rgba(2, 20, 17, .8), #000); }
+html:has(main[data-game-page="salty-pirate"]) .fc-tab { background-color: rgba(8, 20, 20, .66); border-color: rgba(150, 190, 180, .2);
+  box-shadow: var(--glass-edge), 0 18px 44px rgba(0, 0, 0, .65); }
+html:has(main[data-game-page="salty-pirate"]) .btn-gold { box-shadow: inset 0 1px 0 rgba(255, 245, 215, .6), inset 0 -2px 6px rgba(40, 28, 6, .4), 0 8px 26px rgba(0, 0, 0, .55); }
+html:has(main[data-game-page="salty-pirate"]) .btn::before { filter: saturate(.55) brightness(.62) hue-rotate(10deg); }
+html:has(main[data-game-page="salty-pirate"]) .hero::before, html:has(main[data-game-page="salty-pirate"]) .site-footer::before { filter: saturate(.3) brightness(.55); }
+html:has(main[data-game-page="salty-pirate"]) .site-footer { background: linear-gradient(180deg, rgba(6, 16, 15, .85), #020505); }
 
 /* ---- fallbacks */
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
