@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Joker, PublicPlayer, SabotageKind } from '@quizparty/protocol';
+import type { Joker, LobbySettings, PublicPlayer, SabotageKind, TeamId } from '@quizparty/protocol';
 import { Avatar } from '../ui/Avatar';
+import { TeamBadge } from '../ui/TeamBadge';
 import { Button } from '../ui/Button';
 import { PowerIcon } from '../ui/PowerIcon';
 import { Sticker } from '../ui/Sticker';
 import { useI18n } from '../lib/i18n';
 import { sfx } from '../lib/audio';
+import { teamName } from '../lib/teams';
 import {
   JOKER_ORDER,
   JOKER_STICKER,
@@ -18,10 +20,14 @@ import styles from './SabotageSheet.module.css';
 import { cx } from '../lib/cx';
 
 type Choice = NonNullable<SabotageChoice['sabotage']>;
+type Aim = { targetId: string } | { targetTeamId: TeamId };
 type Step = 'who' | 'what';
 
 interface Props {
   players: readonly PublicPlayer[];
+  /** Team play (ADR-0026): the rival teams to choose from instead of players; null in individual play. */
+  teams?: readonly TeamId[] | null;
+  settings?: Pick<LobbySettings, 'teamNames'>;
   /** The menu of this round (switched on, legal now); older servers send none = the original five. */
   kinds: readonly SabotageKind[];
   /** Cut's share and ceiling, for its one-line rule. */
@@ -44,6 +50,8 @@ interface Props {
  */
 export function SabotageSheet({
   players,
+  teams = null,
+  settings = {},
   kinds,
   cutRule,
   scoreboard,
@@ -54,11 +62,20 @@ export function SabotageSheet({
 }: Props) {
   const { t, td } = useI18n();
   const [step, setStep] = useState<Step>(current ? 'what' : 'who');
-  const [targetId, setTargetId] = useState<string | null>(current?.targetId ?? null);
+  const [aim, setAim] = useState<Aim | null>(
+    current
+      ? current.targetTeamId !== undefined
+        ? { targetTeamId: current.targetTeamId }
+        : { targetId: current.targetId }
+      : null,
+  );
+  const targetId = aim && 'targetId' in aim ? aim.targetId : null;
+  const targetTeamId = aim && 'targetTeamId' in aim ? aim.targetTeamId : null;
   const [effect, setEffect] = useState<SabotageKind | null>(current?.effect ?? null);
   const [joker, setJoker] = useState<Joker | null>(current?.joker ?? null);
   const firstRef = useRef<HTMLButtonElement>(null);
   const target = players.find((player) => player.playerId === targetId);
+  const teamTarget = targetTeamId !== null;
 
   useEffect(() => {
     firstRef.current?.focus();
@@ -74,7 +91,9 @@ export function SabotageSheet({
   const needsJoker = effect === 'LOCKOUT';
   const effectBlocked =
     effect === 'CUT' && targetId ? cutBlock(scoreboard, targetId) !== null : false;
-  const ready = Boolean(target && effect && !effectBlocked && (!needsJoker || joker));
+  const ready = Boolean(
+    (target || teamTarget) && effect && !effectBlocked && (!needsJoker || joker),
+  );
   // One line that says why the big button is still grey.
   const why = !effect
     ? t('ctl.prep.sabotage.pickEffect')
@@ -83,9 +102,9 @@ export function SabotageSheet({
       : null;
 
   const confirm = (): void => {
-    if (!ready || !targetId || !effect) return;
+    if (!ready || !aim || !effect) return;
     sfx.play('tap');
-    onConfirm({ targetId, effect, ...(needsJoker && joker ? { joker } : {}) });
+    onConfirm({ ...aim, effect, ...(needsJoker && joker ? { joker } : {}) });
   };
 
   return (
@@ -130,36 +149,65 @@ export function SabotageSheet({
 
         {step === 'who' ? (
           <div className={styles.body}>
-            <div className={styles.faces}>
-              {players.map((player, index) => (
-                <button
-                  key={player.playerId}
-                  ref={index === 0 ? firstRef : undefined}
-                  type="button"
-                  className={cx(styles.face, targetId === player.playerId && styles.faceOn)}
-                  onClick={() => {
-                    sfx.play('tap');
-                    setTargetId(player.playerId);
-                    setStep('what');
-                  }}
-                  data-testid={`sabotage-target-${player.nickname}`}
-                  data-focusable
-                >
-                  <Avatar
-                    avatarId={player.avatarId}
-                    size={76}
-                    colorSlot={player.colorSlot}
-                    dim={player.connection === 'DISCONNECTED'}
-                  />
-                  <span className={styles.faceName}>{player.nickname}</span>
-                </button>
-              ))}
-            </div>
+            {teams ? (
+              <div className={styles.faces} data-testid="sabotage-teams">
+                {teams.map((teamId, index) => (
+                  <button
+                    key={teamId}
+                    ref={index === 0 ? firstRef : undefined}
+                    type="button"
+                    className={cx(styles.face, targetTeamId === teamId && styles.faceOn)}
+                    onClick={() => {
+                      sfx.play('tap');
+                      setAim({ targetTeamId: teamId });
+                      setStep('what');
+                    }}
+                    data-testid={`sabotage-team-${teamId}`}
+                    data-focusable
+                  >
+                    <TeamBadge
+                      teamId={teamId}
+                      settings={settings}
+                      size={76}
+                      label={false}
+                      decorative
+                    />
+                    <span className={styles.faceName}>{teamName(settings, teamId, t)}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className={styles.faces}>
+                {players.map((player, index) => (
+                  <button
+                    key={player.playerId}
+                    ref={index === 0 ? firstRef : undefined}
+                    type="button"
+                    className={cx(styles.face, targetId === player.playerId && styles.faceOn)}
+                    onClick={() => {
+                      sfx.play('tap');
+                      setAim({ targetId: player.playerId });
+                      setStep('what');
+                    }}
+                    data-testid={`sabotage-target-${player.nickname}`}
+                    data-focusable
+                  >
+                    <Avatar
+                      avatarId={player.avatarId}
+                      size={76}
+                      colorSlot={player.colorSlot}
+                      dim={player.connection === 'DISCONNECTED'}
+                    />
+                    <span className={styles.faceName}>{player.nickname}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <>
             <div className={styles.body}>
-              {target ? (
+              {target || teamTarget ? (
                 <button
                   type="button"
                   className={styles.target}
@@ -167,8 +215,25 @@ export function SabotageSheet({
                   data-testid="sabotage-target-chosen"
                   data-focusable
                 >
-                  <Avatar avatarId={target.avatarId} size={40} colorSlot={target.colorSlot} />
-                  <span className={styles.targetName}>{target.nickname}</span>
+                  {teamTarget ? (
+                    <>
+                      <TeamBadge
+                        teamId={targetTeamId}
+                        settings={settings}
+                        size={40}
+                        label={false}
+                        decorative
+                      />
+                      <span className={styles.targetName}>
+                        {teamName(settings, targetTeamId, t)}
+                      </span>
+                    </>
+                  ) : target ? (
+                    <>
+                      <Avatar avatarId={target.avatarId} size={40} colorSlot={target.colorSlot} />
+                      <span className={styles.targetName}>{target.nickname}</span>
+                    </>
+                  ) : null}
                 </button>
               ) : null}
               <div

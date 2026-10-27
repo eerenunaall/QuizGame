@@ -492,6 +492,11 @@ export const YouViewSchema = z.strictObject({
    */
   sabotage: z.strictObject({ ready: z.boolean(), decided: z.boolean() }).optional(),
   /**
+   * The simple ruleset's single prep phase (ADR-0026 §3): can this player still use a Double Down, and did
+   * they already answer for it. Private to this player; present in that phase only.
+   */
+  risk: z.strictObject({ ready: z.boolean(), decided: z.boolean() }).optional(),
+  /**
    * Duel challenges aimed at this player this round (ADR-0023), private to them. `answer` is their own
    * reply (null = not yet). Absent when nobody challenged them.
    */
@@ -548,7 +553,11 @@ export const RoomViewSchema = z.strictObject({
   contentLanguage: LocaleSchema,
   maxPlayers: z.int().min(1).max(8),
   /** What the current tier allows, so the lobby can lock options instead of hiding them. */
-  limits: z.strictObject({ maxRounds: z.int().min(MIN_ROUNDS).max(MAX_ROUNDS) }),
+  limits: z.strictObject({
+    maxRounds: z.int().min(MIN_ROUNDS).max(MAX_ROUNDS),
+    /** Team play (ADR-0026 §2): the most players one team may have more than the smallest team; absent outside team play. */
+    teamImbalance: z.int().min(0).max(7).optional(),
+  }),
   settings: LobbySettingsSchema,
   displayConnected: z.boolean(),
   awaitingDisplay: z.boolean(),

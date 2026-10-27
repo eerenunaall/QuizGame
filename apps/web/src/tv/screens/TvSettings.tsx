@@ -1,5 +1,11 @@
 import { useEffect, useRef } from 'react';
-import type { CategoryCatalog, DifficultyPreset, RoomView } from '@quizparty/protocol';
+import type {
+  CategoryCatalog,
+  DifficultyPreset,
+  PlayMode,
+  RoomView,
+  Ruleset,
+} from '@quizparty/protocol';
 import { Button } from '../../ui/Button';
 import { Panel, Pill } from '../../ui/Panel';
 import { Sticker } from '../../ui/Sticker';
@@ -18,6 +24,9 @@ interface Props {
     rounds?: number;
     difficulty?: DifficultyPreset;
     categories?: 'ALL' | string[];
+    play?: PlayMode;
+    ruleset?: Ruleset;
+    teamCount?: number;
   }) => void;
   onClose: () => void;
 }
@@ -106,6 +115,47 @@ export function TvSettings({ room, catalog, onChange, onClose }: Props) {
                 onClick={() => onChange({ difficulty: preset })}
               >
                 {td(`settings.preset.${preset}`)}
+              </Pill>
+            ))}
+          </div>
+        </div>
+        {/* ADR-0026: how the table plays - alone or in teams, with the whole menu or the simple one */}
+        <div className={styles.options} data-testid="tv-play-options">
+          <div className={styles.group}>
+            <span className={styles.groupLabel}>{t('teams.mode.title')}</span>
+            {(['INDIVIDUAL', 'TEAMS'] as const).map((play) => (
+              <Pill
+                key={play}
+                selected={(room.settings.play ?? 'INDIVIDUAL') === play}
+                onClick={() => onChange({ play })}
+              >
+                {td(`teams.mode.${play}`)}
+              </Pill>
+            ))}
+          </div>
+          {room.settings.play === 'TEAMS' ? (
+            <div className={styles.group}>
+              <span className={styles.groupLabel}>{t('teams.count.title')}</span>
+              {[2, 3, 4].map((count) => (
+                <Pill
+                  key={count}
+                  selected={(room.settings.teamCount ?? 2) === count}
+                  onClick={() => onChange({ teamCount: count })}
+                >
+                  {count}
+                </Pill>
+              ))}
+            </div>
+          ) : null}
+          <div className={styles.group}>
+            <span className={styles.groupLabel}>{t('teams.ruleset.title')}</span>
+            {(['FULL', 'SIMPLE'] as const).map((ruleset) => (
+              <Pill
+                key={ruleset}
+                selected={(room.settings.ruleset ?? 'FULL') === ruleset}
+                onClick={() => onChange({ ruleset })}
+              >
+                {td(`teams.ruleset.${ruleset}`)}
               </Pill>
             ))}
           </div>

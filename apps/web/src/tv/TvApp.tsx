@@ -7,6 +7,7 @@ import { sfx } from '../lib/audio';
 import { useClient, useClientState, useRuntime } from '../lib/client-context';
 import { useI18n } from '../lib/i18n';
 import { installRemoteNavigation } from '../lib/remote-nav';
+import { teamName } from '../lib/teams';
 import { savePreferences, loadPreferences } from '../lib/storage';
 import { TvFrame } from './TvFrame';
 import { useTvSounds } from './sounds';
@@ -559,7 +560,12 @@ export function TvApp({
             <div className={styles.venueBanners}>
               {rewardWinner ? (
                 <Banner tone="success" size="tv" testId="tv-venue-reward">
-                  {t('venue.reward.tv', { name: rewardWinner.nickname })}
+                  {state.venueRewardWinner?.teamId
+                    ? t('teams.reward.tv', {
+                        team: teamName(room.settings, state.venueRewardWinner.teamId, t),
+                        name: rewardWinner.nickname,
+                      })
+                    : t('venue.reward.tv', { name: rewardWinner.nickname })}
                 </Banner>
               ) : null}
               {venueBlock ? (

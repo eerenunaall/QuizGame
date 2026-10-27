@@ -155,6 +155,32 @@
   color: var(--qp-color-accent-a);
 }
 
+/* Team play (ADR-0026): the total under the average, and the players in a compact list. */
+.teamSub {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--qp-color-muted-text);
+}
+.players {
+  margin-top: 8px;
+}
+.playersTitle {
+  margin-bottom: 6px;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--qp-color-muted-text);
+}
+.playerRow {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  margin-bottom: 6px;
+  padding: 0 20px 0 12px;
+  background: rgba(var(--qp-surface-rgb), 0.88);
+  border-radius: 999px;
+}
+
 .awards {
   margin-top: 20px;
 }

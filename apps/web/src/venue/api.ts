@@ -23,6 +23,13 @@ export interface VenueSettingsView {
     maxPerDay: number;
     rematchCooldownMinutes: number;
   };
+  /** How a table starts (ADR-0026 §7); absent from an older server. */
+  play?: {
+    defaultMode: 'INDIVIDUAL' | 'TEAMS';
+    simpleRuleset: boolean;
+    teamNames: string[];
+    simpleAnswerSeconds: number | null;
+  };
   defaultMinutes: number;
   extendSteps: number[];
   timezone: string;

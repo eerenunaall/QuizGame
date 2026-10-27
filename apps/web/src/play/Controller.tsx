@@ -3,9 +3,12 @@ import type {
   CategoryCatalog,
   DifficultyPreset,
   PhaseDataOf,
+  PlayMode,
   PublicPlayer,
   QuestionReportReason,
   RoomView,
+  Ruleset,
+  TeamId,
 } from '@quizparty/protocol';
 import type { ClientState, KeyValueStorage } from '@quizparty/controller-client';
 import { AnswerCard, type AnswerState } from '../ui/AnswerCard';
@@ -27,6 +30,10 @@ import { PeekText, PeekToggle, QuestionPeek } from './QuestionPeek';
 import { useShowQuestion } from './questionPeek';
 import { RiskScreen } from './RiskScreen';
 import { SabotageScreen } from './SabotageScreen';
+import { SimplePrepScreen } from './SimplePrepScreen';
+import { TeamPicker } from './TeamPicker';
+import { TeamBadge } from '../ui/TeamBadge';
+import { isTeamRoom, teamName, teamsCheck } from '../lib/teams';
 import { ReportControl } from './ReportControl';
 import { StatementForm } from './StatementForm';
 import {
@@ -43,6 +50,7 @@ import { PhoneReward, PhoneVenueNotice } from '../venue/PhoneVenue';
 import { cx } from '../lib/cx';
 
 const ROUND_CHOICES = [5, 10, 15, 20] as const;
+const TEAM_COUNTS = [2, 3, 4] as const;
 const DIFFICULTIES: readonly DifficultyPreset[] = ['EASY', 'MEDIUM', 'HARD'];
 
 export interface ControllerActions {
@@ -52,7 +60,12 @@ export interface ControllerActions {
     rounds?: number;
     difficulty?: DifficultyPreset;
     categories?: 'ALL' | string[];
+    play?: PlayMode;
+    ruleset?: Ruleset;
+    teamCount?: number;
   }) => void;
+  /** Team play, lobby: put yourself (no `playerId`) or, as the leader, somebody else into a team. */
+  assignTeam?: (teamId: TeamId, playerId?: string) => void;
   answer: (optionId: string) => void;
   rematch: () => void;
   backToLobby: () => void;
@@ -157,6 +170,18 @@ export function Controller({ room, state, now, catalog, busy, error, actions, st
     case 'RISK_PICK':
       // Who Said It: the author has nothing to stake on their own statement.
       if (you?.authorOfRound) return <SitOut />;
+      // The simple ruleset has one prep phase for Double Down and sabotage (ADR-0026 §3).
+      if (data.phase === 'RISK_PICK' && data.combined)
+        return (
+          <SimplePrepScreen
+            key={data.round.index}
+            room={room}
+            data={data}
+            now={now}
+            onCommitRisk={actions.commitRisk}
+            onCommitSabotage={actions.commitSabotage}
+          />
+        );
       return (
         <RiskScreen
           key={data.round.index}
@@ -292,8 +317,12 @@ function LobbyScreen({
   const statementCount =
     room.phaseData.phase === 'LOBBY' ? (room.phaseData.statementPlayerIds?.length ?? 0) : 0;
   // Who Said It needs a guesser for every statement: two are the least that makes a game.
+  const teams = isTeamRoom(room);
+  const check = teams ? teamsCheck(room) : ({ ok: true } as const);
   const enough =
-    room.players.length >= 2 && (room.settings.mode !== 'WHO_SAID_IT' || statementCount >= 2);
+    room.players.length >= 2 &&
+    (room.settings.mode !== 'WHO_SAID_IT' || statementCount >= 2) &&
+    check.ok;
   // Leader-only player management: tap a player, then "make leader" or (after a confirm tap) "remove".
   const [managedId, setManagedId] = useState<string | null>(null);
   const [confirmKick, setConfirmKick] = useState(false);
@@ -339,6 +368,14 @@ function LobbyScreen({
         <StatementForm saved={room.you?.myStatement ?? null} onSubmit={actions.submitStatement} />
       ) : null}
 
+      {teams && room.you && actions.assignTeam ? (
+        <TeamPicker
+          room={room}
+          subjectId={room.you.playerId}
+          onPick={(teamId) => actions.assignTeam?.(teamId)}
+        />
+      ) : null}
+
       {/* The leader's big button is "start" (below); everybody else's is "ready", which lives in the thumb zone. */}
       {isLeader ? readyButton : null}
 
@@ -350,6 +387,7 @@ function LobbyScreen({
               key={player.playerId}
               player={player}
               self={self}
+              room={room}
               {...(isLeader && !self
                 ? {
                     selected: managed?.playerId === player.playerId,
@@ -369,6 +407,14 @@ function LobbyScreen({
           <div className={styles.manageTitle}>
             {t('ctl.lobby.manage', { name: managed.nickname })}
           </div>
+          {teams && actions.assignTeam ? (
+            <TeamPicker
+              compact
+              room={room}
+              subjectId={managed.playerId}
+              onPick={(teamId) => actions.assignTeam?.(teamId, managed.playerId)}
+            />
+          ) : null}
           <div className={styles.manageRow}>
             <Button
               size="md"
@@ -418,6 +464,46 @@ function LobbyScreen({
 
       {isLeader ? (
         <Panel className={styles.leaderPanel} tone="glass">
+          <div className={styles.groupTitle}>{t('teams.mode.title')}</div>
+          <div className={styles.pills} data-testid="ctl-play-mode">
+            {(['INDIVIDUAL', 'TEAMS'] as const).map((play) => (
+              <Pill
+                key={play}
+                selected={(room.settings.play ?? 'INDIVIDUAL') === play}
+                onClick={() => actions.settings({ play })}
+              >
+                {td(`teams.mode.${play}`)}
+              </Pill>
+            ))}
+          </div>
+          {teams ? (
+            <>
+              <div className={styles.groupTitle}>{t('teams.count.title')}</div>
+              <div className={styles.pills} data-testid="ctl-team-count">
+                {TEAM_COUNTS.map((count) => (
+                  <Pill
+                    key={count}
+                    selected={(room.settings.teamCount ?? 2) === count}
+                    onClick={() => actions.settings({ teamCount: count })}
+                  >
+                    {count}
+                  </Pill>
+                ))}
+              </div>
+            </>
+          ) : null}
+          <div className={styles.groupTitle}>{t('teams.ruleset.title')}</div>
+          <div className={styles.pills} data-testid="ctl-ruleset">
+            {(['FULL', 'SIMPLE'] as const).map((ruleset) => (
+              <Pill
+                key={ruleset}
+                selected={(room.settings.ruleset ?? 'FULL') === ruleset}
+                onClick={() => actions.settings({ ruleset })}
+              >
+                {td(`teams.ruleset.${ruleset}`)}
+              </Pill>
+            ))}
+          </div>
           <div className={styles.groupTitle}>{t('settings.questions')}</div>
           <div className={styles.pills}>
             {ROUND_CHOICES.map((count) => (
@@ -483,10 +569,22 @@ function LobbyScreen({
             {t('ctl.lobby.start')}
           </Button>
           {!enough ? (
-            <div className={styles.need}>
-              {room.settings.mode === 'WHO_SAID_IT' && room.players.length >= 2
-                ? t('whosaidit.tv.count', { count: statementCount, total: room.players.length })
-                : t('lobby.needMore', { min: 2 })}
+            <div className={styles.need} data-testid="ctl-need">
+              {room.players.length < 2
+                ? t('lobby.needMore', { min: 2 })
+                : !check.ok
+                  ? check.reason === 'FEW'
+                    ? t('teams.balance.few')
+                    : t('teams.balance.bad', {
+                        big: teamName(room.settings, check.big, t),
+                        small: teamName(room.settings, check.small, t),
+                      })
+                  : room.settings.mode === 'WHO_SAID_IT'
+                    ? t('whosaidit.tv.count', {
+                        count: statementCount,
+                        total: room.players.length,
+                      })
+                    : t('lobby.needMore', { min: 2 })}
             </div>
           ) : null}
         </div>
@@ -500,11 +598,13 @@ function LobbyScreen({
 function PlayerChip({
   player,
   self,
+  room,
   selected,
   onSelect,
 }: {
   player: PublicPlayer;
   self: boolean;
+  room: RoomView;
   selected?: boolean;
   onSelect?: () => void;
 }) {
@@ -522,6 +622,9 @@ function PlayerChip({
         {player.nickname}
         {self ? ` · ${t('ctl.lobby.you')}` : ''}
       </span>
+      {player.teamId ? (
+        <TeamBadge teamId={player.teamId} settings={room.settings} size={26} label={false} />
+      ) : null}
       {player.ready ? <Sticker id="check" size={26} /> : null}
     </>
   );
@@ -833,8 +936,9 @@ function ScoreScreen({
   myId: string;
   room: RoomView;
 }) {
-  const { t } = useI18n();
+  const { t, td } = useI18n();
   const mine = data.deltas.find((delta) => delta.playerId === myId);
+  const myTeam = data.teamBoard?.find((row) => row.teamId === room.you?.teamId);
   const top = useMemo(
     () =>
       data.scoreboard
@@ -867,16 +971,42 @@ function ScoreScreen({
           </div>
         </>
       ) : null}
+      {myTeam ? (
+        <div className={styles.sub} data-testid="ctl-team-rank">
+          {t('teams.phone.rank', { rank: myTeam.rank })} ·{' '}
+          {t('teams.phone.average', { points: myTeam.average })}
+        </div>
+      ) : null}
       <div className={styles.mini}>
-        {top.map(({ entry, player }) => (
-          <div key={entry.playerId} className={styles.miniRow}>
-            <span className={styles.miniRank}>{entry.rank}</span>
-            <Avatar avatarId={player.avatarId} size={36} colorSlot={player.colorSlot} />
-            <span className={styles.miniName}>{player.nickname}</span>
-            <span className={styles.miniScore}>{entry.score}</span>
-          </div>
-        ))}
+        {data.teamBoard
+          ? data.teamBoard.map((row) => (
+              <div
+                key={row.teamId}
+                className={styles.miniRow}
+                data-testid={`ctl-team-row-${row.teamId}`}
+              >
+                <span className={styles.miniRank}>{row.rank}</span>
+                <TeamBadge
+                  teamId={row.teamId}
+                  settings={room.settings}
+                  size={36}
+                  label={false}
+                  decorative
+                />
+                <span className={styles.miniName}>{teamName(room.settings, row.teamId, t)}</span>
+                <span className={styles.miniScore}>{row.average}</span>
+              </div>
+            ))
+          : top.map(({ entry, player }) => (
+              <div key={entry.playerId} className={styles.miniRow}>
+                <span className={styles.miniRank}>{entry.rank}</span>
+                <Avatar avatarId={player.avatarId} size={36} colorSlot={player.colorSlot} />
+                <span className={styles.miniName}>{player.nickname}</span>
+                <span className={styles.miniScore}>{entry.score}</span>
+              </div>
+            ))}
       </div>
+      {data.teamBoard ? <div className={styles.fine}>{td('teams.rule.score')}</div> : null}
     </Center>
   );
 }
@@ -909,7 +1039,7 @@ function ResultsScreen({
   }, [mine]);
   return (
     <Center testId="ctl-results">
-      {reward ? <PhoneReward reward={reward} /> : null}
+      {reward ? <PhoneReward reward={reward} forTeam={data.teamRanking !== undefined} /> : null}
       <PhoneVenueNotice room={room} now={now} />
       <div className={styles.resultCheer}>
         {mine?.rank === 1 ? (
@@ -936,6 +1066,28 @@ function ResultsScreen({
         {t('results.points', { points: mine?.score ?? 0 })} ·{' '}
         {t('results.correct', { count: mine?.correctCount ?? 0 })}
       </div>
+      {data.teamRanking ? (
+        <div className={styles.teamResults} data-testid="ctl-team-results">
+          {data.teamRanking.map((row) => (
+            <div
+              key={row.teamId}
+              className={cx(styles.miniRow, row.teamId === me?.teamId && styles.mine)}
+              data-testid={`ctl-team-final-${row.teamId}`}
+            >
+              <span className={styles.miniRank}>{row.rank}</span>
+              <TeamBadge
+                teamId={row.teamId}
+                settings={room.settings}
+                size={36}
+                label={false}
+                decorative
+              />
+              <span className={styles.miniName}>{teamName(room.settings, row.teamId, t)}</span>
+              <span className={styles.miniScore}>{row.average}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
       {isLeader ? (
         <div className={styles.actions}>
           <Button

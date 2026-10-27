@@ -304,6 +304,35 @@ describe('the single prep phase', () => {
   });
 });
 
+describe('what each phone is told in the prep phase', () => {
+  it('says whether the Double Down is still to decide, and when it was', () => {
+    const { h, ids } = lobby(2, { ruleset: 'SIMPLE' });
+    h.start();
+    h.runUntil('RISK_PICK');
+    const risk = (id: string) => h.view({ role: 'PLAYER', playerId: id }).you!.risk;
+    expect(risk(ids[0]!)).toEqual({ ready: true, decided: false });
+    commitRisk(h, ids[0]!, false);
+    expect(risk(ids[0]!)).toEqual({ ready: true, decided: true }); // still holds one, but answered
+    expect(risk(ids[1]!)).toEqual({ ready: true, decided: false });
+    h.runUntil('QUESTION');
+    expect(risk(ids[0]!)).toBeUndefined(); // the prep phase is over
+  });
+
+  it('is nothing at all in the full ruleset', () => {
+    const { h, ids } = lobby(2);
+    h.start();
+    h.runUntil('RISK_PICK');
+    expect(h.view({ role: 'PLAYER', playerId: ids[0]! }).you!.risk).toBeUndefined();
+  });
+
+  it('carries the imbalance the host may rely on in team play only', () => {
+    const solo = lobby(3);
+    expect(solo.h.view({ role: 'DISPLAY' }).limits).toEqual({ maxRounds: 20 });
+    const teams = lobby(3, { play: 'TEAMS' }, { teams: { maxImbalance: 2 } });
+    expect(teams.h.view({ role: 'DISPLAY' }).limits).toEqual({ maxRounds: 20, teamImbalance: 2 });
+  });
+});
+
 describe('the café sabotages', () => {
   const sabotageGame = (override: unknown = {}, players = 3) => {
     const { h, ids } = lobby(
@@ -394,7 +423,7 @@ describe('the question text stays on the TV', () => {
       return event.type === 'PHASE_ENTERED' ? [{ audience: e.audience, event }] : [];
     });
 
-  it('sends phones the question without its words while it is being asked', () => {
+  it('sends phones the answer options but not the question text while it is being asked', () => {
     const { h, ids } = lobby(3, { ruleset: 'SIMPLE' });
     h.start();
     h.runUntil('QUESTION');
@@ -410,8 +439,8 @@ describe('the question text stays on the TV', () => {
     expect(display.text.length).toBeGreaterThan(0);
     expect(display.options.every((o) => o.text.length > 0)).toBe(true);
     expect(phones.text).toBe('');
-    expect(phones.options.every((o) => o.text === '')).toBe(true);
-    expect(phones.options.map((o) => o.optionId)).toEqual(display.options.map((o) => o.optionId));
+    // the answers (letter + text) stay on the phone, as in the default game
+    expect(phones.options).toEqual(display.options);
     // a phone that asks again (reconnect, REQUEST_STATE) gets the same
     const view = h.view({ role: 'PLAYER', playerId: ids[0]! }).phaseData;
     if (view.phase !== 'ANSWERING') throw new Error('phase');

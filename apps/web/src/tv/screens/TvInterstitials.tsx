@@ -142,6 +142,39 @@ export function TvRiskPick({
   deadlineAt: number | null;
 }) {
   const { t, td } = useI18n();
+  // The simple ruleset's one prep phase (ADR-0026 §3): no ladder, just the powers on offer this round.
+  if (data.combined) {
+    return (
+      <div className={cx(styles.center, styles.pickScreen)} data-testid="tv-simple-prep">
+        <div className={cx(styles.pickTitle, styles.pickRisk)} data-testid="tv-pick-title">
+          {t('tv.simple.title')}
+        </div>
+        <div className={styles.pickRule}>{t('tv.simple.rule')}</div>
+        <div className={styles.prepPills}>
+          <span className={styles.pill}>{data.category.label}</span>
+          <span className={styles.pill}>{td(`game.kind.${data.round.kind}`)}</span>
+        </div>
+        <div className={styles.badges}>
+          {data.doubleDownEnabled ? (
+            <span className={styles.badge}>
+              <Sticker id="fire" size={44} />
+              {td('joker.DOUBLE_DOWN')}
+            </span>
+          ) : null}
+          {(data.offered ?? []).map((kind) => (
+            <span key={kind} className={styles.badge} data-testid={`tv-simple-${kind}`}>
+              <PowerIcon id={SABOTAGE_STICKER[kind]} size={44} />
+              {td(`sabotage.${kind}`)}
+            </span>
+          ))}
+        </div>
+        <div className={styles.pickFoot}>
+          <PickClock now={now} startAt={startAt} deadlineAt={deadlineAt} />
+          <PickTicks done={data.committedCount} total={data.eligibleCount} />
+        </div>
+      </div>
+    );
+  }
   return (
     <div className={cx(styles.center, styles.pickScreen)} data-testid="tv-risk">
       <div className={cx(styles.pickTitle, styles.pickRisk)} data-testid="tv-pick-title">

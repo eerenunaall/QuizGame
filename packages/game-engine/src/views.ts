@@ -16,6 +16,7 @@ import {
   maxRoundsFor,
   mergedPrep,
   potRules,
+  teamRules,
 } from './config';
 import {
   activeStakeCap,
@@ -29,13 +30,14 @@ import {
   nextTokenStreak,
   pendingDuelInvites,
   potsLeft,
+  riskActionable,
   roundLadder,
   sabotageKindsOffered,
   sabotageOpen,
   sabotagePicksOf,
 } from './powers';
 import { rankPlayers } from './rank';
-import { teamStandings } from './teams';
+import { teamPlay, teamStandings } from './teams';
 import { exemptPlayerId, progressTicks } from './who-said-it';
 import type { Actor, RoomState } from './types';
 
@@ -91,19 +93,14 @@ export function structuredSettings(state: Pick<RoomState, 'settings'>): LobbySet
 }
 
 /**
- * What phones receive for `data`: in the simple ruleset the question's words (and the options' texts) stay
- * on the TV while it is on screen for answering (ADR-0026 §6), so a phone can only show letters and shapes.
+ * What phones receive for `data`: in the simple ruleset the question's words stay on the TV while it is on
+ * screen for answering (ADR-0026 §6); the options (letter + text) stay on the phone, as in the default game.
  * Returns `data` itself when nothing is held back, so callers can tell.
  */
 export function playerPhaseData(state: Pick<RoomState, 'config'>, data: PhaseData): PhaseData {
   if (state.config.ruleset !== 'SIMPLE') return data;
   if (data.phase === 'QUESTION') return { ...data, text: '' };
-  if (data.phase === 'ANSWERING')
-    return {
-      ...data,
-      text: '',
-      options: data.options.map((option) => ({ ...option, text: '' })),
-    };
+  if (data.phase === 'ANSWERING') return { ...data, text: '' };
   return data;
 }
 
@@ -502,6 +499,10 @@ export function youView(state: RoomState, playerId: string): YouView | null {
         pick)
         ? { ready: canSabotage(state, playerId), decided: pick !== null }
         : undefined,
+    risk:
+      roundIsLive && state.phase === 'RISK_PICK' && mergedPrep(state.config)
+        ? { ready: riskActionable(state, playerId), decided: commitment !== null }
+        : undefined,
     fiftyFifty:
       roundIsLive && round.fiftyFiftyUsers[playerId] && round.fiftyFifty
         ? { keep: [...round.fiftyFifty.keep] }
@@ -542,7 +543,10 @@ export function roomView(state: RoomState, viewer: Viewer, now: number): RoomVie
     tier: state.tier,
     contentLanguage: state.contentLanguage,
     maxPlayers: state.config.maxPlayers,
-    limits: { maxRounds: maxRoundsFor(state.config, state.tier) },
+    limits: {
+      maxRounds: maxRoundsFor(state.config, state.tier),
+      ...(teamPlay(state) ? { teamImbalance: teamRules(state.config).maxImbalance } : {}),
+    },
     settings: structuredSettings(state),
     displayConnected: state.display.connected,
     awaitingDisplay: state.awaitingDisplay,

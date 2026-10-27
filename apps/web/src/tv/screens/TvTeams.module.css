@@ -1,0 +1,205 @@
+/* Team play on the TV (ADR-0026). Stage px (1920 x 1080); text stays inside the 5 % safe area (x 96..1824, y 54..1026). */
+
+/* ───── lobby: one column per team ───── */
+.columns {
+  display: flex;
+  justify-content: center;
+  margin-top: 26px;
+}
+
+.column {
+  flex: none;
+  padding: 14px 14px 10px;
+  background: rgba(var(--qp-surface-rgb), 0.86);
+  border: 5px solid var(--team);
+  border-radius: 30px;
+  box-shadow: 0 8px 0 rgba(0, 0, 0, 0.3);
+  animation: qp-pop-in 480ms ease-out 1;
+}
+.column + .column {
+  margin-left: 20px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  height: 84px;
+  margin-bottom: 8px;
+}
+.headText {
+  min-width: 0;
+  margin-left: 14px;
+}
+.teamName {
+  max-width: 100%;
+  overflow: hidden;
+  font-family: var(--qp-font-display);
+  font-size: 40px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* room for the cedilla of Ş and the dot of İ, which overflow:hidden would clip */
+  padding: 0.1em 0 0.2em;
+}
+.count {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--qp-color-muted-text);
+}
+
+.member {
+  display: flex;
+  align-items: center;
+  height: 66px;
+}
+.memberName {
+  flex: 1;
+  min-width: 0;
+  margin: 0 10px 0 14px;
+  overflow: hidden;
+  font-size: 32px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0.12em 0 0.22em;
+}
+.seat {
+  opacity: 0.6;
+}
+.seatDot {
+  width: 54px;
+  height: 54px;
+  border: 4px dashed rgba(255, 255, 255, 0.28);
+  border-radius: 50%;
+}
+
+.balance {
+  margin-top: 16px;
+  font-size: 32px;
+  font-weight: 800;
+  text-align: center;
+}
+.balanceOk {
+  color: var(--qp-color-success);
+}
+.balanceBad {
+  color: var(--qp-color-warning);
+}
+.pickHint {
+  margin-top: 4px;
+  font-size: 26px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--qp-color-muted-text);
+}
+
+/* ───── score update: team standings ───── */
+.board {
+  position: absolute;
+  top: 240px;
+  left: 360px;
+  width: 1200px;
+}
+
+.boardRow {
+  display: flex;
+  align-items: center;
+  height: 150px;
+  margin-bottom: 16px;
+  padding: 0 34px 0 22px;
+  background: rgba(var(--qp-surface-rgb), 0.9);
+  border: 5px solid var(--team);
+  border-radius: 40px;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.3);
+  animation: qp-slide-up 480ms ease-out 1 both;
+  animation-delay: var(--qp-delay, 0ms);
+}
+.first {
+  background: linear-gradient(90deg, var(--qp-first-a), var(--qp-first-b));
+  box-shadow:
+    0 0 36px rgba(var(--qp-first-glow), 0.6),
+    0 6px 0 rgba(0, 0, 0, 0.3);
+}
+
+.rank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 84px;
+  font-family: var(--qp-font-display);
+  font-size: 72px;
+  color: var(--qp-color-accent-a);
+}
+
+.boardName {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  margin-left: 24px;
+}
+.boardTeam {
+  overflow: hidden;
+  font-size: 46px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0.1em 0 0.2em;
+}
+.boardMembers {
+  display: flex;
+  align-items: center;
+}
+.face {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 18px;
+}
+.gain {
+  margin-left: 6px;
+  font-family: var(--qp-font-display);
+  font-size: 26px;
+}
+.up {
+  color: var(--qp-color-success);
+}
+.down {
+  color: var(--qp-color-danger);
+}
+.flat {
+  color: var(--qp-color-muted-text);
+}
+
+.points {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 230px;
+}
+.avgLabel {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--qp-color-muted-text);
+}
+.average {
+  font-family: var(--qp-font-display);
+  font-size: 84px;
+  line-height: 1;
+  color: #fff;
+}
+.total {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--qp-color-muted-text);
+}
+
+.rule {
+  margin-top: 6px;
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--qp-color-muted-text);
+}

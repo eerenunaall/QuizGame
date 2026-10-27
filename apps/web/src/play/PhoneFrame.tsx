@@ -4,6 +4,7 @@ import { Avatar } from '../ui/Avatar';
 import { Banner } from '../ui/Banner';
 import { Sticker } from '../ui/Sticker';
 import { useI18n } from '../lib/i18n';
+import { teamColor, teamName } from '../lib/teams';
 import styles from './PhoneFrame.module.css';
 
 interface Props {
@@ -43,7 +44,18 @@ export function PhoneFrame({ room, reconnecting, tvLost, restored, children }: P
               <span className={styles.name} data-testid="phone-name">
                 {me.nickname}
               </span>
-              <span className={styles.room}>{room?.code}</span>
+              <span className={styles.room}>
+                {room?.code}
+                {room?.you?.teamId ? (
+                  <span
+                    className={styles.team}
+                    style={{ ['--team' as string]: teamColor(room.you.teamId) }}
+                    data-testid="phone-team"
+                  >
+                    {teamName(room.settings, room.you.teamId, t)}
+                  </span>
+                ) : null}
+              </span>
             </div>
             {entry ? (
               <div className={styles.score} data-testid="phone-score">

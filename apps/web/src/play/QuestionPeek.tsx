@@ -76,14 +76,16 @@ interface PeekProps extends ToggleProps {
 
 /** Hint + toggle row + (optionally) the revealed text, as one block. */
 export function QuestionPeek({ text, shown, onToggle, tools, big }: PeekProps) {
+  // The simple ruleset sends phones no question text (ADR-0026 §6): there is nothing to peek at.
+  const hasText = text !== '';
   return (
     <div className={cx(styles.peek, big && styles.peekBig)}>
       <TvHint {...(big ? { big } : {})} />
       <div className={styles.tools}>
         {tools}
-        <PeekToggle shown={shown} onToggle={onToggle} />
+        {hasText ? <PeekToggle shown={shown} onToggle={onToggle} /> : null}
       </div>
-      {shown ? <PeekText text={text} /> : null}
+      {shown && hasText ? <PeekText text={text} /> : null}
     </div>
   );
 }

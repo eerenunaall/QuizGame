@@ -9,13 +9,17 @@ import styles from './PhoneVenue.module.css';
  */
 export function PhoneReward({
   reward,
+  forTeam = false,
 }: {
   reward: { code: string; text: string; expiresAt: number };
+  /** Team play (ADR-0026 §8): this phone holds the one code of the winning team. */
+  forTeam?: boolean;
 }) {
   const { t } = useI18n();
   return (
     <div className={styles.reward} data-testid="ctl-venue-reward" role="status">
       <div className={styles.rewardTitle}>{t('venue.reward.title')}</div>
+      {forTeam ? <div className={styles.hint}>{t('teams.reward.phone')}</div> : null}
       <div className={styles.rewardText}>{reward.text}</div>
       <div
         className={styles.code}

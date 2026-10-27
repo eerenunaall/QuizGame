@@ -1,5 +1,10 @@
 import { useEffect, useRef } from 'react';
-import type { PhaseDataOf, PublicPlayer, RoomView } from '@quizparty/protocol';
+import {
+  teamColorSlot,
+  type PhaseDataOf,
+  type PublicPlayer,
+  type RoomView,
+} from '@quizparty/protocol';
 import { Avatar } from '../../ui/Avatar';
 import { Button } from '../../ui/Button';
 import { CountUp } from '../../ui/CountUp';
@@ -7,6 +12,7 @@ import { Mascot } from '../../ui/Mascot';
 import { AnimatedSticker, Sticker } from '../../ui/Sticker';
 import { cannons, shower } from '../../lib/confetti';
 import { useI18n } from '../../lib/i18n';
+import { teamName } from '../../lib/teams';
 import styles from './TvResults.module.css';
 import { cx } from '../../lib/cx';
 
@@ -35,12 +41,27 @@ export function TvResults({ room, data, onRematch, onLobby, onEnd, busy }: Props
   const players = new Map<string, PublicPlayer>(
     room.players.map((player) => [player.playerId, player]),
   );
-  const ranked = data.ranking
+  const individuals = data.ranking
     .map((entry) => ({ entry, player: players.get(entry.playerId) }))
     .filter((row): row is typeof row & { player: PublicPlayer } => row.player !== undefined);
+  // Team play (ADR-0026 §4): the podium is for the teams, in the same shapes as players so one layout serves
+  // both; the points on it are the averages. The players move to the list on the right.
+  const teamMode = data.teamRanking !== undefined && data.teamRanking.length > 0;
+  const teamRows = (data.teamRanking ?? []).map((row) => ({
+    entry: { ...row, playerId: `team-${row.teamId}`, score: row.average },
+    player: {
+      playerId: `team-${row.teamId}`,
+      avatarId: row.teamId,
+      nickname: teamName(room.settings, row.teamId, t),
+      colorSlot: teamColorSlot(row.teamId),
+    },
+    total: row.total,
+  }));
+  const ranked = teamMode ? teamRows : individuals;
   const podium = ranked.filter((row) => row.entry.rank <= 3);
   const rest = ranked.filter((row) => row.entry.rank > 3);
   const order = [2, 1, 3]; // silver, gold, bronze on screen
+  const winners = teamRows.filter((row) => row.entry.rank === 1);
 
   useEffect(() => {
     const stop = (() => {
@@ -53,7 +74,11 @@ export function TvResults({ room, data, onRematch, onLobby, onEnd, busy }: Props
 
   return (
     <div className={styles.screen} data-testid="tv-results">
-      <h1 className={styles.title}>{t('results.title')}</h1>
+      <h1 className={styles.title}>
+        {teamMode && winners.length === 1
+          ? t('teams.results.winner', { team: winners[0]!.player.nickname })
+          : t('results.title')}
+      </h1>
 
       <div className={styles.podium}>
         {order.map((place) => {
@@ -79,6 +104,14 @@ export function TvResults({ room, data, onRematch, onLobby, onEnd, busy }: Props
                 </div>
                 <div className={styles.name}>{player.nickname}</div>
                 <CountUp className={styles.score} value={entry.score} from={0} durationMs={1600} />
+                {teamMode ? (
+                  <div className={styles.teamSub}>
+                    {td('teams.total', {
+                      points:
+                        teamRows.find((row) => row.player.playerId === player.playerId)?.total ?? 0,
+                    })}
+                  </div>
+                ) : null}
               </div>
               <div className={styles.block}>
                 <Sticker
@@ -106,6 +139,20 @@ export function TvResults({ room, data, onRematch, onLobby, onEnd, busy }: Props
           </div>
         ) : null}
 
+        {teamMode ? (
+          <div className={styles.players} data-testid="tv-results-players">
+            <div className={styles.playersTitle}>{t('teams.results.players')}</div>
+            {individuals.map(({ entry, player }) => (
+              <div key={player.playerId} className={styles.playerRow}>
+                <span className={styles.restRank}>{entry.rank}</span>
+                <Avatar avatarId={player.avatarId} size={40} colorSlot={player.colorSlot} />
+                <span className={styles.restName}>{player.nickname}</span>
+                <span className={styles.restScore}>{entry.score}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
         {data.awards.length > 0 ? (
           <div className={styles.awards}>
             {data.awards.map((award) => {
@@ -123,9 +170,11 @@ export function TvResults({ room, data, onRematch, onLobby, onEnd, busy }: Props
         ) : null}
       </div>
 
-      <div className={styles.mascot} data-testid="tv-results-mascot">
-        <Mascot height={190} mood="cheer" />
-      </div>
+      {teamMode ? null : (
+        <div className={styles.mascot} data-testid="tv-results-mascot">
+          <Mascot height={190} mood="cheer" />
+        </div>
+      )}
 
       <div className={styles.actions}>
         <Button

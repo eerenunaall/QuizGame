@@ -4,9 +4,12 @@ import type {
   PublicOption,
   PublicPlayer,
   RiskTier,
+  RoomView,
   SabotageKind,
+  TeamId,
   YouView,
 } from '@quizparty/protocol';
+import { TEAM_IDS } from '@quizparty/protocol';
 
 /**
  * Pure view rules for the prep screen and the answer screen, shared by the browser controller and the
@@ -25,8 +28,13 @@ export interface RiskChoice {
 
 /** What the phone sends for SABOTAGE_PICK: at most one sabotage; null confirms "none". Final once sent. */
 export interface SabotageChoice {
-  sabotage: { targetId: string; effect: SabotageKind; joker?: Joker } | null;
+  sabotage: SabotagePick | null;
 }
+
+/** One sabotage: aimed at a player (individual play) or at a rival team (team play, ADR-0026). */
+export type SabotagePick = { effect: SabotageKind; joker?: Joker } & (
+  { targetId: string; targetTeamId?: undefined } | { targetTeamId: TeamId; targetId?: undefined }
+);
 
 export const SABOTAGE_ORDER: readonly SabotageKind[] = [
   'JAM',
@@ -235,9 +243,45 @@ export function acceptBlock(
   return null;
 }
 
-/** The sabotages on the menu this round (older servers send none: the five original ones). */
-export function sabotageKinds(data: PhaseDataOf<'SABOTAGE_PICK'> | null): readonly SabotageKind[] {
+/**
+ * The sabotages on the menu this round (older servers send none: the five original ones). The simple
+ * ruleset's single prep phase carries the menu on RISK_PICK itself.
+ */
+export function sabotageKinds(
+  data: PhaseDataOf<'SABOTAGE_PICK'> | PhaseDataOf<'RISK_PICK'> | null,
+): readonly SabotageKind[] {
   return data?.offered ?? ORIGINAL_SABOTAGES;
+}
+
+// ───────────────────────── ADR-0026: teams and the simple ruleset
+
+/** Whether the running game is played in teams (by the room's mode, or by the standings once they exist). */
+export function isTeamGame(room: Pick<RoomView, 'game' | 'settings'>): boolean {
+  // The standings only arrive with the first score update, but prep comes before it: the room's mode counts too.
+  return room.game?.teamBoard !== undefined || room.settings.play === 'TEAMS';
+}
+
+/** The teams in the running game other than the player's own, in slot order: what a sabotage may aim at. */
+export function rivalTeams(room: Pick<RoomView, 'players' | 'you'>): TeamId[] {
+  const own = room.you?.teamId;
+  const present = new Set(room.players.map((player) => player.teamId));
+  return TEAM_IDS.filter((id) => id !== own && present.has(id));
+}
+
+/** What this player still has to decide in the simple ruleset's prep phase (the server's own verdict). */
+export function prepNeeds(you: YouView | null): { risk: boolean; sabotage: boolean } {
+  return {
+    risk: you?.risk?.ready === true && !you.risk.decided,
+    sabotage: you?.sabotage?.ready === true && !you.sabotage.decided,
+  };
+}
+
+/** Whether the prep phase has anything for this player at all (something to decide, or already decided). */
+export function prepHasWork(you: YouView | null): boolean {
+  const needs = prepNeeds(you);
+  return (
+    needs.risk || needs.sabotage || you?.risk?.decided === true || you?.sabotage?.decided === true
+  );
 }
 
 /** Why CUT cannot aim at `targetId`: they lead the table, or have no points to take from. */
