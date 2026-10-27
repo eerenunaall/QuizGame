@@ -575,3 +575,13 @@ html:has(main[data-game-page="salty-pirate"]) .site-footer { background: linear-
 }
 @media (prefers-reduced-motion: reduce) { body::before, body::after, .hero::before { animation: none !important; } }
 @media print { body::before, body::after, .btn::before, .hero::before, .site-footer::before { display: none; } }
+
+/* Salty Pirate, the strange weather: relics sink slowly through the rain while ghost lights drift up from the deep.
+   Two fixed layers on <main>, vertical-only loops, pointer-events off. */
+main[data-game-page="salty-pirate"]::before, main[data-game-page="salty-pirate"]::after { content: ""; position: fixed; inset: 0; z-index: 2; pointer-events: none; }
+main[data-game-page="salty-pirate"]::before { opacity: .3; background: url("img/strange-fall.svg") 0 0 / 420px 420px; animation: sink 26s linear infinite; }
+main[data-game-page="salty-pirate"]::after { opacity: .4; background: url("img/strange-rise.svg") 0 0 / 520px 520px; animation: float-up 38s linear infinite; }
+@keyframes sink { to { background-position: 52px 420px; } }
+@keyframes float-up { to { background-position: -30px -520px; } }
+@media (prefers-reduced-motion: reduce) { main[data-game-page="salty-pirate"]::before, main[data-game-page="salty-pirate"]::after { animation: none !important; opacity: .15; } }
+@media print { main[data-game-page="salty-pirate"]::before, main[data-game-page="salty-pirate"]::after { display: none; } }
