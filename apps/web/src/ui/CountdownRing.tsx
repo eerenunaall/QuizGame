@@ -65,7 +65,7 @@ export function CountdownRing({
   return (
     <div
       ref={rootRef}
-      className={styles.ring}
+      className={`${styles.ring} qp-deco`}
       style={{ width: size, height: size }}
       role="timer"
       aria-live="off"

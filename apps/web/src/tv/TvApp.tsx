@@ -111,7 +111,7 @@ export function TvApp({
 
   // Preferences → synthesised sound volume.
   useEffect(() => {
-    sfx.configure({ volume: prefs.volume, muted: prefs.muted });
+    sfx.configure({ volume: prefs.volume, muted: prefs.muted, profile: 'tv' });
   }, [prefs]);
 
   // Resume a stored display session (page reload, TV wake-up).
@@ -386,7 +386,7 @@ export function TvApp({
             <TvCountdown
               now={now}
               deadlineAt={room.phaseDeadlineAt ?? now()}
-              onNumber={(n) => sfx.play(n > 0 ? 'countdown' : 'go')}
+              onNumber={(n) => sfx.play(n > 0 ? 'countdown' : 'go', { step: n })}
             />
           </TvFrame>
         );
@@ -455,7 +455,7 @@ export function TvApp({
                 startAt: data.answerOpensAt,
                 deadlineAt: data.answerDeadlineAt,
                 onSecond: (seconds) => {
-                  if (seconds > 0) sfx.play(seconds <= 3 ? 'tickUrgent' : 'tick');
+                  if (seconds > 0) sfx.countdownTick(seconds);
                 },
               }}
               status={{
@@ -575,7 +575,10 @@ export function TvApp({
               room={room}
               data={data}
               busy={rematching}
-              onRematch={() => void hostCommand(() => client.rematch())}
+              onRematch={() => {
+                sfx.play('rematch');
+                void hostCommand(() => client.rematch());
+              }}
               onLobby={() => void hostCommand(() => client.backToLobby())}
               onEnd={() => void hostCommand(() => client.endRoom())}
             />

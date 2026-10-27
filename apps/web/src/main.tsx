@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import '@quizparty/ui-tokens/tokens.css';
 import './styles/fonts.css';
 import './styles/global.css';
+import './styles/motion.css';
 import { App } from './App';
 import { detectDevice, installDocumentFlags } from './lib/device';
 import { createStorage } from './lib/storage';

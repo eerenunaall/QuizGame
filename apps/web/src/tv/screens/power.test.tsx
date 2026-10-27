@@ -5,7 +5,7 @@ import { player, roomView, ROUND } from '@quizparty/controller-client/fixtures';
 import { sfx } from '../../lib/audio';
 import { I18nProvider } from '../../lib/i18n';
 import { TvRiskPick, TvSabotagePick } from './TvInterstitials';
-import { TvPowerResolution, itemDelay } from './TvPower';
+import { TvPowerResolution, itemDelay, powerSound } from './TvPower';
 
 afterEach(() => {
   cleanup();
@@ -150,13 +150,30 @@ describe('TvPowerResolution', () => {
     wrap(<TvPowerResolution room={room} data={data} />);
     expect(play).not.toHaveBeenCalled();
     act(() => void vi.advanceTimersByTime(itemDelay(data.items.length - 1) + 5));
+    // each lifeline and each sabotage kind has its own cue; a blocked one is the shield
     expect(play.mock.calls.map(([name]) => name)).toEqual([
       'power',
-      'power',
-      'power',
-      'sabotage',
+      'doubleDown',
+      'fifty',
+      'hitFog',
       'shield',
     ]);
+  });
+
+  it('gives a Cut its own hit cue and unlisted moves the generic power cue', () => {
+    expect(powerSound({ kind: 'CUT', actorId: 'p0', targetId: 'p1', points: 100 })).toBe('hitCut');
+    expect(
+      powerSound({ kind: 'COVER', playerId: 'p0', outcome: 'CORRECT', fee: 50, saved: 0 }),
+    ).toBe('power');
+    expect(
+      powerSound({
+        kind: 'SABOTAGE',
+        actorId: 'p0',
+        targetId: 'p1',
+        effect: 'POINT_TAX',
+        blocked: false,
+      }),
+    ).toBe('hitTax');
   });
 
   beforeEach(() => {

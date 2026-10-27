@@ -45,7 +45,7 @@ export function AnswerCard({
     styles[tone],
     styles[size],
     styles[state],
-    (state === 'selected' || state === 'correct') && 'qp-deco',
+    (state === 'selected' || state === 'correct' || state === 'locked') && 'qp-deco',
   );
   const body = (
     <>

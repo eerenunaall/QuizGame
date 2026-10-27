@@ -29,6 +29,17 @@ the bank loader no longer re-activates questions a moderator pulled, origins are
 malformed admin imports answer 422. Open design notes: reward expiry at venue midnight, one person with several phones,
 server downtime is billed to the table, join/leave churn growth, OTP lockout by a stranger (ADR-0012 trade-off).
 
+## Show pass: sound and motion (docs/AUDIO.md)
+Original, generated sound palette (one key, one timbre family, shared limiter and room, TV and phone ceilings,
+lobby ambience, staged reveal / podium scores, a hit cue per sabotage kind; no audio files, nothing to license)
+and a choreographed motion layer (staged reveal with drum roll, streak flames + combo toasts, last-seconds
+urgency with phone vibration, score bars with overtake glow, staged podium, hit impact, phase sweep, avatar
+arrival). `pnpm audio:render` renders and measures the palette offline in Chromium. Found on the way: CSS
+modules renamed every shared `qp-*` keyframe reference to a hashed name, so no shared animation ever ran;
+fixed in `apps/web/css-scope.ts` with a guard test. Tests: `lib/sound/sound.test.ts`, `lib/audio.test.ts`,
+`ui/anim/anim.test.tsx`, `lib/css-scope.test.ts`, e2e `show.spec.ts`. Not done: a listening pass on a real TV in
+a loud room (the palette is measured, not heard), real-device haptics.
+
 ## Studio site (`sites/archonbite/`)
 Static, build-free, bilingual site for archonbite.com: Steam-style store pages for QuizNight and Salty Pirate (the latter is a
 placeholder driven by `data/games.json`, see `OWNER-FILL.md`), `/play/` (links to `PLAY_URL`, never an iframe), `/guide/`, legal

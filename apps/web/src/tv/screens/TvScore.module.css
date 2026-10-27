@@ -27,6 +27,8 @@
 }
 
 .row {
+  position: relative;
+  isolation: isolate; /* the score bar sits behind the row's content, above its background */
   display: flex;
   align-items: center;
   padding: 0 34px 0 22px;

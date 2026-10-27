@@ -17,9 +17,23 @@ interface Props {
   pulseKey?: string | number;
   /** `data-player` hook for tests and the FLIP list. */
   playerId?: string;
+  /** Pop in with a spring and a halo (a player arriving in the lobby). */
+  arrive?: boolean;
+  /** Stagger for several arrivals at once (ms). */
+  arriveDelayMs?: number;
 }
 
-export function Avatar({ avatarId, size = 96, colorSlot, leader, dim, pulseKey, playerId }: Props) {
+export function Avatar({
+  avatarId,
+  size = 96,
+  colorSlot,
+  leader,
+  dim,
+  pulseKey,
+  playerId,
+  arrive,
+  arriveDelayMs = 0,
+}: Props) {
   const ring = leader
     ? 'var(--qp-color-accent-a)'
     : colorSlot
@@ -27,15 +41,17 @@ export function Avatar({ avatarId, size = 96, colorSlot, leader, dim, pulseKey, 
       : 'var(--qp-color-surface-line)';
   return (
     <div
-      className={cx(styles.avatar, dim && styles.dim)}
+      className={cx(styles.avatar, dim && styles.dim, arrive && styles.arrive, arrive && 'qp-deco')}
       style={{
         width: size,
         height: size,
         ['--ring' as string]: ring,
         ['--ring-w' as string]: `${Math.max(3, Math.round(size * 0.05))}px`,
+        ...(arrive ? { ['--qp-arrive-delay' as string]: `${arriveDelayMs}ms` } : {}),
       }}
       data-player={playerId}
     >
+      {arrive ? <span className={styles.halo} aria-hidden="true" /> : null}
       {leader ? (
         <Sticker id="crown" size={Math.round(size * 0.46)} className={styles.crown} />
       ) : null}

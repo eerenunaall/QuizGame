@@ -147,6 +147,8 @@ export const en: Record<MessageKey, string> = {
   'ctl.reveal.correct': 'Correct!',
   'ctl.reveal.incorrect': 'Wrong',
   'ctl.reveal.noAnswer': 'No answer',
+  'ctl.combo': '{n} IN A ROW!',
+  'streak.label': '{n} correct in a row',
   'ctl.score.delta': '{delta} pts',
   'ctl.score.rank': 'You are #{rank}',
   'ctl.score.total': 'Total {total}',
@@ -289,6 +291,9 @@ export const en: Record<MessageKey, string> = {
   'closed.SUPERSEDED': 'This room was opened on another screen.',
   'credits.title': 'Credits',
   'credits.fonts': 'Fonts',
+  'credits.sound': 'Sound and music',
+  'credits.sound.note':
+    'Original: every sound effect and the lobby music are synthesised in your browser by the game itself. No recordings or third-party audio are used.',
   'avatar.octopus': 'Octopus',
   'avatar.alien': 'Alien',
   'avatar.ghost': 'Ghost',

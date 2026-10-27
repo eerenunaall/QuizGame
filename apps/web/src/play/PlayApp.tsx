@@ -76,6 +76,11 @@ export function PlayApp({ code }: { code: string }) {
     errorTimer.current = window.setTimeout(() => setError(null), 4000);
   }, []);
 
+  // A phone is held close to the ear and several share a room: it plays at a lower ceiling than the TV.
+  useEffect(() => {
+    sfx.configure({ profile: 'phone' });
+  }, []);
+
   // Profile from the last time on this device.
   useEffect(() => {
     void Promise.resolve(storage.get(PROFILE_KEY)).then((raw) => {

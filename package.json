@@ -29,6 +29,7 @@
     "assets:build": "pnpm --filter @quizparty/scripts run assets:build",
     "assets:brand": "pnpm --filter @quizparty/scripts run assets:brand",
     "assets:category-icons": "pnpm --filter @quizparty/scripts run assets:category-icons",
+    "audio:render": "pnpm --filter @quizparty/scripts run audio:render --",
     "build:web": "pnpm --filter @quizparty/web run build",
     "build:admin": "pnpm --filter @quizparty/admin run build",
     "playtest": "pnpm --filter @quizparty/scripts run playtest",

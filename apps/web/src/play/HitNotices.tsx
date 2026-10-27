@@ -1,5 +1,6 @@
 import type { YouView } from '@quizparty/protocol';
 import { PowerIcon } from '../ui/PowerIcon';
+import { HitImpact } from '../ui/anim/HitImpact';
 import { useI18n } from '../lib/i18n';
 import { SABOTAGE_STICKER, jamSeconds } from './powers';
 import styles from './HitNotices.module.css';
@@ -12,6 +13,7 @@ export function HitNotices({ you }: { you: YouView | null }) {
   const effects = you.effects;
   return (
     <div className={styles.list} data-testid="hit-notices">
+      <HitImpact hits={you.hits} />
       {you.hits.map((hit, index) => {
         const softened =
           !hit.blocked &&

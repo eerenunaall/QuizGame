@@ -31,6 +31,10 @@ export function CreditsPage() {
         <h2>{t('credits.fonts')}</h2>
         <p>Baloo 2, Paytone One · SIL Open Font License 1.1</p>
       </section>
+      <section className={styles.block}>
+        <h2>{t('credits.sound')}</h2>
+        <p>{t('credits.sound.note')}</p>
+      </section>
       <p>
         <Link to="/">{t('common.back')}</Link>
       </p>

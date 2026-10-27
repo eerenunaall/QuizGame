@@ -3,10 +3,12 @@ import type { PhaseDataOf, RoomView } from '@quizparty/protocol';
 import { Avatar } from '../../ui/Avatar';
 import { CountUp } from '../../ui/CountUp';
 import { Sticker } from '../../ui/Sticker';
+import { ScoreBar, barFraction } from '../../ui/anim/ScoreBar';
 import { useFlip } from '../../lib/motion';
 import { useI18n } from '../../lib/i18n';
 import styles from './TvScore.module.css';
 import { cx } from '../../lib/cx';
+import { playerColor } from '@quizparty/ui-tokens';
 
 type ScoreData = PhaseDataOf<'SCORE_UPDATE'>;
 type Delta = ScoreData['deltas'][number];
@@ -71,6 +73,7 @@ export function TvScoreUpdate({
   useFlip(listRef, `${settled}:${rows.map((row) => row.delta.playerId).join(',')}`);
 
   const height = rowHeightFor(rows.length);
+  const top = Math.max(0, ...rows.map((row) => row.delta.total));
 
   return (
     <div className={styles.screen} data-testid="tv-score">
@@ -80,11 +83,13 @@ export function TvScoreUpdate({
           const rank = settled ? delta.rank : delta.previousRank;
           const gain = delta.delta;
           const crowned = isCrowned(delta, settled);
+          // moved up the board with this question: a glow and a chevron once the rows settle
+          const climbed = settled && delta.rank < delta.previousRank;
           return (
             <div
               key={delta.playerId}
               data-flip-key={delta.playerId}
-              className={cx(styles.row, crowned && styles.first)}
+              className={cx(styles.row, crowned && styles.first, climbed && 'qp-climb')}
               style={{
                 height,
                 marginBottom: ROW_GAP,
@@ -94,6 +99,13 @@ export function TvScoreUpdate({
               data-testid={`score-row-${player.nickname}`}
               data-rank={rank}
             >
+              <ScoreBar
+                from={barFraction(delta.total - gain, top)}
+                to={barFraction(delta.total, top)}
+                delayMs={index * 70 + 250}
+                leader={crowned}
+                color={!crowned && player.colorSlot ? playerColor(player.colorSlot) : undefined}
+              />
               <span className={styles.rank}>
                 {crowned ? <Sticker id="crown" size={Math.round(height * 0.64)} /> : rank}
               </span>

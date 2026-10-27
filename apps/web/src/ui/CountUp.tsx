@@ -6,6 +6,8 @@ interface Props {
   durationMs?: number;
   /** Start from this value on first render (default: show `value` immediately). */
   from?: number;
+  /** Wait this long before gliding (the podium: each step counts up when it lands). */
+  delayMs?: number;
   format?: (value: number) => string;
   className?: string;
 }
@@ -13,7 +15,14 @@ interface Props {
 const plain = (value: number): string => String(Math.round(value));
 
 /** A number that glides to its new value. Writes the DOM directly: no re-render per frame. */
-export function CountUp({ value, durationMs = 900, from, format = plain, className }: Props) {
+export function CountUp({
+  value,
+  durationMs = 900,
+  from,
+  delayMs = 0,
+  format = plain,
+  className,
+}: Props) {
   const ref = useRef<HTMLSpanElement>(null);
   const shown = useRef(from ?? value);
   useEffect(() => {
@@ -28,7 +37,11 @@ export function CountUp({ value, durationMs = 900, from, format = plain, classNa
     let frame = 0;
     let begin = 0;
     const tick = (now: number): void => {
-      if (begin === 0) begin = now;
+      if (begin === 0) begin = now + delayMs;
+      if (now < begin) {
+        frame = window.requestAnimationFrame(tick);
+        return;
+      }
       const t = easeOutCubic((now - begin) / durationMs);
       shown.current = start + (value - start) * t;
       element.textContent = format(shown.current);
@@ -40,7 +53,7 @@ export function CountUp({ value, durationMs = 900, from, format = plain, classNa
     };
     frame = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(frame);
-  }, [value, durationMs, format]);
+  }, [value, durationMs, delayMs, format]);
   return (
     <span ref={ref} className={className}>
       {format(shown.current)}
