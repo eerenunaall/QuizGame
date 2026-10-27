@@ -18,7 +18,7 @@ window.ARCHONBITE_CONFIG = {
   /* TODO-OWNER: set to false until quiz.archonbite.com is really online. The Play page then shows
      "coming soon" instead of a button that leads nowhere.
      TODO-OWNER: oyun sunucusu gerçekten yayına girene kadar false yapın. */
-  PLAY_LIVE: true,
+  PLAY_LIVE: false,
 
   /* TODO-OWNER: a real mailbox you read. This is a PLACEHOLDER address; it feeds the venue block,
      the footer and the legal page. / Gerçek bir e-posta adresi yazın; şu an yer tutucu. */
