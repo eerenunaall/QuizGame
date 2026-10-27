@@ -10,6 +10,7 @@ import type {
   QuestionReportReason,
   RoomPreview,
   ServerMessage,
+  TeamId,
 } from '@quizparty/protocol';
 import { applyServerMessage } from './apply';
 import { ClockSync } from './clock';
@@ -463,6 +464,7 @@ export class GameClient {
       case 'PLAYER_STATUS':
       case 'LEADER_CHANGED':
       case 'SETTINGS_CHANGED':
+      case 'TEAM_CHANGED':
       case 'NICKNAME_CHANGED':
       case 'PHASE_ENTERED':
       case 'ANSWER_LOCKED':
@@ -793,6 +795,10 @@ export class GameClient {
   }
   transferLeader(playerId: string): Promise<void> {
     return this.request('TRANSFER_LEADER', { playerId });
+  }
+  /** Team play (ADR-0026): join a team yourself, or (host only) put `playerId` into one. */
+  assignTeam(teamId: TeamId, playerId?: string): Promise<void> {
+    return this.request('ASSIGN_TEAM', playerId === undefined ? { teamId } : { teamId, playerId });
   }
   requestState(): void {
     this.sendFrame('REQUEST_STATE', {});

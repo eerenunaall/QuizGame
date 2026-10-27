@@ -1,10 +1,27 @@
-import type { PhaseData, PublicPlayer, RoomView, ServerMessage } from '@quizparty/protocol';
+import type { PhaseData, PublicPlayer, RoomView, ServerMessage, TeamId } from '@quizparty/protocol';
 import type { ClientState } from './types';
 
 const byJoinOrder = (a: PublicPlayer, b: PublicPlayer): number => a.joinIndex - b.joinIndex;
 
+function withTeam(
+  you: NonNullable<RoomView['you']>,
+  teamId: TeamId | null,
+): NonNullable<RoomView['you']> {
+  const { teamId: _previous, ...rest } = you;
+  return teamId === null ? rest : { ...rest, teamId };
+}
+
 function withRoom(state: ClientState, change: (room: RoomView) => RoomView): ClientState {
   return state.room ? { ...state, room: change(state.room) } : state;
+}
+
+/** Team play (ADR-0026): the standings follow each score update; between them the last ones stand. */
+function teamBoardOf(
+  room: RoomView,
+  data: PhaseData,
+): Pick<NonNullable<RoomView['game']>, 'teamBoard'> {
+  const board = data.phase === 'SCORE_UPDATE' ? data.teamBoard : room.game?.teamBoard;
+  return board ? { teamBoard: board } : {};
 }
 
 function updateGame(room: RoomView, data: PhaseData): RoomView['game'] {
@@ -16,6 +33,7 @@ function updateGame(room: RoomView, data: PhaseData): RoomView['game'] {
     totalRounds: total,
     roundIndex,
     scoreboard: data.phase === 'SCORE_UPDATE' ? data.scoreboard : (room.game?.scoreboard ?? []),
+    ...teamBoardOf(room, data),
   };
 }
 
@@ -114,6 +132,22 @@ export function applyServerMessage(
           : room.you,
       }));
 
+    case 'TEAM_CHANGED':
+      return withRoom(state, (room) => ({
+        ...room,
+        players: room.players.map((p) => {
+          if (p.playerId !== message.payload.playerId) return p;
+          const { teamId: _previous, ...rest } = p;
+          return message.payload.teamId === null
+            ? rest
+            : { ...rest, teamId: message.payload.teamId };
+        }),
+        you:
+          room.you && room.you.playerId === message.payload.playerId
+            ? withTeam(room.you, message.payload.teamId)
+            : room.you,
+      }));
+
     case 'NICKNAME_CHANGED':
       return withRoom(state, (room) => ({
         ...room,
@@ -155,7 +189,13 @@ export function applyServerMessage(
       return { ...state, venueReward: message.payload };
 
     case 'VENUE_REWARD_ISSUED':
-      return { ...state, venueRewardWinner: { playerId: message.payload.playerId } };
+      return {
+        ...state,
+        venueRewardWinner: {
+          playerId: message.payload.playerId,
+          ...(message.payload.teamId !== undefined ? { teamId: message.payload.teamId } : {}),
+        },
+      };
 
     case 'PREP_PROGRESS':
       return withRoom(state, (room) => {

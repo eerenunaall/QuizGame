@@ -98,6 +98,7 @@ const LOBBY_COMMANDS: ReadonlySet<string> = new Set([
   'SET_NICKNAME',
   'SET_SETTINGS',
   'TRANSFER_LEADER',
+  'ASSIGN_TEAM',
 ]);
 
 export class Gateway {

@@ -12,6 +12,37 @@ export const MAX_STATEMENT_LENGTH = 140;
 export const MIN_ROUNDS = 3;
 export const MAX_ROUNDS = 20;
 
+/** How a room plays (ADR-0026): everyone for themselves, or in teams the host chose the number of. */
+export const PLAY_MODES = ['INDIVIDUAL', 'TEAMS'] as const;
+export type PlayMode = (typeof PLAY_MODES)[number];
+
+/** Which powers are in the game: the whole menu, or the café set (ADR-0026 §3). */
+export const RULESETS = ['FULL', 'SIMPLE'] as const;
+export type Ruleset = (typeof RULESETS)[number];
+
+/**
+ * Team slots (ADR-0026). Fixed by us, never typed by players: the slot fixes the icon (an avatar id, so
+ * the existing artwork is the badge), the colour (`--qp-color-player-<slot>`) and the default name
+ * (`team.<id>` in the i18n catalog). A venue may rename a slot (`LobbySettings.teamNames`), nothing else.
+ */
+export const TEAM_IDS = [
+  'tiger',
+  'owl',
+  'fox',
+  'lion',
+  'bear',
+  'dragon',
+  'whale',
+  'penguin',
+] as const;
+export type TeamId = (typeof TEAM_IDS)[number];
+export const MIN_TEAMS = 2;
+export const MAX_TEAMS = 4;
+export const MAX_TEAM_NAME_LENGTH = 20;
+
+/** 1-based colour slot of a team (its position in `TEAM_IDS`). */
+export const teamColorSlot = (teamId: TeamId): number => TEAM_IDS.indexOf(teamId) + 1;
+
 export const PHASES = [
   'WAITING',
   'LOBBY',

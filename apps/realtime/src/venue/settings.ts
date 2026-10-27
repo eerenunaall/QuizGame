@@ -1,6 +1,8 @@
 import { randomInt } from 'node:crypto';
 import { z } from 'zod';
+import { MAX_TEAM_NAME_LENGTH, PLAY_MODES, TEAM_IDS } from '@quizparty/protocol';
 import { ROOM_CODE_ALPHABET } from '@quizparty/shared';
+import { sanitizeUserText } from '@quizparty/validation';
 
 /**
  * A venue's settings (ADR-0024 §2). Stored as jsonb; every key has a default so a venue created with
@@ -41,9 +43,29 @@ export const QuestionSettingsSchema = z.strictObject({
   venueSharePercent: questionFields.venueSharePercent.default(30),
 });
 
+/**
+ * How a venue's tables start (ADR-0026 §7): individual or team play, the simple ruleset, the venue's own
+ * names for the team slots (empty string = the default name of that slot, at most one per slot) and the
+ * café answer window in seconds for the ordinary question kinds.
+ */
+const playFields = {
+  defaultMode: z.enum(PLAY_MODES),
+  simpleRuleset: z.boolean(),
+  teamNames: z.array(z.string().trim().max(MAX_TEAM_NAME_LENGTH)).max(TEAM_IDS.length),
+  /** Null = the deployment's own number (`GAME_CONFIG_OVERRIDE`, default 30 s). */
+  simpleAnswerSeconds: z.int().min(10).max(60).nullable(),
+};
+export const PlaySettingsSchema = z.strictObject({
+  defaultMode: playFields.defaultMode.default('INDIVIDUAL'),
+  simpleRuleset: playFields.simpleRuleset.default(false),
+  teamNames: playFields.teamNames.default([]),
+  simpleAnswerSeconds: playFields.simpleAnswerSeconds.default(null),
+});
+
 export const VenueSettingsSchema = z.strictObject({
   reward: RewardSettingsSchema.default(RewardSettingsSchema.parse({})),
   questions: QuestionSettingsSchema.default(QuestionSettingsSchema.parse({})),
+  play: PlaySettingsSchema.default(PlaySettingsSchema.parse({})),
   defaultMinutes: minutesField.default(60),
   extendSteps: stepsField.default([15, 30, 60]),
   timezone: zoneField.default('Europe/Istanbul'),
@@ -54,6 +76,7 @@ export type VenueSettings = z.infer<typeof VenueSettingsSchema>;
 export const VenueSettingsPatchSchema = z.strictObject({
   reward: z.strictObject(rewardFields).partial().optional(),
   questions: z.strictObject(questionFields).partial().optional(),
+  play: z.strictObject(playFields).partial().optional(),
   defaultMinutes: minutesField.optional(),
   extendSteps: stepsField.optional(),
   timezone: zoneField.optional(),
@@ -83,11 +106,41 @@ export function mergeSettings(
     ...patch,
     reward: { ...current.reward, ...(patch.reward ?? {}) },
     questions: { ...current.questions, ...(patch.questions ?? {}) },
+    play: { ...current.play, ...(patch.play ?? {}) },
   });
   if (!merged.success) return null;
+  // Names go on the TV for everybody: the same text screening as anything else a person typed, and no
+  // two slots with the same name.
+  const names = sanitizeTeamNames(merged.data.play.teamNames);
+  if (names === null) return null;
+  merged.data.play.teamNames = names;
   // An enabled reward needs words to show: an empty text would hand out a code for nothing.
   if (merged.data.reward.enabled && merged.data.reward.text.length === 0) return null;
   return merged.data;
+}
+
+/**
+ * Screens the owner's team names (ADR-0026 §7): normalized, no links, profanity or hidden characters, and
+ * no two equal (an empty entry keeps the slot's default name). Null when any name is refused.
+ */
+export function sanitizeTeamNames(names: readonly string[]): string[] | null {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const name of names) {
+    if (name.trim() === '') {
+      out.push('');
+      continue;
+    }
+    const checked = sanitizeUserText(name, { maxLength: MAX_TEAM_NAME_LENGTH });
+    if (!checked.ok) return null;
+    const key = checked.text.toLocaleLowerCase('tr-TR');
+    if (seen.has(key)) return null;
+    seen.add(key);
+    out.push(checked.text);
+  }
+  // Trailing empty slots say nothing.
+  while (out.length > 0 && out[out.length - 1] === '') out.pop();
+  return out;
 }
 
 /**

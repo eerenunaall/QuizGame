@@ -1,5 +1,6 @@
 import { meterView } from './venue';
 import type {
+  LobbySettings,
   PhaseData,
   PublicPlayer,
   RoomView,
@@ -13,6 +14,7 @@ import {
   doubleDownExcludedStakes,
   duelRules,
   maxRoundsFor,
+  mergedPrep,
   potRules,
 } from './config';
 import {
@@ -33,6 +35,7 @@ import {
   sabotagePicksOf,
 } from './powers';
 import { rankPlayers } from './rank';
+import { teamStandings } from './teams';
 import { exemptPlayerId, progressTicks } from './who-said-it';
 import type { Actor, RoomState } from './types';
 
@@ -64,7 +67,44 @@ export function toPublicPlayer(state: RoomState, playerId: string): PublicPlayer
     connection: player.connection,
     ready: player.ready,
     isLeader: state.leaderPlayerId === player.playerId,
+    ...(player.teamId !== undefined ? { teamId: player.teamId } : {}),
   };
+}
+
+/**
+ * The lobby settings a client sees. The team and ruleset fields (ADR-0026) are present only when the room
+ * has set them, so a room that never touched them looks exactly as it did before teams existed.
+ */
+export function structuredSettings(state: Pick<RoomState, 'settings'>): LobbySettings {
+  const { settings } = state;
+  return {
+    mode: settings.mode,
+    contentTitle: settings.contentTitle,
+    rounds: settings.rounds,
+    difficulty: settings.difficulty,
+    categories: settings.categories === 'ALL' ? 'ALL' : [...settings.categories],
+    ...(settings.play !== undefined ? { play: settings.play } : {}),
+    ...(settings.ruleset !== undefined ? { ruleset: settings.ruleset } : {}),
+    ...(settings.teamCount !== undefined ? { teamCount: settings.teamCount } : {}),
+    ...(settings.teamNames !== undefined ? { teamNames: [...settings.teamNames] } : {}),
+  };
+}
+
+/**
+ * What phones receive for `data`: in the simple ruleset the question's words (and the options' texts) stay
+ * on the TV while it is on screen for answering (ADR-0026 §6), so a phone can only show letters and shapes.
+ * Returns `data` itself when nothing is held back, so callers can tell.
+ */
+export function playerPhaseData(state: Pick<RoomState, 'config'>, data: PhaseData): PhaseData {
+  if (state.config.ruleset !== 'SIMPLE') return data;
+  if (data.phase === 'QUESTION') return { ...data, text: '' };
+  if (data.phase === 'ANSWERING')
+    return {
+      ...data,
+      text: '',
+      options: data.options.map((option) => ({ ...option, text: '' })),
+    };
+  return data;
 }
 
 /** Who has handed in a Who Said It statement, in join order. Only the fact, never the words. */
@@ -154,6 +194,16 @@ export function prepCounts(state: RoomState): { committedCount: number; eligible
   // Only the players online now count, on both sides of the fraction: a phone that confirmed and then
   // dropped must not fill the tick of one that is still choosing (the early advance reads these counts).
   const eligible = prepEligibleIds(state);
+  if (mergedPrep(state.config)) {
+    // One phase, two kinds of choice: a tick is a player who decided anything (never what, nor who could).
+    const picks = sabotagePicksOf(round);
+    return {
+      committedCount: eligible.filter(
+        (id) => round.commitments[id] !== undefined || picks[id] !== undefined,
+      ).length,
+      eligibleCount: eligible.length,
+    };
+  }
   // RISK_PICK: a player with a Duel challenge still to answer is not done yet (ADR-0023). It is one more
   // tick that stays empty; nothing says why, or for whom.
   const committedCount = eligible.filter(
@@ -229,6 +279,9 @@ export function phaseDataFor(state: RoomState): PhaseData {
         doubleDownExcludedStakes: [...doubleDownExcludedStakes(state.config)],
         sabotageEnabled: sabotageOpen(state.config, round!),
         risks: risksOffered(state),
+        ...(mergedPrep(state.config)
+          ? { combined: true, offered: sabotageKindsOffered(state) }
+          : {}),
         ...prepCounts(state),
       };
     }
@@ -322,6 +375,7 @@ export function phaseDataFor(state: RoomState): PhaseData {
           components: delta.components.map((c) => ({ ...c })),
         })),
         scoreboard: update.scoreboard.map((entry) => ({ ...entry })),
+        ...(update.teamBoard ? { teamBoard: update.teamBoard.map((entry) => ({ ...entry })) } : {}),
       };
     }
     case 'MICRO_INTERMISSION':
@@ -336,6 +390,9 @@ export function phaseDataFor(state: RoomState): PhaseData {
         phase: 'RESULTS',
         ranking: results.ranking.map((entry) => ({ ...entry })),
         awards: results.awards.map((award) => ({ ...award })),
+        ...(results.teamRanking
+          ? { teamRanking: results.teamRanking.map((entry) => ({ ...entry })) }
+          : {}),
       };
     }
     case 'ROOM_CLOSED':
@@ -368,7 +425,10 @@ export function youView(state: RoomState, playerId: string): YouView | null {
       ? {
           fiftyFifty: gamePlayer.powers.fiftyFifty,
           doubleDown: gamePlayer.powers.doubleDown,
-          shield: gamePlayer.powers.shield,
+          // Team play: the shield is the team's (one for all its members).
+          shield: game.teams
+            ? (game.teams.ledgers[gamePlayer.teamId ?? '']?.shield ?? 0)
+            : gamePlayer.powers.shield,
           sabotageTokens: gamePlayer.powers.tokens,
           nextTokenAtStreak: nextTokenStreak(state.config, gamePlayer.streak),
           lockedJoker:
@@ -395,10 +455,12 @@ export function youView(state: RoomState, playerId: string): YouView | null {
     state.phase !== 'RISK_PICK' &&
     state.phase !== 'SABOTAGE_PICK';
 
+  const teamId = gamePlayer?.teamId ?? player.teamId;
   return {
     playerId,
     isLeader: state.leaderPlayerId === playerId,
     canHost: state.leaderPlayerId === playerId,
+    ...(teamId !== undefined ? { teamId } : {}),
     answer:
       record && round?.question
         ? {
@@ -417,7 +479,12 @@ export function youView(state: RoomState, playerId: string): YouView | null {
               commitment?.stake ?? roundLadder(state.config, round!, game!.totalRounds).defaultTier,
             doubleDown: commitment?.doubleDown ?? false,
             sabotage: pick?.sabotage
-              ? { targetId: pick.sabotage.targetId, effect: pick.sabotage.effect }
+              ? {
+                  ...(pick.sabotage.targetTeamId !== undefined
+                    ? { targetTeamId: pick.sabotage.targetTeamId }
+                    : { targetId: pick.sabotage.targetId }),
+                  effect: pick.sabotage.effect,
+                }
               : null,
             ...(commitment?.cover ? { cover: true } : {}),
             ...(commitment?.pot ? { pot: true } : {}),
@@ -429,7 +496,10 @@ export function youView(state: RoomState, playerId: string): YouView | null {
       ? duelInvitesView(state, playerId)
       : {}),
     sabotage:
-      roundIsLive && (state.phase === 'SABOTAGE_PICK' || pick)
+      roundIsLive &&
+      (state.phase === 'SABOTAGE_PICK' ||
+        (state.phase === 'RISK_PICK' && mergedPrep(state.config)) ||
+        pick)
         ? { ready: canSabotage(state, playerId), decided: pick !== null }
         : undefined,
     fiftyFifty:
@@ -473,13 +543,7 @@ export function roomView(state: RoomState, viewer: Viewer, now: number): RoomVie
     contentLanguage: state.contentLanguage,
     maxPlayers: state.config.maxPlayers,
     limits: { maxRounds: maxRoundsFor(state.config, state.tier) },
-    settings: {
-      mode: state.settings.mode,
-      contentTitle: state.settings.contentTitle,
-      rounds: state.settings.rounds,
-      difficulty: state.settings.difficulty,
-      categories: state.settings.categories === 'ALL' ? 'ALL' : [...state.settings.categories],
-    },
+    settings: structuredSettings(state),
     displayConnected: state.display.connected,
     awaitingDisplay: state.awaitingDisplay,
     players: activePlayers(state).map((player) => toPublicPlayer(state, player.playerId)),
@@ -489,9 +553,11 @@ export function roomView(state: RoomState, viewer: Viewer, now: number): RoomVie
           totalRounds: game.totalRounds,
           roundIndex: game.roundIndex,
           scoreboard: scoreboard(state),
+          ...(game.teams ? { teamBoard: teamStandings(state, game) } : {}),
         }
       : null,
-    phaseData: phaseDataFor(state),
+    phaseData:
+      viewer.role === 'PLAYER' ? playerPhaseData(state, phaseDataFor(state)) : phaseDataFor(state),
     you: viewer.role === 'PLAYER' ? youView(state, viewer.playerId) : null,
     // Venue mode: the table's meter is public room information; nothing else of a venue is (ADR-0024).
     ...(state.venue ? { venue: meterView(state.venue, now) } : {}),

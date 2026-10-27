@@ -9,12 +9,16 @@ import type {
   Locale,
   Outcome,
   Phase,
+  PlayMode,
   PowerResolutionItem,
   RiskTier,
   RoundKind,
+  Ruleset,
   SabotageKind,
   ScoreComponent,
   ServerEvent,
+  TeamId,
+  TeamStanding,
   Tier,
 } from '@quizparty/protocol';
 import type { GameConfig } from './config';
@@ -42,6 +46,11 @@ export interface Player {
   status: 'ACTIVE' | 'KICKED' | 'LEFT';
   /** Accessibility: disorienting sabotage is softened for this player. Private; never disclosed. */
   reducedEffects: boolean;
+  /**
+   * Team play (ADR-0026): the team in the lobby. Every active player has one while the room plays in
+   * teams; absent in individual play and in rooms stored before teams existed.
+   */
+  teamId?: TeamId;
 }
 
 export interface AnswerRecord {
@@ -100,6 +109,8 @@ export interface ScoreUpdateRecord {
     components: ScoreComponent[];
   }[];
   scoreboard: { playerId: string; score: number; rank: number; streak: number }[];
+  /** Team play (ADR-0026): the standings after this question. */
+  teamBoard?: TeamStanding[];
 }
 
 /** What a player still has in hand, per game (ADR-0007, ADR-0010). All plain numbers: it is persisted. */
@@ -145,9 +156,18 @@ export interface Commitment {
   duel?: { targetId: string };
 }
 
-/** What a player decided in SABOTAGE_PICK (`sabotage: null` = confirmed without one). PRIVATE until POWER_RESOLUTION. */
+/**
+ * What a player decided in SABOTAGE_PICK, or in the simple ruleset's single prep phase (`sabotage: null` =
+ * confirmed without one). PRIVATE until POWER_RESOLUTION. Team play aims at a team (`targetTeamId`, with
+ * `targetId` empty); individual play at a player.
+ */
 export interface SabotagePick {
-  sabotage: { targetId: string; effect: SabotageKind; joker: Joker | null } | null;
+  sabotage: {
+    targetId: string;
+    targetTeamId?: TeamId;
+    effect: SabotageKind;
+    joker: Joker | null;
+  } | null;
   committedAt: EpochMs;
 }
 
@@ -164,11 +184,14 @@ export interface TargetEffects {
   hits: { effect: SabotageKind; blocked: boolean }[];
 }
 
+/** One landed (or blocked) sabotage on one player; a hit on a team is one record per active member. */
 export interface SabotageRecord {
   actorId: string;
   targetId: string;
   effect: SabotageKind;
   blocked: boolean;
+  /** Team play: the team that was aimed at (all records of one hit share it). */
+  targetTeamId?: TeamId;
 }
 
 /** What the risks of ADR-0023 did when the round locked. Plain data: it is persisted with the room. */
@@ -228,6 +251,8 @@ export interface RoundState {
 }
 
 export interface GamePlayerState {
+  /** Team play (ADR-0026): fixed when the game starts (nobody joins or switches during a game). */
+  teamId?: TeamId;
   score: number;
   streak: number;
   bestStreak: number;
@@ -237,6 +262,14 @@ export interface GamePlayerState {
   removed: boolean;
   rankHistory: number[];
   powers: PowerLedger;
+}
+
+/** A team's shared defences, per game (ADR-0026 §5): the shield and the per-target sabotage caps. */
+export interface TeamLedger {
+  shield: number;
+  /** Times this team has been targeted this game (a blocked hit still counts) and the latest round. */
+  hits: number;
+  lastHitRound: number | null;
 }
 
 export interface DirectorState {
@@ -272,6 +305,8 @@ export interface ResultsRecord {
   }[];
   /** Venue mode: the table's time ran out (or was paused/ended) and the game stopped early. Server-only. */
   cutShort?: boolean;
+  /** Team play (ADR-0026): final team standings. */
+  teamRanking?: TeamStanding[];
 }
 
 export interface GameState {
@@ -284,6 +319,11 @@ export interface GameState {
   deck: Deck;
   director: DirectorState;
   players: Record<string, GamePlayerState>;
+  /**
+   * Team play (ADR-0026): the teams in this game (those that had a player when it started) and their
+   * shared defences. Absent in individual play.
+   */
+  teams?: { ids: TeamId[]; ledgers: Record<string, TeamLedger> };
   roundIndex: number;
   round: RoundState | null;
   upcoming: UpcomingRound | null;
@@ -316,6 +356,11 @@ export interface RoomState {
   /** A game in this room has used a personal quiz: its durable traces are erased when the room closes (ADR-0015). */
   sensitiveContent: boolean;
   config: GameConfig;
+  /**
+   * The room's full-ruleset config, kept aside while a game plays with the simple one (`config` is then
+   * `applyRuleset(baseConfig, 'SIMPLE')`); absent while `config` is the base itself (ADR-0026 §3).
+   */
+  baseConfig?: GameConfig;
   display: { sessionId: string; connected: boolean; disconnectedAt: EpochMs | null };
   awaitingDisplay: boolean;
   leaderPlayerId: string | null;
@@ -345,6 +390,7 @@ export type EngineCommandType =
   | 'SUBMIT_STATEMENT'
   | 'LEAVE_ROOM'
   | 'SET_SETTINGS'
+  | 'ASSIGN_TEAM'
   | 'KICK_PLAYER'
   | 'TRANSFER_LEADER'
   | 'START_GAME'
@@ -411,6 +457,17 @@ export type EngineInput =
   | (InputBase & { kind: 'RECOVER'; outageMs: number })
   /** Venue mode: staff opened, extended, paused or ended the table (null detaches it). */
   | (InputBase & { kind: 'VENUE_METER'; meter: VenueMeter | null })
+  /**
+   * Venue mode (ADR-0026 §7): the venue's table defaults, applied when staff open the table (lobby and
+   * results only): play mode, ruleset, the venue's team names and the café answer window in seconds.
+   */
+  | (InputBase & {
+      kind: 'TABLE_PRESET';
+      play: PlayMode;
+      ruleset: Ruleset;
+      teamNames: string[];
+      simpleAnswerSeconds: number | null;
+    })
   | (InputBase & { kind: 'CLOSE'; reason: CloseReason });
 
 export type Audience =

@@ -5,9 +5,12 @@ import {
   MIN_ROUNDS,
   RISK_TIERS,
   ROUND_KINDS,
+  RULESETS,
+  SABOTAGE_KINDS,
   type DifficultyPreset,
   type RiskTier,
   type RoundKind,
+  type Ruleset,
 } from '@quizparty/protocol';
 
 /**
@@ -75,8 +78,48 @@ const CutRulesSchema = z.strictObject({
 /** Blind Clock (Kör Saat): the target's phone hides its countdown for the question. */
 const BlindClockRulesSchema = z.strictObject({ enabled: z.boolean() });
 
+/**
+ * The café ruleset ("Basit mod", ADR-0026 §3): what a game plays with when the room's ruleset is SIMPLE.
+ * `applyRuleset` lays these numbers over the room's full config at the start of a game, so a venue tunes
+ * them with `GAME_CONFIG_OVERRIDE` (`{"simple": {...}}`) or its venue setting, nothing else changes.
+ */
+const SimpleRulesSchema = z.strictObject({
+  /** 30 s for the ordinary kinds, SPEED and FINAL keep their own (the read phase before the options is unchanged). */
+  answerMs: perKind(ms(1_000, 60_000)),
+  /** The single prep phase (Double Down + sabotage on one screen). */
+  prepMs: ms(2_000, 60_000),
+  fiftyFiftyPerGame: z.int().min(0).max(5),
+  doubleDownPerGame: z.int().min(0).max(5),
+  /** One shield per player (individual play) or per team (team play). */
+  shieldPerGame: z.int().min(0).max(3),
+  sabotage: z.strictObject({
+    /** The sabotages on the menu; everything else is off. */
+    kinds: z.array(z.enum(SABOTAGE_KINDS)).min(1).max(SABOTAGE_KINDS.length),
+    startTokens: z.int().min(0).max(3),
+    maxTokens: z.int().min(1).max(5),
+    earnAtStreaks: z.array(z.int().min(1).max(30)).max(10),
+    firstRoundIndex: z.int().min(0).max(30),
+    attackerCooldownRounds: z.int().min(0).max(10),
+    maxPerRound: z.int().min(1).max(8),
+    targetMinGapRounds: z.int().min(0).max(10),
+    targetMaxPerGame: z.int().min(1).max(20),
+    jamMs: z.int().min(0).max(10_000),
+    jamMaxPermille: z.int().min(0).max(200),
+  }),
+});
+export type SimpleRules = z.infer<typeof SimpleRulesSchema>;
+
 export const GameConfigSchema = z.strictObject({
   version: z.int().positive(),
+  /**
+   * The ruleset this config was resolved for (ADR-0026). Absent = the full ruleset. Only `applyRuleset`
+   * sets it, on the config a game actually plays with; the recorded `version` changes with it.
+   */
+  ruleset: z.enum(RULESETS).optional(),
+  /** The café ruleset's numbers; optional so stored configs parse, read via `simpleRules`. */
+  simple: SimpleRulesSchema.optional(),
+  /** Team play (ADR-0026 §2); optional, read via `teamRules`. */
+  teams: z.strictObject({ maxImbalance: z.int().min(0).max(7) }).optional(),
   maxPlayers: z.int().min(1).max(8),
   minPlayersToStart: z.int().min(1).max(8),
   defaultRounds: z.int().min(MIN_ROUNDS).max(MAX_ROUNDS),
@@ -168,6 +211,11 @@ export const GameConfigSchema = z.strictObject({
      */
     doubleDownExcludedStakes: z.array(z.enum(RISK_TIERS)).max(4).optional(),
     /**
+     * The sabotages players may pick (ADR-0026: the simple ruleset narrows the menu). Absent = every
+     * kind that is otherwise switched on; read via `sabotageKindAllowed`.
+     */
+    sabotageKinds: z.array(z.enum(SABOTAGE_KINDS)).max(SABOTAGE_KINDS.length).optional(),
+    /**
      * ADR-0023: each new risk and sabotage has its own switch (`enabled`) and numbers. All optional so
      * snapshots stored before they existed still parse; read them via `coverRules`, `duelRules`,
      * `potRules`, `stakeCapRules`, `cutRules` and `blindClockRules`, which fall back to the defaults.
@@ -245,6 +293,29 @@ const STANDARD_LADDER: Ladder = {
 
 export const DEFAULT_GAME_CONFIG: GameConfig = {
   version: 3,
+  simple: {
+    answerMs: { STANDARD: 30_000, SPEED: 12_000, RISK: 30_000, CROWD: 30_000, FINAL: 20_000 },
+    prepMs: 10_000,
+    fiftyFiftyPerGame: 1,
+    doubleDownPerGame: 2,
+    shieldPerGame: 1,
+    sabotage: {
+      // Time Cut (JAM), Blind Clock and Shuffle: each one sentence, none touches points (ADR-0026 §3).
+      kinds: ['JAM', 'BLIND_CLOCK', 'SHUFFLE'],
+      startTokens: 1,
+      maxTokens: 2,
+      earnAtStreaks: [3, 6],
+      firstRoundIndex: 1,
+      attackerCooldownRounds: 1,
+      maxPerRound: 2,
+      targetMinGapRounds: 1,
+      targetMaxPerGame: 3,
+      // 6 s of a 30 s window: a Time Cut a table feels (the full ruleset's 2 s would not be noticed).
+      jamMs: 6_000,
+      jamMaxPermille: 200,
+    },
+  },
+  teams: { maxImbalance: 1 },
   maxPlayers: 8,
   minPlayersToStart: 2,
   defaultRounds: 10,
@@ -500,6 +571,118 @@ export function defaultTier(config: GameConfig, kind: RoundKind): RiskTier {
 export function ladderTiers(config: GameConfig, kind: RoundKind): RiskTier[] {
   const ladder = config.scoring.ladders[kind];
   return RISK_TIERS.filter((tier) => ladder[tier] !== undefined);
+}
+
+/** The café ruleset's numbers; configs stored before it existed get the defaults. */
+export function simpleRules(config: GameConfig): SimpleRules {
+  const base = DEFAULT_GAME_CONFIG.simple!;
+  const given = config.simple;
+  return {
+    ...base,
+    ...given,
+    answerMs: { ...base.answerMs, ...given?.answerMs },
+    sabotage: { ...base.sabotage, ...given?.sabotage },
+  };
+}
+
+/** Team play rules (ADR-0026 §2); old configs get the defaults. */
+export function teamRules(config: GameConfig): { maxImbalance: number } {
+  return { ...DEFAULT_GAME_CONFIG.teams!, ...config.teams };
+}
+
+/** Whether the sabotage `kind` is on the menu of this config (the switch every kind shares in the simple ruleset). */
+export function sabotageKindAllowed(
+  config: GameConfig,
+  kind: (typeof SABOTAGE_KINDS)[number],
+): boolean {
+  return config.powers.sabotageKinds === undefined || config.powers.sabotageKinds.includes(kind);
+}
+
+/** Whether this config merges the two pick phases into one (the simple ruleset). */
+export const mergedPrep = (config: GameConfig): boolean => config.ruleset === 'SIMPLE';
+
+/** Offset added to `version` for a game played with the simple ruleset: scores audit against the rules that made them. */
+export const SIMPLE_VERSION_OFFSET = 1000;
+
+/**
+ * The config a game plays with: `config` as it is for the full ruleset, or with the café set laid over
+ * it (ADR-0026 §3). Pure and idempotent on its input; the room keeps the full config aside
+ * (`RoomState.baseConfig`) so the next game can choose again.
+ *
+ * What SIMPLE changes: the answer windows and one short prep window; the ladders shrink to the safe rung
+ * (no stakes, so no Cover, Duel or Pot, which only exist next to stakes); the joker counts, the shield and
+ * the sabotage menu and its numbers come from `simple`; RISK rounds are never planned (they are only a
+ * stake ladder). Nothing else (scoring base, speed bonus, director, timings of the other phases) moves.
+ */
+export function applyRuleset(config: GameConfig, ruleset: Ruleset): GameConfig {
+  if (ruleset !== 'SIMPLE') return config;
+  const rules = simpleRules(config);
+  const sabotage = rules.sabotage;
+  const safeOnly: Ladder = { SAFE: { multiplier: 1, loss: 0 } };
+  const off = <K extends 'cover' | 'duel' | 'pot' | 'stakeCap'>(key: K) => ({
+    ...rulesOf(config, key),
+    enabled: false,
+  });
+  return {
+    ...config,
+    version: config.version + SIMPLE_VERSION_OFFSET,
+    ruleset: 'SIMPLE',
+    timings: {
+      ...config.timings,
+      answerMs: { ...rules.answerMs },
+      riskPickMs: rules.prepMs,
+      riskPickDecisionMs: rules.prepMs,
+    },
+    scoring: {
+      ...config.scoring,
+      ladders: Object.fromEntries(ROUND_KINDS.map((kind) => [kind, safeOnly])) as Record<
+        RoundKind,
+        Ladder
+      >,
+    },
+    powers: {
+      ...config.powers,
+      fiftyFiftyPerGame: rules.fiftyFiftyPerGame,
+      doubleDownPerGame: rules.doubleDownPerGame,
+      shieldPerGame: rules.shieldPerGame,
+      doubleDownExcludedStakes: [],
+      sabotageKinds: [...sabotage.kinds],
+      cover: off('cover'),
+      duel: off('duel'),
+      pot: off('pot'),
+      stakeCap: off('stakeCap'),
+      cut: { ...rulesOf(config, 'cut'), enabled: sabotage.kinds.includes('CUT') },
+      blindClock: { enabled: sabotage.kinds.includes('BLIND_CLOCK') },
+      sabotage: {
+        ...config.powers.sabotage,
+        enabled: true,
+        startTokens: sabotage.startTokens,
+        maxTokens: sabotage.maxTokens,
+        earnAtStreaks: [...sabotage.earnAtStreaks],
+        firstRoundIndex: sabotage.firstRoundIndex,
+        attackerCooldownRounds: sabotage.attackerCooldownRounds,
+        maxPerRound: sabotage.maxPerRound,
+        targetMinGapRounds: sabotage.targetMinGapRounds,
+        targetMaxPerGame: sabotage.targetMaxPerGame,
+        jamMs: sabotage.jamMs,
+        jamMaxPermille: sabotage.jamMaxPermille,
+      },
+    },
+    director: { ...config.director, maxRiskRounds: 0 },
+  };
+}
+
+/** `config` with the café answer window set for the three ordinary kinds (a venue setting, in seconds). */
+export function withSimpleAnswerSeconds(config: GameConfig, seconds: number): GameConfig {
+  const rules = simpleRules(config);
+  const answerMs = seconds * 1000;
+  return {
+    ...config,
+    simple: {
+      ...rules,
+      answerMs: { ...rules.answerMs, STANDARD: answerMs, RISK: answerMs, CROWD: answerMs },
+    },
+  };
 }
 
 export { DIFFICULTIES };

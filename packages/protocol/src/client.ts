@@ -10,14 +10,17 @@ import {
   NicknameSchema,
   OptionIdSchema,
   PlayerIdSchema,
+  PlayModeSchema,
   QuestionIdSchema,
   QuestionReportReasonSchema,
   RiskTierSchema,
+  RulesetSchema,
   SabotageKindSchema,
   SequenceSchema,
+  TeamIdSchema,
   UuidSchema,
 } from './common';
-import { MAX_ROUNDS, MAX_STATEMENT_LENGTH, MIN_ROUNDS } from './constants';
+import { MAX_ROUNDS, MAX_STATEMENT_LENGTH, MAX_TEAMS, MIN_ROUNDS, MIN_TEAMS } from './constants';
 
 /** Envelope fields shared by every client → server message (GDD §16, ADR-0008). */
 export const clientEnvelopeShape = {
@@ -83,10 +86,16 @@ export const CLIENT_PAYLOADS = {
   COMMIT_SABOTAGE: z.strictObject({
     sabotage: z
       .strictObject({
-        targetId: PlayerIdSchema,
+        /** Individual play: the rival player. Exactly one of `targetId` and `targetTeamId` (ADR-0026). */
+        targetId: PlayerIdSchema.optional(),
+        /** Team play: the rival team; the effect lands on every active member of it. */
+        targetTeamId: TeamIdSchema.optional(),
         effect: SabotageKindSchema,
         /** LOCKOUT only: the joker to block next round. */
         joker: JokerSchema.optional(),
+      })
+      .refine((value) => (value.targetId === undefined) !== (value.targetTeamId === undefined), {
+        message: 'exactly one of targetId and targetTeamId',
       })
       .nullable(),
   }),
@@ -123,7 +132,16 @@ export const CLIENT_PAYLOADS = {
     rounds: z.int().min(MIN_ROUNDS).max(MAX_ROUNDS).optional(),
     difficulty: DifficultyPresetSchema.optional(),
     categories: z.union([z.literal('ALL'), z.array(CategoryIdSchema).min(1).max(24)]).optional(),
+    /** ADR-0026: individual or team play, the café ruleset, and how many teams (2-4). */
+    play: PlayModeSchema.optional(),
+    ruleset: RulesetSchema.optional(),
+    teamCount: z.int().min(MIN_TEAMS).max(MAX_TEAMS).optional(),
   }),
+  /**
+   * Team play, lobby or results (ADR-0026): put yourself (no `playerId`) in a team. With a `playerId` of
+   * somebody else it is a host command (the display or the leader), refused with `NOT_HOST` otherwise.
+   */
+  ASSIGN_TEAM: z.strictObject({ teamId: TeamIdSchema, playerId: PlayerIdSchema.optional() }),
   KICK_PLAYER: z.strictObject({ playerId: PlayerIdSchema }),
   TRANSFER_LEADER: z.strictObject({ playerId: PlayerIdSchema }),
   REMATCH: empty,

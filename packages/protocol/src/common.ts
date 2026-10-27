@@ -9,10 +9,13 @@ import {
   MAX_NICKNAME_LENGTH,
   MIN_NICKNAME_LENGTH,
   PHASES,
+  PLAY_MODES,
   QUESTION_REPORT_REASONS,
   RISK_TIERS,
   ROUND_KINDS,
+  RULESETS,
   SABOTAGE_KINDS,
+  TEAM_IDS,
   TIERS,
 } from './constants';
 
@@ -35,6 +38,9 @@ export const NicknameSchema = z
   .max(MAX_NICKNAME_LENGTH * 4);
 
 export const PhaseSchema = z.enum(PHASES);
+export const PlayModeSchema = z.enum(PLAY_MODES);
+export const RulesetSchema = z.enum(RULESETS);
+export const TeamIdSchema = z.enum(TEAM_IDS);
 export const DifficultySchema = z.enum(DIFFICULTIES);
 export const DifficultyPresetSchema = z.enum(DIFFICULTY_PRESETS);
 export const RoundKindSchema = z.enum(ROUND_KINDS);

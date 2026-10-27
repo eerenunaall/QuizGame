@@ -8,6 +8,7 @@ import {
   PlayerIdSchema,
   QuestionIdSchema,
   SequenceSchema,
+  TeamIdSchema,
   TierSchema,
   UuidSchema,
 } from './common';
@@ -68,6 +69,8 @@ export const SERVER_PAYLOADS = {
   LEADER_CHANGED: z.strictObject({ playerId: PlayerIdSchema.nullable() }),
   SETTINGS_CHANGED: z.strictObject({ settings: LobbySettingsSchema }),
   NICKNAME_CHANGED: z.strictObject({ playerId: PlayerIdSchema, nickname: z.string().max(64) }),
+  /** Team play (ADR-0026): a player joined, switched or was moved to a team; `null` = no team (individual play). */
+  TEAM_CHANGED: z.strictObject({ playerId: PlayerIdSchema, teamId: TeamIdSchema.nullable() }),
   PHASE_ENTERED: z.strictObject({
     phaseEnteredAt: EpochMsSchema,
     phaseDeadlineAt: EpochMsSchema.nullable(),
@@ -124,7 +127,11 @@ export const SERVER_PAYLOADS = {
     expiresAt: EpochMsSchema,
   }),
   /** Venue mode: to the display only, for the results banner (who won; no code, no reward text). */
-  VENUE_REWARD_ISSUED: z.strictObject({ playerId: PlayerIdSchema }),
+  VENUE_REWARD_ISSUED: z.strictObject({
+    playerId: PlayerIdSchema,
+    /** Team play (ADR-0026): the winning team; `playerId` is its representative who holds the code. */
+    teamId: TeamIdSchema.optional(),
+  }),
 } as const;
 
 export type ServerMessageType = keyof typeof SERVER_PAYLOADS;

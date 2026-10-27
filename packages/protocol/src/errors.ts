@@ -41,6 +41,14 @@ export const ERROR_CODES = {
   BIG_GAMBLE_CONFLICT: { retryable: false },
   /** A Duel limit: none left this game, this rival was already met, or you already hold a duel this question. */
   DUEL_LIMIT: { retryable: false },
+  /** Teams (ADR-0026): the team has no free place left. */
+  TEAM_FULL: { retryable: false },
+  /** Teams: not a team of this room, or the room does not play in teams. */
+  TEAM_INVALID: { retryable: false },
+  /** Teams: the game cannot start, a team has too many more players than another (the host can move players). */
+  TEAMS_UNBALANCED: { retryable: false },
+  /** Teams: a game in teams needs at least two teams with players. */
+  NOT_ENOUGH_TEAMS: { retryable: false },
   STAKE_INVALID: { retryable: false },
   TARGET_INVALID: { retryable: false },
   /** Sabotage cooldown, per-round, per-target or per-game cap reached. */
