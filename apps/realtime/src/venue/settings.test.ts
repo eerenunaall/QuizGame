@@ -6,6 +6,8 @@ import {
   newRewardCode,
   parseRewardCode,
   readSettings,
+  REWARD_MIN_VALID_MS,
+  rewardExpiry,
   VenueSettingsPatchSchema,
 } from './settings';
 
@@ -87,5 +89,17 @@ describe('reward codes', () => {
     expect(parseRewardCode(' AB CD 23 45 ')).toBe('ABCD2345');
     for (const bad of ['ABCD234', 'ABCD23456', 'ABCD0345', 'OBCD2345', "AB'CD234", ''])
       expect(parseRewardCode(bad)).toBeNull();
+  });
+});
+
+describe('reward expiry', () => {
+  it('lasts until the venue midnight, but at least four hours after the win', () => {
+    const lateWin = Date.UTC(2026, 9, 19, 20, 58); // 23:58 in Istanbul
+    const day = localDay(lateWin, 'Europe/Istanbul');
+    expect(rewardExpiry(lateWin, day.end)).toBe(lateWin + REWARD_MIN_VALID_MS);
+    const earlyWin = Date.UTC(2026, 9, 19, 9, 0); // 12:00 in Istanbul
+    expect(rewardExpiry(earlyWin, localDay(earlyWin, 'Europe/Istanbul').end)).toBe(
+      localDay(earlyWin, 'Europe/Istanbul').end,
+    );
   });
 });

@@ -119,6 +119,14 @@ export function localDay(at: number, timeZone: string): { start: number; end: nu
   return { start, end: start + 86_400_000 };
 }
 
+/** A reward always stays valid this long, so a win at 23:58 is not worth two minutes. */
+export const REWARD_MIN_VALID_MS = 4 * 3_600_000;
+
+/** Until the venue's midnight, but never for less than `REWARD_MIN_VALID_MS` after it was won. */
+export function rewardExpiry(wonAt: number, dayEnd: number): number {
+  return Math.max(dayEnd, wonAt + REWARD_MIN_VALID_MS);
+}
+
 /** The local calendar date (YYYY-MM-DD) of `at` in `timeZone`. */
 export function localDate(at: number, timeZone: string): string {
   return new Intl.DateTimeFormat('en-CA', {

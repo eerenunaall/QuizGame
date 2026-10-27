@@ -26,6 +26,7 @@ import {
   mergeSettings,
   newRewardCode,
   readSettings,
+  rewardExpiry,
   type VenueSettings,
   type VenuePatch,
 } from './settings';
@@ -657,7 +658,7 @@ export class VenueService {
           reward_text: reward.text,
           code_hash: this.rewardHash(code),
           issued_at: new Date(now),
-          expires_at: new Date(day.end),
+          expires_at: new Date(rewardExpiry(now, day.end)),
         })
         .onConflict((conflict) => conflict.column('game_id').doNothing())
         .returning(['id', 'expires_at'])

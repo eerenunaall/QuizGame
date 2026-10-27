@@ -83,7 +83,7 @@ describe('phone', () => {
     wrap(<PhoneReward reward={{ code: 'ABCD2345', text: 'Bir içecek bizden', expiresAt: T0 }} />);
     expect(screen.getByTestId('ctl-venue-reward-code').textContent).toBe('ABCD-2345');
     expect(screen.getByText('Bir içecek bizden')).toBeTruthy();
-    expect(screen.getByText('Bu gece yarısına kadar geçerli.')).toBeTruthy();
+    expect(screen.getByText('Bu akşam kullanın: en az 4 saat geçerli.')).toBeTruthy();
   });
 
   it('tells the table the time is up (the start would be refused)', () => {

@@ -61,7 +61,7 @@ masa bitirilince normal bekleme süreleri yeniden geçerli olur.
 
 - **Kazanana ödül ver**: açık/kapalı. Açıksa **ödül metnini** yazın (ör. "Bir türk kahvesi bizden").
 - **Ödül için en az oyuncu** (varsayılan 3): oyun bittiğinde bağlı ve sıralamada olan oyuncu sayısı.
-- **Günde en fazla ödül** (varsayılan 10): mekanın yerel gününe göre (gece yarısında sıfırlanır).
+- **Günde en fazla ödül** (varsayılan 10): mekanın yerel gününe göre (gece yarısında sıfırlanır). Kazanılan ödül kodu gece yarısına kadar, ama en az 4 saat geçerlidir.
 - **Aynı masada iki ödül arası en az (dk)** (varsayılan 5): bir ödülden hemen sonra başlatılan rövanş ödül kazanmaz.
 
 Bir oyunun sonunda ödül **yalnızca şu durumda** verilir: ödül açık, yeterli oyuncu bağlı, masa süresi içinde
@@ -69,7 +69,7 @@ oynanmış ve süre dolduğu için **erken bitmemiş** bir oyun, günlük sını
 **Beraberlikte ödül yok** (puan, doğru sayısı ve kalan süre de eşitse).
 
 - Kazananın telefonunda büyük harflerle kod çıkar (ör. `36VK-6MAR`), altında ödül metni ve
-  "Bu gece yarısına kadar geçerli". TV'de "Ahmet ödül kazandı! Kodu telefonunda." yazar. Kod başka hiçbir
+  "Bu akşam kullanın: en az 4 saat geçerli". TV'de "Ahmet ödül kazandı! Kodu telefonunda." yazar. Kod başka hiçbir
   ekranda görünmez.
 - Kasada: **Mekan paneli → Ödül doğrula**, kodu yazın (büyük/küçük harf ya da tire fark etmez), **Doğrula ve
   kullan**. "Geçerli! Ahmet: Bir türk kahvesi bizden" görürseniz ödülü verin. Aynı kod ikinci kez

@@ -5,7 +5,7 @@ import styles from './PhoneVenue.module.css';
 
 /**
  * The winner's reward (ADR-0024 §8): the code big enough to show across a counter, what it is, and that
- * it lasts until the venue's midnight (the phone does not know the venue's time zone, so no clock time).
+ * it lasts until the venue's midnight or at least four hours (the phone does not know the venue's time zone, so no clock time).
  */
 export function PhoneReward({
   reward,
