@@ -1,6 +1,7 @@
 import react from '@vitejs/plugin-react';
 import legacy from '@vitejs/plugin-legacy';
 import { defineConfig } from 'vite';
+import { scopedName } from './css-scope';
 
 const API_TARGET = process.env.QP_API_TARGET ?? 'http://127.0.0.1:8080';
 
@@ -20,6 +21,8 @@ export default defineConfig({
       modernPolyfills: true,
     }),
   ],
+  // Shared `qp-*` keyframes must keep their names inside CSS modules (see css-scope.ts).
+  css: { modules: { generateScopedName: (name, filename) => scopedName(name, filename) } },
   server: {
     host: '0.0.0.0',
     port: 5173,
