@@ -429,8 +429,8 @@ details.faq > div { padding: 0 20px 16px; } details.faq > div p:last-child { mar
 
 
 /* ============================================================ aqua layer
- * "Liquid glass" + Aero: translucent glass panels over a slowly moving deep-sea backdrop, glossy buttons with moss
- * tufts, a wave line under the hero. It only re-skins tokens and surfaces; layout above is untouched.
+ * "Liquid glass" + Aero: translucent glass panels over a slowly moving deep-sea backdrop, glossy buttons
+ * and a wave line under the hero. It only re-skins tokens and surfaces; layout above is untouched.
  * The Salty Pirates page swaps to a dark Davy Jones palette (abyss green, ghost light) through :has(), no extra markup.
  * Everything here is declared last on purpose so it wins over the studio defaults without !important.
  */
@@ -439,7 +439,7 @@ details.faq > div { padding: 0 20px 16px; } details.faq > div p:last-child { mar
   --bg: #031b24; --bg2: #052631; --surface: rgba(10, 64, 80, .42); --surface2: rgba(18, 96, 116, .46);
   --line: rgba(190, 245, 255, .16); --line2: rgba(190, 245, 255, .32);
   --text: #effcff; --muted: #a9cdd4; --faint: #86aab2; --gold-text: #ffd98a; --shadow: 0 24px 60px rgba(0, 16, 24, .55);
-  --aqua: #62e3f5; --moss: #6fb840; --on-gold: #1a1204;
+  --aqua: #62e3f5; --on-gold: #1a1204;
   --glass: linear-gradient(145deg, rgba(255, 255, 255, .17), rgba(255, 255, 255, .04) 42%, rgba(255, 255, 255, .09));
   --glass-edge: inset 0 1px 0 rgba(255, 255, 255, .45), inset 0 -1px 0 rgba(255, 255, 255, .07), inset 1px 0 0 rgba(255, 255, 255, .12);
 }
@@ -472,15 +472,11 @@ body::after { inset: 0; opacity: .5;
   .js .nav { background: var(--glass), rgba(3, 32, 44, .88); -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8); }
 }
 
-/* ---- buttons: aero gloss + moss tufts. overflow is visible so the moss can sit outside the pill; the shine is clipped by its own box */
+/* ---- buttons: aero gloss; the shine is clipped by its own box */
 .btn { overflow: visible; background: var(--glass); box-shadow: var(--glass-edge), 0 8px 22px rgba(0, 18, 28, .3);
   -webkit-backdrop-filter: blur(10px) saturate(1.6); backdrop-filter: blur(10px) saturate(1.6); border-color: rgba(255, 255, 255, .32);
   transition: transform .2s, box-shadow .2s, background-color .2s; }
 .btn:hover { background: var(--glass); background-color: rgba(255, 255, 255, .1); box-shadow: var(--glass-edge), 0 12px 30px rgba(0, 18, 28, .4), 0 0 0 1px rgba(255, 255, 255, .2); }
-.btn::before { content: ""; position: absolute; inset: auto -10px -9px -10px; height: 30px; z-index: 2; pointer-events: none;
-  background: url("img/moss-a.svg") left bottom / 40px auto no-repeat, url("img/moss-b.svg") right bottom / 32px auto no-repeat; }
-.btn-sm::before { height: 22px; inset: auto -7px -7px -7px; background-size: 28px auto, 22px auto; }
-.btn-lg::before { height: 36px; inset: auto -12px -11px -12px; background-size: 48px auto, 38px auto; }
 .btn-gold { color: var(--on-gold); border-color: rgba(255, 255, 255, .55);
   background: linear-gradient(180deg, rgba(255, 255, 255, .7) 0 47%, rgba(255, 255, 255, 0) 51%), linear-gradient(180deg, var(--gold-hi) -20%, var(--gold) 52%, var(--gold-lo) 135%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8), inset 0 -2px 6px rgba(120, 60, 0, .25), 0 10px 30px rgba(241, 180, 69, .32); }
@@ -495,8 +491,7 @@ body::after { inset: 0; opacity: .5;
 
 /* ---- glass panels */
 .gcard, .steps li, .news-item, .capsule-box, .feature, .req, .mini, .play-card, .table-wrap, .buybox, .venue-box, .fc-tab {
-  background-color: rgba(7, 54, 70, .44); background-image: url("img/moss-top.svg"), var(--glass);
-  background-repeat: no-repeat; background-position: 16px 0, 0 0; background-size: 84px auto, auto;
+  background-color: rgba(7, 54, 70, .44); background-image: var(--glass);
   -webkit-backdrop-filter: blur(18px) saturate(1.7); backdrop-filter: blur(18px) saturate(1.7);
   border: 1px solid rgba(200, 248, 255, .24); box-shadow: var(--glass-edge), 0 18px 40px rgba(0, 18, 28, .38); }
 .steps li, .news-item, .req, .mini, .table-wrap, .fc-tab { background-image: var(--glass); background-size: auto; background-position: 0 0; }
@@ -850,3 +845,82 @@ html:has(main[data-game-page="salty-pirate"]) .sp-fates-hint, html:has(main[data
 .sp-lantern { background: radial-gradient(circle 210px at var(--mx, -999px) var(--my, -999px), rgba(255, 214, 150, .16), rgba(160, 230, 210, .06) 55%, transparent 100%),
               radial-gradient(circle 600px at var(--mx, -999px) var(--my, -999px), transparent 22%, rgba(0, 5, 5, .5) 100%); }
 .sp-hand { flex-wrap: nowrap; } .sp-card { width: clamp(92px, 27vw, 232px); } @media (max-width: 600px) { .sp-front b { font-size: 1.4rem; } .sp-back { background-size: 64% auto, auto, auto, auto; } }
+
+/* ============================================================ liquid glass (home + QuizNight, assets/glass.js)
+ * One recipe for every pane: a tinted, heavily blurred and saturated backdrop; a specular rim that is brighter on the
+ * top-left and bottom-right like light caught in a lens edge; an inner top highlight and a soft inner glow at the
+ * bottom; a light that follows the pointer. Tint and blur come from per-page tokens. Selectors carry :root so they win
+ * over page stylesheets loaded later (quiznight.css) without !important.
+ */
+:root.lg-page { --lg-tint: rgba(6, 30, 40, .42); --lg-blur: 24px; --lg-r: 26px; --lg-text: #f3fbfb; }
+html.lg-page:has(main[data-game-page="quiznight"]) { --lg-tint: rgba(34, 16, 80, .38); --lg-blur: 22px; }
+:root .lg.lg { position: relative; isolation: isolate; border-radius: var(--lg-r); border: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, .16) 0%, rgba(255, 255, 255, .05) 42%, rgba(255, 255, 255, .02) 60%, rgba(255, 255, 255, .09) 100%), var(--lg-tint);
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(1.8) brightness(1.04); backdrop-filter: blur(var(--lg-blur)) saturate(1.8) brightness(1.04);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), inset 0 -1px 0 rgba(255, 255, 255, .1), inset 0 -26px 40px -30px rgba(255, 255, 255, .22),
+              0 1px 2px rgba(0, 0, 0, .12), 0 22px 60px -12px rgba(0, 12, 24, .45); }
+/* specular rim: a 1px gradient ring cut out with a mask so only the border shows */
+:root .lg.lg::before { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(135deg, rgba(255, 255, 255, .75), rgba(255, 255, 255, .12) 30%, rgba(255, 255, 255, .04) 62%, rgba(255, 255, 255, .5));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+/* pointer light, a wide soft bloom plus a tighter core */
+:root .lg.lg::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .5s;
+  background: radial-gradient(520px circle at var(--lx, 50%) var(--ly, -30%), rgba(255, 255, 255, .13), transparent 42%),
+              radial-gradient(160px circle at var(--lx, 50%) var(--ly, -30%), rgba(255, 255, 255, .12), transparent 70%); }
+:root .lg.lg.lg-lit::after { opacity: 1; }
+@media (prefers-reduced-transparency: reduce) { :root .lg.lg { -webkit-backdrop-filter: none; backdrop-filter: none; background: #0c2b35; } }
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) { :root .lg.lg { background: #0c2b35; } }
+
+/* ---- home: the calm harbour (storm.js, calm mode) shows through; the busy hero art steps aside */
+html[data-page="home"].storm-on .hero-layer, html[data-page="home"].storm-on .hero-fx, html[data-page="home"].storm-on .grain,
+html[data-page="home"].storm-on .hero::before { display: none; }
+html[data-page="home"].storm-on body::before, html[data-page="home"].storm-on body::after { display: none; }
+html[data-page="home"].storm-on .hero, html[data-page="home"].storm-on main > section, html[data-page="home"].storm-on .band,
+html[data-page="home"].storm-on .playband { background: transparent; border-color: transparent; }
+html[data-page="home"].storm-on .hero::after { background: linear-gradient(180deg, rgba(4, 20, 28, .25), transparent 30%, transparent 80%, rgba(4, 20, 28, .25)); }
+html[data-page="home"] .hero-copy.lg { max-width: min(860px, 100% - 32px); margin-inline: auto; padding: clamp(28px, 5vw, 56px) clamp(22px, 5vw, 64px); --lg-r: 34px; }
+html[data-page="home"] .hero-copy.lg::before { padding: 1.2px; }
+html[data-page="home"].storm-on .hero { align-items: center; }
+html[data-page="home"].storm-on .hero-copy { padding-top: 0; padding-bottom: 0; }
+html[data-page="home"] .hero .wordmark { text-shadow: 0 2px 30px rgba(0, 20, 30, .35); }
+html[data-page="home"] .hero .tagline, html[data-page="home"] .hero .sub { color: #eaf6f5; text-shadow: 0 1px 12px rgba(0, 20, 30, .45); }
+html[data-page="home"] .hero-mark { animation-duration: 9s; }
+html[data-page="home"] .gcard.lg { overflow: hidden; }
+html[data-page="home"] .gcard.lg .body { background: none; }
+html[data-page="home"] .fc-tab.lg { --lg-r: 18px; }
+html[data-page="home"] .values li.lg, html[data-page="home"] .news-item.lg { --lg-r: 22px; padding: 20px 22px; }
+html[data-page="home"].storm-on .site-footer { background: linear-gradient(180deg, transparent, rgba(3, 18, 24, .72) 40%); border-top-color: rgba(255, 255, 255, .14); }
+html[data-page="home"].storm-on .site-footer::before { display: none; }
+html[data-page="home"] .site-footer .footer-grid.lg { padding: clamp(22px, 3vw, 34px); }
+/* home text over glass: muted greys are lifted so they keep contrast on a bright dusk sky */
+html.lg-page[data-page="home"] { --muted: #d4e6e5; --faint: #aecbca; }
+
+/* ---- QuizNight: slow party orbs behind the glass */
+.lg-orbs { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+.lg-orbs i { position: absolute; width: 58vmax; height: 58vmax; border-radius: 50%; filter: blur(70px); opacity: .5; will-change: transform; }
+.lg-orbs i:nth-child(1) { background: #8f3dff; left: -18vmax; top: -16vmax; animation: orb1 74s ease-in-out infinite alternate; }
+.lg-orbs i:nth-child(2) { background: #ff7ac8; right: -22vmax; top: 18vh; opacity: .32; animation: orb2 88s ease-in-out infinite alternate; }
+.lg-orbs i:nth-child(3) { background: #ffcb3d; left: 20vw; bottom: -30vmax; opacity: .26; animation: orb3 96s ease-in-out infinite alternate; }
+.lg-orbs i:nth-child(4) { background: #4fd9c8; right: 10vw; bottom: -10vmax; width: 36vmax; height: 36vmax; opacity: .22; animation: orb1 81s ease-in-out infinite alternate-reverse; }
+@keyframes orb1 { to { transform: translate3d(14vw, 12vh, 0) scale(1.12); } }
+@keyframes orb2 { to { transform: translate3d(-16vw, 20vh, 0) scale(.9); } }
+@keyframes orb3 { to { transform: translate3d(10vw, -18vh, 0) scale(1.15); } }
+html.motion-off .lg-orbs i { animation-play-state: paused; }
+html:has(main[data-game-page="quiznight"]) .qn-chips li { -webkit-backdrop-filter: blur(12px) saturate(1.6); backdrop-filter: blur(12px) saturate(1.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35); }
+html:has(main[data-game-page="quiznight"]) details.faq.lg { --lg-r: 20px; padding: 6px 22px; margin-bottom: 12px; }
+
+/* ---- motion switch: each page speaks its own type; the gothic version stays on Salty Pirates */
+.motion-toggle { font: 600 .9rem/1 var(--font-body); letter-spacing: .02em; border-radius: 999px; padding: 9px 16px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, .06)), rgba(10, 20, 40, .45);
+  border: 1px solid rgba(255, 255, 255, .3); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), 0 8px 24px rgba(0, 0, 0, .3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.6); backdrop-filter: blur(14px) saturate(1.6); }
+html:has(main[data-game-page="salty-pirate"]) .motion-toggle { font: 600 .95rem/1 "Cormorant SC", "Cormorant Garamond", Georgia, serif; letter-spacing: .06em;
+  border-radius: 3px; background: rgba(4, 12, 12, .62); border-color: rgba(196, 176, 124, .38); box-shadow: none; }
+/* the body paints over the fixed sea canvas unless it is see-through (html keeps the fallback colour) */
+html[data-page="home"].storm-on { background: #0a2530; }
+html[data-page="home"].storm-on body { background: none; }
+html[data-page="home"] .hero-copy.lg .wordmark { font-size: clamp(2.4rem, 8.4vw, 6.2rem); letter-spacing: .08em; }
+html[data-page="home"] .hero-copy.lg { --lg-tint: rgba(5, 26, 36, .52); }
+@media (max-width: 380px) { html[data-page="home"] .hero-copy.lg { max-width: calc(100% - 20px); padding-inline: 14px; } html[data-page="home"] .hero-copy.lg .wordmark { font-size: 1.95rem; letter-spacing: .05em; } }
