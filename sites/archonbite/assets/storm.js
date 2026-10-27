@@ -39,7 +39,7 @@
     '  float w2=.5+.5*sin(dot(q,vec2(-d.y,d.x))*1.3+sp*.6+1.7);',
     '  h+=a*(pow(w,ch)*.8+w2*w*.35);',
     '  d=mat2(.54,-.84,.84,.54)*d;f*=1.95;a*=.42;ch=max(1.2,ch*.72);}',
-    ' if(oct>5)h+=.045*fbm(p*2.4+vec2(T*.5,T*.25))+.02*noise(p*9.-T*.8);', // wind chop, only for close-up shading
+    ' if(oct>5)h+=.02*fbm(p*2.4+vec2(T*.5,T*.25));', // wind chop, only for close-up shading
     ' return h;}',
 
     'vec3 sky(vec3 rd){',
@@ -63,11 +63,12 @@
     'vec3 water(vec3 p,vec3 n,vec3 rd,float dist,float h){',
     ' float fres=pow(clamp(1.-dot(n,-rd),0.,1.),3.)*.72;',
     ' vec3 refl=sky(reflect(rd,n));',
-    ' vec3 body=vec3(.008,.026,.024)+vec3(.045,.115,.095)*pow(n.y*.4+.6,4.)*.22;',
+    ' float sh=pow(n.y*.4+.6,4.);sh=mix(sh,floor(sh*4.+.5)/4.,.6);', // soft banding: painted, not photographic
+    ' vec3 body=vec3(.008,.026,.024)+vec3(.045,.115,.095)*sh*.22;',
     ' body+=vec3(.06,.13,.115)*max(h-.9,0.)*1.1;', // light glowing through thin wave crests
     ' vec3 c=mix(body,refl,fres);vec3 L=normalize(vec3(.35,.22,1.));c+=vec3(.30,.38,.36)*pow(max(dot(reflect(rd,n),L),0.),48.)*smoothstep(160.,10.,dist);',
-    ' float foam=smoothstep(1.45,1.9,h+.5*fbm(p.xz*2.1+vec2(T*.15,0.)))*smoothstep(140.,25.,dist);',
-    ' c=mix(c,vec3(.43,.50,.48),foam*.62);',
+    ' float foam=smoothstep(1.3,1.37,h+.5*fbm(p.xz*2.1+vec2(T*.15,0.)))*smoothstep(140.,25.,dist);',
+    ' c=mix(c,vec3(.40,.45,.42),foam*.55);',
     ' c+=vec3(.22,.29,.27)*(ripples(p.xz*1.7)+ripples(p.xz*2.9+4.)*.6)*smoothstep(22.,3.,dist)*.6;',
     ' return c;}',
 
@@ -101,8 +102,8 @@
     ' col+=vec3(.62,.72,.70)*r;',
     ' col+=F*.06;',
     ' float g=dot(col,vec3(.299,.587,.114));col=mix(vec3(g),col,.78);', // a little film desaturation
-    ' col*=1.-.42*smoothstep(.35,1.05,length(uv*vec2(.85,1.15)));',
-    ' col+=(hash(gl_FragCoord.xy+fract(T)*61.)-.5)*.03;',
+    ' col*=.72;col*=1.-.45*smoothstep(.35,1.05,length(uv*vec2(.85,1.15)));',
+    ' col+=(hash(gl_FragCoord.xy+fract(T)*61.)-.5)*.015;',
     ' gl_FragColor=vec4(col,1.);}'
   ].join('\n');
 
@@ -139,7 +140,7 @@
   }
   function draw(now) {
     var t = (now - t0) / 1000;
-    gl.uniform2f(uR, cv.width, cv.height); gl.uniform1f(uT, t); gl.uniform1f(uF, flash(t));
+    gl.uniform2f(uR, cv.width, cv.height); gl.uniform1f(uT, t * 0.5); gl.uniform1f(uF, flash(t));
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
   function loop(now) {
