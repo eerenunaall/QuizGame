@@ -6,6 +6,8 @@ import { Panel } from '../../ui/Panel';
 import { QrCode } from '../../ui/QrCode';
 import { Sticker } from '../../ui/Sticker';
 import { useI18n } from '../../lib/i18n';
+import { isSimpleRoom, isTeamRoom, teamsCheck } from '../../lib/teams';
+import { TvTeamColumns } from './TvTeams';
 import { TvFrame } from '../TvFrame';
 import styles from './TvLobby.module.css';
 import { cx } from '../../lib/cx';
@@ -46,7 +48,11 @@ export function TvLobby({
     room.phaseData.phase === 'LOBBY' ? (room.phaseData.statementPlayerIds?.length ?? 0) : 0;
   const whoSaidIt = room.settings.mode === 'WHO_SAID_IT';
   // Who Said It needs a guesser for every statement: two statements are the least that makes a game.
-  const enough = room.players.length >= 2 && (!whoSaidIt || statementCount >= 2);
+  const teams = isTeamRoom(room);
+  const enough =
+    room.players.length >= 2 &&
+    (!whoSaidIt || statementCount >= 2) &&
+    (!teams || teamsCheck(room).ok);
   useEffect(() => {
     startRef.current?.focus();
   }, []);
@@ -74,37 +80,41 @@ export function TvLobby({
 
         <div className={styles.players}>
           <h1 className={styles.title}>{t('lobby.waiting')}</h1>
-          <div className={styles.grid} data-testid="lobby-players">
-            {slots.map((player, index) =>
-              player ? (
-                <div key={player.playerId} className={styles.slot}>
-                  <Avatar
-                    avatarId={player.avatarId}
-                    size={150}
-                    colorSlot={player.colorSlot}
-                    leader={player.isLeader}
-                    dim={player.connection === 'DISCONNECTED'}
-                    playerId={player.playerId}
-                    arrive
-                    arriveDelayMs={index * 60}
-                  />
-                  <div className={styles.name}>{player.nickname}</div>
-                  {player.isLeader ? (
-                    <span className={styles.badge}>{t('lobby.leader')}</span>
-                  ) : player.ready ? (
-                    <span className={cx(styles.badge, styles.ready)}>{t('lobby.ready')}</span>
-                  ) : null}
-                </div>
-              ) : (
-                <div key={`empty-${index}`} className={cx(styles.slot, styles.empty)}>
-                  <div className={styles.placeholder}>
-                    <span>…</span>
+          {teams ? (
+            <TvTeamColumns room={room} />
+          ) : (
+            <div className={styles.grid} data-testid="lobby-players">
+              {slots.map((player, index) =>
+                player ? (
+                  <div key={player.playerId} className={styles.slot}>
+                    <Avatar
+                      avatarId={player.avatarId}
+                      size={150}
+                      colorSlot={player.colorSlot}
+                      leader={player.isLeader}
+                      dim={player.connection === 'DISCONNECTED'}
+                      playerId={player.playerId}
+                      arrive
+                      arriveDelayMs={index * 60}
+                    />
+                    <div className={styles.name}>{player.nickname}</div>
+                    {player.isLeader ? (
+                      <span className={styles.badge}>{t('lobby.leader')}</span>
+                    ) : player.ready ? (
+                      <span className={cx(styles.badge, styles.ready)}>{t('lobby.ready')}</span>
+                    ) : null}
                   </div>
-                  <div className={styles.waitingName}>{t('lobby.waitingSlot')}</div>
-                </div>
-              ),
-            )}
-          </div>
+                ) : (
+                  <div key={`empty-${index}`} className={cx(styles.slot, styles.empty)}>
+                    <div className={styles.placeholder}>
+                      <span>…</span>
+                    </div>
+                    <div className={styles.waitingName}>{t('lobby.waitingSlot')}</div>
+                  </div>
+                ),
+              )}
+            </div>
+          )}
 
           <div className={styles.actions}>
             <Button
@@ -146,6 +156,14 @@ export function TvLobby({
             <div className={styles.summary} data-testid="lobby-mode">
               <span>
                 {t(`lobby.mode.${room.settings.mode}`, { title: room.settings.contentTitle ?? '' })}
+              </span>
+            </div>
+          ) : null}
+          {teams || isSimpleRoom(room) ? (
+            <div className={styles.summary} data-testid="lobby-play">
+              <span>
+                {td(`teams.mode.${room.settings.play ?? 'INDIVIDUAL'}`)} ·{' '}
+                {td(`teams.ruleset.${room.settings.ruleset ?? 'FULL'}`)}
               </span>
             </div>
           ) : null}

@@ -348,6 +348,22 @@
   font-size: 20px;
 }
 
+/* ADR-0026: team standings on the phone */
+.fine {
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--qp-color-muted-text);
+}
+.teamResults {
+  width: 100%;
+  max-width: 340px;
+  margin-top: 10px;
+}
+.mine {
+  background: rgba(40, 60, 140, 0.95);
+}
+
 /* Room for the leader's crown above the avatar so it never covers the kicker. */
 .resultFace {
   margin-top: 30px;

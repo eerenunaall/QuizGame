@@ -47,6 +47,18 @@
   animation: qp-pop-in 420ms ease-out 1;
 }
 
+/* ADR-0026: the team the player plays for, in its colour (the name is the cue, the colour is the help). */
+.team {
+  margin-left: 10px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #fff;
+  border: 2px solid var(--team);
+  border-radius: 999px;
+}
+
 .score {
   display: flex;
   align-items: center;

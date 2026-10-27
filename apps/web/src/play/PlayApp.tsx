@@ -185,6 +185,8 @@ export function PlayApp({ code }: { code: string }) {
     },
     kick: (playerId) =>
       void client.kick(playerId).catch((cause: unknown) => flash(describe(cause))),
+    assignTeam: (teamId, playerId) =>
+      void client.assignTeam(teamId, playerId).catch((cause: unknown) => flash(describe(cause))),
     makeLeader: (playerId) =>
       void client.transferLeader(playerId).catch((cause: unknown) => flash(describe(cause))),
     commitRisk: (choice) =>

@@ -6,6 +6,7 @@ import { Sticker } from '../../ui/Sticker';
 import { ScoreBar, barFraction } from '../../ui/anim/ScoreBar';
 import { useFlip } from '../../lib/motion';
 import { useI18n } from '../../lib/i18n';
+import { TvTeamBoard } from './TvTeams';
 import styles from './TvScore.module.css';
 import { cx } from '../../lib/cx';
 import { playerColor } from '@quizparty/ui-tokens';
@@ -38,6 +39,30 @@ export function isCrowned(delta: Delta, settled: boolean): boolean {
  * new order (FLIP). The server already ranks; this only animates the change.
  */
 export function TvScoreUpdate({
+  room,
+  data,
+  onRankChange,
+}: {
+  room: RoomView;
+  data: ScoreData;
+  onRankChange?: () => void;
+}) {
+  // Team play (ADR-0026): the standings of the teams are the headline, the players are the faces on them.
+  if (data.teamBoard) return <TeamScoreUpdate room={room} data={data} />;
+  return <PlayerScoreUpdate room={room} data={data} {...(onRankChange ? { onRankChange } : {})} />;
+}
+
+function TeamScoreUpdate({ room, data }: { room: RoomView; data: ScoreData }) {
+  const { t } = useI18n();
+  return (
+    <div className={styles.screen} data-testid="tv-score">
+      <h1 className={styles.title}>{t('teams.score.title')}</h1>
+      <TvTeamBoard room={room} data={data} />
+    </div>
+  );
+}
+
+function PlayerScoreUpdate({
   room,
   data,
   onRankChange,

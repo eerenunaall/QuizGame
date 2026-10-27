@@ -7,6 +7,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from 'react';
+import { MAX_TEAM_NAME_LENGTH, TEAM_IDS } from '@quizparty/protocol';
 import { Button } from '../ui/Button';
 import { Wordmark } from '../ui/Wordmark';
 import { AccountApiError, type AccountView } from '../lib/account';
@@ -493,7 +494,7 @@ function Redeem({ venueId }: { venueId: string }) {
 // ───────────── the owner's settings and people ─────────────
 
 function Settings({ venueId }: { venueId: string }) {
-  const { t } = useI18n();
+  const { t, td } = useI18n();
   const refusal = useRefusal();
   const [settings, setSettings] = useState<VenueSettingsView | null>(null);
   const [steps, setSteps] = useState('');
@@ -525,6 +526,19 @@ function Settings({ venueId }: { venueId: string }) {
   const setReward = (change: Partial<VenueSettingsView['reward']>): void =>
     setSettings({ ...settings, reward: { ...reward, ...change } });
   const number = (value: string): number => Number.parseInt(value, 10) || 0;
+  const play = settings.play ?? {
+    defaultMode: 'INDIVIDUAL' as const,
+    simpleRuleset: false,
+    teamNames: [],
+    simpleAnswerSeconds: null,
+  };
+  const setPlay = (change: Partial<NonNullable<VenueSettingsView['play']>>): void =>
+    setSettings({ ...settings, play: { ...play, ...change } });
+  const setTeamName = (slot: number, name: string): void => {
+    const names = Array.from({ length: TEAM_IDS.length }, (_, i) => play.teamNames[i] ?? '');
+    names[slot] = name;
+    setPlay({ teamNames: names });
+  };
 
   const save = (event: FormEvent): void => {
     event.preventDefault();
@@ -536,6 +550,7 @@ function Settings({ venueId }: { venueId: string }) {
     venueApi
       .saveSettings(venueId, {
         reward,
+        play,
         defaultMinutes: settings.defaultMinutes,
         extendSteps: parsedSteps,
       })
@@ -630,6 +645,62 @@ function Settings({ venueId }: { venueId: string }) {
           {t('staff.settings.steps')}
           <input value={steps} onChange={(event) => setSteps(event.target.value)} />
         </label>
+
+        {/* ADR-0026 §7: how a table starts - play mode, the simple rules, the café window, team names */}
+        <h2 className={styles.subtitle}>{t('staff.play.title')}</h2>
+        <label className={styles.field}>
+          {t('staff.play.mode')}
+          <select
+            value={play.defaultMode}
+            onChange={(event) =>
+              setPlay({ defaultMode: event.target.value === 'TEAMS' ? 'TEAMS' : 'INDIVIDUAL' })
+            }
+            data-testid="staff-play-mode"
+          >
+            <option value="INDIVIDUAL">{td('teams.mode.INDIVIDUAL')}</option>
+            <option value="TEAMS">{td('teams.mode.TEAMS')}</option>
+          </select>
+        </label>
+        <label className={styles.check}>
+          <input
+            type="checkbox"
+            checked={play.simpleRuleset}
+            onChange={(event) => setPlay({ simpleRuleset: event.target.checked })}
+            data-testid="staff-play-simple"
+          />
+          {t('staff.play.simple')}
+        </label>
+        <label className={styles.field}>
+          {t('staff.play.window')}
+          <input
+            type="number"
+            min={10}
+            max={60}
+            value={play.simpleAnswerSeconds ?? ''}
+            onChange={(event) =>
+              setPlay({
+                simpleAnswerSeconds: event.target.value === '' ? null : number(event.target.value),
+              })
+            }
+            data-testid="staff-play-window"
+          />
+        </label>
+        <div className={styles.field}>
+          {t('staff.play.names')}
+          <div className={styles.grid}>
+            {TEAM_IDS.map((teamId, slot) => (
+              <input
+                key={teamId}
+                maxLength={MAX_TEAM_NAME_LENGTH}
+                placeholder={t(`team.${teamId}`)}
+                aria-label={t('staff.play.name', { n: slot + 1 })}
+                value={play.teamNames[slot] ?? ''}
+                onChange={(event) => setTeamName(slot, event.target.value)}
+                data-testid={`staff-play-name-${slot}`}
+              />
+            ))}
+          </div>
+        </div>
         <div className={styles.message} role="status" data-testid="staff-settings-message">
           {message ?? ''}
         </div>

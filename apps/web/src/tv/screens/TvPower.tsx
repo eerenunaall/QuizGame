@@ -4,6 +4,8 @@ import { Avatar } from '../../ui/Avatar';
 import { PowerIcon } from '../../ui/PowerIcon';
 import { Sticker } from '../../ui/Sticker';
 import { hitSoundFor, sfx, type SoundName } from '../../lib/audio';
+import { TeamBadge } from '../../ui/TeamBadge';
+import { teamName } from '../../lib/teams';
 import { useI18n } from '../../lib/i18n';
 import { JOKER_STICKER, RISK_ICON, SABOTAGE_STICKER, STAKE_STICKER } from '../../play/powers';
 import styles from './TvPower.module.css';
@@ -273,10 +275,13 @@ export function TvPowerResolution({ room, data }: { room: RoomView; data: PowerD
             <span className={cx(styles.outcome, styles.hitPill)}>+{item.points}</span>
           </div>
         );
-      case 'SABOTAGE':
+      case 'SABOTAGE': {
+        // Team play (ADR-0026): the hit landed on a whole team, so the card shows the team, not a player.
+        const team = item.targetTeamId;
+        const targetName = team ? teamName(room.settings, team, t) : nameOf(item.targetId ?? '');
         return (
           <div
-            key={`${item.kind}-${item.actorId}-${item.targetId}`}
+            key={`${item.kind}-${item.actorId}-${item.targetId ?? item.targetTeamId}`}
             className={cx(styles.card, item.blocked ? styles.blocked : styles.sabotage)}
             style={style}
             data-testid="power-item"
@@ -289,14 +294,26 @@ export function TvPowerResolution({ room, data }: { room: RoomView; data: PowerD
               size={64}
               className={cx(styles.icon, styles.arrow)}
             />
-            {face(item.targetId, 84)}
+            {team ? (
+              <TeamBadge
+                teamId={team}
+                settings={room.settings}
+                size={84}
+                label={false}
+                decorative
+              />
+            ) : (
+              face(item.targetId ?? '', 84)
+            )}
             <span className={styles.text}>
               {td(`sabotage.${item.effect}`)}
               <span className={styles.sub}>
-                {t('tv.power.sabotage', {
-                  actor: nameOf(item.actorId),
-                  target: nameOf(item.targetId),
-                })}
+                {team
+                  ? t('tv.power.sabotage.team', { actor: nameOf(item.actorId), team: targetName })
+                  : t('tv.power.sabotage', {
+                      actor: nameOf(item.actorId),
+                      target: targetName,
+                    })}
               </span>
             </span>
             <span className={cx(styles.outcome, item.blocked ? styles.shield : styles.hitPill)}>
@@ -310,6 +327,7 @@ export function TvPowerResolution({ room, data }: { room: RoomView; data: PowerD
             </span>
           </div>
         );
+      }
     }
   };
 

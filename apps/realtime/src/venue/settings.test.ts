@@ -16,6 +16,12 @@ describe('venue settings', () => {
     const defaults = {
       reward: { enabled: false, text: '', minPlayers: 3, maxPerDay: 10, rematchCooldownMinutes: 5 },
       questions: { source: 'MIXED', venueSharePercent: 30 },
+      play: {
+        defaultMode: 'INDIVIDUAL',
+        simpleRuleset: false,
+        teamNames: [],
+        simpleAnswerSeconds: null,
+      },
       defaultMinutes: 60,
       extendSteps: [15, 30, 60],
       timezone: 'Europe/Istanbul',

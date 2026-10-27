@@ -11,6 +11,7 @@ import {
   type RiskTier,
   type RoundKind,
   type SabotageKind,
+  type TeamId,
 } from '@quizparty/protocol';
 import {
   blindClockRules,
@@ -20,11 +21,14 @@ import {
   doubleDownExcludedStakes,
   duelRules,
   ladderKindFor,
+  mergedPrep,
   potRules,
+  sabotageKindAllowed,
   stakeCapRules,
   type GameConfig,
 } from './config';
 import { rankPlayers } from './rank';
+import { activeTeamMembers, gameHasTeams, gameTeamOf } from './teams';
 import type { PowerLedger, PresentedOption, RoomState, RoundState, TargetEffects } from './types';
 import { exemptPlayerId } from './who-said-it';
 
@@ -112,6 +116,9 @@ function stakeCapBites(config: GameConfig): boolean {
 export function sabotageKindsOffered(d: Room): SabotageKind[] {
   const round = d.game?.round;
   return SABOTAGE_KINDS.filter((kind) => {
+    if (!sabotageKindAllowed(d.config, kind)) return false;
+    // Cut moves a target's points to one attacker: aimed at a whole team it would pay one player from many.
+    if (kind === 'CUT' && gameHasTeams(d.game)) return false;
     if (kind === 'STAKE_CAP') {
       return (
         stakeCapRules(d.config).enabled &&
@@ -251,11 +258,28 @@ function seated(d: Room, playerId: string): boolean {
   return !!me && !me.removed && !!player && player.status === 'ACTIVE';
 }
 
-/** Another player the sabotage rules would let `attackerId` aim at (the per-hit caps, not this round's picks). */
+/** Whether a team may be aimed at: someone is still in it and its per-game caps allow another hit. */
+function teamHittable(d: Room, teamId: TeamId): boolean {
+  const game = d.game!;
+  const round = game.round!;
+  const cfg = d.config.powers.sabotage;
+  const ledger = game.teams?.ledgers[teamId];
+  if (!ledger || activeTeamMembers(d, game, teamId).length === 0) return false;
+  if (ledger.hits >= cfg.targetMaxPerGame) return false;
+  return !(
+    ledger.lastHitRound !== null && round.index - ledger.lastHitRound <= cfg.targetMinGapRounds
+  );
+}
+
+/** Another player (team play: another team) the sabotage rules would let `attackerId` aim at (the per-hit caps, not this round's picks). */
 function hasLegalTarget(d: Room, attackerId: string): boolean {
   const game = d.game!;
   const round = game.round!;
   const cfg = d.config.powers.sabotage;
+  if (game.teams) {
+    const own = gameTeamOf(game, attackerId);
+    return game.teams.ids.some((teamId) => teamId !== own && teamHittable(d, teamId));
+  }
   return Object.entries(game.players).some(([targetId, target]) => {
     if (targetId === attackerId || !seated(d, targetId)) return false;
     if (target.powers.hits >= cfg.targetMaxPerGame) return false;
@@ -297,6 +321,27 @@ export function riskPickOffered(d: Room, eligible: readonly string[]): boolean {
 /** Connected players SABOTAGE_PICK waits for; empty means the phase is skipped. */
 export function sabotageActors(d: Room, eligible: readonly string[]): string[] {
   return eligible.filter((playerId) => canSabotage(d, playerId));
+}
+
+/**
+ * The simple ruleset's prep phase has stakes off, so the only risk choice is Double Down: whether
+ * `playerId` still holds one they may use this round.
+ */
+export function riskActionable(d: Room, playerId: string): boolean {
+  const game = d.game;
+  const round = game?.round;
+  if (!game || !round || !seated(d, playerId) || exemptPlayerId(game) === playerId) return false;
+  const me = game.players[playerId]!;
+  return (
+    doubleDownOffered(d.config) &&
+    me.powers.doubleDown > 0 &&
+    !jokerLockedOut(me.powers, 'DOUBLE_DOWN', round.index)
+  );
+}
+
+/** Players the simple ruleset's single prep phase waits for: anyone with a Double Down or a sabotage to use. */
+export function prepActors(d: Room, eligible: readonly string[]): string[] {
+  return eligible.filter((playerId) => riskActionable(d, playerId) || canSabotage(d, playerId));
 }
 
 /**
@@ -367,6 +412,9 @@ export function checkRisk(d: Room, playerId: string, payload: RiskPayload): Erro
       target.connection !== 'CONNECTED'
     )
       return 'TARGET_INVALID';
+    // Team play: a Duel is against a rival, never a teammate.
+    if (game.teams && gameTeamOf(game, payload.duel.targetId) === gameTeamOf(game, playerId))
+      return 'TARGET_INVALID';
     if ((me.powers.duelRivals ?? []).includes(payload.duel.targetId)) return 'DUEL_LIMIT';
     if (acceptedDuelOf(d, playerId) !== null) return 'DUEL_LIMIT';
     if (bigWithDuel(d, payload.stake, payload.doubleDown)) return 'BIG_GAMBLE_CONFLICT';
@@ -403,8 +451,10 @@ export function checkDuelReply(
 }
 
 /**
- * Checks a SABOTAGE_PICK commitment. `sabotage: null` (confirm without one) is always legal for a
- * seated player in the phase. Nothing is spent here.
+ * Checks a sabotage commitment. `sabotage: null` (confirm without one) is always legal for a seated
+ * player in the phase. Nothing is spent here. The phase is SABOTAGE_PICK, or the single RISK_PICK of the
+ * simple ruleset (ADR-0026). Team play aims at a rival team (every active member is hit, the caps and
+ * the shield are the team's); individual play at a rival player.
  */
 export function checkSabotage(
   d: Room,
@@ -413,7 +463,9 @@ export function checkSabotage(
 ): ErrorCode | null {
   const game = d.game;
   const round = game?.round;
-  if (!game || !round || d.phase !== 'SABOTAGE_PICK') return 'INVALID_STATE';
+  const pickPhase =
+    d.phase === 'SABOTAGE_PICK' || (d.phase === 'RISK_PICK' && mergedPrep(d.config));
+  if (!game || !round || !pickPhase) return 'INVALID_STATE';
   const me = game.players[playerId];
   if (!seated(d, playerId) || !me) return 'POWER_UNAVAILABLE';
   const picks = sabotagePicksOf(round);
@@ -424,27 +476,51 @@ export function checkSabotage(
   if (sabotage) {
     const cfg = d.config.powers.sabotage;
     if (!sabotageOpen(d.config, round) || me.powers.tokens <= 0) return 'POWER_UNAVAILABLE';
-    const target = game.players[sabotage.targetId];
-    if (sabotage.targetId === playerId || !target || !seated(d, sabotage.targetId)) {
-      return 'TARGET_INVALID';
+    // Who would be hit, and whose caps count: a team's ledger, or the one player's own powers.
+    let victims: string[];
+    let caps: { hits: number; lastHitRound: number | null };
+    if (game.teams) {
+      const teamId = sabotage.targetTeamId;
+      const ledger = teamId === undefined ? undefined : game.teams.ledgers[teamId];
+      if (sabotage.targetId !== undefined || teamId === undefined || !ledger)
+        return 'TARGET_INVALID';
+      // Your own team, or a team with nobody left in it: nothing to aim at.
+      if (teamId === gameTeamOf(game, playerId)) return 'TARGET_INVALID';
+      victims = activeTeamMembers(d, game, teamId);
+      if (victims.length === 0) return 'TARGET_INVALID';
+      caps = ledger;
+    } else {
+      const targetId = sabotage.targetId;
+      const target = targetId === undefined ? undefined : game.players[targetId];
+      if (sabotage.targetTeamId !== undefined || targetId === undefined) return 'TARGET_INVALID';
+      if (targetId === playerId || !target || !seated(d, targetId)) return 'TARGET_INVALID';
+      victims = [targetId];
+      caps = target.powers;
     }
     const last = me.powers.lastSabotageRound;
     if (last !== null && round.index - last <= cfg.attackerCooldownRounds) return 'SABOTAGE_LIMIT';
     const pending = Object.values(picks).filter((entry) => entry.sabotage !== null);
     if (pending.length >= cfg.maxPerRound) return 'SABOTAGE_LIMIT';
-    if (pending.some((entry) => entry.sabotage?.targetId === sabotage.targetId))
+    if (
+      pending.some((entry) =>
+        game.teams
+          ? entry.sabotage?.targetTeamId === sabotage.targetTeamId
+          : entry.sabotage?.targetId === sabotage.targetId,
+      )
+    )
       return 'SABOTAGE_LIMIT';
-    if (target.powers.hits >= cfg.targetMaxPerGame) return 'SABOTAGE_LIMIT';
-    const hitAt = target.powers.lastHitRound;
-    if (hitAt !== null && round.index - hitAt <= cfg.targetMinGapRounds) return 'SABOTAGE_LIMIT';
+    if (caps.hits >= cfg.targetMaxPerGame) return 'SABOTAGE_LIMIT';
+    if (caps.lastHitRound !== null && round.index - caps.lastHitRound <= cfg.targetMinGapRounds)
+      return 'SABOTAGE_LIMIT';
+    const held = victims.map((id) => game.players[id]!.powers);
     if (sabotage.effect === 'LOCKOUT') {
       if (!sabotage.joker) return 'POWER_UNAVAILABLE';
       // A lockout already holds this round: another would chain into the next one.
-      if (target.powers.lockout?.round === round.index) return 'SABOTAGE_LIMIT';
+      if (held.some((powers) => powers.lockout?.round === round.index)) return 'SABOTAGE_LIMIT';
     }
     if (
       sabotage.effect === 'POINT_TAX' &&
-      (target.powers.pointTax !== null || (target.powers.cut ?? null) !== null)
+      held.some((powers) => powers.pointTax !== null || (powers.cut ?? null) !== null)
     )
       return 'SABOTAGE_LIMIT';
 
@@ -457,9 +533,10 @@ export function checkSabotage(
         : 'POWER_UNAVAILABLE';
     }
     if (sabotage.effect === 'CUT') {
-      // Never the player in front (their rank is on every screen, so a refusal reveals nothing), and
-      // nothing to cut from a player with no points.
-      if (leaderIds(d).has(sabotage.targetId) || target.score <= 0) return 'TARGET_INVALID';
+      // Individual play only (not offered to teams). Never the player in front (their rank is on every
+      // screen, so a refusal reveals nothing), and nothing to cut from a player with no points.
+      const target = game.players[sabotage.targetId!]!;
+      if (leaderIds(d).has(sabotage.targetId!) || target.score <= 0) return 'TARGET_INVALID';
       if ((target.powers.cut ?? null) !== null || target.powers.pointTax !== null)
         return 'SABOTAGE_LIMIT';
     }
@@ -483,10 +560,13 @@ const emptyEffects = (): TargetEffects => ({
 });
 
 /**
- * Turns the sabotage committed in SABOTAGE_PICK into effects, once the options exist (SHUFFLE/FOG
+ * Turns the sabotage committed in the pick phase into effects, once the options exist (SHUFFLE/FOG
  * need them). The shield is checked here: it blocks the first incoming hit and is used up, while the
  * attacker's token stays spent. Players who asked for reduced effects get SHUFFLE and FOG as a
  * half-strength JAM, which looks like any other sabotage to everyone else.
+ *
+ * Team play (ADR-0026 §5): a hit on a team lands on every active member, uses up the team's one shield
+ * for all of them or none, and counts against the team's caps. Records are one per member hit.
  */
 export function resolveSabotage(d: Room, rng: Rng): void {
   const game = d.game!;
@@ -501,67 +581,72 @@ export function resolveSabotage(d: Room, rng: Rng): void {
 
   for (const [actorId, commitment] of attackers) {
     const sabotage = commitment.sabotage!;
-    const target = game.players[sabotage.targetId];
-    if (!target || target.removed) continue; // the target left: nothing to resolve
-    const effects = (round.effects[sabotage.targetId] ??= emptyEffects());
-    target.powers.hits += 1;
-    target.powers.lastHitRound = round.index;
-
-    if (target.powers.shield > 0) {
-      target.powers.shield -= 1;
-      effects.hits.push({ effect: sabotage.effect, blocked: true });
-      round.sabotages.push({
-        actorId,
-        targetId: sabotage.targetId,
-        effect: sabotage.effect,
-        blocked: true,
-      });
-      continue;
-    }
-    effects.hits.push({ effect: sabotage.effect, blocked: false });
-    round.sabotages.push({
-      actorId,
-      targetId: sabotage.targetId,
-      effect: sabotage.effect,
-      blocked: false,
-    });
+    const teamId = sabotage.targetTeamId;
+    const ledger = teamId === undefined ? undefined : game.teams?.ledgers[teamId];
+    // Whoever is still in the target when the question starts (a member may have left during the pick).
+    const victims = (
+      teamId === undefined ? [sabotage.targetId] : activeTeamMembers(d, game, teamId)
+    ).filter((id) => game.players[id] && !game.players[id].removed);
+    if (victims.length === 0) continue; // the target left: nothing to resolve
+    const defence = ledger ?? game.players[victims[0]!]!.powers;
+    const shielded = defence.shield > 0;
+    defence.hits += 1;
+    defence.lastHitRound = round.index;
+    if (shielded) defence.shield -= 1;
 
     const jam = Math.min(cfg.jamMs, Math.floor((round.answerMs * cfg.jamMaxPermille) / 1000));
-    const softened = d.players[sabotage.targetId]?.reducedEffects === true;
-    switch (sabotage.effect) {
-      case 'JAM':
-        effects.jamMs += jam;
-        break;
-      case 'SHUFFLE':
-        if (softened) effects.jamMs += Math.floor(jam / 2);
-        else effects.order = shuffledOrder(optionIds, rng);
-        break;
-      case 'FOG':
-        if (softened) effects.jamMs += Math.floor(jam / 2);
-        else {
-          effects.fogOptionId = optionIds[rng.int(optionIds.length)] ?? null;
-          effects.fogMs = cfg.fogMs;
-        }
-        break;
-      case 'LOCKOUT':
-        target.powers.lockout = { joker: sabotage.joker!, round: round.index + 1 };
-        break;
-      case 'POINT_TAX':
-        target.powers.pointTax = { expiresAfterRound: round.index + cfg.pointTaxRounds - 1 };
-        break;
-      case 'STAKE_CAP':
-        // Next question's ladder loses its top rungs; the target learns of it in that RISK_PICK.
-        target.powers.stakeCap = { tier: stakeCapRules(d.config).maxTier, round: round.index + 1 };
-        break;
-      case 'CUT':
-        target.powers.cut = {
-          by: actorId,
-          expiresAfterRound: round.index + cutRules(d.config).rounds - 1,
-        };
-        break;
-      case 'BLIND_CLOCK':
-        effects.blindClock = true;
-        break;
+    for (const victimId of victims) {
+      const target = game.players[victimId]!;
+      const effects = (round.effects[victimId] ??= emptyEffects());
+      effects.hits.push({ effect: sabotage.effect, blocked: shielded });
+      round.sabotages.push({
+        actorId,
+        targetId: victimId,
+        effect: sabotage.effect,
+        blocked: shielded,
+        ...(teamId !== undefined ? { targetTeamId: teamId } : {}),
+      });
+      if (shielded) continue;
+
+      const softened = d.players[victimId]?.reducedEffects === true;
+      switch (sabotage.effect) {
+        case 'JAM':
+          effects.jamMs += jam;
+          break;
+        case 'SHUFFLE':
+          if (softened) effects.jamMs += Math.floor(jam / 2);
+          else effects.order = shuffledOrder(optionIds, rng);
+          break;
+        case 'FOG':
+          if (softened) effects.jamMs += Math.floor(jam / 2);
+          else {
+            effects.fogOptionId = optionIds[rng.int(optionIds.length)] ?? null;
+            effects.fogMs = cfg.fogMs;
+          }
+          break;
+        case 'LOCKOUT':
+          target.powers.lockout = { joker: sabotage.joker!, round: round.index + 1 };
+          break;
+        case 'POINT_TAX':
+          target.powers.pointTax = { expiresAfterRound: round.index + cfg.pointTaxRounds - 1 };
+          break;
+        case 'STAKE_CAP':
+          // Next question's ladder loses its top rungs; the target learns of it in that RISK_PICK.
+          target.powers.stakeCap = {
+            tier: stakeCapRules(d.config).maxTier,
+            round: round.index + 1,
+          };
+          break;
+        case 'CUT':
+          target.powers.cut = {
+            by: actorId,
+            expiresAfterRound: round.index + cutRules(d.config).rounds - 1,
+          };
+          break;
+        case 'BLIND_CLOCK':
+          effects.blindClock = true;
+          break;
+      }
     }
   }
 }
@@ -637,7 +722,22 @@ export function buildPowerItems(d: Room): PowerResolutionItem[] {
     }
     for (const duel of settlement.duels) items.push({ kind: 'DUEL', ...duel });
   }
+  // A hit on a team is one record per member but one line on the screen (ADR-0026).
+  const shownTeamHits = new Set<string>();
   for (const record of round.sabotages) {
+    if (record.targetTeamId !== undefined) {
+      const key = `${record.actorId}|${record.targetTeamId}|${record.effect}`;
+      if (shownTeamHits.has(key)) continue;
+      shownTeamHits.add(key);
+      items.push({
+        kind: 'SABOTAGE',
+        actorId: record.actorId,
+        targetTeamId: record.targetTeamId,
+        effect: record.effect,
+        blocked: record.blocked,
+      });
+      continue;
+    }
     items.push({
       kind: 'SABOTAGE',
       actorId: record.actorId,

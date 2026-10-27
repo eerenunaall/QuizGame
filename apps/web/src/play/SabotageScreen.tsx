@@ -11,11 +11,14 @@ import { SabotageSheet } from './SabotageSheet';
 import { PickHeader, PickTicks } from './PickParts';
 import {
   SABOTAGE_STICKER,
+  isTeamGame,
+  rivalTeams,
   sabotageKinds,
   sabotageState,
   sabotageTargets,
   type SabotageChoice,
 } from './powers';
+import { teamName } from '../lib/teams';
 import styles from './PickScreen.module.css';
 import { cx } from '../lib/cx';
 
@@ -52,6 +55,14 @@ export function SabotageScreen({ room, data, now, onCommit }: Props) {
   const [error, setError] = useState<string | null>(null);
   const sendingRef = useRef(false);
   const playersById = new Map(room.players.map((player) => [player.playerId, player]));
+  /** Who a pick is aimed at, by name: a team (team play) or a player. */
+  const aimName = (pick: {
+    targetId?: string | undefined;
+    targetTeamId?: Parameters<typeof teamName>[1] | undefined;
+  }): string | undefined =>
+    pick.targetTeamId
+      ? teamName(room.settings, pick.targetTeamId, t)
+      : playersById.get(pick.targetId ?? '')?.nickname;
   const latest = useRef(sabotage);
   latest.current = sabotage;
 
@@ -106,7 +117,7 @@ export function SabotageScreen({ room, data, now, onCommit }: Props) {
 
   if (decided) {
     const committed = you?.commitment?.sabotage ?? null;
-    const target = committed ? playersById.get(committed.targetId) : undefined;
+    const target = committed ? aimName(committed) : undefined;
     return (
       <div className={styles.screen} data-testid="ctl-sabotage">
         {header}
@@ -120,7 +131,7 @@ export function SabotageScreen({ room, data, now, onCommit }: Props) {
                   <PowerIcon id={SABOTAGE_STICKER[committed.effect]} size={30} />
                   {t('ctl.prep.sabotageTo', {
                     effect: td(`sabotage.${committed.effect}`),
-                    name: target.nickname,
+                    name: target,
                   })}
                 </>
               ) : (
@@ -156,7 +167,7 @@ export function SabotageScreen({ room, data, now, onCommit }: Props) {
     );
   }
 
-  const chosenTarget = sabotage ? playersById.get(sabotage.targetId) : undefined;
+  const chosenTarget = sabotage ? aimName(sabotage) : undefined;
   const tokens = you.powers?.sabotageTokens ?? 0;
 
   return (
@@ -169,7 +180,7 @@ export function SabotageScreen({ room, data, now, onCommit }: Props) {
           <span className={styles.goingText}>
             {t('ctl.prep.sabotage.going', {
               effect: td(`sabotage.${sabotage.effect}`),
-              name: chosenTarget.nickname,
+              name: chosenTarget,
             })}
           </span>
           <Button
@@ -208,7 +219,7 @@ export function SabotageScreen({ room, data, now, onCommit }: Props) {
               {sabotage && chosenTarget
                 ? t('ctl.prep.sabotageTo', {
                     effect: td(`sabotage.${sabotage.effect}`),
-                    name: chosenTarget.nickname,
+                    name: chosenTarget,
                   })
                 : t('ctl.prep.sabotage.hint')}
             </span>
@@ -240,6 +251,8 @@ export function SabotageScreen({ room, data, now, onCommit }: Props) {
       {sheet ? (
         <SabotageSheet
           players={sabotageTargets(room.players, you.playerId)}
+          teams={isTeamGame(room) ? rivalTeams(room) : null}
+          settings={room.settings}
           kinds={sabotageKinds(data)}
           cutRule={data.cutRule}
           scoreboard={room.game?.scoreboard ?? []}

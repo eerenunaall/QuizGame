@@ -1,4 +1,10 @@
-import type { ClientInfo, CreateRoomResponse, ErrorCode, RoomView } from '@quizparty/protocol';
+import type {
+  ClientInfo,
+  CreateRoomResponse,
+  ErrorCode,
+  RoomView,
+  TeamId,
+} from '@quizparty/protocol';
 
 export type MaybePromise<T> = T | Promise<T>;
 
@@ -90,7 +96,7 @@ export interface ClientState {
   /** Venue mode (ADR-0024), player only: this phone's winner code; cleared when the results end. */
   venueReward: { code: string; text: string; expiresAt: number } | null;
   /** Venue mode, display only: who won a reward in the results on screen. */
-  venueRewardWinner: { playerId: string } | null;
+  venueRewardWinner: { playerId: string; teamId?: TeamId } | null;
 }
 
 export const INITIAL_CLIENT_STATE: ClientState = {

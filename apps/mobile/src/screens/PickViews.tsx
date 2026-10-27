@@ -436,7 +436,7 @@ export function SabotageView({
             {sent
               ? t('ctl.prep.sabotageTo', {
                   effect: td(`sabotage.${sent.effect}`),
-                  name: byId.get(sent.targetId)?.nickname ?? '',
+                  name: byId.get(sent.targetId ?? '')?.nickname ?? '',
                 })
               : t('ctl.sabotage.none')}
           </Body>
@@ -508,7 +508,7 @@ export function SabotageView({
           {sabotage
             ? t('ctl.prep.sabotageTo', {
                 effect: td(`sabotage.${sabotage.effect}`),
-                name: byId.get(sabotage.targetId)?.nickname ?? '',
+                name: byId.get(sabotage.targetId ?? '')?.nickname ?? '',
               })
             : t('ctl.prep.sabotage.hint')}
         </Body>

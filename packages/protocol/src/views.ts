@@ -12,14 +12,25 @@ import {
   OptionIdSchema,
   PhaseSchema,
   PlayerIdSchema,
+  PlayModeSchema,
   QuestionIdSchema,
   RiskTierSchema,
   RoundKindSchema,
+  RulesetSchema,
   SabotageKindSchema,
+  TeamIdSchema,
   TierSchema,
   UuidSchema,
 } from './common';
-import { MAX_ROUNDS, MAX_STATEMENT_LENGTH, MIN_ROUNDS } from './constants';
+import {
+  MAX_ROUNDS,
+  MAX_STATEMENT_LENGTH,
+  MAX_TEAMS,
+  MAX_TEAM_NAME_LENGTH,
+  MIN_ROUNDS,
+  MIN_TEAMS,
+  TEAM_IDS,
+} from './constants';
 
 /**
  * Views are what clients may see. Every schema is `strictObject`: the server builds views from
@@ -36,6 +47,8 @@ export const PublicPlayerSchema = z.strictObject({
   connection: ConnectionSchema,
   ready: z.boolean(),
   isLeader: z.boolean(),
+  /** Team play (ADR-0026): the team this player is in; absent in individual play. */
+  teamId: TeamIdSchema.optional(),
 });
 export type PublicPlayer = z.infer<typeof PublicPlayerSchema>;
 
@@ -46,6 +59,15 @@ export const LobbySettingsSchema = z.strictObject({
   rounds: z.int().min(MIN_ROUNDS).max(MAX_ROUNDS),
   difficulty: DifficultyPresetSchema,
   categories: z.union([z.literal('ALL'), z.array(CategoryIdSchema).min(1).max(24)]),
+  /**
+   * ADR-0026, all optional so snapshots and clients from before them still parse: absent = individual
+   * play, full ruleset, two teams, default names.
+   */
+  play: PlayModeSchema.optional(),
+  ruleset: RulesetSchema.optional(),
+  teamCount: z.int().min(MIN_TEAMS).max(MAX_TEAMS).optional(),
+  /** A venue's own names for the team slots, in `TEAM_IDS` order; an empty string keeps the default name. */
+  teamNames: z.array(z.string().max(MAX_TEAM_NAME_LENGTH)).max(TEAM_IDS.length).optional(),
 });
 export type LobbySettings = z.infer<typeof LobbySettingsSchema>;
 
@@ -76,6 +98,20 @@ export const ScoreboardEntrySchema = z.strictObject({
   streak: z.int().nonnegative(),
 });
 export type ScoreboardEntry = z.infer<typeof ScoreboardEntrySchema>;
+
+/**
+ * One team's standing (ADR-0026 §4). Teams are ranked by `average` (points per active member), `total`
+ * is shown beside it; members who left no longer count in either.
+ */
+export const TeamStandingSchema = z.strictObject({
+  teamId: TeamIdSchema,
+  rank: z.int().positive(),
+  total: z.int().nonnegative(),
+  average: z.int().nonnegative(),
+  members: z.int().positive(),
+  correctCount: z.int().nonnegative(),
+});
+export type TeamStanding = z.infer<typeof TeamStandingSchema>;
 
 export const PublicOptionSchema = z.strictObject({
   optionId: OptionIdSchema,
@@ -144,7 +180,9 @@ export const PowerResolutionItemSchema = z.discriminatedUnion('kind', [
   z.strictObject({
     kind: z.literal('SABOTAGE'),
     actorId: PlayerIdSchema,
-    targetId: PlayerIdSchema,
+    /** Individual play: the player hit. Team play: `targetTeamId` instead (ADR-0026). */
+    targetId: PlayerIdSchema.optional(),
+    targetTeamId: TeamIdSchema.optional(),
     effect: SabotageKindSchema,
     blocked: z.boolean(),
   }),
@@ -241,6 +279,12 @@ export const PhaseDataSchema = z.discriminatedUnion('phase', [
     sabotageEnabled: z.boolean(),
     /** What else RISK_PICK offers (ADR-0023); absent from older servers = nothing else. */
     risks: RisksOfferedSchema.optional(),
+    /**
+     * The simple ruleset's single prep phase (ADR-0026 §3): Double Down and the sabotage are chosen here
+     * and there is no SABOTAGE_PICK. `offered` is the sabotage menu, the same for everybody.
+     */
+    combined: z.boolean().optional(),
+    offered: z.array(SabotageKindSchema).max(12).optional(),
     /** Players who have made their choices / players who are expected to. */
     committedCount: z.int().nonnegative(),
     eligibleCount: z.int().nonnegative(),
@@ -331,6 +375,8 @@ export const PhaseDataSchema = z.discriminatedUnion('phase', [
       }),
     ),
     scoreboard: z.array(ScoreboardEntrySchema).max(8),
+    /** Team play (ADR-0026): the team standings after this question. */
+    teamBoard: z.array(TeamStandingSchema).max(MAX_TEAMS).optional(),
   }),
   z.strictObject({
     phase: z.literal('MICRO_INTERMISSION'),
@@ -361,6 +407,8 @@ export const PhaseDataSchema = z.discriminatedUnion('phase', [
         }),
       )
       .max(8),
+    /** Team play (ADR-0026): the final team standings; `ranking` stays the individual list. */
+    teamRanking: z.array(TeamStandingSchema).max(MAX_TEAMS).optional(),
   }),
   z.strictObject({ phase: z.literal('ROOM_CLOSED'), reason: CloseReasonSchema }),
 ]);
@@ -390,7 +438,13 @@ export type PowersView = z.infer<typeof PowersViewSchema>;
 export const CommitmentViewSchema = z.strictObject({
   stake: RiskTierSchema,
   doubleDown: z.boolean(),
-  sabotage: z.strictObject({ targetId: PlayerIdSchema, effect: SabotageKindSchema }).nullable(),
+  sabotage: z
+    .strictObject({
+      targetId: PlayerIdSchema.optional(),
+      targetTeamId: TeamIdSchema.optional(),
+      effect: SabotageKindSchema,
+    })
+    .nullable(),
   /** ADR-0023 extras; present only when chosen. */
   cover: z.boolean().optional(),
   pot: z.boolean().optional(),
@@ -420,6 +474,8 @@ export const YouViewSchema = z.strictObject({
   playerId: PlayerIdSchema,
   isLeader: z.boolean(),
   canHost: z.boolean(),
+  /** Team play (ADR-0026): this player's team. */
+  teamId: TeamIdSchema.optional(),
   answer: z
     .strictObject({
       questionId: QuestionIdSchema,
@@ -435,6 +491,11 @@ export const YouViewSchema = z.strictObject({
    * whether they already confirmed. Private to this player; absent from older servers.
    */
   sabotage: z.strictObject({ ready: z.boolean(), decided: z.boolean() }).optional(),
+  /**
+   * The simple ruleset's single prep phase (ADR-0026 §3): can this player still use a Double Down, and did
+   * they already answer for it. Private to this player; present in that phase only.
+   */
+  risk: z.strictObject({ ready: z.boolean(), decided: z.boolean() }).optional(),
   /**
    * Duel challenges aimed at this player this round (ADR-0023), private to them. `answer` is their own
    * reply (null = not yet). Absent when nobody challenged them.
@@ -465,6 +526,8 @@ export const PublicGameSchema = z.strictObject({
   totalRounds: z.int().positive(),
   roundIndex: z.int().min(-1),
   scoreboard: z.array(ScoreboardEntrySchema).max(8),
+  /** Team play (ADR-0026): the team standings as of the last scored question. */
+  teamBoard: z.array(TeamStandingSchema).max(MAX_TEAMS).optional(),
 });
 
 /**
@@ -490,7 +553,11 @@ export const RoomViewSchema = z.strictObject({
   contentLanguage: LocaleSchema,
   maxPlayers: z.int().min(1).max(8),
   /** What the current tier allows, so the lobby can lock options instead of hiding them. */
-  limits: z.strictObject({ maxRounds: z.int().min(MIN_ROUNDS).max(MAX_ROUNDS) }),
+  limits: z.strictObject({
+    maxRounds: z.int().min(MIN_ROUNDS).max(MAX_ROUNDS),
+    /** Team play (ADR-0026 §2): the most players one team may have more than the smallest team; absent outside team play. */
+    teamImbalance: z.int().min(0).max(7).optional(),
+  }),
   settings: LobbySettingsSchema,
   displayConnected: z.boolean(),
   awaitingDisplay: z.boolean(),

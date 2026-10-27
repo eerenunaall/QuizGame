@@ -76,6 +76,48 @@ oynanmış ve süre dolduğu için **erken bitmemiş** bir oyun, günlük sını
   "Bu kod zaten kullanıldı" der; dünkü kod "Bu kodun süresi geçti" der.
 - Çok sayıda yanlış deneme kısa süre engellenir ("Çok fazla deneme"). Kodlar sistemde açık hâliyle saklanmaz.
 
+## Takım modu ve Basit mod
+
+Teknik karar kaydı: `docs/ADR/0026-teams-and-simple-ruleset.md`. Varsayılan hâlinde hiçbir şey değişmez: oyun
+bireysel ve tam kurallarla oynanır.
+
+### Takım modu
+
+- Masayı **Bireysel** ya da **Takım** olarak başlatabilirsiniz. Varsayılanı **Ayarlar → Oyun şekli ve kurallar**
+  bölümünden seçersiniz; oyunun lideri de TV'deki ya da kendi telefonundaki ayarlardan değiştirebilir.
+- Takım adlarını, simgelerini ve renklerini **biz** belirleriz; oyuncular yazmaz, yalnızca telefonda bir takım
+  düğmesine dokunur. Hazır takımlar: Kaplanlar, Baykuşlar, Tilkiler, Aslanlar, Ayılar, Ejderhalar, Balinalar,
+  Penguenler. İsterseniz sahip olarak **Takım adları** kutularına kendi adlarınızı yazabilirsiniz (en çok 20
+  karakter, boş bırakılan varsayılan adı kullanır).
+- Oyuncu önce takma adını seçer, sonra kendi takımına dokunur. Katılan ilk önce en küçük takıma düşer; arkadaşları
+  aynı takıma dokunarak geçer. Lider (ya da TV) bir oyuncuyu başka takıma **taşıyabilir** (oyuncuya dokun, takımı seç).
+- Takım sayısı 2, 3 ya da 4'tür (varsayılan 2). Bir takım en çok `ceil(8 / takım sayısı)` kişi alır; dolu takım
+  "Dolu" yazar. Oyun başlamadan en az iki takımda oyuncu olmalı ve takımlar arasında en çok 1 kişi fark olmalıdır
+  (TV ve lider telefonu nedenini yazar; "Takımlar dengesiz").
+- **Puan**: herkes tek başına cevaplar ve puan toplar. Takımlar **oyuncu başına ortalama puanla** sıralanır
+  (toplam yanında yazar), böylece 3 kişilik takım 2 kişiliğe karşı haksız avantaj ya da dezavantaj yaşamaz.
+  Oyundan çıkan oyuncu takımın hem toplamından hem ortalamasından düşer.
+- **Sabotaj** bir **rakip takıma** yapılır; takımın o sorudaki bütün oyuncularını etkiler. Kalkan takımındır (oyun
+  başına 1) ve sabotajı bütün takım için engeller.
+- **Ödül** takım oyununda da **tek koddur**: kazanan takımın en yüksek puanlı, bağlı oyuncusunun telefonuna gelir.
+  Beraberlikte, ya da bir takımın hiç telefonu bağlı değilse ödül verilmez. Kasada kod yine bir kez geçerlidir;
+  takıma ne vereceğinize siz karar verirsiniz.
+
+### Basit mod
+
+Kafe kalabalığının 5 saniyede anlayacağı kurallar: **50/50**, **Çifte Hak** (doğruysa 2 kat puan, yanlışsa ceza) ve
+üç sabotaj: **Süre kes** (rakibin cevap süresi 6 sn kısalır), **Karıştır** (seçenekler yer değiştirir), **Kör saat**
+(telefonda geri sayım görünmez). Bahis, Örtü, Düello, Havuz, Kesme yoktur. Soru başına tek, kısa bir **HAZIRLAN**
+ekranı vardır (en çok 10 sn); kimsenin kullanacak gücü yoksa hiç gösterilmez.
+
+- **Cevap süresi 30 sn** (Hız turu 12 sn, Final 20 sn). Sorunun okunması için ayrı bir bekleme vardır; seçenekler
+  ondan sonra açılır. Süreyi **Ayarlar → Basit kurallarda cevap süresi** kutusundan 10-60 sn arasında değiştirebilirsiniz.
+- **Soru yalnızca TV'de görünür.** Basit modda telefonlara soru metni gönderilmez; telefon yalnızca şıkları
+  (harf + metin) gösterir ve "Soruyu göster" düğmesi de çıkmaz. Cevaplar açıklanınca her şey görünür.
+  Not: yanındaki arkadaşın sesli okuması ya da ikinci bir telefon bu önlemi aşar; bu bir engel değil, kolay yolun
+  kapatılmasıdır. Sekmeden çıkmayı algılayan bir uyarı yapılmadı: istemcinin bildirdiği bir şey olduğu için
+  kolayca yanıltılır, gelen aramayı ya da bildirimi de cezalandırır.
+
 ## Raporlar
 
 Yönetim konsolunda **Mekanlar → Mekan oturumları**: her gün için açılan masa sayısı, satılan dakika

@@ -1,0 +1,115 @@
+/* The simple ruleset's prep screen (ADR-0026 §3): big cards, one primary button at the bottom. */
+.sabotage {
+  margin-top: 14px;
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 6px 2px 8px;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--qp-color-muted-text);
+}
+
+.effects {
+  display: flex;
+  flex-direction: column;
+}
+
+.effect {
+  display: flex;
+  align-items: center;
+  min-height: 68px;
+  margin-bottom: 10px;
+  padding: 6px 14px 6px 10px;
+  font: inherit;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  background: rgba(var(--qp-surface-rgb), 0.9);
+  border: 3px solid var(--qp-color-surface-line);
+  border-radius: 20px;
+  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.3);
+}
+.effect:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+}
+.effectOn {
+  border-color: var(--qp-color-danger);
+  background:
+    linear-gradient(180deg, rgba(255, 92, 138, 0.28), rgba(255, 92, 138, 0.1)),
+    rgb(var(--qp-surface-rgb));
+}
+.effectText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  margin-left: 12px;
+}
+.effectName {
+  font-family: var(--qp-font-display);
+  font-size: 21px;
+  line-height: 1.1;
+}
+.effectDesc {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--qp-color-muted-text);
+}
+
+.aims {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 -4px;
+}
+.aim {
+  display: flex;
+  flex: 1 1 140px;
+  align-items: center;
+  min-height: 64px;
+  margin: 0 4px 8px;
+  padding: 4px 10px;
+  font: inherit;
+  color: #fff;
+  cursor: pointer;
+  background: rgba(var(--qp-surface-rgb), 0.9);
+  border: 3px solid var(--qp-color-surface-line);
+  border-radius: 18px;
+}
+.aimOn {
+  border-color: var(--qp-color-accent-a);
+  box-shadow: 0 0 20px rgba(255, 201, 40, 0.4);
+}
+.aimName {
+  min-width: 0;
+  margin-left: 8px;
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hint {
+  margin: 0 2px 4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--qp-color-muted-text);
+}
+
+/* Short phones: tighter cards so the DONE button stays on the screen. */
+@media (max-height: 700px) {
+  .effect {
+    min-height: 56px;
+    margin-bottom: 6px;
+  }
+  .aim {
+    min-height: 52px;
+  }
+}

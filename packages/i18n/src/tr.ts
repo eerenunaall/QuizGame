@@ -1,3 +1,4 @@
+import { teamsContentTr } from './teams-content.tr';
 import { venueContentTr } from './venue-content.tr';
 /**
  * Turkish copy is the source of truth (ADR-0016). `en.ts` must provide exactly the same keys with
@@ -780,6 +781,7 @@ export const tr = {
   'staff.people.hint': 'Eklenen kişi bu adresle giriş yapınca panele girer.',
   'unlock.staff': "Mekan görevlisi misin? Bu TV'yi masa olarak aç",
   ...venueContentTr,
+  ...teamsContentTr,
 } as const;
 
 export type MessageKey = keyof typeof tr;

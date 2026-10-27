@@ -12,7 +12,7 @@ import {
   type MeterRecord,
   type VenueMeter,
 } from '@quizparty/game-engine';
-import type { ErrorCode } from '@quizparty/protocol';
+import type { ErrorCode, TeamId } from '@quizparty/protocol';
 import { parseRoomCode } from '@quizparty/shared';
 import type { FeatureFlags } from '../flags/service';
 import type { LinkService } from '../payments/links';
@@ -369,7 +369,25 @@ export class VenueService {
       throw error;
     }
     await this.push(row, 'LINKED');
+    await this.applyTableDefaults(venueId, room);
     return this.view(row, this.now());
+  }
+
+  /**
+   * The venue's way of starting a table (ADR-0026 §7): team or individual play, the simple ruleset, the
+   * venue's team names and café answer window. Only the room's lobby settings move; the leader can still
+   * change play mode and ruleset on the TV, and nothing here touches an account, a price or a reward.
+   */
+  private async applyTableDefaults(venueId: string, room: LiveRoom): Promise<void> {
+    const { play } = await this.settings(venueId);
+    await room
+      .applyTablePreset({
+        play: play.defaultMode,
+        ruleset: play.simpleRuleset ? 'SIMPLE' : 'FULL',
+        teamNames: play.teamNames,
+        simpleAnswerSeconds: play.simpleAnswerSeconds,
+      })
+      .catch(this.deps.onError);
   }
 
   async extend(
@@ -615,11 +633,9 @@ export class VenueService {
       (entry) => state.players[entry.playerId]?.connection === 'CONNECTED',
     );
     if (connected.length < reward.minPlayers) return 'NONE';
-    const top = results.ranking.filter((entry) => entry.rank === 1);
-    // A shared first place (equal score, correct answers and time left) gets no reward: no fair tie-break.
-    if (top.length !== 1) return 'NONE';
-    const winner = state.players[top[0]!.playerId];
-    if (!winner || winner.connection !== 'CONNECTED') return 'NONE';
+    const picked = this.rewardWinner(state, game, results, connected);
+    if (!picked) return 'NONE';
+    const { winner, teamId } = picked;
 
     const now = this.now();
     const day = localDay(now, settings.timezone);
@@ -666,12 +682,48 @@ export class VenueService {
       return row ?? null;
     });
     if (!issued) return 'NONE';
-    await room.deliverVenueReward(gameId, winner.playerId, {
-      code,
-      text: reward.text,
-      expiresAt: issued.expires_at.getTime(),
-    });
+    await room.deliverVenueReward(
+      gameId,
+      winner.playerId,
+      { code, text: reward.text, expiresAt: issued.expires_at.getTime() },
+      teamId,
+    );
     return 'ISSUED';
+  }
+
+  /**
+   * Who a finished game's reward goes to, or null when nobody is owed one (ADR-0024 §8, ADR-0026 §8).
+   * One code per game, whatever the mode.
+   * - Individual play: the single first place (a shared first place gets nothing: no fair tie-break).
+   * - Team play: the single first-placed team (a tie gets nothing); there must have been two teams, each
+   *   with a phone still connected, so a team cannot win because the other walked away. The code goes to
+   *   one representative: the best-ranked connected member of the winning team.
+   */
+  private rewardWinner(
+    state: LiveRoom['state'],
+    game: NonNullable<LiveRoom['state']['game']>,
+    results: NonNullable<NonNullable<LiveRoom['state']['game']>['results']>,
+    connected: { playerId: string }[],
+  ): { winner: NonNullable<LiveRoom['state']['players'][string]>; teamId?: TeamId } | null {
+    const online = (playerId: string) => state.players[playerId]?.connection === 'CONNECTED';
+    if (game.teams) {
+      const board = results.teamRanking ?? [];
+      const top = board.filter((entry) => entry.rank === 1);
+      if (board.length < 2 || top.length !== 1) return null;
+      const present = (teamId: TeamId) =>
+        connected.some((entry) => game.players[entry.playerId]?.teamId === teamId);
+      if (!board.every((entry) => present(entry.teamId))) return null;
+      const teamId = top[0]!.teamId;
+      const rep = results.ranking.find(
+        (entry) => game.players[entry.playerId]?.teamId === teamId && online(entry.playerId),
+      );
+      const winner = rep ? state.players[rep.playerId] : undefined;
+      return winner ? { winner, teamId } : null;
+    }
+    const top = results.ranking.filter((entry) => entry.rank === 1);
+    if (top.length !== 1) return null;
+    const winner = state.players[top[0]!.playerId];
+    return winner && winner.connection === 'CONNECTED' ? { winner } : null;
   }
 
   /**

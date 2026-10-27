@@ -46,6 +46,12 @@ it builds on). The attacker plays against the real server over real sockets; the
 | 38 Many seats from one socket / ghost seats | one socket = one seat, no seat outlives its socket | `red-team/realtime-edge.test.ts` › ATTACK 38 | ✅ FOUND AND FIXED: pipelined JOIN_ROOM/RECONNECT (the second handled before the first finished) seated one socket several times, and a socket that closed mid-join left a seat CONNECTED (blocking leader migration, all-gone close and early lock). The gateway runs one handshake per socket, the room refuses an already-seated or closed socket, a closed one is detached when registered |
 | 39 Latin look-alike letters | reserved, twin and profanity checks hold | `red-team/realtime-edge.test.ts` › ATTACK 39 | ✅ FOUND AND FIXED: small capitals, ɑ, ɡ, ǀ and similar are Latin by script and survive NFKC, so `ɑdmin`, `Aǀice`, `ꜰᴜᴄᴋ` passed. They now fold to the ASCII letter they imitate in the skeleton and the moderation fold |
 | 40 Toggle loop on lobby state | durable writes bounded | `red-team/realtime-edge.test.ts` › ATTACK 40 | ✅ FOUND AND FIXED: READY/SET_NICKNAME/SET_SETTINGS/TRANSFER_LEADER shared only the 20 msg/s bucket (38 flips = 38 events). They now have a per-session bucket `LIMITS.lobbyChange` (20 burst, one per 2 s) |
+| 41 Team moves and capacity | only the host moves other players; full/invalid teams refused | `red-team/teams.test.ts` › ATTACK 41 | ✅ NOT_HOST, TEAM_FULL, TEAM_INVALID |
+| 42 Start with bad teams | unbalanced or single-team games never start, even after a late reshuffle | › ATTACK 42 | ✅ TEAMS_UNBALANCED, NOT_ENOUGH_TEAMS, re-checked at BEGIN_GAME |
+| 43 Sabotage targeting in team play | own team, teammates, unknown team, both target fields, kinds outside the simple set | › ATTACK 43 | ✅ TARGET_INVALID, no token spent on a refusal |
+| 44 Count who holds a token (simple prep) | prep progress is a bare count (extends ATTACK 27) | › ATTACK 44 | ✅ |
+| 45 Farm a team reward | tie, lone team, team without a connected phone or a second code per game gives nothing | › ATTACK 45 | ✅ one code per game to one representative |
+| 46 Question text on a phone | the question text never reaches a player's phone before the reveal, also not on REQUEST_STATE; options do (as in the default game) | › ATTACK 46 | ✅ server redaction in `playerPhaseData` |
 
 Findings from running these attacks that changed the code:
 

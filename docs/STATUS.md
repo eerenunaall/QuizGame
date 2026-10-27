@@ -40,6 +40,14 @@ fixed in `apps/web/css-scope.ts` with a guard test. Tests: `lib/sound/sound.test
 `ui/anim/anim.test.tsx`, `lib/css-scope.test.ts`, e2e `show.spec.ts`. Not done: a listening pass on a real TV in
 a loud room (the palette is measured, not heard), real-device haptics.
 
+## Teams, simple ruleset, sound and motion (2026-10-27)
+Teams and the café ruleset: ADR-0026 (players score individually, teams ranked by average per active member, one reward code to the
+winning team's best connected member, simple set = 50/50 + Double Down + Time Cut/Shuffle/Blind Clock, 30 s window, question text TV-only
+while the options stay on the phone). Leader or venue default chooses individual/team and ruleset; staff edit team names and the window.
+Sound palette (synthesised, `docs/AUDIO.md`, `pnpm audio:render`), staged reveal, streak flames, urgency vignette, podium; the shared
+`qp-*` keyframes now actually run (CSS-module scoping bug fixed). Lobby lists categories with at least `CATEGORY_MIN_QUESTIONS` (15 in
+production); rewards stay valid at least four hours. Not done: native mobile UI for teams (the store app is not shipped).
+
 ## Studio site (`sites/archonbite/`)
 Static, build-free, bilingual site for archonbite.com: Steam-style store pages for QuizNight and Salty Pirate (the latter is a
 placeholder driven by `data/games.json`, see `OWNER-FILL.md`), `/play/` (links to `PLAY_URL`, never an iframe), `/guide/`, legal

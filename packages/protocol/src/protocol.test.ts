@@ -95,6 +95,57 @@ describe('parseClientMessage', () => {
   });
 });
 
+describe('teams and the simple ruleset (ADR-0026)', () => {
+  it('accepts a team pick for yourself and for somebody else, and nothing but a team id', () => {
+    expect(parseClientMessage(clientFrame('ASSIGN_TEAM', { teamId: 'tiger' })).ok).toBe(true);
+    expect(
+      parseClientMessage(clientFrame('ASSIGN_TEAM', { teamId: 'owl', playerId: 'p2' })).ok,
+    ).toBe(true);
+    // team names are ours, never typed by a player: free text is not a team
+    expect(parseClientMessage(clientFrame('ASSIGN_TEAM', { teamId: 'My Own Team' })).ok).toBe(
+      false,
+    );
+    expect(parseClientMessage(clientFrame('ASSIGN_TEAM', { teamId: 'tiger', name: 'x' })).ok).toBe(
+      false,
+    );
+  });
+
+  it('aims a sabotage at a player or at a team, never both and never neither', () => {
+    const aim = (sabotage: unknown) =>
+      parseClientMessage(clientFrame('COMMIT_SABOTAGE', { sabotage })).ok;
+    expect(aim({ targetId: 'p2', effect: 'JAM' })).toBe(true);
+    expect(aim({ targetTeamId: 'owl', effect: 'JAM' })).toBe(true);
+    expect(aim(null)).toBe(true);
+    expect(aim({ targetId: 'p2', targetTeamId: 'owl', effect: 'JAM' })).toBe(false);
+    expect(aim({ effect: 'JAM' })).toBe(false);
+    expect(aim({ targetTeamId: 'not-a-team', effect: 'JAM' })).toBe(false);
+  });
+
+  it('takes the play mode, ruleset and team count as host settings, within bounds', () => {
+    const settings = (payload: unknown) =>
+      parseClientMessage(clientFrame('SET_SETTINGS', payload)).ok;
+    expect(settings({ play: 'TEAMS', ruleset: 'SIMPLE', teamCount: 3 })).toBe(true);
+    expect(settings({ play: 'GROUPS' })).toBe(false);
+    expect(settings({ ruleset: 'EASY' })).toBe(false);
+    expect(settings({ teamCount: 1 })).toBe(false);
+    expect(settings({ teamCount: 5 })).toBe(false);
+  });
+
+  it('carries a team change for a player, or none', () => {
+    const base = { messageId: uuid, roomId: uuid, sessionId: uuid, sequence: 1, timestamp: 1 };
+    const message = (teamId: unknown) =>
+      validateServerMessage(
+        buildServerMessage(
+          { type: 'TEAM_CHANGED', payload: { playerId: 'p1', teamId } as never },
+          base,
+        ),
+      ).ok;
+    expect(message('tiger')).toBe(true);
+    expect(message(null)).toBe(true);
+    expect(message('wolves')).toBe(false);
+  });
+});
+
 describe('server messages', () => {
   const event = { type: 'ACK', payload: { messageId: uuid } } as const;
   const context = { messageId: uuid, roomId: uuid, sessionId: uuid, sequence: 4, timestamp: 1 };

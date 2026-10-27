@@ -6,8 +6,11 @@ import {
   type AvatarId,
   type ClientMessage,
   type ErrorCode,
+  type PlayMode,
   type RoomView,
+  type Ruleset,
   type ServerEvent,
+  type TeamId,
 } from '@quizparty/protocol';
 import {
   nextWakeAt,
@@ -60,6 +63,8 @@ export interface RoomDeps {
 interface HeldReward {
   gameId: string;
   playerId: string;
+  /** Team play (ADR-0026 §8): the winning team, whose representative holds the code. */
+  teamId?: TeamId;
   payload: { code: string; text: string; expiresAt: number };
 }
 
@@ -751,7 +756,11 @@ export class LiveRoom {
           this.send(connection, { type: 'ACK', payload: { messageId: message.messageId } });
         return;
       }
-      if (HOST_COMMANDS.has(message.type) && result.code === 'NOT_HOST') {
+      // ASSIGN_TEAM is open to every player for themselves; moving somebody else is the host's alone.
+      if (
+        (HOST_COMMANDS.has(message.type) || message.type === 'ASSIGN_TEAM') &&
+        result.code === 'NOT_HOST'
+      ) {
         this.deps.security.record('HOST_COMMAND_FORBIDDEN', {
           roomId: this.id,
           sessionId,
@@ -939,6 +948,23 @@ export class LiveRoom {
     return this.state.venue ?? null;
   }
 
+  /** Staff opened a table: the venue's play mode, ruleset, team names and café window (ADR-0026 §7). */
+  applyTablePreset(preset: {
+    play: PlayMode;
+    ruleset: Ruleset;
+    teamNames: string[];
+    simpleAnswerSeconds: number | null;
+  }): Promise<void> {
+    return this.enqueue(async () => {
+      await this.apply({
+        kind: 'TABLE_PRESET',
+        at: this.deps.clock.now(),
+        entropy: this.entropy(),
+        ...preset,
+      });
+    });
+  }
+
   /** Staff changed the table (or its time ran out): the engine stores the meter and tells every screen. */
   applyVenueMeter(meter: VenueMeter | null): Promise<void> {
     return this.enqueue(async () => {
@@ -959,13 +985,17 @@ export class LiveRoom {
     gameId: string,
     playerId: string,
     payload: { code: string; text: string; expiresAt: number },
+    teamId?: TeamId,
   ): Promise<boolean> {
     return this.enqueue(() => {
       if (this.state.phase !== 'RESULTS' || this.state.game?.gameId !== gameId)
         return Promise.resolve(false);
-      this.venueReward = { gameId, playerId, payload };
+      this.venueReward = { gameId, playerId, payload, ...(teamId ? { teamId } : {}) };
       this.deliver({ to: 'PLAYER', playerId }, { type: 'VENUE_REWARD', payload });
-      this.deliver({ to: 'DISPLAY' }, { type: 'VENUE_REWARD_ISSUED', payload: { playerId } });
+      this.deliver(
+        { to: 'DISPLAY' },
+        { type: 'VENUE_REWARD_ISSUED', payload: { playerId, ...(teamId ? { teamId } : {}) } },
+      );
       return Promise.resolve(true);
     });
   }
@@ -977,7 +1007,7 @@ export class LiveRoom {
     if (connection.role === 'DISPLAY')
       this.send(connection, {
         type: 'VENUE_REWARD_ISSUED',
-        payload: { playerId: held.playerId },
+        payload: { playerId: held.playerId, ...(held.teamId ? { teamId: held.teamId } : {}) },
       });
     else if (connection.playerId === held.playerId)
       this.send(connection, { type: 'VENUE_REWARD', payload: held.payload });

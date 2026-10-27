@@ -5,11 +5,14 @@ import {
   MIN_ROUNDS,
   type CloseReason,
   type ErrorCode,
+  type PhaseData,
   type ServerEvent,
+  type TeamId,
   type Tier,
 } from '@quizparty/protocol';
 import {
   allPlayersGoneMsFor,
+  applyRuleset,
   duelRules,
   finalStageLength,
   ladderKindFor,
@@ -20,6 +23,8 @@ import {
   riskPickDecisionMsFor,
   riskPickMsFor,
   sabotagePickMsFor,
+  withSimpleAnswerSeconds,
+  mergedPrep,
   type GameConfig,
 } from './config';
 import { deckSize, selectQuestionId } from './deck';
@@ -37,6 +42,8 @@ import {
   jokerLockedOut,
   newLedger,
   resolveSabotage,
+  prepActors,
+  riskActionable,
   riskPickOffered,
   roundLadder,
   sabotageActors,
@@ -45,6 +52,17 @@ import {
 import { rankPlayers } from './rank';
 import { resolveDuel, settlePot, type PotEntry } from './risks';
 import { computeScore } from './scoring';
+import {
+  lobbyTeamIds,
+  rulesetOf,
+  smallestTeam,
+  teamCapacity,
+  teamCountOf,
+  teamPlay,
+  teamSizes,
+  teamStandings,
+  teamsStartCheck,
+} from './teams';
 import { allPlayersGoneSince, isInGamePhase, leaderHandoverPossible } from './timers';
 import { meterBlock, meterHeld, meterView, type VenueMeter } from './venue';
 import { exemptPlayerId, tickFor } from './who-said-it';
@@ -69,9 +87,11 @@ import type {
 import {
   isHostActor,
   phaseDataFor,
+  playerPhaseData,
   prepCounts,
   prepEligibleIds,
   statementPlayerIds,
+  structuredSettings,
   toPublicPlayer,
   youView,
 } from './views';
@@ -161,19 +181,21 @@ export function reduce(state: RoomState, input: EngineInput): ReduceResult {
   }
   const bumped: RoomState = { ...next, version: state.version + 1 };
   if (bumped.phase !== state.phase) {
-    ctx.effects.push(
-      emitEffect(
-        { to: 'ALL' },
-        {
-          type: 'PHASE_ENTERED',
-          payload: {
-            phaseEnteredAt: bumped.phaseEnteredAt,
-            phaseDeadlineAt: bumped.phaseDeadlineAt,
-            data: phaseDataFor(bumped),
-          },
+    const data = phaseDataFor(bumped);
+    // The simple ruleset keeps the question's words on the TV (ADR-0026 §6): phones get the same frame
+    // with the text left out. Every other room sends one frame to everybody, as before.
+    const forPlayers = playerPhaseData(bumped, data);
+    const frame = (audience: Audience, payload: PhaseData): Effect =>
+      emitEffect(audience, {
+        type: 'PHASE_ENTERED',
+        payload: {
+          phaseEnteredAt: bumped.phaseEnteredAt,
+          phaseDeadlineAt: bumped.phaseDeadlineAt,
+          data: payload,
         },
-      ),
-    );
+      });
+    if (forPlayers === data) ctx.effects.push(frame({ to: 'ALL' }, data));
+    else ctx.effects.push(frame({ to: 'DISPLAY' }, data), frame({ to: 'PLAYERS' }, forPlayers));
   }
   return { state: bumped, effects: ctx.effects, result: ctx.result, changed: true };
 }
@@ -226,6 +248,8 @@ function dispatch(d: Room, ctx: Ctx): void {
       return onRecover(d, ctx, input.at, input.outageMs);
     case 'VENUE_METER':
       return onVenueMeter(d, ctx, input.at, input.meter);
+    case 'TABLE_PRESET':
+      return onTablePreset(d, ctx, input);
     case 'CLOSE':
       return closeRoom(d, ctx, input.at, input.reason);
   }
@@ -380,6 +404,8 @@ function onPlayerJoin(
     disconnectedAt: null,
     status: 'ACTIVE',
     reducedEffects: false,
+    // Team play: a newcomer starts in the smallest team and taps another chip if they want to (ADR-0026 §2).
+    ...(teamPlay(d) ? { teamId: smallestTeam(d) } : {}),
   };
   d.nextJoinIndex += 1;
   d.playerOrder.push(joining.playerId);
@@ -569,6 +595,10 @@ function onCommand(
       d.settings.rounds = rounds;
       d.settings.difficulty = command.payload.difficulty ?? d.settings.difficulty;
       d.settings.categories = categories === 'ALL' ? 'ALL' : [...categories];
+      if (command.payload.play !== undefined) d.settings.play = command.payload.play;
+      if (command.payload.ruleset !== undefined) d.settings.ruleset = command.payload.ruleset;
+      if (command.payload.teamCount !== undefined) d.settings.teamCount = command.payload.teamCount;
+      reconcileTeams(d, ctx);
       touch(d, at);
       emit(
         ctx,
@@ -577,6 +607,8 @@ function onCommand(
       );
       return;
     }
+    case 'ASSIGN_TEAM':
+      return assignTeam(d, ctx, at, actor, isHost, command.payload);
     case 'KICK_PLAYER': {
       if (!isHost) return reject(ctx, 'NOT_HOST');
       const target = d.players[command.payload.playerId];
@@ -623,14 +655,86 @@ function onCommand(
   }
 }
 
-function structuredSettings(d: Room) {
-  return {
-    mode: d.settings.mode,
-    contentTitle: d.settings.contentTitle,
-    rounds: d.settings.rounds,
-    difficulty: d.settings.difficulty,
-    categories: d.settings.categories === 'ALL' ? ('ALL' as const) : [...d.settings.categories],
-  };
+// ───────────────────────────── teams (ADR-0026) ─────────────────────────────
+
+/**
+ * Brings every active player's team in line with the room's play mode and team count: individual play
+ * clears them, team play gives each player a valid team within its capacity. Deterministic: players who
+ * need a new team (none, a team that is no longer offered, or the latest joiners of an overfull team)
+ * go in join order to the smallest team. Announces each change.
+ */
+function reconcileTeams(d: Room, ctx: Ctx): void {
+  const players = activePlayerList(d);
+  if (!teamPlay(d)) {
+    for (const player of players) {
+      if (player.teamId === undefined) continue;
+      delete player.teamId;
+      emit(
+        ctx,
+        { to: 'ALL' },
+        { type: 'TEAM_CHANGED', payload: { playerId: player.playerId, teamId: null } },
+      );
+    }
+    return;
+  }
+  const offered = lobbyTeamIds(d.settings);
+  const capacity = teamCapacity(d.config.maxPlayers, offered.length);
+  const homeless: Draft<Player>[] = [];
+  const settled = new Map<TeamId, Draft<Player>[]>(offered.map((id) => [id, []]));
+  for (const player of players) {
+    const team = player.teamId === undefined ? undefined : settled.get(player.teamId);
+    if (team) team.push(player);
+    else homeless.push(player);
+  }
+  for (const members of settled.values()) {
+    // The latest joiners are the ones who give up their place in an overfull team.
+    while (members.length > capacity) homeless.push(members.pop()!);
+  }
+  homeless.sort((a, b) => a.joinIndex - b.joinIndex);
+  for (const player of homeless) {
+    let target = offered[0]!;
+    for (const id of offered)
+      if (settled.get(id)!.length < settled.get(target)!.length) target = id;
+    settled.get(target)!.push(player);
+    if (player.teamId !== target) {
+      player.teamId = target;
+      emit(
+        ctx,
+        { to: 'ALL' },
+        { type: 'TEAM_CHANGED', payload: { playerId: player.playerId, teamId: target } },
+      );
+    }
+  }
+}
+
+function assignTeam(
+  d: Room,
+  ctx: Ctx,
+  at: number,
+  actor: Actor,
+  isHost: boolean,
+  payload: Extract<EngineCommand, { type: 'ASSIGN_TEAM' }>['payload'],
+): void {
+  if (d.phase !== 'LOBBY' && d.phase !== 'RESULTS') return reject(ctx, 'INVALID_STATE');
+  if (!teamPlay(d)) return reject(ctx, 'TEAM_INVALID');
+  const ownId = actor.role === 'PLAYER' ? actor.playerId : null;
+  const subjectId = payload.playerId ?? ownId;
+  // The TV has no seat of its own: it must say whom it moves. Moving somebody else is the host's call.
+  if (subjectId === null) return reject(ctx, 'TEAM_INVALID');
+  if (subjectId !== ownId && !isHost) return reject(ctx, 'NOT_HOST');
+  const subject = d.players[subjectId];
+  if (!subject || subject.status !== 'ACTIVE') return reject(ctx, 'PLAYER_NOT_FOUND');
+  if (!lobbyTeamIds(d.settings).includes(payload.teamId)) return reject(ctx, 'TEAM_INVALID');
+  if (subject.teamId === payload.teamId) return;
+  const capacity = teamCapacity(d.config.maxPlayers, teamCountOf(d.settings));
+  if ((teamSizes(d)[payload.teamId] ?? 0) >= capacity) return reject(ctx, 'TEAM_FULL');
+  subject.teamId = payload.teamId;
+  touch(d, at);
+  emit(
+    ctx,
+    { to: 'ALL' },
+    { type: 'TEAM_CHANGED', payload: { playerId: subjectId, teamId: payload.teamId } },
+  );
 }
 
 function emitStatementProgress(d: Room, ctx: Ctx): void {
@@ -648,6 +752,10 @@ function connectedPlayerCount(d: Room): number {
 function requestDeck(d: Room, ctx: Ctx, purpose: 'START' | 'REMATCH', actor: Actor): void {
   if (connectedPlayerCount(d) < d.config.minPlayersToStart)
     return reject(ctx, 'NOT_ENOUGH_PLAYERS');
+  if (teamPlay(d)) {
+    const refused = teamsStartCheck(d);
+    if (refused) return reject(ctx, refused);
+  }
   const maxRounds = maxRoundsFor(d.config, d.tier);
   const players = activePlayerList(d);
   const statements = players
@@ -700,8 +808,22 @@ function onBeginGame(d: Room, ctx: Ctx, input: Extract<EngineInput, { kind: 'BEG
   );
   if (deckSize(input.deck) < totalRounds || totalRounds < 1)
     return reject(ctx, 'NOT_ENOUGH_QUESTIONS');
+  // Players may have moved while the deck was being built: the teams must still make a game.
+  if (teamPlay(d)) {
+    const refused = teamsStartCheck(d);
+    if (refused) return reject(ctx, refused);
+  }
 
-  if (input.config) d.config = input.config;
+  // The ruleset is chosen per game from the room's full config, which is kept aside while a game plays
+  // with the simple one (ADR-0026 §3). A full game leaves `config` untouched, exactly as before.
+  const base = input.config ?? d.baseConfig ?? d.config;
+  if (rulesetOf(d.settings) === 'SIMPLE') {
+    d.baseConfig = base;
+    d.config = applyRuleset(base, 'SIMPLE');
+  } else {
+    d.config = base;
+    delete d.baseConfig;
+  }
   // Personal answers will sit in this room's durable log from here on; the room erases them when it closes.
   if (
     Object.values(input.deck.questions).some(
@@ -711,7 +833,25 @@ function onBeginGame(d: Room, ctx: Ctx, input: Extract<EngineInput, { kind: 'BEG
     d.sensitiveContent = true;
   const participants = activePlayerList(d);
   const levelOffset = presetOffset(d.config, d.settings.difficulty);
+  // Team play: the teams that have a player, in slot order, each with the shared shield (ADR-0026 §5).
+  const teamGame = teamPlay(d);
+  const teamIds = teamGame
+    ? lobbyTeamIds(d.settings).filter((id) => participants.some((p) => p.teamId === id))
+    : [];
   d.game = {
+    ...(teamGame
+      ? {
+          teams: {
+            ids: teamIds,
+            ledgers: Object.fromEntries(
+              teamIds.map((id) => [
+                id,
+                { shield: d.config.powers.shieldPerGame, hits: 0, lastHitRound: null },
+              ]),
+            ),
+          },
+        }
+      : {}),
     gameId: input.gameId,
     startedAt: at,
     totalRounds,
@@ -732,6 +872,7 @@ function onBeginGame(d: Room, ctx: Ctx, input: Extract<EngineInput, { kind: 'BEG
       participants.map((p) => [
         p.playerId,
         {
+          ...(teamGame && p.teamId !== undefined ? { teamId: p.teamId } : {}),
           score: 0,
           streak: 0,
           bestStreak: 0,
@@ -740,7 +881,8 @@ function onBeginGame(d: Room, ctx: Ctx, input: Extract<EngineInput, { kind: 'BEG
           totalRemainingMs: 0,
           removed: false,
           rankHistory: [],
-          powers: newLedger(d.config),
+          // In a team game the shield belongs to the team, not to the player.
+          powers: { ...newLedger(d.config), ...(teamGame ? { shield: 0 } : {}) },
         },
       ]),
     ),
@@ -786,6 +928,15 @@ function emitAllPlayerStates(d: Room, ctx: Ctx): void {
 function pickPhaseComplete(d: Room): boolean {
   const round = d.game!.round!;
   const eligible = prepEligibleIds(d);
+  if (mergedPrep(d.config)) {
+    // One phase for both choices: a player is done once each thing they can still do is decided.
+    const picks = sabotagePicksOf(round);
+    return eligible.every(
+      (playerId) =>
+        (round.commitments[playerId] !== undefined || !riskActionable(d, playerId)) &&
+        (picks[playerId] !== undefined || !canSabotage(d, playerId)),
+    );
+  }
   if (d.phase === 'SABOTAGE_PICK') {
     // Players who cannot sabotage (no token, cooldown, nobody to hit) are never waited for.
     const picks = sabotagePicksOf(round);
@@ -870,7 +1021,9 @@ function commitSabotage(
   (round.sabotagePicks ??= {})[playerId] = {
     sabotage: sabotage
       ? {
-          targetId: sabotage.targetId,
+          // Team play aims at a team and stores no player (ADR-0026 §5).
+          targetId: sabotage.targetId ?? '',
+          ...(sabotage.targetTeamId !== undefined ? { targetTeamId: sabotage.targetTeamId } : {}),
           effect: sabotage.effect,
           joker: sabotage.effect === 'LOCKOUT' ? (sabotage.joker ?? null) : null,
         }
@@ -928,6 +1081,15 @@ function riskPickDuration(d: Room): number {
  */
 function enterNextPick(d: Room, ctx: Ctx, at: number, after: 'INTRO' | 'RISK_PICK'): void {
   const eligible = prepEligibleIds(d);
+  // The simple ruleset has one prep phase, entered only when somebody has something to use (ADR-0026 §3).
+  if (mergedPrep(d.config)) {
+    if (after === 'INTRO' && prepActors(d, eligible).length > 0) {
+      enterPhase(d, 'RISK_PICK', at, riskPickMsFor(d.config));
+      emitAllPlayerStates(d, ctx);
+      return;
+    }
+    return startQuestion(d, ctx, at);
+  }
   if (after === 'INTRO' && riskPickOffered(d, eligible)) {
     enterPhase(d, 'RISK_PICK', at, riskPickDuration(d));
     emitAllPlayerStates(d, ctx); // fresh round: nothing committed, lockouts and tokens as they stand
@@ -1622,6 +1784,7 @@ function enterScoreUpdate(d: Room, ctx: Ctx, at: number): void {
       rank: entry.rank,
       streak: game.players[entry.playerId]!.streak,
     })),
+    ...(game.teams ? { teamBoard: teamStandings(d, game) } : {}),
   };
 
   // Director aggregates for the next round: room-level only (ADR-0011).
@@ -1678,7 +1841,12 @@ function enterScoreUpdate(d: Room, ctx: Ctx, at: number): void {
           fiftyFifty: round.fiftyFiftyUsers[entry.playerId] === true,
         };
       }),
-      sabotages: round.sabotages.map((record) => ({ ...record })),
+      sabotages: round.sabotages.map((record) => ({
+        actorId: record.actorId,
+        targetId: record.targetId,
+        effect: record.effect,
+        blocked: record.blocked,
+      })),
       configVersion: d.config.version,
     },
   });
@@ -1740,7 +1908,12 @@ function enterResults(d: Room, ctx: Ctx, at: number, cutShort = false): void {
     awards.push({ kind: 'COMEBACK', playerId: comeback.playerId });
   }
 
-  game.results = { ranking, awards, ...(cutShort ? { cutShort: true } : {}) };
+  game.results = {
+    ranking,
+    awards,
+    ...(game.teams ? { teamRanking: teamStandings(d, game) } : {}),
+    ...(cutShort ? { cutShort: true } : {}),
+  };
   game.upcoming = null;
   enterPhase(d, 'RESULTS', at, null);
   touch(d, at);
@@ -1851,6 +2024,35 @@ function onVenueMeter(d: Room, ctx: Ctx, at: number, meter: VenueMeter | null): 
     );
   if (same) return;
   d.venue = meter ? { ...meter } : null;
+}
+
+/**
+ * Venue mode (ADR-0026 §7): the venue's table defaults land when staff open the table. Like a leader's
+ * settings change, only between games; players already seated are put into teams when the mode is TEAMS.
+ */
+function onTablePreset(
+  d: Room,
+  ctx: Ctx,
+  input: Extract<EngineInput, { kind: 'TABLE_PRESET' }>,
+): void {
+  if (d.phase !== 'WAITING' && d.phase !== 'LOBBY' && d.phase !== 'RESULTS')
+    return reject(ctx, 'INVALID_STATE');
+  d.settings.play = input.play;
+  d.settings.ruleset = input.ruleset;
+  if (input.teamNames.some((name) => name !== '')) d.settings.teamNames = [...input.teamNames];
+  else delete d.settings.teamNames;
+  if (input.simpleAnswerSeconds !== null) {
+    d.config = withSimpleAnswerSeconds(d.config, input.simpleAnswerSeconds);
+    if (d.baseConfig)
+      d.baseConfig = withSimpleAnswerSeconds(d.baseConfig, input.simpleAnswerSeconds);
+  }
+  reconcileTeams(d, ctx);
+  touch(d, input.at);
+  emit(
+    ctx,
+    { to: 'ALL' },
+    { type: 'SETTINGS_CHANGED', payload: { settings: structuredSettings(d) } },
+  );
 }
 
 function onRecover(d: Room, ctx: Ctx, at: number, outageMs: number): void {
