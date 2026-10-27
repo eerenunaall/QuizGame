@@ -1,0 +1,5 @@
+# Netlify: base directory = sites/archonbite, no build step. `_headers` and `404.html` are picked up as they are.
+[build]
+  publish = "."
+  # Rebuild only when this folder changed (the repository also holds the game server, which Netlify must not redeploy on).
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- ."

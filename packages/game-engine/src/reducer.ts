@@ -1,0 +1,2097 @@
+import { produce, type Draft } from 'immer';
+import { Rng, clamp, rngStateFromSeed } from '@quizparty/shared';
+import {
+  MAX_STATEMENT_LENGTH,
+  MIN_ROUNDS,
+  type CloseReason,
+  type ErrorCode,
+  type PhaseData,
+  type ServerEvent,
+  type TeamId,
+  type Tier,
+} from '@quizparty/protocol';
+import {
+  allPlayersGoneMsFor,
+  applyRuleset,
+  duelRules,
+  finalStageLength,
+  ladderKindFor,
+  maxRoundsFor,
+  potRules,
+  presetOffset,
+  resolveGameConfig,
+  riskPickDecisionMsFor,
+  riskPickMsFor,
+  sabotagePickMsFor,
+  withSimpleAnswerSeconds,
+  mergedPrep,
+  type GameConfig,
+} from './config';
+import { deckSize, selectQuestionId } from './deck';
+import { LEVEL_MAX, LEVEL_MIN, chooseRoundKind, direct } from './director';
+import {
+  buildPowerItems,
+  canSabotage,
+  checkDuelReply,
+  checkRisk,
+  checkSabotage,
+  chooseFiftyFifty,
+  duelAnswerOf,
+  earnToken,
+  jamFor,
+  jokerLockedOut,
+  newLedger,
+  resolveSabotage,
+  prepActors,
+  riskActionable,
+  riskPickOffered,
+  roundLadder,
+  sabotageActors,
+  sabotagePicksOf,
+} from './powers';
+import { rankPlayers } from './rank';
+import { resolveDuel, settlePot, type PotEntry } from './risks';
+import { computeScore } from './scoring';
+import {
+  lobbyTeamIds,
+  rulesetOf,
+  smallestTeam,
+  teamCapacity,
+  teamCountOf,
+  teamPlay,
+  teamSizes,
+  teamStandings,
+  teamsStartCheck,
+} from './teams';
+import { allPlayersGoneSince, isInGamePhase, leaderHandoverPossible } from './timers';
+import { meterBlock, meterHeld, meterView, type VenueMeter } from './venue';
+import { exemptPlayerId, tickFor } from './who-said-it';
+import type {
+  Actor,
+  Audience,
+  CommandResult,
+  DeckRequest,
+  Effect,
+  EngineCommand,
+  EngineInput,
+  Player,
+  PresentedOption,
+  PresentedQuestion,
+  ReduceResult,
+  RoomState,
+  ResultsRecord,
+  RoundOutcome,
+  Settlement,
+  UpcomingRound,
+} from './types';
+import {
+  isHostActor,
+  phaseDataFor,
+  playerPhaseData,
+  prepCounts,
+  prepEligibleIds,
+  statementPlayerIds,
+  structuredSettings,
+  toPublicPlayer,
+  youView,
+} from './views';
+
+type Room = Draft<RoomState>;
+
+interface Ctx {
+  input: EngineInput;
+  effects: Effect[];
+  result: CommandResult;
+  rng: () => Rng;
+}
+
+const OPAQUE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
+
+export interface CreateRoomParams {
+  roomId: string;
+  code: string;
+  displaySessionId: string;
+  now: number;
+  config?: GameConfig;
+  tier?: Tier;
+  hostAccountId?: string | null;
+  contentLanguage?: 'tr' | 'en';
+}
+
+export function createRoom(params: CreateRoomParams): RoomState {
+  const config = params.config ?? resolveGameConfig();
+  const tier = params.tier ?? 'FREE';
+  const rounds = Math.min(config.defaultRounds, maxRoundsFor(config, tier));
+  return {
+    schemaVersion: 1,
+    roomId: params.roomId,
+    code: params.code,
+    version: 0,
+    createdAt: params.now,
+    lastActivityAt: params.now,
+    phase: 'WAITING',
+    phaseEnteredAt: params.now,
+    phaseDeadlineAt: null,
+    tier,
+    hostAccountId: params.hostAccountId ?? null,
+    contentLanguage: params.contentLanguage ?? 'tr',
+    settings: {
+      mode: 'CLASSIC',
+      contentTitle: null,
+      rounds,
+      difficulty: 'MEDIUM',
+      categories: 'ALL',
+    },
+    contentRef: null,
+    statements: {},
+    sensitiveContent: false,
+    config,
+    display: { sessionId: params.displaySessionId, connected: false, disconnectedAt: params.now },
+    awaitingDisplay: false,
+    leaderPlayerId: null,
+    leaderLostAt: null,
+    nextJoinIndex: 0,
+    players: {},
+    playerOrder: [],
+    game: null,
+    closed: null,
+  };
+}
+
+/**
+ * The single place game state changes. Pure: the result depends only on `(state, input)`;
+ * time and randomness arrive inside the input. Inputs that change state are what the server
+ * appends to the durable log, so replaying them reproduces the state exactly (ADR-0006).
+ */
+export function reduce(state: RoomState, input: EngineInput): ReduceResult {
+  if (state.phase === 'ROOM_CLOSED') {
+    return { state, effects: [], result: { ok: false, code: 'ROOM_CLOSED' }, changed: false };
+  }
+  const ctx: Ctx = {
+    input,
+    effects: [],
+    result: { ok: true },
+    rng: lazyRng(input.entropy),
+  };
+  const next = produce(state, (draft) => {
+    dispatch(draft, ctx);
+  });
+  if (next === state) {
+    return { state, effects: ctx.effects, result: ctx.result, changed: false };
+  }
+  const bumped: RoomState = { ...next, version: state.version + 1 };
+  if (bumped.phase !== state.phase) {
+    const data = phaseDataFor(bumped);
+    // The simple ruleset keeps the question's words on the TV (ADR-0026 §6): phones get the same frame
+    // with the text left out. Every other room sends one frame to everybody, as before.
+    const forPlayers = playerPhaseData(bumped, data);
+    const frame = (audience: Audience, payload: PhaseData): Effect =>
+      emitEffect(audience, {
+        type: 'PHASE_ENTERED',
+        payload: {
+          phaseEnteredAt: bumped.phaseEnteredAt,
+          phaseDeadlineAt: bumped.phaseDeadlineAt,
+          data: payload,
+        },
+      });
+    if (forPlayers === data) ctx.effects.push(frame({ to: 'ALL' }, data));
+    else ctx.effects.push(frame({ to: 'DISPLAY' }, data), frame({ to: 'PLAYERS' }, forPlayers));
+  }
+  return { state: bumped, effects: ctx.effects, result: ctx.result, changed: true };
+}
+
+function lazyRng(entropy: string): () => Rng {
+  let rng: Rng | null = null;
+  return () => (rng ??= new Rng(rngStateFromSeed(entropy)));
+}
+
+function emitEffect(audience: Audience, event: ServerEvent): Effect {
+  return { kind: 'emit', audience, event };
+}
+
+function emit(ctx: Ctx, audience: Audience, event: ServerEvent): void {
+  ctx.effects.push(emitEffect(audience, event));
+}
+
+function reject(ctx: Ctx, code: ErrorCode): void {
+  ctx.result = { ok: false, code };
+}
+
+function dispatch(d: Room, ctx: Ctx): void {
+  const input = ctx.input;
+  switch (input.kind) {
+    case 'DISPLAY_CONNECTION':
+      return onDisplayConnection(d, ctx, input.at, input.connected);
+    case 'PLAYER_JOIN':
+      return onPlayerJoin(d, ctx, input.at, input.player);
+    case 'PLAYER_CONNECTION':
+      return onPlayerConnection(d, ctx, input.at, input.playerId, input.connected);
+    case 'COMMAND':
+      return onCommand(
+        d,
+        ctx,
+        input.at,
+        input.actor,
+        input.command,
+        input.messageId,
+        input.nicknameKey,
+      );
+    case 'BEGIN_GAME':
+      return onBeginGame(d, ctx, input);
+    case 'TICK':
+      return onTick(d, ctx, input.at);
+    case 'SET_CONTENT':
+      return onSetContent(d, ctx, input);
+    case 'ENTITLEMENT':
+      return onEntitlement(d, ctx, input.tier, input.hostAccountId, input.reason);
+    case 'RECOVER':
+      return onRecover(d, ctx, input.at, input.outageMs);
+    case 'VENUE_METER':
+      return onVenueMeter(d, ctx, input.at, input.meter);
+    case 'TABLE_PRESET':
+      return onTablePreset(d, ctx, input);
+    case 'CLOSE':
+      return closeRoom(d, ctx, input.at, input.reason);
+  }
+}
+
+// ───────────────────────────── helpers ─────────────────────────────
+
+function enterPhase(d: Room, phase: Room['phase'], at: number, durationMs: number | null): void {
+  d.phase = phase;
+  d.phaseEnteredAt = at;
+  d.phaseDeadlineAt = durationMs === null ? null : at + durationMs;
+}
+
+function activePlayerList(d: Room): Draft<Player>[] {
+  return d.playerOrder
+    .map((id) => d.players[id])
+    .filter((p): p is Draft<Player> => p !== undefined && p.status === 'ACTIVE');
+}
+
+function pickLeader(d: Room, excludePlayerId: string | null): string | null {
+  const candidates = activePlayerList(d).filter((p) => p.playerId !== excludePlayerId);
+  const connected = candidates.filter((p) => p.connection === 'CONNECTED');
+  const pool = connected.length > 0 ? connected : candidates;
+  const best = pool
+    .slice()
+    .sort((a, b) => a.joinIndex - b.joinIndex || a.playerId.localeCompare(b.playerId))[0];
+  return best?.playerId ?? null;
+}
+
+function setLeader(d: Room, ctx: Ctx, playerId: string | null): void {
+  d.leaderPlayerId = playerId;
+  const leader = playerId ? d.players[playerId] : undefined;
+  d.leaderLostAt =
+    leader && leader.connection === 'DISCONNECTED' ? (leader.disconnectedAt ?? ctx.input.at) : null;
+  emit(ctx, { to: 'ALL' }, { type: 'LEADER_CHANGED', payload: { playerId } });
+  for (const player of activePlayerList(d)) {
+    const you = youView(d, player.playerId);
+    if (you)
+      emit(
+        ctx,
+        { to: 'PLAYER', playerId: player.playerId },
+        { type: 'PLAYER_STATE', payload: { you } },
+      );
+  }
+}
+
+function removePlayer(
+  d: Room,
+  ctx: Ctx,
+  playerId: string,
+  reason: 'LEFT' | 'KICKED',
+  at: number,
+): void {
+  const player = d.players[playerId];
+  if (!player || player.status !== 'ACTIVE') return;
+  player.status = reason;
+  player.ready = false;
+  delete d.statements[playerId];
+  d.playerOrder = d.playerOrder.filter((id) => id !== playerId);
+  if (d.game?.players[playerId]) d.game.players[playerId].removed = true;
+  emit(ctx, { to: 'ALL' }, { type: 'PLAYER_LEFT', payload: { playerId, reason } });
+  ctx.effects.push({ kind: 'kick', playerId, reason });
+
+  if (d.leaderPlayerId === playerId) setLeader(d, ctx, pickLeader(d, playerId));
+
+  const remaining = activePlayerList(d);
+  if (remaining.length === 0) {
+    if (d.phase === 'LOBBY') {
+      d.phase = 'WAITING';
+      d.phaseEnteredAt = at;
+    } else if (isInGamePhase(d.phase)) {
+      closeRoom(d, ctx, at, 'ABANDONED');
+    }
+    return;
+  }
+  if (d.phase === 'ANSWERING') maybeEarlyLock(d, ctx, at);
+  else maybeEndPickPhase(d, ctx, at);
+}
+
+function closeRoom(d: Room, ctx: Ctx, at: number, reason: CloseReason): void {
+  if (d.phase === 'ROOM_CLOSED') return;
+  d.closed = { reason, at };
+  d.phase = 'ROOM_CLOSED';
+  d.phaseEnteredAt = at;
+  d.phaseDeadlineAt = null;
+  ctx.effects.push({ kind: 'closeRoom', reason });
+  ctx.effects.push({ kind: 'telemetry', name: 'room_closed', props: { reason } });
+}
+
+function touch(d: Room, at: number): void {
+  d.lastActivityAt = at;
+}
+
+// ───────────────────────────── connections & joining ─────────────────────────────
+
+function onDisplayConnection(d: Room, ctx: Ctx, at: number, connected: boolean): void {
+  if (connected) {
+    if (d.display.connected && d.display.disconnectedAt === null) return;
+    d.display.connected = true;
+    d.display.disconnectedAt = null;
+    if (d.awaitingDisplay) {
+      d.awaitingDisplay = false;
+      d.phaseDeadlineAt = at + 500; // resume the held round boundary
+    }
+    touch(d, at);
+  } else {
+    if (!d.display.connected && d.display.disconnectedAt !== null) return;
+    d.display.connected = false;
+    d.display.disconnectedAt = at;
+  }
+  emitDisplayStatus(d, ctx);
+}
+
+function emitDisplayStatus(d: Room, ctx: Ctx): void {
+  emit(
+    ctx,
+    { to: 'PLAYERS' },
+    {
+      type: 'DISPLAY_STATUS',
+      payload: { connected: d.display.connected, awaitingDisplay: d.awaitingDisplay },
+    },
+  );
+}
+
+/**
+ * Players who left stay in `Room.players` (their records back the log and the results), so a room that
+ * is joined and left over and over would grow without bound. Past this many seats ever recorded it takes
+ * no newcomers; a café night of real guests stays far below it.
+ */
+export const MAX_PLAYER_RECORDS = 200;
+
+function onPlayerJoin(
+  d: Room,
+  ctx: Ctx,
+  at: number,
+  joining: Extract<EngineInput, { kind: 'PLAYER_JOIN' }>['player'],
+): void {
+  if (d.phase !== 'WAITING' && d.phase !== 'LOBBY') return reject(ctx, 'GAME_IN_PROGRESS');
+  const active = activePlayerList(d);
+  if (active.length >= d.config.maxPlayers) return reject(ctx, 'ROOM_FULL');
+  if (Object.keys(d.players).length >= MAX_PLAYER_RECORDS) return reject(ctx, 'ROOM_FULL');
+  if (d.players[joining.playerId]) return reject(ctx, 'ALREADY_JOINED');
+  if (active.some((p) => p.nicknameKey === joining.nicknameKey))
+    return reject(ctx, 'NICKNAME_TAKEN');
+
+  const used = new Set(active.map((p) => p.colorSlot));
+  let colorSlot = 1;
+  while (used.has(colorSlot)) colorSlot += 1;
+
+  d.players[joining.playerId] = {
+    playerId: joining.playerId,
+    sessionId: joining.sessionId,
+    nickname: joining.nickname,
+    nicknameKey: joining.nicknameKey,
+    avatarId: joining.avatarId,
+    colorSlot,
+    joinIndex: d.nextJoinIndex,
+    ready: false,
+    connection: 'CONNECTED',
+    disconnectedAt: null,
+    status: 'ACTIVE',
+    reducedEffects: false,
+    // Team play: a newcomer starts in the smallest team and taps another chip if they want to (ADR-0026 §2).
+    ...(teamPlay(d) ? { teamId: smallestTeam(d) } : {}),
+  };
+  d.nextJoinIndex += 1;
+  d.playerOrder.push(joining.playerId);
+  if (d.phase === 'WAITING') {
+    d.phase = 'LOBBY';
+    d.phaseEnteredAt = at;
+  }
+  touch(d, at);
+  // The first player becomes leader *before* the join is announced, so PLAYER_JOINED is consistent.
+  const becomesLeader = d.leaderPlayerId === null;
+  if (becomesLeader) {
+    d.leaderPlayerId = joining.playerId;
+    d.leaderLostAt = null;
+  }
+  emit(
+    ctx,
+    { to: 'ALL' },
+    {
+      type: 'PLAYER_JOINED',
+      payload: { player: toPublicPlayer(d, joining.playerId) },
+    },
+  );
+  ctx.effects.push({
+    kind: 'telemetry',
+    name: 'player_joined',
+    props: { players: active.length + 1 },
+  });
+  if (becomesLeader) setLeader(d, ctx, joining.playerId);
+}
+
+function onPlayerConnection(
+  d: Room,
+  ctx: Ctx,
+  at: number,
+  playerId: string,
+  connected: boolean,
+): void {
+  const player = d.players[playerId];
+  if (!player || player.status !== 'ACTIVE') return;
+  if (connected) {
+    if (player.connection === 'CONNECTED') return;
+    player.connection = 'CONNECTED';
+    player.disconnectedAt = null;
+    if (d.leaderPlayerId === playerId) d.leaderLostAt = null;
+    touch(d, at);
+  } else {
+    if (player.connection === 'DISCONNECTED') return;
+    player.connection = 'DISCONNECTED';
+    player.disconnectedAt = at;
+    if (d.leaderPlayerId === playerId) d.leaderLostAt = at;
+  }
+  emit(
+    ctx,
+    { to: 'ALL' },
+    {
+      type: 'PLAYER_STATUS',
+      payload: { playerId, connection: player.connection, ready: player.ready },
+    },
+  );
+  if (!connected) maybeEndPickPhase(d, ctx, at);
+}
+
+// ───────────────────────────── commands ─────────────────────────────
+
+function onCommand(
+  d: Room,
+  ctx: Ctx,
+  at: number,
+  actor: Actor,
+  command: EngineCommand,
+  messageId: string,
+  nicknameKey: string | undefined,
+): void {
+  if (actor.role === 'DISPLAY') {
+    if (actor.sessionId !== d.display.sessionId) return reject(ctx, 'FORBIDDEN');
+  } else {
+    const player = d.players[actor.playerId];
+    if (!player || player.status !== 'ACTIVE' || player.sessionId !== actor.sessionId) {
+      return reject(ctx, 'FORBIDDEN');
+    }
+  }
+  const isHost = isHostActor(d, actor);
+  const playerId = actor.role === 'PLAYER' ? actor.playerId : null;
+
+  switch (command.type) {
+    case 'READY': {
+      if (!playerId) return reject(ctx, 'FORBIDDEN');
+      if (d.phase !== 'LOBBY') return reject(ctx, 'INVALID_STATE');
+      const player = d.players[playerId]!;
+      if (player.ready === command.payload.ready) return;
+      player.ready = command.payload.ready;
+      touch(d, at);
+      emit(
+        ctx,
+        { to: 'ALL' },
+        {
+          type: 'PLAYER_STATUS',
+          payload: { playerId, connection: player.connection, ready: player.ready },
+        },
+      );
+      return;
+    }
+    case 'SUBMIT_STATEMENT': {
+      if (!playerId) return reject(ctx, 'FORBIDDEN');
+      // Collected in the lobby of a Who Said It room only; editable until the game starts.
+      if (d.phase !== 'LOBBY' || d.settings.mode !== 'WHO_SAID_IT')
+        return reject(ctx, 'INVALID_STATE');
+      // The server moderated and normalized the text before this input existed; this is the invariant check.
+      const text = command.payload.text;
+      if (text.length === 0 || text.length > MAX_STATEMENT_LENGTH || text !== text.trim())
+        return reject(ctx, 'TEXT_REJECTED');
+      if (d.statements[playerId] === text) return;
+      d.statements[playerId] = text;
+      // From here on words sit in this room's durable log: the room erases it when it closes (ADR-0015).
+      d.sensitiveContent = true;
+      touch(d, at);
+      emitPlayerState(d, ctx, playerId);
+      emitStatementProgress(d, ctx);
+      return;
+    }
+    case 'SET_NICKNAME': {
+      if (!playerId) return reject(ctx, 'FORBIDDEN');
+      if (d.phase !== 'LOBBY' && d.phase !== 'WAITING') return reject(ctx, 'INVALID_STATE');
+      if (!nicknameKey) return reject(ctx, 'NICKNAME_INVALID');
+      if (
+        activePlayerList(d).some((p) => p.playerId !== playerId && p.nicknameKey === nicknameKey)
+      ) {
+        return reject(ctx, 'NICKNAME_TAKEN');
+      }
+      const player = d.players[playerId]!;
+      player.nickname = command.payload.nickname;
+      player.nicknameKey = nicknameKey;
+      touch(d, at);
+      emit(
+        ctx,
+        { to: 'ALL' },
+        { type: 'NICKNAME_CHANGED', payload: { playerId, nickname: player.nickname } },
+      );
+      return;
+    }
+    case 'SUBMIT_ANSWER':
+      if (!playerId) return reject(ctx, 'FORBIDDEN');
+      return submitAnswer(
+        d,
+        ctx,
+        at,
+        playerId,
+        messageId,
+        command.payload.questionId,
+        command.payload.optionId,
+      );
+    case 'COMMIT_RISK':
+      if (!playerId) return reject(ctx, 'FORBIDDEN');
+      return commitRisk(d, ctx, at, playerId, command.payload);
+    case 'RESPOND_DUEL':
+      if (!playerId) return reject(ctx, 'FORBIDDEN');
+      return respondDuel(d, ctx, at, playerId, command.payload);
+    case 'COMMIT_SABOTAGE':
+      if (!playerId) return reject(ctx, 'FORBIDDEN');
+      return commitSabotage(d, ctx, at, playerId, command.payload);
+    case 'USE_FIFTY_FIFTY':
+      if (!playerId) return reject(ctx, 'FORBIDDEN');
+      return useFiftyFifty(d, ctx, at, playerId);
+    case 'SET_PREFERENCES': {
+      if (!playerId) return reject(ctx, 'FORBIDDEN');
+      const player = d.players[playerId]!;
+      if (player.reducedEffects === command.payload.reducedEffects) return;
+      player.reducedEffects = command.payload.reducedEffects;
+      touch(d, at);
+      return emitPlayerState(d, ctx, playerId);
+    }
+    case 'LEAVE_ROOM': {
+      if (!playerId) return reject(ctx, 'FORBIDDEN');
+      touch(d, at);
+      return removePlayer(d, ctx, playerId, 'LEFT', at);
+    }
+    case 'SET_SETTINGS': {
+      if (!isHost) return reject(ctx, 'NOT_HOST');
+      if (d.phase !== 'LOBBY' && d.phase !== 'WAITING' && d.phase !== 'RESULTS')
+        return reject(ctx, 'INVALID_STATE');
+      const maxRounds = maxRoundsFor(d.config, d.tier);
+      const rounds =
+        command.payload.rounds === undefined
+          ? d.settings.rounds
+          : Math.min(command.payload.rounds, maxRounds);
+      const categories = command.payload.categories ?? d.settings.categories;
+      d.settings.rounds = rounds;
+      d.settings.difficulty = command.payload.difficulty ?? d.settings.difficulty;
+      d.settings.categories = categories === 'ALL' ? 'ALL' : [...categories];
+      if (command.payload.play !== undefined) d.settings.play = command.payload.play;
+      if (command.payload.ruleset !== undefined) d.settings.ruleset = command.payload.ruleset;
+      if (command.payload.teamCount !== undefined) d.settings.teamCount = command.payload.teamCount;
+      reconcileTeams(d, ctx);
+      touch(d, at);
+      emit(
+        ctx,
+        { to: 'ALL' },
+        { type: 'SETTINGS_CHANGED', payload: { settings: structuredSettings(d) } },
+      );
+      return;
+    }
+    case 'ASSIGN_TEAM':
+      return assignTeam(d, ctx, at, actor, isHost, command.payload);
+    case 'KICK_PLAYER': {
+      if (!isHost) return reject(ctx, 'NOT_HOST');
+      const target = d.players[command.payload.playerId];
+      if (!target || target.status !== 'ACTIVE') return reject(ctx, 'PLAYER_NOT_FOUND');
+      if (playerId !== null && target.playerId === playerId) return reject(ctx, 'INVALID_STATE');
+      touch(d, at);
+      return removePlayer(d, ctx, target.playerId, 'KICKED', at);
+    }
+    case 'TRANSFER_LEADER': {
+      if (!isHost) return reject(ctx, 'NOT_HOST');
+      const target = d.players[command.payload.playerId];
+      if (!target || target.status !== 'ACTIVE') return reject(ctx, 'PLAYER_NOT_FOUND');
+      if (d.leaderPlayerId === target.playerId) return;
+      touch(d, at);
+      return setLeader(d, ctx, target.playerId);
+    }
+    case 'START_GAME': {
+      if (!isHost) return reject(ctx, 'NOT_HOST');
+      if (d.phase !== 'LOBBY') return reject(ctx, 'INVALID_STATE');
+      const blocked = meterBlock(d.venue, at);
+      if (blocked) return reject(ctx, blocked);
+      return requestDeck(d, ctx, 'START', actor);
+    }
+    case 'REMATCH': {
+      if (!isHost) return reject(ctx, 'NOT_HOST');
+      if (d.phase !== 'RESULTS') return reject(ctx, 'INVALID_STATE');
+      const blocked = meterBlock(d.venue, at);
+      if (blocked) return reject(ctx, blocked);
+      return requestDeck(d, ctx, 'REMATCH', actor);
+    }
+    case 'BACK_TO_LOBBY': {
+      if (!isHost) return reject(ctx, 'NOT_HOST');
+      if (d.phase !== 'RESULTS') return reject(ctx, 'INVALID_STATE');
+      d.game = null;
+      for (const player of activePlayerList(d)) player.ready = false;
+      enterPhase(d, 'LOBBY', at, null);
+      touch(d, at);
+      return;
+    }
+    case 'END_ROOM': {
+      if (!isHost) return reject(ctx, 'NOT_HOST');
+      return closeRoom(d, ctx, at, 'HOST_ENDED');
+    }
+  }
+}
+
+// ───────────────────────────── teams (ADR-0026) ─────────────────────────────
+
+/**
+ * Brings every active player's team in line with the room's play mode and team count: individual play
+ * clears them, team play gives each player a valid team within its capacity. Deterministic: players who
+ * need a new team (none, a team that is no longer offered, or the latest joiners of an overfull team)
+ * go in join order to the smallest team. Announces each change.
+ */
+function reconcileTeams(d: Room, ctx: Ctx): void {
+  const players = activePlayerList(d);
+  if (!teamPlay(d)) {
+    for (const player of players) {
+      if (player.teamId === undefined) continue;
+      delete player.teamId;
+      emit(
+        ctx,
+        { to: 'ALL' },
+        { type: 'TEAM_CHANGED', payload: { playerId: player.playerId, teamId: null } },
+      );
+    }
+    return;
+  }
+  const offered = lobbyTeamIds(d.settings);
+  const capacity = teamCapacity(d.config.maxPlayers, offered.length);
+  const homeless: Draft<Player>[] = [];
+  const settled = new Map<TeamId, Draft<Player>[]>(offered.map((id) => [id, []]));
+  for (const player of players) {
+    const team = player.teamId === undefined ? undefined : settled.get(player.teamId);
+    if (team) team.push(player);
+    else homeless.push(player);
+  }
+  for (const members of settled.values()) {
+    // The latest joiners are the ones who give up their place in an overfull team.
+    while (members.length > capacity) homeless.push(members.pop()!);
+  }
+  homeless.sort((a, b) => a.joinIndex - b.joinIndex);
+  for (const player of homeless) {
+    let target = offered[0]!;
+    for (const id of offered)
+      if (settled.get(id)!.length < settled.get(target)!.length) target = id;
+    settled.get(target)!.push(player);
+    if (player.teamId !== target) {
+      player.teamId = target;
+      emit(
+        ctx,
+        { to: 'ALL' },
+        { type: 'TEAM_CHANGED', payload: { playerId: player.playerId, teamId: target } },
+      );
+    }
+  }
+}
+
+function assignTeam(
+  d: Room,
+  ctx: Ctx,
+  at: number,
+  actor: Actor,
+  isHost: boolean,
+  payload: Extract<EngineCommand, { type: 'ASSIGN_TEAM' }>['payload'],
+): void {
+  if (d.phase !== 'LOBBY' && d.phase !== 'RESULTS') return reject(ctx, 'INVALID_STATE');
+  if (!teamPlay(d)) return reject(ctx, 'TEAM_INVALID');
+  const ownId = actor.role === 'PLAYER' ? actor.playerId : null;
+  const subjectId = payload.playerId ?? ownId;
+  // The TV has no seat of its own: it must say whom it moves. Moving somebody else is the host's call.
+  if (subjectId === null) return reject(ctx, 'TEAM_INVALID');
+  if (subjectId !== ownId && !isHost) return reject(ctx, 'NOT_HOST');
+  const subject = d.players[subjectId];
+  if (!subject || subject.status !== 'ACTIVE') return reject(ctx, 'PLAYER_NOT_FOUND');
+  if (!lobbyTeamIds(d.settings).includes(payload.teamId)) return reject(ctx, 'TEAM_INVALID');
+  if (subject.teamId === payload.teamId) return;
+  const capacity = teamCapacity(d.config.maxPlayers, teamCountOf(d.settings));
+  if ((teamSizes(d)[payload.teamId] ?? 0) >= capacity) return reject(ctx, 'TEAM_FULL');
+  subject.teamId = payload.teamId;
+  touch(d, at);
+  emit(
+    ctx,
+    { to: 'ALL' },
+    { type: 'TEAM_CHANGED', payload: { playerId: subjectId, teamId: payload.teamId } },
+  );
+}
+
+function emitStatementProgress(d: Room, ctx: Ctx): void {
+  emit(
+    ctx,
+    { to: 'ALL' },
+    { type: 'STATEMENTS_CHANGED', payload: { playerIds: statementPlayerIds(d) } },
+  );
+}
+
+function connectedPlayerCount(d: Room): number {
+  return activePlayerList(d).filter((p) => p.connection === 'CONNECTED').length;
+}
+
+function requestDeck(d: Room, ctx: Ctx, purpose: 'START' | 'REMATCH', actor: Actor): void {
+  if (connectedPlayerCount(d) < d.config.minPlayersToStart)
+    return reject(ctx, 'NOT_ENOUGH_PLAYERS');
+  if (teamPlay(d)) {
+    const refused = teamsStartCheck(d);
+    if (refused) return reject(ctx, refused);
+  }
+  const maxRounds = maxRoundsFor(d.config, d.tier);
+  const players = activePlayerList(d);
+  const statements = players
+    .filter((p) => d.statements[p.playerId] !== undefined)
+    .map((p) => ({ playerId: p.playerId, text: d.statements[p.playerId]! }));
+  const whoSaidIt = d.settings.mode === 'WHO_SAID_IT';
+  // Every question needs a guesser besides its author: one statement alone is no game.
+  if (whoSaidIt && statements.length < 2) return reject(ctx, 'NOT_ENOUGH_QUESTIONS');
+  const request: DeckRequest = {
+    roomId: d.roomId,
+    mode: d.settings.mode,
+    contentRef: d.contentRef,
+    rounds: Math.min(d.settings.rounds, maxRounds, whoSaidIt ? statements.length : maxRounds),
+    categories: d.settings.categories === 'ALL' ? 'ALL' : [...d.settings.categories],
+    language: d.contentLanguage,
+    tier: d.tier,
+    hostAccountId: d.hostAccountId,
+    playerCount: connectedPlayerCount(d),
+    ...(whoSaidIt
+      ? {
+          whoSaidIt: {
+            players: players.map((p) => ({ playerId: p.playerId, nickname: p.nickname })),
+            statements,
+          },
+        }
+      : {}),
+  };
+  ctx.effects.push({ kind: 'needDeck', purpose, request, requestedBy: actor });
+}
+
+// ───────────────────────────── game start ─────────────────────────────
+
+function onBeginGame(d: Room, ctx: Ctx, input: Extract<EngineInput, { kind: 'BEGIN_GAME' }>): void {
+  const { at, requestedBy, purpose } = input;
+  const expectedPhase = purpose === 'START' ? 'LOBBY' : 'RESULTS';
+  if (d.phase !== expectedPhase) return reject(ctx, 'INVALID_STATE');
+  if (!isHostActor(d, requestedBy)) return reject(ctx, 'NOT_HOST');
+  // The deck was being built while the table's time ran out (or staff paused it): no game after all.
+  const blocked = meterBlock(d.venue, at);
+  if (blocked) return reject(ctx, blocked);
+  if (connectedPlayerCount(d) < d.config.minPlayersToStart)
+    return reject(ctx, 'NOT_ENOUGH_PLAYERS');
+
+  const maxRounds = maxRoundsFor(d.config, d.tier);
+  // Who Said It plays one round per statement, however few: the deck is the game's length.
+  const totalRounds = Math.min(
+    d.settings.rounds,
+    maxRounds,
+    d.settings.mode === 'WHO_SAID_IT' ? deckSize(input.deck) : maxRounds,
+  );
+  if (deckSize(input.deck) < totalRounds || totalRounds < 1)
+    return reject(ctx, 'NOT_ENOUGH_QUESTIONS');
+  // Players may have moved while the deck was being built: the teams must still make a game.
+  if (teamPlay(d)) {
+    const refused = teamsStartCheck(d);
+    if (refused) return reject(ctx, refused);
+  }
+
+  // The ruleset is chosen per game from the room's full config, which is kept aside while a game plays
+  // with the simple one (ADR-0026 §3). A full game leaves `config` untouched, exactly as before.
+  const base = input.config ?? d.baseConfig ?? d.config;
+  if (rulesetOf(d.settings) === 'SIMPLE') {
+    d.baseConfig = base;
+    d.config = applyRuleset(base, 'SIMPLE');
+  } else {
+    d.config = base;
+    delete d.baseConfig;
+  }
+  // Personal answers will sit in this room's durable log from here on; the room erases them when it closes.
+  if (
+    Object.values(input.deck.questions).some(
+      (q) => q.source === 'BLIND' || q.source === 'WHO_SAID_IT',
+    )
+  )
+    d.sensitiveContent = true;
+  const participants = activePlayerList(d);
+  const levelOffset = presetOffset(d.config, d.settings.difficulty);
+  // Team play: the teams that have a player, in slot order, each with the shared shield (ADR-0026 §5).
+  const teamGame = teamPlay(d);
+  const teamIds = teamGame
+    ? lobbyTeamIds(d.settings).filter((id) => participants.some((p) => p.teamId === id))
+    : [];
+  d.game = {
+    ...(teamGame
+      ? {
+          teams: {
+            ids: teamIds,
+            ledgers: Object.fromEntries(
+              teamIds.map((id) => [
+                id,
+                { shield: d.config.powers.shieldPerGame, hits: 0, lastHitRound: null },
+              ]),
+            ),
+          },
+        }
+      : {}),
+    gameId: input.gameId,
+    startedAt: at,
+    totalRounds,
+    finalLength: finalStageLength(totalRounds, d.config),
+    deck: input.deck,
+    director: {
+      level: Math.max(LEVEL_MIN, Math.min(LEVEL_MAX, d.config.director.startLevel + levelOffset)),
+      levelOffset,
+      chaos: 0,
+      recentCorrectPermille: [],
+      recentAvgAnswerPermille: [],
+      recentRiskTakePermille: [],
+      history: [],
+      categoryCounts: {},
+      prevCategory: null,
+    },
+    players: Object.fromEntries(
+      participants.map((p) => [
+        p.playerId,
+        {
+          ...(teamGame && p.teamId !== undefined ? { teamId: p.teamId } : {}),
+          score: 0,
+          streak: 0,
+          bestStreak: 0,
+          correctCount: 0,
+          answeredCount: 0,
+          totalRemainingMs: 0,
+          removed: false,
+          rankHistory: [],
+          // In a team game the shield belongs to the team, not to the player.
+          powers: { ...newLedger(d.config), ...(teamGame ? { shield: 0 } : {}) },
+        },
+      ]),
+    ),
+    roundIndex: -1,
+    round: null,
+    upcoming: null,
+    results: null,
+  };
+  for (const p of participants) p.ready = false;
+  d.awaitingDisplay = false;
+  touch(d, at);
+  enterPhase(d, 'COUNTDOWN', at, d.config.timings.countdownMs);
+  ctx.effects.push({
+    kind: 'persist',
+    record: {
+      type: 'GAME_STARTED',
+      gameId: input.gameId,
+      startedAt: at,
+      totalRounds,
+      playerIds: participants.map((p) => p.playerId),
+      configVersion: d.config.version,
+    },
+  });
+  ctx.effects.push({
+    kind: 'telemetry',
+    name: purpose === 'START' ? 'game_started' : 'rematch_started',
+    props: { players: participants.length, rounds: totalRounds },
+  });
+}
+
+// ───────────────────────────── powers ─────────────────────────────
+
+function emitPlayerState(d: Room, ctx: Ctx, playerId: string): void {
+  const you = youView(d, playerId);
+  if (you) emit(ctx, { to: 'PLAYER', playerId }, { type: 'PLAYER_STATE', payload: { you } });
+}
+
+function emitAllPlayerStates(d: Room, ctx: Ctx): void {
+  for (const player of activePlayerList(d)) emitPlayerState(d, ctx, player.playerId);
+}
+
+/** Everyone the current pick phase waits for has confirmed: no reason to keep the table waiting. */
+function pickPhaseComplete(d: Room): boolean {
+  const round = d.game!.round!;
+  const eligible = prepEligibleIds(d);
+  if (mergedPrep(d.config)) {
+    // One phase for both choices: a player is done once each thing they can still do is decided.
+    const picks = sabotagePicksOf(round);
+    return eligible.every(
+      (playerId) =>
+        (round.commitments[playerId] !== undefined || !riskActionable(d, playerId)) &&
+        (picks[playerId] !== undefined || !canSabotage(d, playerId)),
+    );
+  }
+  if (d.phase === 'SABOTAGE_PICK') {
+    // Players who cannot sabotage (no token, cooldown, nobody to hit) are never waited for.
+    const picks = sabotagePicksOf(round);
+    return eligible.every((playerId) => picks[playerId] !== undefined || !canSabotage(d, playerId));
+  }
+  return prepCounts(d).committedCount >= prepCounts(d).eligibleCount;
+}
+
+/**
+ * A pick phase stops waiting as soon as nobody it waits for is left (ADR-0022 §5, ADR-0023): called when
+ * a phone drops or a player leaves. Nothing else would end it early: the server only ticks at the next
+ * wake-up, which is the phase deadline. With nobody online the window simply runs out.
+ */
+function maybeEndPickPhase(d: Room, ctx: Ctx, at: number): void {
+  if (d.phase !== 'RISK_PICK' && d.phase !== 'SABOTAGE_PICK') return;
+  if (prepEligibleIds(d).length > 0 && pickPhaseComplete(d)) advancePhase(d, ctx, at);
+}
+
+function commitRisk(
+  d: Room,
+  ctx: Ctx,
+  at: number,
+  playerId: string,
+  payload: Extract<EngineCommand, { type: 'COMMIT_RISK' }>['payload'],
+): void {
+  const refused = checkRisk(d, playerId, payload);
+  if (refused) return reject(ctx, refused);
+  const round = d.game!.round!;
+  const me = d.game!.players[playerId]!;
+  round.commitments[playerId] = {
+    stake: payload.stake,
+    doubleDown: payload.doubleDown,
+    committedAt: at,
+    ...(payload.cover ? { cover: true } : {}),
+    ...(payload.pot ? { pot: true } : {}),
+    ...(payload.duel ? { duel: { targetId: payload.duel.targetId } } : {}),
+  };
+  // Spent on commitment, even if the answer turns out wrong (ADR-0007). Cover and a Duel challenge are
+  // spent too; a Pot that does not run gives its use back at the lock (ADR-0023).
+  if (payload.doubleDown) me.powers.doubleDown -= 1;
+  if (payload.cover) me.powers.cover = (me.powers.cover ?? 0) - 1;
+  if (payload.pot) me.powers.pots = (me.powers.pots ?? 0) - 1;
+  if (payload.duel) me.powers.duels = (me.powers.duels ?? 0) - 1;
+  touch(d, at);
+  emitPlayerState(d, ctx, playerId);
+  // The challenged rival's phone shows the invite; nobody else hears of it.
+  if (payload.duel) emitPlayerState(d, ctx, payload.duel.targetId);
+  emit(ctx, { to: 'ALL' }, { type: 'PREP_PROGRESS', payload: prepCounts(d) });
+  if (pickPhaseComplete(d)) advancePhase(d, ctx, at);
+}
+
+function respondDuel(
+  d: Room,
+  ctx: Ctx,
+  at: number,
+  playerId: string,
+  payload: Extract<EngineCommand, { type: 'RESPOND_DUEL' }>['payload'],
+): void {
+  const refused = checkDuelReply(d, playerId, payload);
+  if (refused) return reject(ctx, refused);
+  const round = d.game!.round!;
+  const mine = ((round.duelAnswers ??= {})[playerId] ??= {});
+  mine[payload.challengerId] = payload.accept ? 'ACCEPTED' : 'DECLINED';
+  touch(d, at);
+  emitPlayerState(d, ctx, playerId);
+  emit(ctx, { to: 'ALL' }, { type: 'PREP_PROGRESS', payload: prepCounts(d) });
+  if (pickPhaseComplete(d)) advancePhase(d, ctx, at);
+}
+
+function commitSabotage(
+  d: Room,
+  ctx: Ctx,
+  at: number,
+  playerId: string,
+  payload: Extract<EngineCommand, { type: 'COMMIT_SABOTAGE' }>['payload'],
+): void {
+  const refused = checkSabotage(d, playerId, payload);
+  if (refused) return reject(ctx, refused);
+  const round = d.game!.round!;
+  const me = d.game!.players[playerId]!;
+  const sabotage = payload.sabotage;
+  (round.sabotagePicks ??= {})[playerId] = {
+    sabotage: sabotage
+      ? {
+          // Team play aims at a team and stores no player (ADR-0026 §5).
+          targetId: sabotage.targetId ?? '',
+          ...(sabotage.targetTeamId !== undefined ? { targetTeamId: sabotage.targetTeamId } : {}),
+          effect: sabotage.effect,
+          joker: sabotage.effect === 'LOCKOUT' ? (sabotage.joker ?? null) : null,
+        }
+      : null,
+    committedAt: at,
+  };
+  // The token is spent on commitment, even if the shield blocks the hit (ADR-0010).
+  if (sabotage) {
+    me.powers.tokens -= 1;
+    me.powers.lastSabotageRound = round.index;
+  }
+  touch(d, at);
+  emitPlayerState(d, ctx, playerId);
+  emit(ctx, { to: 'ALL' }, { type: 'PREP_PROGRESS', payload: prepCounts(d) });
+  if (pickPhaseComplete(d)) advancePhase(d, ctx, at);
+}
+
+function useFiftyFifty(d: Room, ctx: Ctx, at: number, playerId: string): void {
+  const game = d.game;
+  const round = game?.round;
+  if (!game || !round || d.phase !== 'ANSWERING') return reject(ctx, 'INVALID_STATE');
+  const me = game.players[playerId];
+  if (!me || me.removed) return reject(ctx, 'POWER_UNAVAILABLE');
+  if (round.answers[playerId]) return reject(ctx, 'INVALID_STATE');
+  if (exemptPlayerId(game) === playerId) return reject(ctx, 'POWER_UNAVAILABLE');
+  if (round.fiftyFiftyUsers[playerId] || me.powers.fiftyFifty <= 0)
+    return reject(ctx, 'POWER_UNAVAILABLE');
+  if (jokerLockedOut(me.powers, 'FIFTY_FIFTY', round.index)) return reject(ctx, 'POWER_LOCKED_OUT');
+  const question = round.question!;
+  if (question.options.length < 3) return reject(ctx, 'POWER_UNAVAILABLE');
+  const cutoff =
+    round.answerDeadlineAt! - jamFor(round, playerId) + d.config.timings.latencyAllowanceMs;
+  if (at > cutoff) return reject(ctx, 'ANSWER_LATE');
+
+  round.fiftyFifty ??= {
+    keep: chooseFiftyFifty(question.options, question.correctOptionId, ctx.rng()),
+  };
+  round.fiftyFiftyUsers[playerId] = true;
+  me.powers.fiftyFifty -= 1;
+  touch(d, at);
+  emitPlayerState(d, ctx, playerId);
+}
+
+/** RISK_PICK lasts longer when stakes are the point of the round (RISK and FINAL rounds). */
+function riskPickDuration(d: Room): number {
+  const kind = d.game!.round!.kind;
+  return kind === 'RISK' || kind === 'FINAL'
+    ? riskPickDecisionMsFor(d.config)
+    : riskPickMsFor(d.config);
+}
+
+/**
+ * Enters the next pick phase that has something to choose, or the question itself (ADR-0022). A
+ * phase nobody can act in is skipped, so no screen is ever empty.
+ */
+function enterNextPick(d: Room, ctx: Ctx, at: number, after: 'INTRO' | 'RISK_PICK'): void {
+  const eligible = prepEligibleIds(d);
+  // The simple ruleset has one prep phase, entered only when somebody has something to use (ADR-0026 §3).
+  if (mergedPrep(d.config)) {
+    if (after === 'INTRO' && prepActors(d, eligible).length > 0) {
+      enterPhase(d, 'RISK_PICK', at, riskPickMsFor(d.config));
+      emitAllPlayerStates(d, ctx);
+      return;
+    }
+    return startQuestion(d, ctx, at);
+  }
+  if (after === 'INTRO' && riskPickOffered(d, eligible)) {
+    enterPhase(d, 'RISK_PICK', at, riskPickDuration(d));
+    emitAllPlayerStates(d, ctx); // fresh round: nothing committed, lockouts and tokens as they stand
+    return;
+  }
+  if (sabotageActors(d, eligible).length > 0) {
+    enterPhase(d, 'SABOTAGE_PICK', at, sabotagePickMsFor(d.config));
+    emitAllPlayerStates(d, ctx);
+    return;
+  }
+  startQuestion(d, ctx, at);
+}
+
+function startQuestion(d: Room, ctx: Ctx, at: number): void {
+  const t = d.config.timings;
+  presentQuestion(d, ctx);
+  resolveSabotage(d, ctx.rng());
+  const round = d.game!.round!;
+  round.questionStartedAt = at;
+  const text = round.question!.text;
+  const readMs = clamp(t.readBaseMs + t.readPerCharMs * text.length, t.readMinMs, t.readMaxMs);
+  enterPhase(d, 'QUESTION', at, readMs);
+  // After the phase change, so views already show what hit whom: targets learn what hit them,
+  // and everyone's shield and token counts are current.
+  emitAllPlayerStates(d, ctx);
+}
+
+// ───────────────────────────── answering ─────────────────────────────
+
+function submitAnswer(
+  d: Room,
+  ctx: Ctx,
+  at: number,
+  playerId: string,
+  messageId: string,
+  questionId: string,
+  optionId: string,
+): void {
+  const game = d.game;
+  const round = game?.round;
+  if (!game || !round) return reject(ctx, 'INVALID_STATE');
+  const gamePlayer = game.players[playerId];
+  if (!gamePlayer || gamePlayer.removed) return reject(ctx, 'ANSWER_NOT_ALLOWED');
+  // Who Said It: nobody answers for their own statement (GDD §7.9); legality is the server's call.
+  if (exemptPlayerId(game) === playerId) return reject(ctx, 'ANSWER_NOT_ALLOWED');
+
+  if (d.phase !== 'ANSWERING') {
+    const early = [
+      'COUNTDOWN',
+      'ROUND_INTRO',
+      'FINAL',
+      'QUESTION_PREP',
+      'RISK_PICK',
+      'SABOTAGE_PICK',
+      'QUESTION',
+    ].includes(d.phase);
+    return reject(ctx, early ? 'INVALID_STATE' : 'ANSWER_LATE');
+  }
+  const question = round.question!;
+  if (question.questionId !== questionId) return reject(ctx, 'QUESTION_MISMATCH');
+  const option = question.options.find((o) => o.optionId === optionId);
+  if (!option) return reject(ctx, 'OPTION_INVALID');
+  if (round.answers[playerId]) return reject(ctx, 'ANSWER_DUPLICATE');
+  // 50/50 removed this option for this player.
+  if (round.fiftyFiftyUsers[playerId] && !round.fiftyFifty?.keep.includes(optionId))
+    return reject(ctx, 'OPTION_INVALID');
+
+  // A JAM shortens this player's own window; everyone else keeps the full one.
+  const deadline = round.answerDeadlineAt! - jamFor(round, playerId);
+  const cutoff = deadline + d.config.timings.latencyAllowanceMs;
+  if (at > cutoff) return reject(ctx, 'ANSWER_LATE');
+
+  const remainingMs = clamp(deadline - at, 0, round.answerMs);
+  const offsetMs = Math.max(0, at - round.answerOpensAt!);
+  round.answers[playerId] = { optionId, remainingMs, offsetMs };
+  touch(d, at);
+
+  emit(
+    ctx,
+    { to: 'PLAYER', playerId },
+    {
+      type: 'ANSWER_ACCEPTED',
+      payload: { messageId, questionId, optionId, lockedAt: round.answerOpensAt! + offsetMs },
+    },
+  );
+  const eligible = eligiblePlayerIds(d, at);
+  emit(
+    ctx,
+    { to: 'ALL' },
+    {
+      type: 'ANSWER_LOCKED',
+      payload: {
+        // Who Said It: the tick is the next seat in line, not the answerer (ATTACK 27).
+        playerId: tickFor(d, round.answers, playerId),
+        answeredCount: Object.keys(round.answers).length,
+        eligibleCount: Math.max(eligible.length, Object.keys(round.answers).length),
+      },
+    },
+  );
+  const you = youView(d, playerId);
+  if (you) emit(ctx, { to: 'PLAYER', playerId }, { type: 'PLAYER_STATE', payload: { you } });
+  maybeEarlyLock(d, ctx, at);
+}
+
+function eligiblePlayerIds(d: Room, at: number): string[] {
+  const game = d.game;
+  if (!game) return [];
+  const grace = d.config.timings.earlyLockGraceMs;
+  const exempt = exemptPlayerId(game);
+  return Object.entries(game.players)
+    .filter(([playerId, gamePlayer]) => {
+      if (gamePlayer.removed || playerId === exempt) return false;
+      const player = d.players[playerId];
+      if (!player || player.status !== 'ACTIVE') return false;
+      if (player.connection === 'CONNECTED') return true;
+      return player.disconnectedAt !== null && at - player.disconnectedAt < grace;
+    })
+    .map(([playerId]) => playerId);
+}
+
+function maybeEarlyLock(d: Room, ctx: Ctx, at: number): void {
+  const round = d.game?.round;
+  if (d.phase !== 'ANSWERING' || !round) return;
+  const eligible = eligiblePlayerIds(d, at);
+  if (eligible.length === 0) return;
+  if (eligible.every((playerId) => round.answers[playerId] !== undefined)) lockRound(d, ctx, at);
+}
+
+function lockRound(d: Room, _ctx: Ctx, at: number): void {
+  const game = d.game!;
+  const round = game.round!;
+  const question = round.question!;
+  round.lockedAt = at;
+
+  const outcome: RoundOutcome = {
+    players: {},
+    distribution: {},
+    eligibleCount: 0,
+    correctCount: 0,
+  };
+  for (const option of question.options) outcome.distribution[option.optionId] = 0;
+
+  const exempt = exemptPlayerId(game);
+  // The author of a Who Said It statement has no outcome at all: no points, no streak reset, no stake lost.
+  const seatedIds = Object.entries(game.players)
+    .filter(([playerId, gp]) => {
+      if (gp.removed || playerId === exempt) return false;
+      return d.players[playerId]?.status === 'ACTIVE';
+    })
+    .map(([playerId]) => playerId);
+  const online = (playerId: string): boolean => d.players[playerId]!.connection === 'CONNECTED';
+  const isRight = (playerId: string): boolean =>
+    round.answers[playerId]?.optionId === question.correctOptionId;
+  const settlement: Settlement = { covers: [], pot: null, duels: [], cuts: [] };
+
+  // Pot (ADR-0023): the antes are taken first, so a lost stake can never leave the ante unpaid. Whoever
+  // anted and is still here (answered, or online) is in; the pot runs with enough of them.
+  const pot = potRules(d.config);
+  const anted = seatedIds.filter((id) => round.commitments[id]?.pot === true);
+  const inPot = anted.filter((id) => round.answers[id] !== undefined || online(id));
+  const potRuns = inPot.length >= pot.minPlayers;
+  const joinIndexOf = (playerId: string): number =>
+    d.players[playerId]?.joinIndex ?? Number.MAX_SAFE_INTEGER;
+  const potEntries: PotEntry[] = inPot.map((id) => ({
+    playerId: id,
+    correct: isRight(id),
+    offsetMs: round.answers[id]?.offsetMs ?? Number.MAX_SAFE_INTEGER,
+    joinIndex: joinIndexOf(id),
+  }));
+  const potResult = potRuns ? settlePot(potEntries, pot.ante) : null;
+  const anteHeld = new Set(potRuns && !potResult!.refunded ? inPot : []);
+
+  const cutCredits: { actorId: string; targetId: string; points: number }[] = [];
+  for (const playerId of seatedIds) {
+    const gamePlayer = game.players[playerId]!;
+    const player = d.players[playerId]!;
+    const answer = round.answers[playerId];
+    const commitment = round.commitments[playerId];
+    const tax = gamePlayer.powers.pointTax;
+    // CUT (ADR-0023): paid to an attacker who is still in the game and plays this question; one who
+    // sits it out (Who Said It author) is paid on a later gain, one who left lets it lapse.
+    const cut = gamePlayer.powers.cut ?? null;
+    if (cut && (game.players[cut.by]?.removed ?? true)) gamePlayer.powers.cut = null;
+    const cutPending =
+      cut !== null &&
+      gamePlayer.powers.cut !== null &&
+      round.index <= cut.expiresAfterRound &&
+      seatedIds.includes(cut.by);
+    const score = computeScore(
+      {
+        roundKind: round.kind,
+        ladderKind: ladderKindFor(round.kind, round.index === game.totalRounds - 1),
+        answered: answer !== undefined,
+        correct: answer !== undefined && answer.optionId === question.correctOptionId,
+        remainingMs: answer?.remainingMs ?? 0,
+        answerMs: round.answerMs,
+        stake: commitment?.stake,
+        doubleDown: commitment?.doubleDown ?? false,
+        fiftyFifty: round.fiftyFiftyUsers[playerId] === true,
+        pointTaxPending: tax !== null && round.index <= tax.expiresAfterRound,
+        cover: commitment?.cover === true,
+        cutPending,
+        connectedAtLock: player.connection === 'CONNECTED',
+        currentScore: gamePlayer.score - (anteHeld.has(playerId) ? pot.ante : 0),
+      },
+      d.config,
+    );
+    if (score.consumedPointTax) gamePlayer.powers.pointTax = null;
+    if (score.consumedCut && cut) {
+      gamePlayer.powers.cut = null;
+      if (score.cutAmount > 0) {
+        cutCredits.push({ actorId: cut.by, targetId: playerId, points: score.cutAmount });
+      }
+    }
+    if (score.coverFee > 0) {
+      settlement.covers.push({
+        playerId,
+        fee: score.coverFee,
+        saved: score.coverSaved,
+      });
+    }
+    outcome.players[playerId] = {
+      result: score.outcome,
+      delta: score.delta,
+      components: score.components,
+      consumedPointTax: score.consumedPointTax,
+      optionId: answer?.optionId ?? null,
+      remainingMs: answer?.remainingMs ?? 0,
+    };
+    outcome.eligibleCount += 1;
+    if (score.outcome === 'CORRECT') outcome.correctCount += 1;
+    if (answer)
+      outcome.distribution[answer.optionId] = (outcome.distribution[answer.optionId] ?? 0) + 1;
+  }
+
+  // Settlements below only move points between players: totals never change (ADR-0023).
+  const credit = (playerId: string, kind: 'POT' | 'DUEL' | 'CUT', points: number): void => {
+    const entry = outcome.players[playerId];
+    if (!entry || points === 0) return;
+    entry.delta += points;
+    entry.components.push({ kind, points });
+  };
+
+  for (const cutPaid of cutCredits) {
+    credit(cutPaid.actorId, 'CUT', cutPaid.points);
+    settlement.cuts.push(cutPaid);
+  }
+
+  if (potResult) {
+    settlement.pot = {
+      playerIds: [...inPot],
+      winnerIds: [...potResult.winnerIds],
+      size: potResult.size,
+      refunded: potResult.refunded,
+    };
+    if (!potResult.refunded) {
+      for (const playerId of inPot)
+        credit(playerId, 'POT', potResult.payouts[playerId]! - pot.ante);
+    }
+  } else if (anted.length > 0) {
+    settlement.pot = {
+      playerIds: [...anted],
+      winnerIds: [],
+      size: pot.ante * anted.length,
+      refunded: true,
+    };
+  }
+  // A pot that did not run (too few, or nobody right) costs nobody a use; one that ran keeps the use spent.
+  for (const playerId of anted) {
+    if (!anteHeld.has(playerId)) {
+      game.players[playerId]!.powers.pots = (game.players[playerId]!.powers.pots ?? 0) + 1;
+    }
+  }
+
+  // Duels, in the order they were challenged. A pair that never formed (declined, ignored, rival gone
+  // or the author of a Who Said It statement) only gets a line on the screen.
+  const running = (playerId: string): number =>
+    game.players[playerId]!.score + (outcome.players[playerId]?.delta ?? 0);
+  const challengers = d.playerOrder
+    .filter((id) => round.commitments[id]?.duel !== undefined)
+    .sort(
+      (a, b) =>
+        round.commitments[a]!.committedAt - round.commitments[b]!.committedAt ||
+        joinIndexOf(a) - joinIndexOf(b),
+    );
+  const settled = new Set<string>();
+  for (const challengerId of challengers) {
+    const rivalId = round.commitments[challengerId]!.duel!.targetId;
+    const pair = [challengerId, rivalId].sort().join('|');
+    const mutual = round.commitments[rivalId]?.duel?.targetId === challengerId;
+    if (mutual && settled.has(pair)) continue;
+    settled.add(pair);
+    const formed =
+      duelAnswerOf(d, rivalId, challengerId) === 'ACCEPTED' &&
+      outcome.players[challengerId] !== undefined &&
+      outcome.players[rivalId] !== undefined;
+    if (!formed) {
+      settlement.duels.push({ challengerId, rivalId, accepted: false, winnerId: null, points: 0 });
+      continue;
+    }
+    for (const [mine, other] of [
+      [challengerId, rivalId],
+      [rivalId, challengerId],
+    ] as const) {
+      const ledger = game.players[mine]!.powers;
+      ledger.duelRivals = [...(ledger.duelRivals ?? []), other];
+    }
+    const rules = duelRules(d.config);
+    const result = resolveDuel(
+      {
+        playerId: challengerId,
+        correct: isRight(challengerId),
+        offsetMs: round.answers[challengerId]?.offsetMs ?? null,
+      },
+      {
+        playerId: rivalId,
+        correct: isRight(rivalId),
+        offsetMs: round.answers[rivalId]?.offsetMs ?? null,
+      },
+      rules,
+    );
+    const loserId = result.winnerId === challengerId ? rivalId : challengerId;
+    // The loser can only give what they have: nobody goes below zero.
+    const moved =
+      result.winnerId === null ? 0 : Math.min(result.points, Math.max(0, running(loserId)));
+    if (result.winnerId !== null && moved > 0) {
+      credit(result.winnerId, 'DUEL', moved);
+      credit(loserId, 'DUEL', -moved);
+    }
+    settlement.duels.push({
+      challengerId,
+      rivalId,
+      accepted: true,
+      winnerId: moved > 0 ? result.winnerId : null,
+      points: moved,
+    });
+  }
+
+  round.settlement = settlement;
+  round.outcome = outcome;
+  enterPhase(d, 'LOCKED', at, d.config.timings.lockedMs);
+}
+
+// ───────────────────────────── ticking through the game ─────────────────────────────
+
+function onTick(d: Room, ctx: Ctx, at: number): void {
+  const t = d.config.timings;
+  if (at - d.createdAt >= t.maxLifetimeMs) return closeRoom(d, ctx, at, 'LIFETIME');
+
+  // A café table that is still somebody's (ADR-0024) waits for them: no idle close, no close when
+  // every phone sleeps. The lifetime cap above still applies.
+  const held = meterHeld(d.venue);
+  const idleLimit = held
+    ? null
+    : d.phase === 'WAITING' || d.phase === 'LOBBY'
+      ? t.lobbyIdleMs
+      : d.phase === 'RESULTS'
+        ? t.resultsIdleMs
+        : null;
+  if (idleLimit !== null && at - d.lastActivityAt >= idleLimit)
+    return closeRoom(d, ctx, at, 'IDLE');
+
+  if (isInGamePhase(d.phase) && !d.display.connected && d.display.disconnectedAt !== null) {
+    if (at - d.display.disconnectedAt >= t.abandonMs) return closeRoom(d, ctx, at, 'ABANDONED');
+  }
+
+  // Phones that merely dropped (not LEFT) never close a room by themselves, so a TV would hang on
+  // a dead lobby for ever: when every active seat is gone for a while, send the TV back to its menu.
+  const goneSince = allPlayersGoneSince(d);
+  if (!held && goneSince !== null && at - goneSince >= allPlayersGoneMsFor(d.config))
+    return closeRoom(d, ctx, at, 'ABANDONED');
+
+  if (
+    d.leaderPlayerId !== null &&
+    d.leaderLostAt !== null &&
+    at - d.leaderLostAt >= t.leaderGraceMs &&
+    // nobody connected to hand over to: keep waiting, the next reconnect makes the hand-over due
+    leaderHandoverPossible(d)
+  ) {
+    const next = pickLeader(d, d.leaderPlayerId);
+    if (next !== null) setLeader(d, ctx, next);
+    else d.leaderLostAt = null;
+  }
+
+  if (d.phaseDeadlineAt !== null && at >= d.phaseDeadlineAt) {
+    advancePhase(d, ctx, at);
+  } else if (d.phase === 'ANSWERING') {
+    maybeEarlyLock(d, ctx, at);
+  } else {
+    // Somebody the table was waiting for dropped: nobody left to wait for.
+    maybeEndPickPhase(d, ctx, at);
+  }
+}
+
+function advancePhase(d: Room, ctx: Ctx, at: number): void {
+  const t = d.config.timings;
+  switch (d.phase) {
+    case 'COUNTDOWN':
+      return startRound(d, ctx, at, d.game!.upcoming ?? planRound(d, ctx, 0));
+    case 'ROUND_INTRO':
+    case 'FINAL':
+      return enterNextPick(d, ctx, at, 'INTRO');
+    case 'QUESTION_PREP': // legacy phase of a recovered room: handled as RISK_PICK
+    case 'RISK_PICK':
+      return enterNextPick(d, ctx, at, 'RISK_PICK');
+    case 'SABOTAGE_PICK':
+      return startQuestion(d, ctx, at);
+    case 'QUESTION': {
+      const round = d.game!.round!;
+      round.answerOpensAt = at;
+      round.answerDeadlineAt = at + round.answerMs;
+      // Locks at the first tick strictly after the cut-off (the deadline itself is still on time).
+      enterPhase(d, 'ANSWERING', at, round.answerMs + t.latencyAllowanceMs + 1);
+      return;
+    }
+    case 'ANSWERING':
+      return lockRound(d, ctx, at);
+    case 'LOCKED': {
+      const explanation = d.game!.round!.question!.explanation;
+      const readMs = explanation
+        ? Math.min(explanation.length * t.revealPerCharMs, t.revealExplanationMaxMs)
+        : 0;
+      return enterPhase(d, 'REVEAL', at, t.revealMs + readMs);
+    }
+    case 'REVEAL': {
+      const round = d.game!.round!;
+      round.powerItems = buildPowerItems(d);
+      if (round.powerItems.length === 0) return enterScoreUpdate(d, ctx, at);
+      const extra = t.powerResolutionPerItemMs * (round.powerItems.length - 1);
+      return enterPhase(
+        d,
+        'POWER_RESOLUTION',
+        at,
+        Math.min(t.powerResolutionMaxMs, t.powerResolutionMs + extra),
+      );
+    }
+    case 'POWER_RESOLUTION':
+      return enterScoreUpdate(d, ctx, at);
+    case 'SCORE_UPDATE': {
+      const game = d.game!;
+      if (game.roundIndex >= game.totalRounds - 1) return enterResults(d, ctx, at);
+      // Venue mode: the round that was running when the table's time ran out has finished; no next one.
+      if (meterBlock(d.venue, at)) return enterResults(d, ctx, at, true);
+      planRound(d, ctx, game.roundIndex + 1);
+      return enterPhase(d, 'MICRO_INTERMISSION', at, t.microIntermissionMs);
+    }
+    case 'MICRO_INTERMISSION': {
+      const game = d.game!;
+      // Venue mode: read the meter again at the boundary itself. A pause in the intermission, or time
+      // running out while the boundary was held for a lost TV, must not buy a whole extra round.
+      if (meterBlock(d.venue, at)) return enterResults(d, ctx, at, true);
+      d.phase = 'NEXT_ROUND';
+      return startRound(d, ctx, at, game.upcoming ?? planRound(d, ctx, game.roundIndex + 1));
+    }
+    case 'WAITING':
+    case 'LOBBY':
+    case 'NEXT_ROUND':
+    case 'RESULTS':
+    case 'ROOM_CLOSED':
+      d.phaseDeadlineAt = null;
+  }
+}
+
+function planRound(d: Room, ctx: Ctx, index: number): UpcomingRound {
+  const game = d.game!;
+  const cfg = d.config as GameConfig;
+  const out = direct(
+    {
+      roundIndex: index,
+      totalRounds: game.totalRounds,
+      level: game.director.level,
+      recentCorrectPermille: game.director.recentCorrectPermille,
+      recentAvgAnswerPermille: game.director.recentAvgAnswerPermille,
+      recentRiskTakePermille: game.director.recentRiskTakePermille,
+      chaos: game.director.chaos,
+      finalLength: game.finalLength,
+      levelOffset: game.director.levelOffset,
+    },
+    cfg.director,
+  );
+  const rng = ctx.rng();
+  const kind = chooseRoundKind(
+    {
+      roundIndex: index,
+      totalRounds: game.totalRounds,
+      finalLength: game.finalLength,
+      history: game.director.history,
+      specialEventPermille: out.specialEventPermille,
+      riskIntensity: out.riskIntensity,
+    },
+    cfg.director,
+    rng,
+  );
+  const questionId =
+    selectQuestionId(
+      game.deck,
+      {
+        bucket: out.bucket,
+        varianceBuckets: out.varianceBuckets,
+        corridor: out.corridor,
+        prevCategory: game.director.prevCategory,
+        categoryCounts: game.director.categoryCounts,
+      },
+      rng,
+    ) ?? '';
+  game.director.level = out.level;
+  game.director.chaos = out.chaos;
+  const plan: UpcomingRound = { index, kind, questionId };
+  game.upcoming = plan;
+  return plan;
+}
+
+function startRound(d: Room, ctx: Ctx, at: number, plan: UpcomingRound): void {
+  const game = d.game!;
+  const t = d.config.timings;
+  if (plan.questionId === '' || !game.deck.questions[plan.questionId]) {
+    return enterResults(d, ctx, at); // deck exhausted: finish with the rounds played so far
+  }
+  // Hold at a round boundary while the display has been gone longer than its grace period.
+  if (
+    !d.display.connected &&
+    d.display.disconnectedAt !== null &&
+    at - d.display.disconnectedAt >= t.displayGraceMs
+  ) {
+    d.awaitingDisplay = true;
+    if (d.phase === 'NEXT_ROUND') d.phase = 'MICRO_INTERMISSION';
+    d.phaseDeadlineAt = null;
+    emitDisplayStatus(d, ctx);
+    return;
+  }
+  const deckQuestion = game.deck.questions[plan.questionId]!;
+  const ids = game.deck.remaining[deckQuestion.difficulty];
+  game.deck.remaining[deckQuestion.difficulty] = ids.filter((id) => id !== plan.questionId);
+  const previousKind = game.director.history.at(-1);
+  game.director.history.push(plan.kind);
+  game.director.categoryCounts[deckQuestion.category.id] =
+    (game.director.categoryCounts[deckQuestion.category.id] ?? 0) + 1;
+  game.director.prevCategory = deckQuestion.category.id;
+
+  const cfg = d.config;
+  game.roundIndex = plan.index;
+  game.upcoming = null;
+  game.round = {
+    index: plan.index,
+    kind: plan.kind,
+    isFinal: plan.kind === 'FINAL',
+    basePoints: cfg.scoring.basePoints[plan.kind],
+    speedMax: cfg.scoring.speedMax[plan.kind],
+    answerMs: cfg.timings.answerMs[plan.kind],
+    questionId: plan.questionId,
+    question: null,
+    questionStartedAt: null,
+    answerOpensAt: null,
+    answerDeadlineAt: null,
+    lockedAt: null,
+    answers: {},
+    commitments: {},
+    sabotagePicks: {},
+    sabotages: [],
+    effects: {},
+    fiftyFifty: null,
+    fiftyFiftyUsers: {},
+    duelAnswers: {},
+    powerItems: [],
+    outcome: null,
+    scoreUpdate: null,
+  };
+  // The "Final" splash plays once, before the first question of the final stage.
+  if (plan.kind === 'FINAL' && previousKind !== 'FINAL') enterPhase(d, 'FINAL', at, t.finalIntroMs);
+  else enterPhase(d, 'ROUND_INTRO', at, t.roundIntroMs);
+}
+
+function opaqueId(rng: Rng, taken: Set<string>): string {
+  for (;;) {
+    let id = '';
+    for (let i = 0; i < 12; i++) id += OPAQUE_ALPHABET[rng.int(OPAQUE_ALPHABET.length)];
+    if (!taken.has(id)) {
+      taken.add(id);
+      return id;
+    }
+  }
+}
+
+function presentQuestion(d: Room, ctx: Ctx): void {
+  const game = d.game!;
+  const round = game.round!;
+  const source = game.deck.questions[round.questionId]!;
+  const rng = ctx.rng();
+  const taken = new Set<string>();
+  const shuffled = rng.shuffle(
+    source.options.map((o) => ({ key: o.key, text: o.text, correct: o.correct })),
+  );
+  const options: PresentedOption[] = shuffled.map((o) => ({
+    optionId: opaqueId(rng, taken),
+    key: o.key,
+    text: o.text,
+    // Who Said It options are the players themselves (key = player id).
+    ...(source.source === 'WHO_SAID_IT' ? { playerId: o.key } : {}),
+    correct: o.correct,
+  }));
+  const question: PresentedQuestion = {
+    questionId: source.questionId,
+    text: source.text,
+    category: { id: source.category.id, label: source.category.label },
+    difficulty: source.difficulty,
+    explanation: source.explanation,
+    options,
+    correctOptionId: options.find((o) => o.correct)!.optionId,
+  };
+  round.question = question;
+}
+
+function enterScoreUpdate(d: Room, ctx: Ctx, at: number): void {
+  const game = d.game!;
+  const round = game.round!;
+  const outcome = round.outcome!;
+  const joinIndexOf = (playerId: string): number =>
+    d.players[playerId]?.joinIndex ?? Number.MAX_SAFE_INTEGER;
+
+  const rankOf = (): Map<string, number> =>
+    new Map(
+      rankPlayers(
+        Object.entries(game.players)
+          .filter(([, gp]) => !gp.removed)
+          .map(([playerId, gp]) => ({
+            playerId,
+            score: gp.score,
+            correctCount: gp.correctCount,
+            totalRemainingMs: gp.totalRemainingMs,
+            joinIndex: joinIndexOf(playerId),
+          })),
+      ).map((entry) => [entry.playerId, entry.rank]),
+    );
+
+  const before = rankOf();
+  for (const [playerId, result] of Object.entries(outcome.players)) {
+    const gp = game.players[playerId];
+    if (!gp || gp.removed) continue;
+    gp.score = Math.max(0, gp.score + result.delta);
+    if (result.result === 'CORRECT') {
+      gp.streak += 1;
+      gp.bestStreak = Math.max(gp.bestStreak, gp.streak);
+      gp.correctCount += 1;
+      gp.totalRemainingMs += result.remainingMs;
+      earnToken(d.config, gp.powers, gp.streak);
+    } else {
+      gp.streak = 0;
+    }
+    if (result.optionId !== null) gp.answeredCount += 1;
+  }
+  // Whatever has run its course this round lapses: unspent POINT_TAX, and a lockout that held for it.
+  for (const gp of Object.values(game.players)) {
+    if (gp.powers.pointTax && round.index >= gp.powers.pointTax.expiresAfterRound)
+      gp.powers.pointTax = null;
+    if (gp.powers.lockout && gp.powers.lockout.round <= round.index) gp.powers.lockout = null;
+    // ADR-0023: STAKE_CAP held for the round it was aimed at; an unspent CUT lapses like the tax.
+    if (gp.powers.stakeCap && gp.powers.stakeCap.round <= round.index) gp.powers.stakeCap = null;
+    if (gp.powers.cut && round.index >= gp.powers.cut.expiresAfterRound) gp.powers.cut = null;
+  }
+  const after = rankOf();
+  for (const [playerId, rank] of after) game.players[playerId]!.rankHistory.push(rank);
+
+  const board = rankPlayers(
+    Object.entries(game.players)
+      .filter(([, gp]) => !gp.removed)
+      .map(([playerId, gp]) => ({
+        playerId,
+        score: gp.score,
+        correctCount: gp.correctCount,
+        totalRemainingMs: gp.totalRemainingMs,
+        joinIndex: joinIndexOf(playerId),
+      })),
+  );
+  const deltas = d.playerOrder
+    .filter((playerId) => outcome.players[playerId] !== undefined)
+    .map((playerId) => {
+      const result = outcome.players[playerId]!;
+      return {
+        playerId,
+        delta: result.delta,
+        total: game.players[playerId]!.score,
+        rank: after.get(playerId) ?? 1,
+        previousRank: before.get(playerId) ?? 1,
+        components: result.components.map((c) => ({ kind: c.kind, points: c.points })),
+      };
+    });
+  round.scoreUpdate = {
+    deltas,
+    scoreboard: board.map((entry) => ({
+      playerId: entry.playerId,
+      score: entry.score,
+      rank: entry.rank,
+      streak: game.players[entry.playerId]!.streak,
+    })),
+    ...(game.teams ? { teamBoard: teamStandings(d, game) } : {}),
+  };
+
+  // Director aggregates for the next round: room-level only (ADR-0011).
+  const answered = Object.values(outcome.players).filter((p) => p.optionId !== null);
+  const eligible = Math.max(1, outcome.eligibleCount);
+  game.director.recentCorrectPermille.push(Math.floor((outcome.correctCount * 1000) / eligible));
+  const used =
+    answered.length === 0
+      ? 1000
+      : Math.floor(
+          answered.reduce(
+            (sum, p) => sum + ((round.answerMs - p.remainingMs) * 1000) / round.answerMs,
+            0,
+          ) / answered.length,
+        );
+  game.director.recentAvgAnswerPermille.push(used);
+  // Share of the room that took a stake above the default or doubled down (ADR-0011, riskIntensity).
+  const ladder = roundLadder(d.config, round, game.totalRounds);
+  const risked = Object.entries(round.commitments).filter(
+    ([playerId, commitment]) =>
+      outcome.players[playerId] !== undefined &&
+      (commitment.stake !== ladder.defaultTier || commitment.doubleDown),
+  ).length;
+  game.director.recentRiskTakePermille.push(Math.floor((risked * 1000) / eligible));
+
+  const keyOf = new Map(round.question!.options.map((o) => [o.optionId, o.key]));
+  const distributionByKey: Record<string, number> = {};
+  for (const [optionId, count] of Object.entries(outcome.distribution)) {
+    distributionByKey[keyOf.get(optionId) ?? optionId] = count;
+  }
+  ctx.effects.push({
+    kind: 'persist',
+    record: {
+      type: 'ROUND_COMPLETED',
+      gameId: game.gameId,
+      roundIndex: round.index,
+      kind: round.kind,
+      questionId: round.questionId,
+      answerMs: round.answerMs,
+      correctOptionKey: keyOf.get(round.question!.correctOptionId) ?? '',
+      distribution: distributionByKey,
+      players: deltas.map((entry) => {
+        const result = outcome.players[entry.playerId]!;
+        return {
+          playerId: entry.playerId,
+          optionKey: result.optionId === null ? null : (keyOf.get(result.optionId) ?? null),
+          correct: result.result === 'CORRECT',
+          remainingMs: result.remainingMs,
+          delta: result.delta,
+          totalAfter: entry.total,
+          components: entry.components,
+          stake: round.commitments[entry.playerId]?.stake ?? null,
+          doubleDown: round.commitments[entry.playerId]?.doubleDown ?? false,
+          fiftyFifty: round.fiftyFiftyUsers[entry.playerId] === true,
+        };
+      }),
+      sabotages: round.sabotages.map((record) => ({
+        actorId: record.actorId,
+        targetId: record.targetId,
+        effect: record.effect,
+        blocked: record.blocked,
+      })),
+      configVersion: d.config.version,
+    },
+  });
+  ctx.effects.push({
+    kind: 'telemetry',
+    name: 'question_revealed',
+    props: {
+      round: round.index,
+      correctRatePermille: Math.floor((outcome.correctCount * 1000) / eligible),
+    },
+  });
+  enterPhase(d, 'SCORE_UPDATE', at, d.config.timings.scoreUpdateMs);
+}
+
+function enterResults(d: Room, ctx: Ctx, at: number, cutShort = false): void {
+  const game = d.game!;
+  const joinIndexOf = (playerId: string): number =>
+    d.players[playerId]?.joinIndex ?? Number.MAX_SAFE_INTEGER;
+  const entries = Object.entries(game.players)
+    .filter(([, gp]) => !gp.removed)
+    .map(([playerId, gp]) => ({
+      playerId,
+      score: gp.score,
+      correctCount: gp.correctCount,
+      totalRemainingMs: gp.totalRemainingMs,
+      joinIndex: joinIndexOf(playerId),
+    }));
+  const ranked = rankPlayers(entries);
+  const ranking = ranked.map((entry) => ({
+    playerId: entry.playerId,
+    score: entry.score,
+    rank: entry.rank,
+    correctCount: entry.correctCount,
+    bestStreak: game.players[entry.playerId]!.bestStreak,
+  }));
+
+  const awards: ResultsRecord['awards'] = [];
+  const best = <T>(items: T[], score: (item: T) => number): T | undefined =>
+    items.slice().sort((a, b) => score(b) - score(a))[0];
+  const sharp = best(ranked, (e) => e.correctCount * 1_000_000 + e.score);
+  if (sharp && sharp.correctCount > 0)
+    awards.push({ kind: 'SHARPSHOOTER', playerId: sharp.playerId });
+  const fast = best(
+    ranked.filter((e) => e.correctCount >= 2),
+    (e) => Math.floor(e.totalRemainingMs / e.correctCount),
+  );
+  if (fast) awards.push({ kind: 'FASTEST_FINGER', playerId: fast.playerId });
+  const streak = best(ranking, (e) => e.bestStreak);
+  if (streak && streak.bestStreak >= 3)
+    awards.push({ kind: 'STREAK_MASTER', playerId: streak.playerId });
+  const comeback = best(
+    ranking.filter((e) => e.rank <= 3),
+    (e) => Math.max(...game.players[e.playerId]!.rankHistory, e.rank) - e.rank,
+  );
+  if (
+    comeback &&
+    Math.max(...game.players[comeback.playerId]!.rankHistory, comeback.rank) - comeback.rank >= 2
+  ) {
+    awards.push({ kind: 'COMEBACK', playerId: comeback.playerId });
+  }
+
+  game.results = {
+    ranking,
+    awards,
+    ...(game.teams ? { teamRanking: teamStandings(d, game) } : {}),
+    ...(cutShort ? { cutShort: true } : {}),
+  };
+  game.upcoming = null;
+  enterPhase(d, 'RESULTS', at, null);
+  touch(d, at);
+  ctx.effects.push({
+    kind: 'persist',
+    record: { type: 'GAME_FINISHED', gameId: game.gameId, finishedAt: at, ranking },
+  });
+  ctx.effects.push({
+    kind: 'telemetry',
+    name: 'game_finished',
+    props: { players: ranking.length, rounds: game.roundIndex + 1 },
+  });
+}
+
+// ───────────────────────────── entitlement & recovery ─────────────────────────────
+
+/**
+ * The server attached a personal quiz (or went back to the classic game). Only in the lobby, and
+ * only on a FULL tier: personal quizzes are part of the full game (ADR-0013). The lobby's round
+ * count follows the quiz's size so the game never asks for more questions than it has.
+ */
+function onSetContent(
+  d: Room,
+  ctx: Ctx,
+  input: Extract<EngineInput, { kind: 'SET_CONTENT' }>,
+): void {
+  if (d.phase !== 'LOBBY' && d.phase !== 'WAITING') return reject(ctx, 'INVALID_STATE');
+  if (input.mode !== 'CLASSIC' && d.tier !== 'FULL') return reject(ctx, 'TIER_REQUIRED');
+  if (input.mode !== 'WHO_SAID_IT') d.statements = {};
+  if (input.mode === 'CLASSIC') {
+    d.settings.mode = 'CLASSIC';
+    d.settings.contentTitle = null;
+    d.contentRef = null;
+  } else {
+    d.settings.mode = input.mode;
+    d.settings.contentTitle = input.title;
+    d.contentRef = input.ref;
+    if (input.rounds !== null)
+      d.settings.rounds = Math.max(
+        MIN_ROUNDS,
+        Math.min(input.rounds, maxRoundsFor(d.config, d.tier)),
+      );
+  }
+  touch(d, input.at);
+  emit(
+    ctx,
+    { to: 'ALL' },
+    { type: 'SETTINGS_CHANGED', payload: { settings: structuredSettings(d) } },
+  );
+}
+
+function onEntitlement(
+  d: Room,
+  ctx: Ctx,
+  tier: Tier,
+  hostAccountId: string | null,
+  reason?: 'GRANTED' | 'RESTORED' | 'LINKED' | 'REVOKED' | 'EXPIRED',
+): void {
+  const changed = d.tier !== tier || d.hostAccountId !== hostAccountId;
+  if (!changed) return;
+  const tierChanged = d.tier !== tier;
+  d.tier = tier;
+  d.hostAccountId = hostAccountId;
+  if (tierChanged) {
+    emit(
+      ctx,
+      { to: 'ALL' },
+      {
+        type: 'ENTITLEMENT_CHANGED',
+        payload: { tier, reason: reason ?? (tier === 'FULL' ? 'LINKED' : 'REVOKED') },
+      },
+    );
+    // Personal quizzes belong to the full game: without it the room goes back to the classic one.
+    if (tier === 'FREE' && d.settings.mode !== 'CLASSIC') {
+      d.statements = {};
+      d.settings.mode = 'CLASSIC';
+      d.settings.contentTitle = null;
+      d.contentRef = null;
+    }
+    if (tier === 'FREE' && d.settings.rounds > d.config.freeTier.maxRounds) {
+      d.settings.rounds = d.config.freeTier.maxRounds;
+      emit(
+        ctx,
+        { to: 'ALL' },
+        { type: 'SETTINGS_CHANGED', payload: { settings: structuredSettings(d) } },
+      );
+    }
+  }
+}
+
+/**
+ * Venue mode (ADR-0024): the server tells the room about its table's meter. Stored as given (the server
+ * computed it from the session's facts); every screen hears the public part. Null detaches the table.
+ */
+function onVenueMeter(d: Room, ctx: Ctx, at: number, meter: VenueMeter | null): void {
+  const same =
+    (d.venue ?? null) === null
+      ? meter === null
+      : meter !== null &&
+        d.venue!.state === meter.state &&
+        d.venue!.endsAt === meter.endsAt &&
+        d.venue!.remainingMs === meter.remainingMs;
+  if (meter)
+    emit(
+      ctx,
+      { to: 'ALL' },
+      { type: 'VENUE_METER_CHANGED', payload: { venue: meterView(meter, at) } },
+    );
+  if (same) return;
+  d.venue = meter ? { ...meter } : null;
+}
+
+/**
+ * Venue mode (ADR-0026 §7): the venue's table defaults land when staff open the table. Like a leader's
+ * settings change, only between games; players already seated are put into teams when the mode is TEAMS.
+ */
+function onTablePreset(
+  d: Room,
+  ctx: Ctx,
+  input: Extract<EngineInput, { kind: 'TABLE_PRESET' }>,
+): void {
+  if (d.phase !== 'WAITING' && d.phase !== 'LOBBY' && d.phase !== 'RESULTS')
+    return reject(ctx, 'INVALID_STATE');
+  d.settings.play = input.play;
+  d.settings.ruleset = input.ruleset;
+  if (input.teamNames.some((name) => name !== '')) d.settings.teamNames = [...input.teamNames];
+  else delete d.settings.teamNames;
+  if (input.simpleAnswerSeconds !== null) {
+    d.config = withSimpleAnswerSeconds(d.config, input.simpleAnswerSeconds);
+    if (d.baseConfig)
+      d.baseConfig = withSimpleAnswerSeconds(d.baseConfig, input.simpleAnswerSeconds);
+  }
+  reconcileTeams(d, ctx);
+  touch(d, input.at);
+  emit(
+    ctx,
+    { to: 'ALL' },
+    { type: 'SETTINGS_CHANGED', payload: { settings: structuredSettings(d) } },
+  );
+}
+
+function onRecover(d: Room, ctx: Ctx, at: number, outageMs: number): void {
+  if (outageMs > d.config.timings.maxRecoverableOutageMs) {
+    return closeRoom(d, ctx, at, 'INTERRUPTED');
+  }
+  const shift = Math.max(0, outageMs);
+  d.phaseEnteredAt += shift;
+  if (d.phaseDeadlineAt !== null) d.phaseDeadlineAt += shift;
+  const round = d.game?.round;
+  if (round) {
+    if (round.questionStartedAt !== null) round.questionStartedAt += shift;
+    if (round.answerOpensAt !== null) round.answerOpensAt += shift;
+    if (round.answerDeadlineAt !== null) round.answerDeadlineAt += shift;
+    if (round.lockedAt !== null) round.lockedAt += shift;
+  }
+  d.lastActivityAt = at;
+  d.display.connected = false;
+  d.display.disconnectedAt = at;
+  for (const player of activePlayerList(d)) {
+    player.connection = 'DISCONNECTED';
+    player.disconnectedAt = at;
+  }
+  d.leaderLostAt = d.leaderPlayerId === null ? null : at;
+}
+
+/**
+ * A room stored before ADR-0022 may sit in the retired QUESTION_PREP: it carries on as RISK_PICK
+ * (same deadline, same commitments). Everything else loads unchanged; old rounds have no sabotage picks.
+ */
+export function normalizeRecoveredState(state: RoomState): RoomState {
+  if ((state.phase as string) !== 'QUESTION_PREP') return state;
+  return { ...state, phase: 'RISK_PICK' };
+}

@@ -1,0 +1,136 @@
+.peek {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+}
+.peekBig {
+  align-items: center;
+  text-align: center;
+}
+
+.hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 0 4px;
+  color: var(--qp-color-text, #fff);
+}
+.hintBig {
+  flex-direction: column;
+  padding: 8px 0 6px;
+}
+
+.tv {
+  flex: none;
+  color: var(--qp-color-accent-a);
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.35));
+}
+
+.hintText {
+  margin-left: 12px;
+  font-family: var(--qp-font-display);
+  font-size: 25px;
+  line-height: 1.1;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+}
+.hintBig .hintText {
+  margin: 10px 0 0;
+  font-size: 36px;
+}
+
+/* A row of small tools under the hint; the toggle is always the last one. */
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  margin: 4px 0 10px;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 4px 16px 4px 12px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--qp-color-muted-text);
+  cursor: pointer;
+  background: rgba(var(--qp-surface-rgb), 0.55);
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  transition:
+    transform 90ms ease,
+    background 140ms ease;
+}
+.toggle:active {
+  transform: scale(0.96);
+}
+.toggleOn {
+  color: var(--qp-color-text, #fff);
+  border-color: var(--qp-color-accent-a);
+}
+.eye {
+  flex: none;
+  margin-right: 8px;
+}
+
+.card {
+  flex: none;
+  margin: 0 0 12px;
+  padding: 12px 16px;
+  background: var(--qp-color-paper, rgba(var(--qp-deep-rgb), 0.88));
+  border-color: var(--qp-color-paper-line, var(--qp-color-surface-line));
+  animation: qp-fade-in 200ms ease-out 1;
+}
+.text {
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--qp-color-on-paper, inherit);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.peekBig .card {
+  width: 100%;
+  margin-top: 4px;
+}
+
+/* Landscape phone (about 390 px tall): the hint and the tools share one line so the 2 x 2 answers fit. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .peek {
+    flex-flow: row wrap;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .hint {
+    padding: 0;
+  }
+  .hintText {
+    font-size: 20px;
+  }
+  .tools {
+    margin: 0 0 8px;
+  }
+  .card {
+    flex: 1 1 100%;
+  }
+  .peekBig {
+    flex-direction: column;
+    justify-content: center;
+  }
+}
+
+/* Short portrait phones: hint and tools sit tighter. */
+@media (orientation: portrait) and (max-height: 700px) {
+  .hint {
+    padding: 0;
+  }
+  .tools {
+    margin: 2px 0 6px;
+  }
+}

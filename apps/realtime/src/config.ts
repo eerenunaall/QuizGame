@@ -1,0 +1,419 @@
+import { X509Certificate, createHmac } from 'node:crypto';
+import { hostname } from 'node:os';
+import { z } from 'zod';
+import { parseFrom } from './auth/http-email';
+import type { RetentionPolicy } from './moderation/retention';
+
+const DEV_SECRET = 'dev-only-change-me-dev-only-change-me';
+const DEV_DATABASE_URL = 'postgres://quizparty:quizparty@127.0.0.1:5432/quizparty_dev';
+
+const csv = z
+  .string()
+  .default('')
+  .transform((value) =>
+    value
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0),
+  );
+const flag = (fallback: '0' | '1') =>
+  z
+    .enum(['0', '1'])
+    .default(fallback)
+    .transform((value) => value === '1');
+const int = (fallback: number, min = 0, max = Number.MAX_SAFE_INTEGER) =>
+  z.coerce.number().int().min(min).max(max).default(fallback);
+
+const EnvSchema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  PORT: int(8080, 0, 65535),
+  HOST: z.string().default('0.0.0.0'),
+  DATABASE_URL: z.string().min(1).optional(),
+  PUBLIC_WEB_URL: z.string().url().default('http://localhost:5173'),
+  ALLOWED_ORIGINS: csv,
+  SERVER_SECRET: z.string().min(32).optional(),
+  TRUST_PROXY_HOPS: int(0, 0, 5),
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).optional(),
+  INSTANCE_ID: z.string().min(1).max(64).optional(),
+  DEFAULT_ROOM_TIER: z.enum(['FREE', 'FULL']).optional(),
+  QP_ALLOW_DEV_SEED: flag('0'),
+  VALIDATE_OUTBOUND: z.enum(['0', '1']).optional(),
+  GAME_CONFIG_OVERRIDE: z.string().optional(),
+  METRICS_TOKEN: z.string().min(16).optional(),
+  HEARTBEAT_INTERVAL_MS: int(3_000, 50),
+  LEASE_MS: int(10_000, 200),
+  WS_PING_INTERVAL_MS: int(15_000, 50),
+  WS_AUTH_TIMEOUT_MS: int(5_000, 50),
+  MAX_WS_CONNECTIONS: int(5_000, 1),
+  MAX_WS_PER_IP: int(40, 1),
+  SERVE_WEB: flag('0'),
+  WEB_DIST: z.string().optional(),
+  SERVE_ADMIN: flag('0'),
+  ADMIN_DIST: z.string().optional(),
+  RATE_LIMIT_SCALE: z.coerce.number().min(0.1).max(1000).default(1),
+  /** 0 switches the background maintenance pass off (tests run it by hand). */
+  MAINTENANCE_INTERVAL_MS: int(15 * 60_000, 0),
+  /** Retention periods (ADR-0018, docs/PRIVACY.md §3); the maintenance timer enforces them. */
+  RETENTION_OTP_HOURS: int(24, 1, 24 * 365),
+  RETENTION_ACCOUNT_SESSION_DAYS: int(7, 1, 3650),
+  RETENTION_SECURITY_EVENT_DAYS: int(180, 1, 3650),
+  RETENTION_TELEMETRY_DAYS: int(180, 1, 3650),
+  RETENTION_CLOSED_ROOM_DAYS: int(30, 1, 3650),
+  /** Venue mode (ADR-0024): length of one metered minute. Tests and demos only; production refuses another value. */
+  VENUE_MINUTE_MS: int(60_000, 100, 60_000),
+  /** Distinct recently played questions per category a venue deck avoids (ADR-0025 §9). */
+  VENUE_FRESH_WINDOW: int(300, 0, 5000),
+  /** A category is listed in the lobby only with this many ACTIVE questions (a thin one repeats within a game or two). */
+  CATEGORY_MIN_QUESTIONS: int(1, 1, 500),
+  /** Addresses that become ADMIN on their first sign-in (how the first administrator exists). */
+  ADMIN_BOOTSTRAP_EMAILS: csv,
+  /** Where sign-in mail goes: any service that takes a JSON POST `{to, subject, text}`. */
+  EMAIL_WEBHOOK_URL: z.string().url().optional(),
+  EMAIL_WEBHOOK_TOKEN: z.string().min(8).optional(),
+  /** Sign-in mail through a transactional-mail API (HttpEmailSender): provider, key and sender go together. */
+  EMAIL_PROVIDER: z.enum(['resend', 'brevo']).optional(),
+  EMAIL_API_KEY: z.string().min(8).optional(),
+  EMAIL_FROM: z.string().min(5).max(200).optional(),
+  /** Tests only: production refuses it (a key must never be sent to a look-alike host). */
+  EMAIL_API_BASE: z.string().url().optional(),
+  /** Model-backed audit passes (ADR-0014): without a key the passes stay NOT_RUN. Names are never built in. */
+  /** Store purchases (ADR-0013). Off by default; each store is configured separately. */
+  PAYMENTS_ENABLED: flag('0'),
+  /** Accept App Review / TestFlight / test-track purchases as sandbox entitlements. */
+  PAYMENTS_ACCEPT_SANDBOX: flag('1'),
+  APPLE_BUNDLE_ID: z.string().min(3).max(155).optional(),
+  APPLE_APP_ID: z.coerce.number().int().positive().optional(),
+  APPLE_PRODUCT_ID: z.string().min(1).max(100).default('quizparty_full_game'),
+  /** PEM bundle with Apple's root certificate(s); apple.com cannot be fetched at run time. */
+  APPLE_ROOT_CERTS_PEM: z.string().min(100).optional(),
+  APPLE_ONLINE_CHECKS: flag('1'),
+  GOOGLE_PACKAGE_NAME: z.string().min(3).max(155).optional(),
+  GOOGLE_PRODUCT_ID: z.string().min(1).max(100).default('quizparty_full_game'),
+  /** The service-account key file's JSON (client_email, private_key, token_uri). */
+  GOOGLE_SERVICE_ACCOUNT_JSON: z.string().min(20).optional(),
+  GOOGLE_API_BASE: z.string().url().default('https://androidpublisher.googleapis.com'),
+  /** Shared secret in the push URL of the real-time developer notifications. */
+  GOOGLE_WEBHOOK_SECRET: z.string().min(24).optional(),
+  /**
+   * Keys that seal personal answers (ADR-0015): `id:base64key,id:base64key`, 32 bytes each; the first
+   * seals, all can open (rotation). Without it a production server serves no personal quizzes.
+   */
+  BLIND_DATA_KEYS: z.string().optional(),
+  /** AI decoy suggestions for Blind Quiz targets (ADR-0015); also needs the `ai.decoys` flag. */
+  AI_DECOYS_API_KEY: z.string().min(8).optional(),
+  AI_DECOYS_MODEL: z.string().min(1).max(100).optional(),
+  AI_DECOYS_API_BASE: z.string().url().optional(),
+  AI_DECOYS_TIMEOUT_MS: int(4_000, 200, 30_000),
+  AUDIT_API_KEY: z.string().min(8).optional(),
+  AUDIT_MODEL_FAST: z.string().min(1).max(100).optional(),
+  AUDIT_MODEL_STRONG: z.string().min(1).max(100).optional(),
+  AUDIT_API_BASE: z.string().url().optional(),
+  EMBEDDINGS_BASE_URL: z.string().url().optional(),
+  EMBEDDINGS_MODEL: z.string().min(1).max(100).optional(),
+  EMBEDDINGS_API_KEY: z.string().min(8).optional(),
+});
+
+export interface PaymentsConfig {
+  enabled: boolean;
+  acceptSandbox: boolean;
+  apple: {
+    bundleId: string;
+    appAppleId: number | null;
+    productId: string;
+    rootCertificates: Buffer[];
+    onlineChecks: boolean;
+  } | null;
+  google: {
+    packageName: string;
+    productId: string;
+    clientEmail: string;
+    privateKey: string;
+    tokenUri: string;
+    apiBase: string;
+    webhookSecret: string;
+  } | null;
+}
+
+function pemToDer(bundle: string): Buffer[] {
+  const matches =
+    bundle.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/gu) ?? [];
+  return matches.map((pem) => new X509Certificate(pem).raw);
+}
+
+function paymentsConfig(e: z.infer<typeof EnvSchema>, production: boolean): PaymentsConfig {
+  const problems: string[] = [];
+  let apple: PaymentsConfig['apple'] = null;
+  if (e.APPLE_BUNDLE_ID || e.APPLE_ROOT_CERTS_PEM) {
+    const roots = e.APPLE_ROOT_CERTS_PEM ? pemToDer(e.APPLE_ROOT_CERTS_PEM) : [];
+    if (!e.APPLE_BUNDLE_ID) problems.push('APPLE_ROOT_CERTS_PEM needs APPLE_BUNDLE_ID');
+    if (roots.length === 0) problems.push('APPLE_ROOT_CERTS_PEM holds no certificate');
+    if (production && !e.APPLE_APP_ID) problems.push('APPLE_APP_ID is required in production');
+    apple = {
+      bundleId: e.APPLE_BUNDLE_ID ?? '',
+      appAppleId: e.APPLE_APP_ID ?? null,
+      productId: e.APPLE_PRODUCT_ID,
+      rootCertificates: roots,
+      onlineChecks: e.APPLE_ONLINE_CHECKS,
+    };
+  }
+  let google: PaymentsConfig['google'] = null;
+  if (e.GOOGLE_PACKAGE_NAME || e.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    let account: { client_email?: unknown; private_key?: unknown; token_uri?: unknown } = {};
+    try {
+      account = JSON.parse(e.GOOGLE_SERVICE_ACCOUNT_JSON ?? '{}') as typeof account;
+    } catch {
+      problems.push('GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON');
+    }
+    if (!e.GOOGLE_PACKAGE_NAME)
+      problems.push('GOOGLE_SERVICE_ACCOUNT_JSON needs GOOGLE_PACKAGE_NAME');
+    if (typeof account.client_email !== 'string' || typeof account.private_key !== 'string')
+      problems.push('GOOGLE_SERVICE_ACCOUNT_JSON needs client_email and private_key');
+    if (!e.GOOGLE_WEBHOOK_SECRET)
+      problems.push('GOOGLE_WEBHOOK_SECRET is required with Google Play');
+    google = {
+      packageName: e.GOOGLE_PACKAGE_NAME ?? '',
+      productId: e.GOOGLE_PRODUCT_ID,
+      clientEmail: typeof account.client_email === 'string' ? account.client_email : '',
+      privateKey: typeof account.private_key === 'string' ? account.private_key : '',
+      tokenUri:
+        typeof account.token_uri === 'string'
+          ? account.token_uri
+          : 'https://oauth2.googleapis.com/token',
+      apiBase: e.GOOGLE_API_BASE.replace(/\/+$/u, ''),
+      webhookSecret: e.GOOGLE_WEBHOOK_SECRET ?? '',
+    };
+  }
+  if (e.PAYMENTS_ENABLED && !apple && !google)
+    problems.push('PAYMENTS_ENABLED needs Apple and/or Google Play settings');
+  if (problems.length > 0) throw new Error(`Invalid configuration: ${problems.join('; ')}`);
+  return { enabled: e.PAYMENTS_ENABLED, acceptSandbox: e.PAYMENTS_ACCEPT_SANDBOX, apple, google };
+}
+
+function blindKeys(
+  raw: string | undefined,
+  secret: string,
+  production: boolean,
+): { id: string; key: Buffer }[] | null {
+  if (!raw) {
+    // Development and tests get a key derived from the server secret; production refuses to guess.
+    return production
+      ? null
+      : [{ id: 'dev', key: createHmac('sha256', secret).update('blind-dev-key').digest() }];
+  }
+  const keys = raw.split(',').map((entry) => {
+    const [id, encoded] = entry.trim().split(':');
+    const key = encoded ? Buffer.from(encoded, 'base64') : Buffer.alloc(0);
+    if (!id || !/^[A-Za-z0-9_-]{1,32}$/u.test(id) || key.length !== 32)
+      throw new Error('Invalid configuration: BLIND_DATA_KEYS needs id:base64(32 bytes) entries');
+    return { id, key };
+  });
+  if (new Set(keys.map((k) => k.id)).size !== keys.length)
+    throw new Error('Invalid configuration: BLIND_DATA_KEYS has a repeated key id');
+  return keys;
+}
+
+export interface AppConfig {
+  env: 'development' | 'test' | 'production';
+  port: number;
+  host: string;
+  databaseUrl: string;
+  publicWebUrl: string;
+  allowedOrigins: string[];
+  serverSecret: string;
+  trustProxyHops: number;
+  logLevel: string;
+  instanceId: string;
+  defaultRoomTier: 'FREE' | 'FULL';
+  allowDevSeed: boolean;
+  validateOutbound: boolean;
+  gameConfigOverride: unknown;
+  metricsToken: string | null;
+  heartbeatIntervalMs: number;
+  leaseMs: number;
+  wsPingIntervalMs: number;
+  wsAuthTimeoutMs: number;
+  maxWsConnections: number;
+  maxWsPerIp: number;
+  serveWeb: boolean;
+  serveAdmin: boolean;
+  adminDist: string | null;
+  webDist: string | null;
+  /** Multiplies every rate-limit bucket; must stay 1 in production (tests/dev only). */
+  rateLimitScale: number;
+  maintenanceIntervalMs: number;
+  retention: RetentionPolicy;
+  adminBootstrapEmails: string[];
+  /** Venue mode: milliseconds in one metered minute (60 000 except in tests). */
+  venueMinuteMs: number;
+  venueFreshWindow: number;
+  categoryMinQuestions: number;
+  emailWebhook: { url: string; token: string | null } | null;
+  emailProvider: {
+    provider: 'resend' | 'brevo';
+    apiKey: string;
+    from: string;
+    apiBase: string | null;
+  } | null;
+  payments: PaymentsConfig;
+  /** Sealing keys for personal answers; the first is the active one. Null = personal quizzes are off. */
+  blindKeys: { id: string; key: Buffer }[] | null;
+  aiDecoys: { apiKey: string; apiBase: string | null; model: string; timeoutMs: number } | null;
+  audit: { apiKey: string; apiBase: string | null; modelFast: string; modelStrong: string } | null;
+  embeddings: { baseUrl: string; model: string; apiKey: string | null } | null;
+}
+
+/**
+ * Parses and validates the environment. Production refuses to start with development secrets,
+ * plain-http public URLs or an empty origin allow-list (ADR-0003: fail closed).
+ */
+export function loadConfig(env: Record<string, string | undefined> = process.env): AppConfig {
+  // Compose passes unset optional variables as empty strings; an empty value means "not set".
+  const present = Object.fromEntries(Object.entries(env).filter(([, value]) => value !== ''));
+  const parsed = EnvSchema.safeParse(present);
+  if (!parsed.success) {
+    const detail = parsed.error.issues
+      .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+      .join('; ');
+    throw new Error(`Invalid configuration: ${detail}`);
+  }
+  const e = parsed.data;
+  const production = e.NODE_ENV === 'production';
+  // Compared with the browser's Origin header, which has no path, no trailing slash and a lower-case
+  // host: an address typed on a phone ("https://Quiz.example/") must still match it.
+  const origins = e.ALLOWED_ORIGINS.map((origin) => {
+    try {
+      const url = new URL(origin);
+      return url.origin === 'null' ? origin : url.origin;
+    } catch {
+      return origin;
+    }
+  });
+
+  if (production) {
+    const problems: string[] = [];
+    if (!e.SERVER_SECRET || e.SERVER_SECRET === DEV_SECRET)
+      problems.push('SERVER_SECRET must be set to a unique 32+ character secret');
+    if (!e.DATABASE_URL) problems.push('DATABASE_URL is required');
+    if (origins.length === 0) problems.push('ALLOWED_ORIGINS must list the web origins');
+    if (!e.PUBLIC_WEB_URL.startsWith('https://')) problems.push('PUBLIC_WEB_URL must be https');
+    if (origins.some((origin) => !origin.startsWith('https://')))
+      problems.push('ALLOWED_ORIGINS must be https origins');
+    // The TV's QR code opens PUBLIC_WEB_URL: a phone there sends exactly this Origin and would be refused.
+    if (origins.length > 0 && !origins.includes(new URL(e.PUBLIC_WEB_URL).origin))
+      problems.push('ALLOWED_ORIGINS must include the PUBLIC_WEB_URL origin');
+    if (e.QP_ALLOW_DEV_SEED) problems.push('QP_ALLOW_DEV_SEED must be 0 in production');
+    if (e.RATE_LIMIT_SCALE !== 1) problems.push('RATE_LIMIT_SCALE must be 1 in production');
+    if (e.VENUE_MINUTE_MS !== 60_000) problems.push('VENUE_MINUTE_MS must be 60000 in production');
+    if (e.EMAIL_API_BASE) problems.push('EMAIL_API_BASE must not be set in production');
+    if (problems.length > 0)
+      throw new Error(`Unsafe production configuration: ${problems.join('; ')}`);
+  }
+
+  const mailParts = [e.EMAIL_PROVIDER, e.EMAIL_API_KEY, e.EMAIL_FROM];
+  if (mailParts.some(Boolean) && !mailParts.every(Boolean))
+    throw new Error(
+      'Invalid configuration: EMAIL_PROVIDER, EMAIL_API_KEY and EMAIL_FROM go together',
+    );
+  if (e.EMAIL_PROVIDER && e.EMAIL_WEBHOOK_URL)
+    throw new Error('Invalid configuration: set EMAIL_PROVIDER or EMAIL_WEBHOOK_URL, not both');
+  if (e.EMAIL_FROM && !parseFrom(e.EMAIL_FROM))
+    throw new Error('Invalid configuration: EMAIL_FROM is not an email address');
+
+  let gameConfigOverride: unknown = {};
+  if (e.GAME_CONFIG_OVERRIDE) {
+    try {
+      gameConfigOverride = JSON.parse(e.GAME_CONFIG_OVERRIDE);
+    } catch {
+      throw new Error('Invalid configuration: GAME_CONFIG_OVERRIDE is not valid JSON');
+    }
+  }
+
+  if (e.AI_DECOYS_API_KEY && !e.AI_DECOYS_MODEL)
+    throw new Error('Invalid configuration: AI_DECOYS_API_KEY needs AI_DECOYS_MODEL');
+  if (e.AUDIT_API_KEY && !e.AUDIT_MODEL_FAST)
+    throw new Error('Invalid configuration: AUDIT_API_KEY needs AUDIT_MODEL_FAST');
+
+  const webOrigin = new URL(e.PUBLIC_WEB_URL).origin;
+  const allowedOrigins = Array.from(new Set([...origins, ...(production ? [] : [webOrigin])]));
+
+  return {
+    env: e.NODE_ENV,
+    port: e.PORT,
+    host: e.HOST,
+    databaseUrl: e.DATABASE_URL ?? DEV_DATABASE_URL,
+    publicWebUrl: e.PUBLIC_WEB_URL.replace(/\/+$/, ''),
+    allowedOrigins,
+    serverSecret: e.SERVER_SECRET ?? DEV_SECRET,
+    trustProxyHops: e.TRUST_PROXY_HOPS,
+    logLevel: e.LOG_LEVEL ?? (e.NODE_ENV === 'test' ? 'silent' : 'info'),
+    instanceId: e.INSTANCE_ID ?? `${hostname()}-${process.pid}`,
+    defaultRoomTier: e.DEFAULT_ROOM_TIER ?? (production ? 'FREE' : 'FULL'),
+    allowDevSeed: e.QP_ALLOW_DEV_SEED,
+    validateOutbound: e.VALIDATE_OUTBOUND ? e.VALIDATE_OUTBOUND === '1' : !production,
+    gameConfigOverride,
+    metricsToken: e.METRICS_TOKEN ?? null,
+    heartbeatIntervalMs: e.HEARTBEAT_INTERVAL_MS,
+    leaseMs: e.LEASE_MS,
+    wsPingIntervalMs: e.WS_PING_INTERVAL_MS,
+    wsAuthTimeoutMs: e.WS_AUTH_TIMEOUT_MS,
+    maxWsConnections: e.MAX_WS_CONNECTIONS,
+    maxWsPerIp: e.MAX_WS_PER_IP,
+    serveWeb: e.SERVE_WEB,
+    webDist: e.WEB_DIST ?? null,
+    serveAdmin: e.SERVE_ADMIN,
+    adminDist: e.ADMIN_DIST ?? null,
+    rateLimitScale: e.RATE_LIMIT_SCALE,
+    maintenanceIntervalMs: e.NODE_ENV === 'test' ? 0 : e.MAINTENANCE_INTERVAL_MS,
+    retention: {
+      otpHours: e.RETENTION_OTP_HOURS,
+      accountSessionDays: e.RETENTION_ACCOUNT_SESSION_DAYS,
+      securityEventDays: e.RETENTION_SECURITY_EVENT_DAYS,
+      telemetryDays: e.RETENTION_TELEMETRY_DAYS,
+      closedRoomDays: e.RETENTION_CLOSED_ROOM_DAYS,
+    },
+    venueMinuteMs: e.VENUE_MINUTE_MS,
+    venueFreshWindow: e.VENUE_FRESH_WINDOW,
+    categoryMinQuestions: e.CATEGORY_MIN_QUESTIONS,
+    adminBootstrapEmails: e.ADMIN_BOOTSTRAP_EMAILS.map((email) => email.trim().toLowerCase()),
+    emailWebhook: e.EMAIL_WEBHOOK_URL
+      ? { url: e.EMAIL_WEBHOOK_URL, token: e.EMAIL_WEBHOOK_TOKEN ?? null }
+      : null,
+    emailProvider:
+      e.EMAIL_PROVIDER && e.EMAIL_API_KEY && e.EMAIL_FROM
+        ? {
+            provider: e.EMAIL_PROVIDER,
+            apiKey: e.EMAIL_API_KEY,
+            from: e.EMAIL_FROM,
+            apiBase: e.EMAIL_API_BASE ?? null,
+          }
+        : null,
+    payments: paymentsConfig(e, production),
+    blindKeys: blindKeys(e.BLIND_DATA_KEYS, e.SERVER_SECRET ?? DEV_SECRET, production),
+    aiDecoys:
+      e.AI_DECOYS_API_KEY && e.AI_DECOYS_MODEL
+        ? {
+            apiKey: e.AI_DECOYS_API_KEY,
+            apiBase: e.AI_DECOYS_API_BASE ?? null,
+            model: e.AI_DECOYS_MODEL,
+            timeoutMs: e.AI_DECOYS_TIMEOUT_MS,
+          }
+        : null,
+    audit:
+      e.AUDIT_API_KEY && e.AUDIT_MODEL_FAST
+        ? {
+            apiKey: e.AUDIT_API_KEY,
+            apiBase: e.AUDIT_API_BASE ?? null,
+            modelFast: e.AUDIT_MODEL_FAST,
+            modelStrong: e.AUDIT_MODEL_STRONG ?? e.AUDIT_MODEL_FAST,
+          }
+        : null,
+    embeddings:
+      e.EMBEDDINGS_BASE_URL && e.EMBEDDINGS_MODEL
+        ? {
+            baseUrl: e.EMBEDDINGS_BASE_URL,
+            model: e.EMBEDDINGS_MODEL,
+            apiKey: e.EMBEDDINGS_API_KEY ?? null,
+          }
+        : null,
+  };
+}

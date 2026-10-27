@@ -1,0 +1,688 @@
+import { z } from 'zod';
+import {
+  DIFFICULTIES,
+  MAX_ROUNDS,
+  MIN_ROUNDS,
+  RISK_TIERS,
+  ROUND_KINDS,
+  RULESETS,
+  SABOTAGE_KINDS,
+  type DifficultyPreset,
+  type RiskTier,
+  type RoundKind,
+  type Ruleset,
+} from '@quizparty/protocol';
+
+/**
+ * Everything tunable about a game, as data (GDD §44: live balance changes need no app update).
+ * A resolved copy is stored with every game and its `version` is recorded with each score delta so
+ * any score can be audited against the rules that produced it (ADR-0007).
+ */
+
+const perKind = <T extends z.ZodType>(value: T) =>
+  z.strictObject(
+    Object.fromEntries(ROUND_KINDS.map((kind) => [kind, value])) as Record<RoundKind, T>,
+  );
+
+const LadderRuleSchema = z.strictObject({
+  multiplier: z.int().min(1).max(10),
+  loss: z.int().min(0).max(5000),
+});
+export type LadderRule = z.infer<typeof LadderRuleSchema>;
+export const LadderSchema = z.partialRecord(z.enum(RISK_TIERS), LadderRuleSchema);
+export type Ladder = z.infer<typeof LadderSchema>;
+
+const ms = (min: number, max: number) => z.int().min(min).max(max);
+
+/** Cover (Örtü): a fee now, a miss costs nothing. Fee = `feePermille` of the stake's loss. */
+const CoverRulesSchema = z.strictObject({
+  enabled: z.boolean(),
+  perGame: z.int().min(0).max(5),
+  feePermille: z.int().min(0).max(1000),
+  /** Off by default: Cover would waive Double Down's extra loss too and make the stack nearly free. */
+  allowWithDoubleDown: z.boolean(),
+});
+/** Duel (Düello): opt-in on both sides; points move between the two players only (conserved). */
+const DuelRulesSchema = z.strictObject({
+  enabled: z.boolean(),
+  /** Challenges a player may send per game (a declined one is spent too). */
+  perGame: z.int().min(0).max(5),
+  /** Moved when exactly one side is right. */
+  win: z.int().min(0).max(1000),
+  /** Moved to the faster side when both are right. */
+  bothRight: z.int().min(0).max(1000),
+  /** Stakes that cannot go with a Duel ("one big gamble per question", ADR-0021/0023). */
+  excludedStakes: z.array(z.enum(RISK_TIERS)).max(4),
+  minPlayers: z.int().min(2).max(8),
+});
+/** Pot (Havuz): everyone who antes puts the same amount in; the right answers share it. */
+const PotRulesSchema = z.strictObject({
+  enabled: z.boolean(),
+  perGame: z.int().min(0).max(5),
+  ante: z.int().min(1).max(1000),
+  minPlayers: z.int().min(2).max(8),
+});
+/** Stake Cap (Bahis Sınırı): the target's highest stake next round is `maxTier`. */
+const StakeCapRulesSchema = z.strictObject({
+  enabled: z.boolean(),
+  maxTier: z.enum(RISK_TIERS),
+});
+/** Cut (Kesme): `permille` of the target's next gain, at most `maxPoints`, goes to the attacker. */
+const CutRulesSchema = z.strictObject({
+  enabled: z.boolean(),
+  permille: z.int().min(0).max(1000),
+  maxPoints: z.int().min(0).max(1000),
+  /** Lapses after this many rounds if no gain consumed it, like POINT_TAX. */
+  rounds: z.int().min(1).max(10),
+});
+/** Blind Clock (Kör Saat): the target's phone hides its countdown for the question. */
+const BlindClockRulesSchema = z.strictObject({ enabled: z.boolean() });
+
+/**
+ * The café ruleset ("Basit mod", ADR-0026 §3): what a game plays with when the room's ruleset is SIMPLE.
+ * `applyRuleset` lays these numbers over the room's full config at the start of a game, so a venue tunes
+ * them with `GAME_CONFIG_OVERRIDE` (`{"simple": {...}}`) or its venue setting, nothing else changes.
+ */
+const SimpleRulesSchema = z.strictObject({
+  /** 30 s for the ordinary kinds, SPEED and FINAL keep their own (the read phase before the options is unchanged). */
+  answerMs: perKind(ms(1_000, 60_000)),
+  /** The single prep phase (Double Down + sabotage on one screen). */
+  prepMs: ms(2_000, 60_000),
+  fiftyFiftyPerGame: z.int().min(0).max(5),
+  doubleDownPerGame: z.int().min(0).max(5),
+  /** One shield per player (individual play) or per team (team play). */
+  shieldPerGame: z.int().min(0).max(3),
+  sabotage: z.strictObject({
+    /** The sabotages on the menu; everything else is off. */
+    kinds: z.array(z.enum(SABOTAGE_KINDS)).min(1).max(SABOTAGE_KINDS.length),
+    startTokens: z.int().min(0).max(3),
+    maxTokens: z.int().min(1).max(5),
+    earnAtStreaks: z.array(z.int().min(1).max(30)).max(10),
+    firstRoundIndex: z.int().min(0).max(30),
+    attackerCooldownRounds: z.int().min(0).max(10),
+    maxPerRound: z.int().min(1).max(8),
+    targetMinGapRounds: z.int().min(0).max(10),
+    targetMaxPerGame: z.int().min(1).max(20),
+    jamMs: z.int().min(0).max(10_000),
+    jamMaxPermille: z.int().min(0).max(200),
+  }),
+});
+export type SimpleRules = z.infer<typeof SimpleRulesSchema>;
+
+export const GameConfigSchema = z.strictObject({
+  version: z.int().positive(),
+  /**
+   * The ruleset this config was resolved for (ADR-0026). Absent = the full ruleset. Only `applyRuleset`
+   * sets it, on the config a game actually plays with; the recorded `version` changes with it.
+   */
+  ruleset: z.enum(RULESETS).optional(),
+  /** The café ruleset's numbers; optional so stored configs parse, read via `simpleRules`. */
+  simple: SimpleRulesSchema.optional(),
+  /** Team play (ADR-0026 §2); optional, read via `teamRules`. */
+  teams: z.strictObject({ maxImbalance: z.int().min(0).max(7) }).optional(),
+  maxPlayers: z.int().min(1).max(8),
+  minPlayersToStart: z.int().min(1).max(8),
+  defaultRounds: z.int().min(MIN_ROUNDS).max(MAX_ROUNDS),
+  /** Hard cap for any room, whatever its tier. */
+  maxRounds: z.int().min(MIN_ROUNDS).max(MAX_ROUNDS),
+  freeTier: z.strictObject({ maxRounds: z.int().min(MIN_ROUNDS).max(MAX_ROUNDS) }),
+  /** The final stage is the last `clamp(floor(total / divisor), 1, maxRounds)` questions (ADR-0020). */
+  finalStage: z.strictObject({
+    divisor: z.int().min(1).max(10),
+    maxRounds: z.int().min(1).max(10),
+  }),
+  timings: z.strictObject({
+    countdownMs: ms(0, 10_000),
+    roundIntroMs: ms(0, 10_000),
+    /** Legacy QUESTION_PREP windows (ADR-0022): unused, kept so stored configs still parse. */
+    prepMs: ms(0, 30_000),
+    prepQuickMs: ms(0, 60_000),
+    prepDecisionMs: ms(0, 60_000),
+    /**
+     * RISK_PICK in ordinary rounds, SABOTAGE_PICK, and RISK_PICK in RISK/FINAL rounds (ADR-0022).
+     * Optional so snapshots stored before they existed still parse; read them via `riskPickMsFor`,
+     * `riskPickDecisionMsFor` and `sabotagePickMsFor`.
+     */
+    riskPickMs: ms(0, 60_000).optional(),
+    riskPickDecisionMs: ms(0, 60_000).optional(),
+    sabotagePickMs: ms(0, 60_000).optional(),
+    readBaseMs: ms(0, 10_000),
+    readPerCharMs: ms(0, 200),
+    readMinMs: ms(0, 10_000),
+    readMaxMs: ms(0, 20_000),
+    answerMs: perKind(ms(1_000, 60_000)),
+    lockedMs: ms(0, 5_000),
+    revealMs: ms(0, 20_000),
+    /** Extra reveal time per character of the explanation, capped by `revealExplanationMaxMs`. */
+    revealPerCharMs: ms(0, 200),
+    revealExplanationMaxMs: ms(0, 20_000),
+    powerResolutionMs: ms(0, 15_000),
+    /** Extra POWER_RESOLUTION time for each item after the first, up to `powerResolutionMaxMs`. */
+    powerResolutionPerItemMs: ms(0, 5_000),
+    powerResolutionMaxMs: ms(0, 30_000),
+    scoreUpdateMs: ms(0, 20_000),
+    microIntermissionMs: ms(0, 10_000),
+    finalIntroMs: ms(0, 15_000),
+    /** Extra grace after `answerDeadlineAt` for network latency; 0 = strict (ADR-0006). */
+    latencyAllowanceMs: ms(0, 1_000),
+    earlyLockGraceMs: ms(0, 30_000),
+    displayGraceMs: ms(0, 300_000),
+    leaderGraceMs: ms(0, 300_000),
+    abandonMs: ms(10_000, 3_600_000),
+    /**
+     * Every active player's phone has been disconnected this long: the room closes (ABANDONED) so the
+     * TV returns to its title menu. Optional so snapshots stored before it existed still parse; read it
+     * via `allPlayersGoneMsFor`.
+     */
+    allPlayersGoneMs: ms(10_000, 3_600_000).optional(),
+    lobbyIdleMs: ms(60_000, 86_400_000),
+    resultsIdleMs: ms(60_000, 86_400_000),
+    maxLifetimeMs: ms(600_000, 172_800_000),
+    maxRecoverableOutageMs: ms(0, 7_200_000),
+  }),
+  scoring: z.strictObject({
+    basePoints: perKind(z.int().min(1).max(10_000)),
+    speedMax: perKind(z.int().min(0).max(10_000)),
+    ladders: perKind(LadderSchema),
+    doubleDown: z.strictObject({
+      multiplier: z.int().min(1).max(5),
+      /** Added to the stake's loss when wrong (ADR-0021: 200 puts break-even accuracy near 40 %). */
+      extraLoss: z.int().min(0).max(5000),
+    }),
+    fiftyFifty: z.strictObject({
+      numerator: z.int().min(1).max(10),
+      denominator: z.int().min(1).max(10),
+    }),
+    pointTax: z.strictObject({ permille: z.int().min(0).max(1000) }),
+    maxGainPerQuestion: perKind(z.int().min(1).max(100_000)),
+    /**
+     * Ceiling on the gain after stake and Double Down, as a multiple of (base + speed) (ADR-0021).
+     * Optional so snapshots stored before it existed still parse; read it via `maxTotalMultiplierFor`.
+     */
+    maxTotalMultiplier: perKind(z.int().min(1).max(20)).optional(),
+  }),
+  powers: z.strictObject({
+    fiftyFiftyPerGame: z.int().min(0).max(5),
+    doubleDownPerGame: z.int().min(0).max(5),
+    shieldPerGame: z.int().min(0).max(3),
+    /**
+     * Stakes that cannot be combined with Double Down: "one big gamble per question" (ADR-0021).
+     * Optional for old snapshots; read it via `doubleDownExcludedStakes`.
+     */
+    doubleDownExcludedStakes: z.array(z.enum(RISK_TIERS)).max(4).optional(),
+    /**
+     * The sabotages players may pick (ADR-0026: the simple ruleset narrows the menu). Absent = every
+     * kind that is otherwise switched on; read via `sabotageKindAllowed`.
+     */
+    sabotageKinds: z.array(z.enum(SABOTAGE_KINDS)).max(SABOTAGE_KINDS.length).optional(),
+    /**
+     * ADR-0023: each new risk and sabotage has its own switch (`enabled`) and numbers. All optional so
+     * snapshots stored before they existed still parse; read them via `coverRules`, `duelRules`,
+     * `potRules`, `stakeCapRules`, `cutRules` and `blindClockRules`, which fall back to the defaults.
+     */
+    cover: CoverRulesSchema.optional(),
+    duel: DuelRulesSchema.optional(),
+    pot: PotRulesSchema.optional(),
+    stakeCap: StakeCapRulesSchema.optional(),
+    cut: CutRulesSchema.optional(),
+    blindClock: BlindClockRulesSchema.optional(),
+    sabotage: z.strictObject({
+      enabled: z.boolean(),
+      startTokens: z.int().min(0).max(3),
+      maxTokens: z.int().min(1).max(5),
+      /** A token is earned when the correct-answer streak reaches one of these values. */
+      earnAtStreaks: z.array(z.int().min(1).max(30)).max(10),
+      /** Zero-based index of the first round in which sabotage may be committed; never in the final stage. */
+      firstRoundIndex: z.int().min(0).max(30),
+      attackerCooldownRounds: z.int().min(0).max(10),
+      maxPerRound: z.int().min(1).max(8),
+      /** A target may be hit again only after this many rounds without a hit. */
+      targetMinGapRounds: z.int().min(0).max(10),
+      targetMaxPerGame: z.int().min(1).max(20),
+      jamMs: z.int().min(0).max(10_000),
+      /** JAM never takes more than this share of the window (permille). */
+      jamMaxPermille: z.int().min(0).max(200),
+      fogMs: z.int().min(0).max(10_000),
+      /** POINT_TAX lapses after this many rounds if no gain consumed it. */
+      pointTaxRounds: z.int().min(1).max(10),
+    }),
+  }),
+  director: z.strictObject({
+    startLevel: z.int().min(1000).max(4000),
+    /** Lobby difficulty preset → milli-levels added to the start level and to every corridor. */
+    presetOffset: z.strictObject({
+      EASY: z.int().min(-2000).max(2000),
+      MEDIUM: z.int().min(-2000).max(2000),
+      HARD: z.int().min(-2000).max(2000),
+    }),
+    baselineStep: z.int().min(0).max(1000),
+    maxStep: z.int().min(0).max(3000),
+    windowRounds: z.int().min(1).max(10),
+    veryHighPermille: z.int().min(0).max(1000),
+    highPermille: z.int().min(0).max(1000),
+    lowPermille: z.int().min(0).max(1000),
+    veryLowPermille: z.int().min(0).max(1000),
+    stepVeryHigh: z.int().min(-2000).max(2000),
+    stepHigh: z.int().min(-2000).max(2000),
+    stepLow: z.int().min(-2000).max(2000),
+    stepVeryLow: z.int().min(-2000).max(2000),
+    fastAnswerPermille: z.int().min(0).max(1000),
+    fastBonusStep: z.int().min(0).max(1000),
+    chaosMax: z.int().min(0).max(20),
+    chaosVarianceAt: z.int().min(0).max(20),
+    specialBasePermille: z.int().min(0).max(1000),
+    specialPerChaosPermille: z.int().min(0).max(1000),
+    specialMaxPermille: z.int().min(0).max(1000),
+    corridors: z
+      .array(z.tuple([z.int().min(1000).max(4000), z.int().min(1000).max(4000)]))
+      .min(1)
+      .max(12),
+    finalCorridor: z.tuple([z.int().min(1000).max(4000), z.int().min(1000).max(4000)]),
+    maxSpeedRounds: z.int().min(0).max(5),
+    maxCrowdRounds: z.int().min(0).max(5),
+    maxRiskRounds: z.int().min(0).max(5),
+  }),
+});
+export type GameConfig = z.infer<typeof GameConfigSchema>;
+
+const STANDARD_LADDER: Ladder = {
+  SAFE: { multiplier: 1, loss: 0 },
+  RISK: { multiplier: 2, loss: 100 },
+  HIGH: { multiplier: 3, loss: 200 },
+};
+
+export const DEFAULT_GAME_CONFIG: GameConfig = {
+  version: 3,
+  simple: {
+    answerMs: { STANDARD: 30_000, SPEED: 12_000, RISK: 30_000, CROWD: 30_000, FINAL: 20_000 },
+    prepMs: 10_000,
+    fiftyFiftyPerGame: 1,
+    doubleDownPerGame: 2,
+    shieldPerGame: 1,
+    sabotage: {
+      // Time Cut (JAM), Blind Clock and Shuffle: each one sentence, none touches points (ADR-0026 §3).
+      kinds: ['JAM', 'BLIND_CLOCK', 'SHUFFLE'],
+      startTokens: 1,
+      maxTokens: 2,
+      earnAtStreaks: [3, 6],
+      firstRoundIndex: 1,
+      attackerCooldownRounds: 1,
+      maxPerRound: 2,
+      targetMinGapRounds: 1,
+      targetMaxPerGame: 3,
+      // 6 s of a 30 s window: a Time Cut a table feels (the full ruleset's 2 s would not be noticed).
+      jamMs: 6_000,
+      jamMaxPermille: 200,
+    },
+  },
+  teams: { maxImbalance: 1 },
+  maxPlayers: 8,
+  minPlayersToStart: 2,
+  defaultRounds: 10,
+  maxRounds: 20,
+  freeTier: { maxRounds: 5 },
+  finalStage: { divisor: 3, maxRounds: 5 },
+  timings: {
+    countdownMs: 3_000,
+    roundIntroMs: 2_500,
+    prepMs: 2_500,
+    prepQuickMs: 6_000,
+    prepDecisionMs: 10_000,
+    riskPickMs: 12_000,
+    riskPickDecisionMs: 16_000,
+    sabotagePickMs: 12_000,
+    readBaseMs: 1_500,
+    readPerCharMs: 25,
+    readMinMs: 2_000,
+    readMaxMs: 5_000,
+    answerMs: { STANDARD: 25_000, SPEED: 12_000, RISK: 25_000, CROWD: 25_000, FINAL: 20_000 },
+    lockedMs: 1_000,
+    revealMs: 4_500,
+    revealPerCharMs: 35,
+    revealExplanationMaxMs: 5_000,
+    powerResolutionMs: 3_000,
+    powerResolutionPerItemMs: 700,
+    powerResolutionMaxMs: 8_000,
+    scoreUpdateMs: 4_000,
+    microIntermissionMs: 1_500,
+    finalIntroMs: 4_000,
+    latencyAllowanceMs: 0,
+    earlyLockGraceMs: 4_000,
+    displayGraceMs: 20_000,
+    leaderGraceMs: 20_000,
+    abandonMs: 600_000,
+    allPlayersGoneMs: 45_000,
+    lobbyIdleMs: 1_800_000,
+    resultsIdleMs: 600_000,
+    maxLifetimeMs: 21_600_000,
+    maxRecoverableOutageMs: 900_000,
+  },
+  scoring: {
+    basePoints: { STANDARD: 100, SPEED: 100, RISK: 100, CROWD: 100, FINAL: 200 },
+    speedMax: { STANDARD: 100, SPEED: 200, RISK: 100, CROWD: 100, FINAL: 200 },
+    ladders: {
+      STANDARD: STANDARD_LADDER,
+      SPEED: STANDARD_LADDER,
+      CROWD: STANDARD_LADDER,
+      // RISK rounds are symmetric: "wrong: stake lost" (GDD §7.3).
+      RISK: {
+        SAFE: { multiplier: 1, loss: 0 },
+        RISK: { multiplier: 2, loss: 200 },
+        HIGH: { multiplier: 3, loss: 300 },
+      },
+      // The final has no safe lead: a stake is mandatory.
+      FINAL: {
+        RISK: { multiplier: 2, loss: 150 },
+        HIGH: { multiplier: 3, loss: 250 },
+        ALL_IN: { multiplier: 5, loss: 400 },
+      },
+    },
+    doubleDown: { multiplier: 2, extraLoss: 200 },
+    // Default 1/2: the lifeline halves variance at constant EV. See ADR-0007 for the "2x" contradiction.
+    fiftyFifty: { numerator: 1, denominator: 2 },
+    pointTax: { permille: 250 },
+    maxGainPerQuestion: { STANDARD: 1500, SPEED: 1500, RISK: 1500, CROWD: 1500, FINAL: 2500 },
+    maxTotalMultiplier: { STANDARD: 3, SPEED: 3, RISK: 3, CROWD: 3, FINAL: 5 },
+  },
+  powers: {
+    fiftyFiftyPerGame: 1,
+    doubleDownPerGame: 2,
+    shieldPerGame: 1,
+    doubleDownExcludedStakes: ['HIGH', 'ALL_IN'],
+    cover: { enabled: true, perGame: 1, feePermille: 500, allowWithDoubleDown: false },
+    duel: {
+      enabled: true,
+      perGame: 2,
+      win: 80,
+      bothRight: 40,
+      excludedStakes: ['HIGH', 'ALL_IN'],
+      minPlayers: 2,
+    },
+    pot: { enabled: true, perGame: 2, ante: 30, minPlayers: 3 },
+    stakeCap: { enabled: true, maxTier: 'RISK' },
+    cut: { enabled: true, permille: 200, maxPoints: 30, rounds: 3 },
+    blindClock: { enabled: true },
+    sabotage: {
+      enabled: true,
+      startTokens: 1,
+      maxTokens: 2,
+      earnAtStreaks: [3, 6, 9],
+      firstRoundIndex: 2,
+      attackerCooldownRounds: 2,
+      maxPerRound: 2,
+      targetMinGapRounds: 2,
+      targetMaxPerGame: 3,
+      jamMs: 2_000,
+      jamMaxPermille: 150,
+      fogMs: 1_500,
+      pointTaxRounds: 3,
+    },
+  },
+  director: {
+    startLevel: 1200,
+    presetOffset: { EASY: -400, MEDIUM: 0, HARD: 400 },
+    baselineStep: 150,
+    maxStep: 450,
+    windowRounds: 3,
+    veryHighPermille: 900,
+    highPermille: 700,
+    lowPermille: 400,
+    veryLowPermille: 150,
+    stepVeryHigh: 350,
+    stepHigh: 150,
+    stepLow: -150,
+    stepVeryLow: -300,
+    fastAnswerPermille: 300,
+    fastBonusStep: 100,
+    chaosMax: 6,
+    chaosVarianceAt: 3,
+    specialBasePermille: 150,
+    specialPerChaosPermille: 40,
+    specialMaxPermille: 400,
+    corridors: [
+      [1000, 1500],
+      [1000, 2000],
+      [1000, 2200],
+      [1500, 2500],
+      [1500, 3000],
+      [1500, 3200],
+      [2000, 3500],
+      [2000, 3800],
+      [2000, 4000],
+    ],
+    finalCorridor: [2500, 3800],
+    maxSpeedRounds: 2,
+    maxCrowdRounds: 2,
+    maxRiskRounds: 2,
+  },
+};
+
+/** Number of questions in the final stage of a game of `totalRounds` questions. */
+export function finalStageLength(totalRounds: number, cfg: Pick<GameConfig, 'finalStage'>): number {
+  const raw = Math.floor(totalRounds / cfg.finalStage.divisor);
+  return Math.max(1, Math.min(cfg.finalStage.maxRounds, raw, totalRounds));
+}
+
+/** Highest round count a room may use: the tier limit, never above the hard cap. */
+export function maxRoundsFor(config: GameConfig, tier: 'FREE' | 'FULL'): number {
+  return tier === 'FREE' ? Math.min(config.freeTier.maxRounds, config.maxRounds) : config.maxRounds;
+}
+
+export function presetOffset(config: GameConfig, preset: DifficultyPreset): number {
+  return config.director.presetOffset[preset];
+}
+
+export function parseGameConfig(input: unknown): GameConfig {
+  return GameConfigSchema.parse(input);
+}
+
+/** Merges a partial override onto the defaults and validates the result. */
+export function resolveGameConfig(override: unknown = {}): GameConfig {
+  const merged = deepMerge(structuredCloneJson(DEFAULT_GAME_CONFIG), override);
+  return GameConfigSchema.parse(merged);
+}
+
+function structuredCloneJson<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function deepMerge(base: unknown, override: unknown): unknown {
+  if (!isPlainObject(base) || !isPlainObject(override))
+    return override === undefined ? base : override;
+  const out: Record<string, unknown> = { ...base };
+  for (const [key, value] of Object.entries(override)) {
+    out[key] = key in base ? deepMerge(base[key], value) : value;
+  }
+  return out;
+}
+
+/**
+ * Which stake ladder governs a round. Every final-stage question pays the final's higher base and
+ * speed points, but the mandatory all-or-nothing ladder is reserved for the very last question so a
+ * five-question final does not become a coin flip (ADR-0020).
+ */
+export function ladderKindFor(kind: RoundKind, isLastRound: boolean): RoundKind {
+  return kind === 'FINAL' && !isLastRound ? 'STANDARD' : kind;
+}
+
+/** Ceiling for `kind`: gain after stake and Double Down never exceeds this × (base + speed). */
+export function maxTotalMultiplierFor(config: GameConfig, kind: RoundKind): number {
+  return (
+    config.scoring.maxTotalMultiplier?.[kind] ??
+    DEFAULT_GAME_CONFIG.scoring.maxTotalMultiplier![kind]
+  );
+}
+
+/** Stakes that Double Down may not be combined with (old snapshots fall back to the defaults). */
+export function doubleDownExcludedStakes(config: GameConfig): readonly RiskTier[] {
+  return (
+    config.powers.doubleDownExcludedStakes ?? DEFAULT_GAME_CONFIG.powers.doubleDownExcludedStakes!
+  );
+}
+
+type Rules<K extends 'cover' | 'duel' | 'pot' | 'stakeCap' | 'cut' | 'blindClock'> = NonNullable<
+  GameConfig['powers'][K]
+>;
+const rulesOf = <K extends 'cover' | 'duel' | 'pot' | 'stakeCap' | 'cut' | 'blindClock'>(
+  config: GameConfig,
+  key: K,
+): Rules<K> =>
+  ({ ...DEFAULT_GAME_CONFIG.powers[key], ...config.powers[key] }) as unknown as Rules<K>;
+
+/** Rules of the ADR-0023 risks and sabotages; old snapshots without them get the defaults (all on). */
+export const coverRules = (config: GameConfig) => rulesOf(config, 'cover');
+export const duelRules = (config: GameConfig) => rulesOf(config, 'duel');
+export const potRules = (config: GameConfig) => rulesOf(config, 'pot');
+export const stakeCapRules = (config: GameConfig) => rulesOf(config, 'stakeCap');
+export const cutRules = (config: GameConfig) => rulesOf(config, 'cut');
+export const blindClockRules = (config: GameConfig) => rulesOf(config, 'blindClock');
+
+/** How long every active player may be disconnected before the room closes (old snapshots fall back to the default). */
+export function allPlayersGoneMsFor(config: GameConfig): number {
+  return config.timings.allPlayersGoneMs ?? DEFAULT_GAME_CONFIG.timings.allPlayersGoneMs!;
+}
+
+/** RISK_PICK window in ordinary rounds (old snapshots fall back to the default). */
+export function riskPickMsFor(config: GameConfig): number {
+  return config.timings.riskPickMs ?? DEFAULT_GAME_CONFIG.timings.riskPickMs!;
+}
+
+/** RISK_PICK window in RISK and FINAL rounds, where the ladder is the point of the round. */
+export function riskPickDecisionMsFor(config: GameConfig): number {
+  return config.timings.riskPickDecisionMs ?? DEFAULT_GAME_CONFIG.timings.riskPickDecisionMs!;
+}
+
+/** SABOTAGE_PICK window. */
+export function sabotagePickMsFor(config: GameConfig): number {
+  return config.timings.sabotagePickMs ?? DEFAULT_GAME_CONFIG.timings.sabotagePickMs!;
+}
+
+/** Tier that applies when a player has not chosen one: the lowest tier the ladder offers. */
+export function defaultTier(config: GameConfig, kind: RoundKind): RiskTier {
+  const ladder = config.scoring.ladders[kind];
+  for (const tier of RISK_TIERS) if (ladder[tier]) return tier;
+  return 'SAFE';
+}
+
+export function ladderTiers(config: GameConfig, kind: RoundKind): RiskTier[] {
+  const ladder = config.scoring.ladders[kind];
+  return RISK_TIERS.filter((tier) => ladder[tier] !== undefined);
+}
+
+/** The café ruleset's numbers; configs stored before it existed get the defaults. */
+export function simpleRules(config: GameConfig): SimpleRules {
+  const base = DEFAULT_GAME_CONFIG.simple!;
+  const given = config.simple;
+  return {
+    ...base,
+    ...given,
+    answerMs: { ...base.answerMs, ...given?.answerMs },
+    sabotage: { ...base.sabotage, ...given?.sabotage },
+  };
+}
+
+/** Team play rules (ADR-0026 §2); old configs get the defaults. */
+export function teamRules(config: GameConfig): { maxImbalance: number } {
+  return { ...DEFAULT_GAME_CONFIG.teams!, ...config.teams };
+}
+
+/** Whether the sabotage `kind` is on the menu of this config (the switch every kind shares in the simple ruleset). */
+export function sabotageKindAllowed(
+  config: GameConfig,
+  kind: (typeof SABOTAGE_KINDS)[number],
+): boolean {
+  return config.powers.sabotageKinds === undefined || config.powers.sabotageKinds.includes(kind);
+}
+
+/** Whether this config merges the two pick phases into one (the simple ruleset). */
+export const mergedPrep = (config: GameConfig): boolean => config.ruleset === 'SIMPLE';
+
+/** Offset added to `version` for a game played with the simple ruleset: scores audit against the rules that made them. */
+export const SIMPLE_VERSION_OFFSET = 1000;
+
+/**
+ * The config a game plays with: `config` as it is for the full ruleset, or with the café set laid over
+ * it (ADR-0026 §3). Pure and idempotent on its input; the room keeps the full config aside
+ * (`RoomState.baseConfig`) so the next game can choose again.
+ *
+ * What SIMPLE changes: the answer windows and one short prep window; the ladders shrink to the safe rung
+ * (no stakes, so no Cover, Duel or Pot, which only exist next to stakes); the joker counts, the shield and
+ * the sabotage menu and its numbers come from `simple`; RISK rounds are never planned (they are only a
+ * stake ladder). Nothing else (scoring base, speed bonus, director, timings of the other phases) moves.
+ */
+export function applyRuleset(config: GameConfig, ruleset: Ruleset): GameConfig {
+  if (ruleset !== 'SIMPLE') return config;
+  const rules = simpleRules(config);
+  const sabotage = rules.sabotage;
+  const safeOnly: Ladder = { SAFE: { multiplier: 1, loss: 0 } };
+  const off = <K extends 'cover' | 'duel' | 'pot' | 'stakeCap'>(key: K) => ({
+    ...rulesOf(config, key),
+    enabled: false,
+  });
+  return {
+    ...config,
+    version: config.version + SIMPLE_VERSION_OFFSET,
+    ruleset: 'SIMPLE',
+    timings: {
+      ...config.timings,
+      answerMs: { ...rules.answerMs },
+      riskPickMs: rules.prepMs,
+      riskPickDecisionMs: rules.prepMs,
+    },
+    scoring: {
+      ...config.scoring,
+      ladders: Object.fromEntries(ROUND_KINDS.map((kind) => [kind, safeOnly])) as Record<
+        RoundKind,
+        Ladder
+      >,
+    },
+    powers: {
+      ...config.powers,
+      fiftyFiftyPerGame: rules.fiftyFiftyPerGame,
+      doubleDownPerGame: rules.doubleDownPerGame,
+      shieldPerGame: rules.shieldPerGame,
+      doubleDownExcludedStakes: [],
+      sabotageKinds: [...sabotage.kinds],
+      cover: off('cover'),
+      duel: off('duel'),
+      pot: off('pot'),
+      stakeCap: off('stakeCap'),
+      cut: { ...rulesOf(config, 'cut'), enabled: sabotage.kinds.includes('CUT') },
+      blindClock: { enabled: sabotage.kinds.includes('BLIND_CLOCK') },
+      sabotage: {
+        ...config.powers.sabotage,
+        enabled: true,
+        startTokens: sabotage.startTokens,
+        maxTokens: sabotage.maxTokens,
+        earnAtStreaks: [...sabotage.earnAtStreaks],
+        firstRoundIndex: sabotage.firstRoundIndex,
+        attackerCooldownRounds: sabotage.attackerCooldownRounds,
+        maxPerRound: sabotage.maxPerRound,
+        targetMinGapRounds: sabotage.targetMinGapRounds,
+        targetMaxPerGame: sabotage.targetMaxPerGame,
+        jamMs: sabotage.jamMs,
+        jamMaxPermille: sabotage.jamMaxPermille,
+      },
+    },
+    director: { ...config.director, maxRiskRounds: 0 },
+  };
+}
+
+/** `config` with the café answer window set for the three ordinary kinds (a venue setting, in seconds). */
+export function withSimpleAnswerSeconds(config: GameConfig, seconds: number): GameConfig {
+  const rules = simpleRules(config);
+  const answerMs = seconds * 1000;
+  return {
+    ...config,
+    simple: {
+      ...rules,
+      answerMs: { ...rules.answerMs, STANDARD: answerMs, RISK: answerMs, CROWD: answerMs },
+    },
+  };
+}
+
+export { DIFFICULTIES };
