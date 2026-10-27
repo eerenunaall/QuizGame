@@ -1,5 +1,5 @@
 /*
- * Hero embers: a tiny canvas particle field (warm sparks rising from the golden gate).
+ * Hero embers: a tiny canvas particle field (aqua bubbles rising from the golden gate).
  * Why canvas and not video/WebGL: ~1.5 KB, no extra download, and it pauses when off-screen, in a hidden tab,
  * or when the visitor prefers reduced motion (then it draws one still frame).
  */
@@ -15,7 +15,7 @@
     p.x = w * rnd(0.3, 0.7) + rnd(-w * 0.18, w * 0.18);
     p.y = fresh ? rnd(0, h) : h * rnd(0.82, 1.02);
     p.r = rnd(0.6, 2.2) * dpr; p.vy = rnd(0.15, 0.7) * dpr; p.vx = rnd(-0.15, 0.15) * dpr;
-    p.a = rnd(0.25, 0.9); p.tw = rnd(0, 6.28); p.hue = rnd(28, 46);
+    p.a = rnd(0.25, 0.9); p.tw = rnd(0, 6.28); p.hue = rnd(178, 200);
     return p;
   }
   function size() {
