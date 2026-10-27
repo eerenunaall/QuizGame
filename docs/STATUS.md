@@ -27,7 +27,7 @@ tables go, the report's default range follows the venue's calendar. Web: phone c
 question, failed sends re-enable the options, four answers fit 320x568, TV titles clear the top bar. Deploy: SIGTERM reaches node,
 the bank loader no longer re-activates questions a moderator pulled, origins are normalised and a mismatch refuses to boot,
 malformed admin imports answer 422. Open design notes: reward expiry at venue midnight, one person with several phones,
-server downtime is billed to the table, join/leave churn growth, OTP lockout by a stranger (ADR-0012 trade-off).
+server downtime is billed to the table, OTP lockout by a stranger (ADR-0012 trade-off).
 
 ## Show pass: sound and motion (docs/AUDIO.md)
 Original, generated sound palette (one key, one timbre family, shared limiter and room, TV and phone ceilings,

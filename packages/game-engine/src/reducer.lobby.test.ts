@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MAX_PLAYER_RECORDS } from './reducer';
 import { makeDeck, testConfig, Harness } from './testing';
 
 const events = (h: Harness, type: Parameters<Harness['events']>[0]) =>
@@ -33,6 +34,32 @@ describe('room lifecycle: joining', () => {
       player: { playerId: 'x', sessionId: 's-x', nickname: 'X', nicknameKey: 'x', avatarId: 'fox' },
     });
     expect(result).toEqual({ ok: false, code: 'ROOM_FULL' });
+  });
+
+  it('stops taking newcomers once a room has recorded too many seats (join/leave churn)', () => {
+    const h = new Harness();
+    h.join('Ece');
+    let refused = 0;
+    for (let i = 0; i < 300; i++) {
+      const id = `churn-${i}`;
+      const joined = h.apply({
+        kind: 'PLAYER_JOIN',
+        player: {
+          playerId: id,
+          sessionId: `s-${id}`,
+          nickname: `C${i}`,
+          nicknameKey: `c${i}`,
+          avatarId: 'fox',
+        },
+      });
+      if (joined.ok) h.command(h.actor(id), { type: 'LEAVE_ROOM', payload: {} });
+      else {
+        refused += 1;
+        expect(joined).toEqual({ ok: false, code: 'ROOM_FULL' });
+      }
+    }
+    expect(refused).toBeGreaterThan(0);
+    expect(Object.keys(h.state.players).length).toBeLessThanOrEqual(MAX_PLAYER_RECORDS);
   });
 
   it('keeps nicknames unique per room by key and frees them when the owner leaves', () => {

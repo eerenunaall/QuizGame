@@ -374,6 +374,13 @@ function emitDisplayStatus(d: Room, ctx: Ctx): void {
   );
 }
 
+/**
+ * Players who left stay in `Room.players` (their records back the log and the results), so a room that
+ * is joined and left over and over would grow without bound. Past this many seats ever recorded it takes
+ * no newcomers; a café night of real guests stays far below it.
+ */
+export const MAX_PLAYER_RECORDS = 200;
+
 function onPlayerJoin(
   d: Room,
   ctx: Ctx,
@@ -383,6 +390,7 @@ function onPlayerJoin(
   if (d.phase !== 'WAITING' && d.phase !== 'LOBBY') return reject(ctx, 'GAME_IN_PROGRESS');
   const active = activePlayerList(d);
   if (active.length >= d.config.maxPlayers) return reject(ctx, 'ROOM_FULL');
+  if (Object.keys(d.players).length >= MAX_PLAYER_RECORDS) return reject(ctx, 'ROOM_FULL');
   if (d.players[joining.playerId]) return reject(ctx, 'ALREADY_JOINED');
   if (active.some((p) => p.nicknameKey === joining.nicknameKey))
     return reject(ctx, 'NICKNAME_TAKEN');
