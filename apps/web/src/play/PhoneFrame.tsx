@@ -3,6 +3,8 @@ import type { RoomView } from '@quizparty/protocol';
 import { Avatar } from '../ui/Avatar';
 import { Banner } from '../ui/Banner';
 import { Sticker } from '../ui/Sticker';
+import { StreakFlame } from '../ui/anim/StreakFlame';
+import { usePhaseEntrance } from '../ui/anim/usePhaseEntrance';
 import { useI18n } from '../lib/i18n';
 import styles from './PhoneFrame.module.css';
 
@@ -25,6 +27,7 @@ export function PhoneFrame({ room, reconnecting, tvLost, restored, children }: P
   // (a risk screen scrolled to the Pot row would open the next question below its clock).
   const mainRef = useRef<HTMLElement>(null);
   const phase = room?.phase ?? null;
+  usePhaseEntrance(mainRef, phase);
   useLayoutEffect(() => {
     if (mainRef.current) mainRef.current.scrollTop = 0;
   }, [phase]);
@@ -45,6 +48,14 @@ export function PhoneFrame({ room, reconnecting, tvLost, restored, children }: P
               </span>
               <span className={styles.room}>{room?.code}</span>
             </div>
+            {entry && entry.streak >= 2 ? (
+              <StreakFlame
+                streak={entry.streak}
+                size={40}
+                className={styles.flame}
+                label={t('streak.label', { n: entry.streak })}
+              />
+            ) : null}
             {entry ? (
               <div className={styles.score} data-testid="phone-score">
                 <Sticker id="star" size={26} />

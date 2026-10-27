@@ -1,0 +1,414 @@
+/* Motion vocabulary for the show: keyframes shared by the choreographed moments (reveal, streak,
+   urgency, podium, hits). global.css holds the older, generic keyframes.
+   Same rules as global.css: transform/opacity only, and nothing newer than the 2020 smart-TV Chromium
+   (no flex `gap`, `inset`, `aspect-ratio`, `translate:`). Every animation here is decorative; the
+   reduced-motion rule in global.css collapses them and `html[data-motion='low'] .qp-deco` removes them. */
+
+:root {
+  /* edge glow of the last seconds; the high-contrast theme asks for a harder red */
+  --qp-vignette-rgb: 255, 71, 102;
+  /* the phase sweep and score bars follow the theme's accent */
+  --qp-sweep-rgb: 255, 255, 255;
+  --qp-bar-rgb: 255, 201, 40;
+}
+:root[data-theme='venue-gold'] {
+  --qp-sweep-rgb: 241, 217, 138;
+  --qp-bar-rgb: 212, 175, 55;
+}
+:root[data-theme='high-contrast'] {
+  --qp-vignette-rgb: 255, 80, 80;
+  --qp-sweep-rgb: 255, 255, 255;
+  --qp-bar-rgb: 255, 212, 0;
+}
+:root[data-theme='gusto'] {
+  --qp-sweep-rgb: 230, 207, 156;
+  --qp-bar-rgb: 201, 164, 92;
+}
+
+/* ───────── streak flame ───────── */
+
+@keyframes qp-flame-flicker {
+  0% {
+    transform: scale(1, 1) rotate(0deg);
+  }
+  50% {
+    transform: scale(0.94, 1.07) rotate(-1.6deg);
+  }
+  100% {
+    transform: scale(1.04, 0.95) rotate(1.4deg);
+  }
+}
+
+@keyframes qp-flame-sway {
+  from {
+    transform: translateX(-1px) skewX(-1.5deg);
+  }
+  to {
+    transform: translateX(1px) skewX(1.5deg);
+  }
+}
+
+@keyframes qp-combo-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) translateY(22px);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.14) translateY(-4px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ───────── last seconds ───────── */
+
+@keyframes qp-vignette {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  45% {
+    opacity: 1;
+  }
+}
+
+@keyframes qp-urgent-ring {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.94);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.28);
+  }
+}
+
+/* ───────── phases ───────── */
+
+@keyframes qp-phase-sweep {
+  0% {
+    opacity: 0;
+    transform: translateX(-120%) skewX(-16deg);
+  }
+  15%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(260%) skewX(-16deg);
+  }
+}
+
+@keyframes qp-phase-edge {
+  0% {
+    opacity: 0;
+    transform: translateX(-176px) skewX(-16deg);
+  }
+  15%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(3179px) skewX(-16deg);
+  }
+}
+
+/* ───────── reveal ───────── */
+
+/* the right answer's frame arrives with the drum hit */
+@keyframes qp-reveal-ring {
+  0% {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.015);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* the right card: rests, then pops on the hit and settles slightly enlarged */
+@keyframes qp-correct-hit {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.12);
+  }
+  70% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1.04);
+  }
+}
+
+@keyframes qp-burst-flash {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+@keyframes qp-burst-ray {
+  0% {
+    opacity: 1;
+    transform: rotate(var(--qp-angle)) translateX(0) scale(0.4);
+  }
+  55% {
+    opacity: 1;
+    transform: rotate(var(--qp-angle)) translateX(var(--qp-dist)) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--qp-angle)) translateX(calc(var(--qp-dist) * 1.3)) scale(0.2);
+  }
+}
+
+@keyframes qp-roll-beat {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.7);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes qp-roll-away {
+  to {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+/* the content of the phone's reveal screen holds back until the TV's drum hits */
+@keyframes qp-reveal-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.82) translateY(16px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.05) translateY(-2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ───────── answer lock-in ───────── */
+
+@keyframes qp-lock-stamp {
+  0% {
+    transform: scale(1.04);
+  }
+  35% {
+    transform: scale(0.955);
+  }
+  70% {
+    transform: scale(1.015);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes qp-lock-flash {
+  0% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ───────── score board ───────── */
+
+@keyframes qp-bar-grow {
+  from {
+    transform: scaleX(var(--qp-from));
+  }
+  to {
+    transform: scaleX(var(--qp-to));
+  }
+}
+
+/* a row that moved up the board: a gold pulse and a rising chevron */
+@keyframes qp-climb-glow {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+}
+
+@keyframes qp-climb-arrow {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.6);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-28px) scale(1);
+  }
+}
+
+.qp-climb {
+  position: relative;
+}
+.qp-climb::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  border: 4px solid var(--qp-color-accent-a, #ffc928);
+  border-radius: 999px;
+  box-shadow: 0 0 36px rgba(var(--qp-bar-rgb), 0.8);
+  opacity: 0;
+  pointer-events: none;
+  animation: qp-climb-glow 1100ms ease-out 1 both;
+}
+.qp-climb::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -62px;
+  width: 0;
+  height: 0;
+  margin-top: -20px;
+  border-right: 22px solid transparent;
+  border-bottom: 38px solid var(--qp-color-success, #2fe36e);
+  border-left: 22px solid transparent;
+  opacity: 0;
+  pointer-events: none;
+  animation: qp-climb-arrow 1100ms ease-out 1 both;
+}
+
+/* ───────── lobby ───────── */
+
+@keyframes qp-arrive-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) rotate(-14deg);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.18) rotate(5deg);
+  }
+  78% {
+    transform: scale(0.94) rotate(-2deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes qp-arrive-halo {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+
+/* ───────── podium ───────── */
+
+@keyframes qp-podium-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(70px) scaleY(0.6);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-10px) scaleY(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+@keyframes qp-podium-drop {
+  0% {
+    opacity: 0;
+    transform: translateY(-120px) scale(0.7);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(8px) scale(1.06);
+  }
+  75% {
+    transform: translateY(-4px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes qp-spotlight {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Pseudo-elements of an opted-in row are not reached by `.qp-deco *`: switch them off for weak TVs here. */
+html[data-motion='low'] .qp-climb::before,
+html[data-motion='low'] .qp-climb::after {
+  display: none;
+}
+
+/* the same for the pseudo-elements of anything opted in to `qp-deco` (lock flash, urgent ring ...) */
+html[data-motion='low'] .qp-deco::before,
+html[data-motion='low'] .qp-deco::after {
+  animation: none !important;
+}
+
+/* ───────── page shake for a sabotage hit ───────── */
+
+@keyframes qp-hit-flash {
+  0% {
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}

@@ -45,3 +45,17 @@
   color: var(--qp-color-danger);
   animation: qp-pulse 0.5s ease-in-out infinite;
 }
+
+/* The last seconds: a ring pulses outward once per second (the vignette and the quickening ticks do the rest). */
+.ring[data-urgent='true']::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  width: calc(100% + 16px);
+  height: calc(100% + 16px);
+  border: 6px solid var(--qp-color-danger);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: qp-urgent-ring 1s ease-out infinite;
+}

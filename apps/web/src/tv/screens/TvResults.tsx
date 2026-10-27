@@ -5,7 +5,8 @@ import { Button } from '../../ui/Button';
 import { CountUp } from '../../ui/CountUp';
 import { Mascot } from '../../ui/Mascot';
 import { AnimatedSticker, Sticker } from '../../ui/Sticker';
-import { cannons, shower } from '../../lib/confetti';
+import { burst, cannons, shower } from '../../lib/confetti';
+import { PODIUM_PLAN } from '../../lib/sound/timeline';
 import { useI18n } from '../../lib/i18n';
 import styles from './TvResults.module.css';
 import { cx } from '../../lib/cx';
@@ -42,13 +43,24 @@ export function TvResults({ room, data, onRematch, onLobby, onEnd, busy }: Props
   const rest = ranked.filter((row) => row.entry.rank > 3);
   const order = [2, 1, 3]; // silver, gold, bronze on screen
 
+  // The ceremony: third place lands, then second, a drum roll, then the winner with the cannons. The
+  // same plan times the sounds (useTvSounds -> playPodium), so the picture lands on the drum hits.
   useEffect(() => {
-    const stop = (() => {
-      cannons();
-      return shower(4500);
-    })();
+    const timers: number[] = [];
+    let stopShower: (() => void) | null = null;
+    timers.push(window.setTimeout(() => burst(0.3, 0.75, 50), PODIUM_PLAN.placeAt[3]));
+    timers.push(window.setTimeout(() => burst(0.5, 0.75, 70), PODIUM_PLAN.placeAt[2]));
+    timers.push(
+      window.setTimeout(() => {
+        cannons();
+        stopShower = shower(4500);
+      }, PODIUM_PLAN.celebrateAt),
+    );
     rematchRef.current?.focus();
-    return stop;
+    return () => {
+      timers.forEach((id) => window.clearTimeout(id));
+      stopShower?.();
+    };
   }, []);
 
   return (
@@ -62,8 +74,15 @@ export function TvResults({ room, data, onRematch, onLobby, onEnd, busy }: Props
             <div
               key={player.playerId}
               className={cx(styles.step, styles[`place${place}`])}
+              style={{
+                ['--qp-block-delay' as string]: `${PODIUM_PLAN.placeAt[place as 1 | 2 | 3]}ms`,
+                ['--qp-who-delay' as string]: `${PODIUM_PLAN.placeAt[place as 1 | 2 | 3] + 380}ms`,
+              }}
               data-testid={`podium-${place}`}
             >
+              {place === 1 ? (
+                <span className={cx(styles.spot, 'qp-deco')} aria-hidden="true" />
+              ) : null}
               <div className={styles.who}>
                 <div className={styles.face}>
                   {place === 1 ? (
@@ -78,7 +97,13 @@ export function TvResults({ room, data, onRematch, onLobby, onEnd, busy }: Props
                   />
                 </div>
                 <div className={styles.name}>{player.nickname}</div>
-                <CountUp className={styles.score} value={entry.score} from={0} durationMs={1600} />
+                <CountUp
+                  className={styles.score}
+                  value={entry.score}
+                  from={0}
+                  durationMs={1400}
+                  delayMs={PODIUM_PLAN.placeAt[place as 1 | 2 | 3] + 380}
+                />
               </div>
               <div className={styles.block}>
                 <Sticker

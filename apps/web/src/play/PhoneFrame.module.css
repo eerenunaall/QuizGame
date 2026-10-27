@@ -42,6 +42,11 @@
   color: var(--qp-color-muted-text);
 }
 
+.flame {
+  margin-right: 8px;
+  animation: qp-pop-in 420ms ease-out 1;
+}
+
 .score {
   display: flex;
   align-items: center;

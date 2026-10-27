@@ -171,6 +171,7 @@
 }
 
 .cell {
+  position: relative;
   width: 780px;
   margin: 0 20px 22px 0;
   animation: qp-slide-up 460ms ease-out 1 both;
@@ -196,6 +197,8 @@
 .chooser {
   display: flex;
   margin-left: -12px;
+  /* the faces of the players who picked an option appear after the drum hit */
+  animation: qp-pop-in 420ms cubic-bezier(0.2, 1.4, 0.4, 1) 1 both;
 }
 
 .more {
@@ -249,4 +252,33 @@
 
 .optionAvatar {
   display: flex;
+}
+
+/* Reveal: the right answer's frame and glow arrive with the hit (the card itself pops in AnswerCard.module.css). */
+.rightRing {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  z-index: 3;
+  width: calc(100% + 20px);
+  height: calc(100% + 20px);
+  pointer-events: none;
+  border: 8px solid var(--qp-color-success);
+  border-radius: 36px;
+  box-shadow:
+    0 0 60px rgba(47, 227, 110, 0.65),
+    inset 0 0 40px rgba(47, 227, 110, 0.25);
+  animation: qp-reveal-ring 520ms ease-out 1 both;
+  animation-delay: var(--qp-reveal-delay, 0ms);
+}
+
+/* Players on a streak, in the free corner beside the question card (the timer sits there while answering). */
+.combos {
+  position: absolute;
+  top: 200px;
+  left: 1536px;
+  width: 290px;
+}
+.combo {
+  margin-bottom: 14px;
 }

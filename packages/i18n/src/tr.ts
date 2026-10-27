@@ -160,6 +160,8 @@ export const tr = {
   'ctl.reveal.correct': 'Doğru!',
   'ctl.reveal.incorrect': 'Yanlış',
   'ctl.reveal.noAnswer': 'Cevap vermedin',
+  'ctl.combo': '{n} SERİ!',
+  'streak.label': '{n} doğru üst üste',
   'ctl.score.delta': '{delta} puan',
   'ctl.score.rank': '{rank}. sıradasın',
   'ctl.score.total': 'Toplam {total}',

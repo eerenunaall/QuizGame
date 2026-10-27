@@ -85,6 +85,8 @@ export function TvLobby({
                     leader={player.isLeader}
                     dim={player.connection === 'DISCONNECTED'}
                     playerId={player.playerId}
+                    arrive
+                    arriveDelayMs={index * 60}
                   />
                   <div className={styles.name}>{player.nickname}</div>
                   {player.isLeader ? (

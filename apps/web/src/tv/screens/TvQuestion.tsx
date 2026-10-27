@@ -1,12 +1,22 @@
 import type { ReactNode } from 'react';
-import type { Difficulty, PublicOption, PublicPlayer, RoomView } from '@quizparty/protocol';
+import type {
+  Difficulty,
+  Outcome,
+  PublicOption,
+  PublicPlayer,
+  RoomView,
+} from '@quizparty/protocol';
 import { AnswerCard, type AnswerState } from '../../ui/AnswerCard';
 import { Avatar } from '../../ui/Avatar';
 import { CountdownRing } from '../../ui/CountdownRing';
 import { LetterCheer } from '../../ui/LetterCheer';
+import { ComboToast, comboPlayers } from '../../ui/anim/ComboToast';
+import { RevealBurst } from '../../ui/anim/RevealBurst';
+import { UrgencyVignette } from '../../ui/anim/UrgencyVignette';
 import { Sticker } from '../../ui/Sticker';
 import { categoryIcon } from '../../lib/assets';
 import { useI18n } from '../../lib/i18n';
+import { revealPlan } from '../../lib/sound/timeline';
 import styles from './TvQuestion.module.css';
 import { cx } from '../../lib/cx';
 
@@ -85,7 +95,7 @@ interface Props {
   reveal?: {
     correctOptionId: string;
     distribution: readonly { optionId: string; count: number }[];
-    results: readonly { playerId: string; optionId: string | null }[];
+    results: readonly { playerId: string; optionId: string | null; outcome?: Outcome }[];
     explanation: string | null;
   };
   /** CROWD round: every card also shows the share of votes it got. */
@@ -116,18 +126,38 @@ function CrowdBar({ percent }: { percent: number }) {
   );
 }
 
-function ChooserFaces({ players }: { players: readonly PublicPlayer[] }) {
+function ChooserFaces({
+  players,
+  delayMs,
+  stepMs,
+}: {
+  players: readonly PublicPlayer[];
+  /** Reveal choreography: the faces appear one by one after the drum hit. */
+  delayMs: number;
+  stepMs: number;
+}) {
   const overflow = players.length > MAX_CHOOSER_FACES;
   const shown = overflow ? players.slice(0, MAX_CHOOSER_FACES - 1) : players;
   const extra = players.length - shown.length;
   return (
     <span className={styles.choosers} data-testid="tv-choosers">
-      {shown.map((player) => (
-        <span key={player.playerId} className={styles.chooser}>
+      {shown.map((player, index) => (
+        <span
+          key={player.playerId}
+          className={styles.chooser}
+          style={{ animationDelay: `${delayMs + index * stepMs}ms` }}
+        >
           <Avatar avatarId={player.avatarId} size={46} colorSlot={player.colorSlot} />
         </span>
       ))}
-      {extra > 0 ? <span className={cx(styles.chooser, styles.more)}>+{extra}</span> : null}
+      {extra > 0 ? (
+        <span
+          className={cx(styles.chooser, styles.more)}
+          style={{ animationDelay: `${delayMs + shown.length * stepMs}ms` }}
+        >
+          +{extra}
+        </span>
+      ) : null}
     </span>
   );
 }
@@ -159,6 +189,25 @@ export function TvQuestion({
   const votes = reveal?.distribution.reduce((sum, entry) => sum + entry.count, 0) ?? 0;
   const countOf = (optionId: string): number =>
     reveal?.distribution.find((entry) => entry.optionId === optionId)?.count ?? 0;
+  // The reveal is staged: wrong options dim one by one, then the right one lights up with a burst.
+  // The same plan drives the drum roll (lib/sound), so what you hear lands on what you see.
+  const plan =
+    reveal && options
+      ? revealPlan(
+          options.length,
+          options.findIndex((option) => option.optionId === reveal.correctOptionId),
+        )
+      : null;
+  const combos =
+    reveal && room.game
+      ? comboPlayers(
+          room.game.scoreboard.filter((entry) =>
+            reveal.results.some(
+              (result) => result.playerId === entry.playerId && result.outcome === 'CORRECT',
+            ),
+          ),
+        )
+      : [];
 
   return (
     <div className={styles.screen}>
@@ -213,6 +262,24 @@ export function TvQuestion({
         </div>
       ) : null}
 
+      {timer ? <UrgencyVignette now={timer.now} deadlineAt={timer.deadlineAt} /> : null}
+
+      {combos.length > 0 && plan ? (
+        <div className={styles.combos} data-testid="tv-combos">
+          {combos.map((entry, index) => (
+            <ComboToast
+              key={entry.playerId}
+              size="tv"
+              streak={entry.streak}
+              label={playersById.get(entry.playerId)?.nickname ?? ''}
+              text={t('ctl.combo', { n: entry.streak })}
+              delayMs={plan.hitAt + 380 + index * 160}
+              className={styles.combo}
+            />
+          ))}
+        </div>
+      ) : null}
+
       {status ? (
         <div
           className={cx(styles.status, styles[status.tone])}
@@ -242,12 +309,28 @@ export function TvQuestion({
         >
           {options.map((option, index) => {
             const picked = reveal ? choosers(option.optionId) : [];
+            const isRight = reveal !== undefined && option.optionId === reveal.correctOptionId;
+            const dimAt = plan?.dimAt[index] ?? null;
             return (
               <div
                 key={option.optionId}
                 className={styles.cell}
-                style={{ ['--qp-delay' as string]: `${index * 90}ms` }}
+                style={{
+                  ['--qp-delay' as string]: `${index * 90}ms`,
+                  ...(plan
+                    ? {
+                        ['--qp-reveal-delay' as string]: `${isRight ? plan.hitAt : (dimAt ?? 0)}ms`,
+                      }
+                    : {}),
+                }}
+                data-reveal={plan ? (isRight ? 'correct' : 'dim') : undefined}
               >
+                {isRight && plan ? (
+                  <>
+                    <span className={styles.rightRing} aria-hidden="true" />
+                    <RevealBurst delayMs={plan.hitAt} />
+                  </>
+                ) : null}
                 <AnswerCard
                   index={index}
                   text={option.text}
@@ -263,7 +346,13 @@ export function TvQuestion({
                       />
                     </span>
                   ) : null}
-                  {picked.length > 0 ? <ChooserFaces players={picked} /> : null}
+                  {picked.length > 0 ? (
+                    <ChooserFaces
+                      players={picked}
+                      delayMs={plan ? plan.hitAt + 160 : 0}
+                      stepMs={plan?.popStepMs ?? 0}
+                    />
+                  ) : null}
                   {crowd && reveal ? (
                     <CrowdBar percent={votePercent(countOf(option.optionId), votes)} />
                   ) : null}

@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { animationUrl, stickerUrl, type AnimationId, type StickerId } from '../lib/assets';
 import styles from './Sticker.module.css';
 import { cx } from '../lib/cx';
@@ -8,14 +9,16 @@ interface Props {
   className?: string;
   /** Gentle idle motion; switched off on low-power TVs. */
   float?: boolean;
+  style?: CSSProperties;
 }
 
 /** Decorative static 3D sticker (alt is empty on purpose: meaning is always carried by text). */
-export function Sticker({ id, size = 96, className, float }: Props) {
+export function Sticker({ id, size = 96, className, float, style }: Props) {
   return (
     <img
       className={cx(styles.sticker, float && styles.float, float && 'qp-deco', className)}
       src={stickerUrl(id)}
+      style={style}
       data-sticker={id}
       width={size}
       height={size}

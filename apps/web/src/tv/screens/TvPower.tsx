@@ -3,7 +3,7 @@ import type { Outcome, PhaseDataOf, PowerResolutionItem, RoomView } from '@quizp
 import { Avatar } from '../../ui/Avatar';
 import { PowerIcon } from '../../ui/PowerIcon';
 import { Sticker } from '../../ui/Sticker';
-import { sfx } from '../../lib/audio';
+import { hitSoundFor, sfx, type SoundName } from '../../lib/audio';
 import { useI18n } from '../../lib/i18n';
 import { JOKER_STICKER, RISK_ICON, SABOTAGE_STICKER, STAKE_STICKER } from '../../play/powers';
 import styles from './TvPower.module.css';
@@ -16,6 +16,22 @@ const STEP_MS = 650;
 /** Items revealed one after another; the sounds follow the same beat. */
 export function itemDelay(index: number): number {
   return 350 + index * STEP_MS;
+}
+
+/** The cue of one resolved power: each lifeline and each sabotage kind has its own, all from one family. */
+export function powerSound(item: PowerResolutionItem): SoundName {
+  switch (item.kind) {
+    case 'SABOTAGE':
+      return item.blocked ? 'shield' : hitSoundFor(item.effect);
+    case 'CUT':
+      return 'hitCut';
+    case 'FIFTY_FIFTY':
+      return 'fifty';
+    case 'DOUBLE_DOWN':
+      return 'doubleDown';
+    default:
+      return 'power';
+  }
 }
 
 /** Cards with two or more faces take a whole row; the rest share a row two by two (TvPower.module.css). */
@@ -75,19 +91,7 @@ export function TvPowerResolution({ room, data }: { room: RoomView; data: PowerD
 
   useEffect(() => {
     const timers = data.items.map((item, index) =>
-      window.setTimeout(
-        () =>
-          sfx.play(
-            item.kind === 'SABOTAGE'
-              ? item.blocked
-                ? 'shield'
-                : 'sabotage'
-              : item.kind === 'CUT'
-                ? 'sabotage'
-                : 'power',
-          ),
-        itemDelay(index),
-      ),
+      window.setTimeout(() => sfx.play(powerSound(item)), itemDelay(index)),
     );
     return () => timers.forEach((id) => window.clearTimeout(id));
   }, [data.items]);

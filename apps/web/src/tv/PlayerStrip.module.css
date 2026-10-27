@@ -38,6 +38,19 @@
   filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.35));
 }
 
+.delayed {
+  animation-fill-mode: both;
+}
+
+/* the streak flame sits on the top-left of the face, clear of the answered / right / wrong badge */
+.flame {
+  position: absolute;
+  top: -14px;
+  left: -18px;
+  z-index: 2;
+  animation: qp-pop-in 420ms ease-out 1;
+}
+
 .pending {
   opacity: 0.95;
 }

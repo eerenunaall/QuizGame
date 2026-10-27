@@ -18,7 +18,12 @@ import { Panel, Pill } from '../ui/Panel';
 import { AnimatedSticker, Sticker } from '../ui/Sticker';
 import { PowerIcon } from '../ui/PowerIcon';
 import { TimerBar } from '../ui/TimerBar';
+import { ComboToast } from '../ui/anim/ComboToast';
+import { RollDots } from '../ui/anim/RollDots';
+import { UrgencyVignette } from '../ui/anim/UrgencyVignette';
 import { burst } from '../lib/confetti';
+import { haptic } from '../lib/haptics';
+import { revealPlan } from '../lib/sound/timeline';
 import { useI18n } from '../lib/i18n';
 import { sfx } from '../lib/audio';
 import { createStorage } from '../lib/storage';
@@ -84,14 +89,6 @@ interface Props {
   /** Where this device keeps its choices (`qp.prefs`); without it the "show question" switch lives for the page only. */
   storage?: KeyValueStorage;
 }
-
-const vibrate = (ms: number): void => {
-  try {
-    navigator.vibrate?.(ms);
-  } catch {
-    // not supported
-  }
-};
 
 function Center({ children, testId }: { children: ReactNode; testId?: string }) {
   return (
@@ -224,6 +221,7 @@ export function Controller({ room, state, now, catalog, busy, error, actions, st
           report={actions.report}
           whoSaidIt={room.settings.mode === 'WHO_SAID_IT'}
           sitOut={you?.authorOfRound ?? false}
+          streak={room.game?.scoreboard.find((entry) => entry.playerId === myId)?.streak ?? 0}
         />
       );
     case 'POWER_RESOLUTION':
@@ -597,14 +595,14 @@ function AnswerScreen({
 
   useEffect(() => {
     if (locked) {
-      vibrate(40);
+      haptic('lock');
       sfx.play('lock');
     }
   }, [locked]);
 
   const pick = (optionId: string): void => {
     if (pending || locked) return;
-    vibrate(20);
+    haptic('tap');
     sfx.play('tap');
     actions.answer(optionId);
   };
@@ -652,6 +650,15 @@ function AnswerScreen({
             size="lg"
             now={now}
             startAt={data.answerOpensAt}
+            deadlineAt={personalDeadline(data.answerDeadlineAt, effects)}
+          />
+        )}
+        {locked || effects?.blindClock ? null : (
+          // The last three seconds: a red edge and a vibration beat per second (guarded, optional).
+          <UrgencyVignette
+            tone="phone"
+            haptics
+            now={now}
             deadlineAt={personalDeadline(data.answerDeadlineAt, effects)}
           />
         )}
@@ -762,64 +769,91 @@ function RevealScreen({
   report,
   whoSaidIt,
   sitOut,
+  streak,
 }: {
   data: PhaseDataOf<'REVEAL'>;
   myId: string;
   report: ControllerActions['report'];
   whoSaidIt: boolean;
   sitOut: boolean;
+  /** Correct answers in a row, this one included (the scoreboard already counts it). */
+  streak: number;
 }) {
   const { t } = useI18n();
   const mine = data.results.find((result) => result.playerId === myId);
   const outcome = mine?.outcome ?? 'NO_ANSWER';
   const correctText =
     data.options.find((option) => option.optionId === data.correctOptionId)?.text ?? '';
+  // The TV builds up to the answer (drum roll, wrong options dim, then the hit): the phone holds its
+  // own verdict back until the same moment, so the table finds out together. Same plan as the TV.
+  const hitAt = revealPlan(data.options.length, 0).hitAt;
   const done = useRef(false);
   useEffect(() => {
     if (done.current) return;
     done.current = true;
+    const at = hitAt + 120;
     if (outcome === 'CORRECT') {
-      vibrate(60);
-      sfx.play('correct');
-      burst(0.5, 0.35, 120);
+      sfx.play('correct', { streak, delayMs: at });
+      window.setTimeout(() => {
+        haptic('correct');
+        burst(0.5, 0.35, 120);
+      }, at);
+      if (streak >= 2) {
+        sfx.play('combo', { streak, delayMs: at + 480 });
+        window.setTimeout(() => haptic('combo'), at + 480);
+      }
     } else {
-      vibrate(160);
-      sfx.play(outcome === 'INCORRECT' ? 'wrong' : 'tap');
+      sfx.play(outcome === 'INCORRECT' ? 'wrong' : 'tap', { delayMs: at });
+      window.setTimeout(() => haptic(outcome === 'INCORRECT' ? 'wrong' : 'tap'), at);
     }
-  }, [outcome]);
+    // Not cancelled on cleanup: a cue that was scheduled for this reveal belongs to it.
+  }, [outcome, streak, hitAt]);
   return (
     <Center testId="ctl-reveal">
-      {outcome === 'CORRECT' ? (
-        <div className={styles.outcomeMascot}>
-          <Mascot height={170} mood="cheer" />
-        </div>
-      ) : (
-        <Sticker id={outcome === 'INCORRECT' ? 'cross' : 'hourglass'} size={130} />
-      )}
-      <div
-        className={cx(
-          styles.big,
-          outcome === 'CORRECT' && styles.good,
-          outcome === 'INCORRECT' && styles.bad,
+      <RollDots untilMs={hitAt} />
+      <div className={cx(styles.revealStage, 'qp-deco')} style={{ animationDelay: `${hitAt}ms` }}>
+        {outcome === 'CORRECT' && streak >= 2 ? (
+          <ComboToast
+            streak={streak}
+            text={t('ctl.combo', { n: streak })}
+            delayMs={hitAt + 420}
+            className={styles.combo}
+          />
+        ) : null}
+        {outcome === 'CORRECT' ? (
+          <div className={styles.outcomeMascot}>
+            <Mascot height={170} mood="cheer" />
+          </div>
+        ) : (
+          <Sticker id={outcome === 'INCORRECT' ? 'cross' : 'hourglass'} size={130} />
         )}
-        data-testid="ctl-outcome"
-        data-outcome={outcome}
-      >
-        {sitOut
-          ? t('ctl.statement.mine')
-          : outcome === 'CORRECT'
-            ? t('ctl.reveal.correct')
-            : outcome === 'INCORRECT'
-              ? t('ctl.reveal.incorrect')
-              : t('ctl.reveal.noAnswer')}
-      </div>
-      <Panel className={styles.correctCard} tone="glass">
-        <div className={styles.kicker}>{t('game.reveal.correct')}</div>
-        <div className={styles.correctText}>
-          {whoSaidIt ? t('whosaidit.reveal', { name: correctText }) : correctText}
+        <div
+          className={cx(
+            styles.big,
+            outcome === 'CORRECT' && styles.good,
+            outcome === 'INCORRECT' && styles.bad,
+          )}
+          data-testid="ctl-outcome"
+          data-outcome={outcome}
+        >
+          {sitOut
+            ? t('ctl.statement.mine')
+            : outcome === 'CORRECT'
+              ? t('ctl.reveal.correct')
+              : outcome === 'INCORRECT'
+                ? t('ctl.reveal.incorrect')
+                : t('ctl.reveal.noAnswer')}
         </div>
-      </Panel>
-      {report && !whoSaidIt ? <ReportControl questionId={data.questionId} report={report} /> : null}
+        <Panel className={styles.correctCard} tone="glass">
+          <div className={styles.kicker}>{t('game.reveal.correct')}</div>
+          <div className={styles.correctText}>
+            {whoSaidIt ? t('whosaidit.reveal', { name: correctText }) : correctText}
+          </div>
+        </Panel>
+        {report && !whoSaidIt ? (
+          <ReportControl questionId={data.questionId} report={report} />
+        ) : null}
+      </div>
     </Center>
   );
 }
