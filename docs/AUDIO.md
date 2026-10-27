@@ -124,4 +124,4 @@ reduced motion the page shake, the flash, the vibration pulses (urgency, hits, c
 dropped; taps, lock-in and wrong-answer vibration stay.
 
 **Performance.** `tests/e2e/show.spec.ts` replays a reveal and a score screen at 4x CPU throttling and checks
-the frame gaps (p95 under 120 ms in headless software rendering).
+the frame gaps (p95 under 160 ms in headless software rendering).

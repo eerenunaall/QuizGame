@@ -45,7 +45,7 @@ the phone), score at 700 ms (bars growing) and settled (climbers pulsing), podiu
 Measured, not photographed: TV text stays inside the central 90% during lobby, urgency, reveal, score and
 podium; the streak flame and the combo corner appear at the right streak (flame from 2, TV corner from 3);
 with `prefers-reduced-motion` nothing loops, the right answer is highlighted and the text is still inside the
-safe area; at 4x CPU throttling the frames keep coming (p95 gap under 120 ms in headless software rendering).
+safe area; at 4x CPU throttling the frames keep coming (p95 gap under 160 ms in headless software rendering).
 
 Fixed on the way: the player strip's score text box ended at 1030 px (the strip's bottom padding is now 60 px
 so it ends at 1020, inside the 5% safe area); the new score bars are tinted with the player's colour (a gold

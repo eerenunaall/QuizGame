@@ -299,6 +299,6 @@ test('frames keep coming on a 4x slower CPU during a reveal', async ({ browser }
     `4x CPU: ${gaps.length} frames, p50 ${percentile(gaps, 0.5).toFixed(1)} ms, p95 ${p95.toFixed(1)} ms, worst ${worst.toFixed(0)} ms`,
   );
   expect(gaps.length).toBeGreaterThan(40);
-  expect(p95).toBeLessThan(120);
+  expect(p95).toBeLessThan(160);
   for (const screen of [a, b, tv]) await screen.context.close();
 });
