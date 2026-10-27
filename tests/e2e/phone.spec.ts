@@ -44,8 +44,23 @@ interface Box {
   height: number;
 }
 
-const boxes = (page: Page, selector: string): Promise<Box[]> =>
-  page.locator(selector).evaluateAll((els) =>
+/**
+ * Entrance animations (the answer cards slide up 36 px) shift the boxes while they run, so a measurement
+ * taken at once reads a layout that never rests there. Only finite animations are awaited: ambient loops never end.
+ */
+const settled = (page: Page): Promise<unknown> =>
+  page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => undefined)),
+    ),
+  );
+
+const boxes = async (page: Page, selector: string): Promise<Box[]> => {
+  await settled(page);
+  return page.locator(selector).evaluateAll((els) =>
     els.map((el) => {
       const r = el.getBoundingClientRect();
       return {
@@ -58,6 +73,7 @@ const boxes = (page: Page, selector: string): Promise<Box[]> =>
       };
     }),
   );
+};
 
 const viewportOf = (page: Page) =>
   page.evaluate(() => ({
