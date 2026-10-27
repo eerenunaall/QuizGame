@@ -63,6 +63,8 @@ const EnvSchema = z.object({
   VENUE_MINUTE_MS: int(60_000, 100, 60_000),
   /** Distinct recently played questions per category a venue deck avoids (ADR-0025 §9). */
   VENUE_FRESH_WINDOW: int(300, 0, 5000),
+  /** A category is listed in the lobby only with this many ACTIVE questions (a thin one repeats within a game or two). */
+  CATEGORY_MIN_QUESTIONS: int(1, 1, 500),
   /** Addresses that become ADMIN on their first sign-in (how the first administrator exists). */
   ADMIN_BOOTSTRAP_EMAILS: csv,
   /** Where sign-in mail goes: any service that takes a JSON POST `{to, subject, text}`. */
@@ -244,6 +246,7 @@ export interface AppConfig {
   /** Venue mode: milliseconds in one metered minute (60 000 except in tests). */
   venueMinuteMs: number;
   venueFreshWindow: number;
+  categoryMinQuestions: number;
   emailWebhook: { url: string; token: string | null } | null;
   emailProvider: {
     provider: 'resend' | 'brevo';
@@ -370,6 +373,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     },
     venueMinuteMs: e.VENUE_MINUTE_MS,
     venueFreshWindow: e.VENUE_FRESH_WINDOW,
+    categoryMinQuestions: e.CATEGORY_MIN_QUESTIONS,
     adminBootstrapEmails: e.ADMIN_BOOTSTRAP_EMAILS.map((email) => email.trim().toLowerCase()),
     emailWebhook: e.EMAIL_WEBHOOK_URL
       ? { url: e.EMAIL_WEBHOOK_URL, token: e.EMAIL_WEBHOOK_TOKEN ?? null }

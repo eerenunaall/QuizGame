@@ -10,8 +10,8 @@ interface Cached {
 }
 
 /**
- * The categories a lobby may offer: enabled, with at least one ACTIVE question in the room's
- * language. Cached briefly because every lobby asks and the answer changes only on imports.
+ * The categories a lobby may offer: enabled, with at least `minQuestions` ACTIVE questions in the room's
+ * language (a thin category would repeat itself within a couple of games). Cached briefly because every lobby asks and the answer changes only on imports.
  */
 export class CategoryCatalogService {
   private readonly cache = new Map<Locale, Cached>();
@@ -21,17 +21,28 @@ export class CategoryCatalogService {
     allowDevSeed: boolean;
     clock: Clock;
     ttlMs: number;
+    minQuestions: number;
     flags?: FeatureFlags;
   };
 
   constructor(
     db: Database,
     deckBuilder: DeckBuilder,
-    options: { allowDevSeed: boolean; clock: Clock; ttlMs?: number; flags?: FeatureFlags },
+    options: {
+      allowDevSeed: boolean;
+      clock: Clock;
+      ttlMs?: number;
+      minQuestions?: number;
+      flags?: FeatureFlags;
+    },
   ) {
     this.db = db;
     this.deckBuilder = deckBuilder;
-    this.options = { ...options, ttlMs: options.ttlMs ?? 30_000 };
+    this.options = {
+      ...options,
+      ttlMs: options.ttlMs ?? 30_000,
+      minQuestions: options.minQuestions ?? 1,
+    };
   }
 
   async list(language: Locale): Promise<CategoryCatalog> {
@@ -70,6 +81,7 @@ export class CategoryCatalogService {
         'categories.label_en',
         'categories.sort_order',
       ])
+      .having((eb) => eb.fn.countAll(), '>=', this.options.minQuestions)
       .orderBy('categories.sort_order')
       .orderBy('categories.id')
       .execute();

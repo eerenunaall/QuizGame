@@ -179,6 +179,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     allowDevSeed: config.allowDevSeed,
     clock,
     flags,
+    minQuestions: config.categoryMinQuestions,
   });
   const telemetry = new DbTelemetrySink(db, onError);
   telemetry.start();

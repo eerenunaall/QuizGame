@@ -71,3 +71,23 @@ describe('content.current_events', () => {
     expect(catalogOff.categories.map((c) => c.id)).toContain('history');
   });
 });
+
+describe('catalog minimum', () => {
+  it('lists a category only when it holds enough ACTIVE questions', async () => {
+    const flags = new FeatureFlags(t.db, clock, 1);
+    const catalog = (minQuestions: number) =>
+      new CategoryCatalogService(
+        t.db,
+        new DeckBuilder(t.db, { allowDevSeed: true, clock, flags }),
+        { allowDevSeed: true, clock, flags, ttlMs: 0, minQuestions },
+      ).list('tr');
+    const all = await catalog(1);
+    const thin = [...all.categories].sort((x, y) => x.questions - y.questions)[0]!;
+    expect((await catalog(thin.questions)).categories.map((c) => c.id)).toContain(thin.id);
+    const strict = await catalog(thin.questions + 1);
+    expect(strict.categories.map((c) => c.id)).not.toContain(thin.id);
+    expect(strict.categories.every((c) => c.questions >= thin.questions + 1)).toBe(true);
+    const most = Math.max(...all.categories.map((c) => c.questions));
+    expect((await catalog(most + 1)).categories).toEqual([]);
+  });
+});

@@ -75,6 +75,9 @@ services:
       # Protects /metrics (off without it). Render generates a random one.
       - key: METRICS_TOKEN
         generateValue: true
+      # Categories with fewer ACTIVE questions than this are not offered in the lobby (they would repeat within a game or two).
+      - key: CATEGORY_MIN_QUESTIONS
+        value: "15"
       # Addresses that become ADMIN on their first sign-in, comma separated, lower case. The owner's real mailbox.
       - key: ADMIN_BOOTSTRAP_EMAILS
         sync: false
