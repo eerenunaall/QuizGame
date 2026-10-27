@@ -70,7 +70,7 @@ const pages = {
      p{position:absolute;left:0;right:0;top:395px;text-align:center;font:600 40px Bricolage;color:#efe5cc}
      </style><img class="l" src="${A('assets/img/hero-back.svg')}"><img class="l" src="${A('assets/img/hero-mid.svg')}"><img class="l" src="${A('assets/img/hero-front.svg')}"><div class="dim"></div>
      <img src="${A('assets/img/mark.svg')}" style="position:absolute;left:560px;top:80px;width:80px;filter:drop-shadow(0 0 20px rgba(241,180,69,.6))">
-     <h1>ARCHON<b>BITE</b></h1><p>Isıran oyunlar · Games with a bite</p>`, q: 86 },
+     <h1>ARCHON<b>BITE</b></h1><p>Aynı masada oynanan oyunlar · Games for the same table</p>`, q: 86 },
   'assets/img/og-salty-pirate.jpg': { w: 1200, h: 630, html: `<style>${FONTS}
      body{width:1200px;height:630px;background:#040916;position:relative}
      .l{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
