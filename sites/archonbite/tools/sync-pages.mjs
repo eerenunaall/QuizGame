@@ -21,13 +21,13 @@ const org = {
 };
 const publisher = { '@type': 'Organization', name: 'Archonbite', url: SITE + '/' };
 const pages = [
-  { file: 'index.html', path: '/', page: 'home', nav: '', og: 'og-home.jpg', ld: [org], extraHead: ['<script src="{P}assets/fx.js" defer></script>', '<link rel="preload" href="{P}data/games.json" as="fetch" crossorigin>'] },
+  { file: 'index.html', path: '/', page: 'home', nav: '', og: 'og-home.jpg', ld: [org], extraHead: ['<script src="{P}assets/fx.js" defer></script>', '<script src="{P}assets/storm.js" defer></script>', '<script src="{P}assets/glass.js" defer></script>', '<link rel="preload" href="{P}data/games.json" as="fetch" crossorigin>'] },
   { file: 'play/index.html', path: '/play/', page: 'play', nav: 'play', og: 'og-play.jpg', ld: [] },
   { file: 'guide/index.html', path: '/guide/', page: 'guide', nav: 'guide', og: 'og-guide.jpg', ld: [] },
   { file: 'legal/index.html', path: '/legal/', page: 'legal', nav: '', og: 'og-home.jpg', ld: [] },
   {
     file: 'games/quiznight/index.html', path: '/games/quiznight/', page: 'game', nav: 'quiznight', og: 'og-quiznight.jpg',
-    extraHead: ['<link rel="stylesheet" href="{P}assets/quiznight.css">', '<script src="{P}assets/quiznight/quiznight.js" defer></script>', '<link rel="preload" href="{P}data/games.json" as="fetch" crossorigin>', '<link rel="preload" href="{P}assets/quiznight/tv-team-lobby.webp" as="image" fetchpriority="high">'],
+    extraHead: ['<link rel="stylesheet" href="{P}assets/quiznight.css">', '<script src="{P}assets/quiznight/quiznight.js" defer></script>', '<script src="{P}assets/glass.js" defer></script>', '<link rel="preload" href="{P}data/games.json" as="fetch" crossorigin>', '<link rel="preload" href="{P}assets/quiznight/tv-team-lobby.webp" as="image" fetchpriority="high">'],
     title: 'QuizNight | Archonbite',
     desc: "TV'yi sahneye, telefonları kumandaya çeviren bilgi yarışması. QR'ı okut, takımını seç, soruyu ekranda izle, cevabı telefonundan ver. Kurulum ve hesap yok.",
     ld: [{

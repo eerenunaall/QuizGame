@@ -1,5 +1,8 @@
 /*
- * Salty Pirates backdrop: a stylised-realistic 3D storm sea (WebGL, no image or video download).
+ * Sea backdrop (WebGL, no image or video download), in two moods sharing one renderer:
+ *  - storm (Salty Pirates page): a stylised-realistic storm sea, cold desaturated teal, rain, lightning;
+ *  - calm (studio home page, M=1): a dusk harbour, gentle swell, a low sun laying a gold path on the water,
+ *    no weather; the glass UI of the home page floats over it.
  * The camera rides a few metres above the swell and looks at the horizon. The water is a height field of peaked,
  * domain-warped wave trains; rays find it with a secant search, then get a Fresnel mix of the storm sky's reflection
  * and a dark-green body colour that glows through thin crests, foam on the crests, rain rings near the camera, and
@@ -10,8 +13,9 @@
  */
 (function () {
   'use strict';
-  var main = document.querySelector('main[data-game-page="salty-pirate"]');
-  if (!main) return;
+  var salty = document.querySelector('main[data-game-page="salty-pirate"]');
+  var CALM = !salty && document.documentElement.getAttribute('data-page') === 'home';
+  if (!salty && !CALM) return;
   var reduce = false;
   try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
   var cv = document.createElement('canvas');
@@ -22,7 +26,7 @@
   var VS = 'attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}';
   var FS = [
     'precision highp float;',
-    'uniform vec2 R;uniform float T;uniform float F;uniform float RT;uniform vec4 S[6];',
+    'uniform vec2 R;uniform float T;uniform float F;uniform float RT;uniform vec4 S[6];uniform float M;',
     'float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}',
     'float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);',
     ' return mix(mix(hash(i),hash(i+vec2(1.,0.)),f.x),mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),f.x),f.y);}',
@@ -40,10 +44,16 @@
     '  h+=a*(pow(w,ch)*.8+w2*w*.35);',
     '  d=mat2(.54,-.84,.84,.54)*d;f*=1.95;a*=.42;ch=max(1.2,ch*.72);}',
     ' if(oct>5)h+=.02*fbm(p*2.4+vec2(T*.5,T*.25));', // wind chop, only for close-up shading
-    ' return h;}',
+    ' return h*mix(1.,.5,M);}',
 
     'vec3 sky(vec3 rd){',
     ' float y=max(rd.y,0.);',
+    ' if(M>.5){vec3 sd=normalize(vec3(.32,.07,1.));',
+    '  vec3 c=mix(vec3(.93,.74,.52),vec3(.34,.56,.58),smoothstep(0.,.18,y));c=mix(c,vec3(.10,.24,.30),smoothstep(.15,.75,y));',
+    '  vec2 cp=rd.xz/(rd.y+.12)*.8+vec2(T*.008,T*.02);float cl=smoothstep(.45,.85,fbm(cp*.45));',
+    '  c=mix(c,mix(vec3(.98,.86,.72),vec3(.55,.66,.70),smoothstep(0.,.3,y)),cl*.5*smoothstep(-.02,.15,rd.y));',
+    '  float sdot=max(dot(rd,sd),0.);c+=vec3(1.,.82,.58)*(pow(sdot,600.)*1.5+pow(sdot,12.)*.28);',
+    '  return c;}',
     ' vec3 c=mix(vec3(.20,.29,.265),vec3(.04,.07,.068),pow(y,.5));',
     ' vec2 cp=rd.xz/(rd.y+.09)*.9+vec2(T*.015,T*.04);',
     ' float cl=smoothstep(.34,.74,fbm(cp*.5)+.15*fbm(cp*2.3));',
@@ -67,6 +77,8 @@
     ' vec3 body=vec3(.008,.026,.024)+vec3(.045,.115,.095)*sh*.22;',
     ' body+=vec3(.06,.13,.115)*max(h-.9,0.)*1.1;', // light glowing through thin wave crests
     ' vec3 c=mix(body,refl,fres);vec3 L=normalize(vec3(.35,.22,1.));c+=vec3(.30,.38,.36)*pow(max(dot(reflect(rd,n),L),0.),48.)*smoothstep(160.,10.,dist);',
+    ' if(M>.5){vec3 sd=normalize(vec3(.32,.07,1.));vec3 cb=vec3(.02,.10,.12)+vec3(.05,.20,.21)*sh*.35+vec3(.08,.24,.22)*max(h-.45,0.)*.7;',
+    '  return mix(cb,refl,min(1.,fres*1.15))+vec3(1.,.8,.55)*pow(max(dot(reflect(rd,n),sd),0.),90.)*1.4*smoothstep(260.,5.,dist);}',
     ' float foam=smoothstep(1.3,1.37,h+.5*fbm(p.xz*2.1+vec2(T*.15,0.)))*smoothstep(140.,25.,dist);',
     ' c=mix(c,vec3(.40,.45,.42),foam*.55);',
     ' c+=vec3(.22,.29,.27)*(ripples(p.xz*1.7)+ripples(p.xz*2.9+4.)*.6)*smoothstep(22.,3.,dist)*.6;',
@@ -81,9 +93,9 @@
 
     'void main(){',
     ' vec2 uv=(gl_FragCoord.xy-.5*R)/R.y;',
-    ' float bob=.22*sin(T*.55)+.08*sin(T*1.3);',
+    ' float bob=(.22*sin(T*.55)+.08*sin(T*1.3))*mix(1.,.45,M);',
     ' vec3 ro=vec3(0.,3.1+bob,T*.9);',
-    ' float roll=.025*sin(T*.4),pitch=-.11+.015*sin(T*.7);',
+    ' float roll=.025*sin(T*.4)*(1.-M*.6),pitch=-.11+.015*sin(T*.7);',
     ' vec3 rd=normalize(vec3(uv.x*cos(roll)-uv.y*sin(roll),uv.x*sin(roll)+uv.y*cos(roll)+pitch,1.55));',
     ' vec3 col;',
     ' if(rd.y>-.001){col=sky(rd);}',
@@ -99,15 +111,15 @@
     '  col=mix(col,fogc,1.-exp(-t*.021));',
     ' }',
     ' float r=rain(uv,16.,7.,9.,1.)*.10+rain(uv+.37,34.,6.,13.,2.)*.075+rain(uv+.71,70.,5.,17.,3.)*.055;',
-    ' col+=vec3(.62,.72,.70)*r;',
+    ' col+=vec3(.62,.72,.70)*r*(1.-M);',
     ' col+=F*.06;',
-    ' float g=dot(col,vec3(.299,.587,.114));col=mix(vec3(g),col,.78);', // a little film desaturation
-    ' col*=.44;col*=1.-.45*smoothstep(.35,1.05,length(uv*vec2(.85,1.15)));',
+    ' float g=dot(col,vec3(.299,.587,.114));col=mix(vec3(g),col,mix(.78,.97,M));', // a little film desaturation
+    ' col*=mix(.44,.92,M);col*=1.-mix(.45,.3,M)*smoothstep(.35,1.05,length(uv*vec2(.85,1.15)));',
     ' for(int i=0;i<6;i++){vec4 s=S[i];float age=RT-s.z;if(age<0.||age>3.||s.w<=0.)continue;',
     '  float d=length(gl_FragCoord.xy-s.xy)/R.y;float r=age*.16*(.6+s.w*.5);',
     '  float ring=smoothstep(.006,0.,abs(d-r))+.5*smoothstep(.006,0.,abs(d-r*.62));',
     '  float flash=exp(-age*5.)*smoothstep(.05*s.w,0.,d);',
-    '  col+=vec3(.42,.55,.52)*(ring*exp(-age*1.6)*.32+flash*.7)*s.w;}',
+    '  col+=mix(vec3(.42,.55,.52),vec3(.9,.92,.88),M)*(ring*exp(-age*1.6)*.32+flash*mix(.7,.25,M))*s.w;}',
     ' col+=(hash(gl_FragCoord.xy+fract(T)*61.)-.5)*.015;',
     ' gl_FragColor=vec4(col,1.);}'
   ].join('\n');
@@ -126,7 +138,7 @@
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
   var loc = gl.getAttribLocation(pr, 'a'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
   var uR = gl.getUniformLocation(pr, 'R'), uT = gl.getUniformLocation(pr, 'T'), uF = gl.getUniformLocation(pr, 'F');
-  var uRT = gl.getUniformLocation(pr, 'RT'), uS = gl.getUniformLocation(pr, 'S');
+  var uRT = gl.getUniformLocation(pr, 'RT'), uS = gl.getUniformLocation(pr, 'S'), uM = gl.getUniformLocation(pr, 'M');
   // pointer splashes: [x, y, birth time, strength] in canvas pixels, ring buffer of six
   var splash = new Float32Array(24), si = 0, lastWake = 0;
   function addSplash(cx, cy, strength) {
@@ -137,14 +149,14 @@
   var finePointer = false;
   try { finePointer = window.matchMedia('(pointer: fine)').matches; } catch (e) {}
   if (finePointer && !reduce) {
-    // a click on empty dark sea (not on text, links, buttons, media or the parchment) drops a cannonball
+    // a click on open water (not on text, links, buttons, media or a panel): a cannonball in the storm, a pebble in the calm
     document.addEventListener('pointerdown', function (e) {
-      if (e.button !== 0 || e.target.closest('a,button,video,input,textarea,select,label,.sp-parchment,.sp-entry,.sp-card,p,h1,h2,h3,li,img,.site-header')) return;
-      addSplash(e.clientX, e.clientY, 1);
+      if (e.button !== 0 || e.target.closest('a,button,video,input,textarea,select,label,.sp-parchment,.sp-entry,.sp-card,p,h1,h2,h3,li,img,.site-header,.lg')) return;
+      addSplash(e.clientX, e.clientY, CALM ? 0.7 : 1);
     });
     document.addEventListener('pointermove', function (e) {
       var now = performance.now();
-      if (now - lastWake > 140 && (Math.abs(e.movementX) + Math.abs(e.movementY)) > 6) { lastWake = now; addSplash(e.clientX, e.clientY, 0.32); }
+      if (now - lastWake > 140 && (Math.abs(e.movementX) + Math.abs(e.movementY)) > 6) { lastWake = now; addSplash(e.clientX, e.clientY, CALM ? 0.22 : 0.32); }
     }, { passive: true });
   }
 
@@ -157,7 +169,7 @@
   }
   // one slow swell of light, then a weaker echo: a smooth envelope, never a hard strobe
   function flash(t) {
-    if (reduce) return 0;
+    if (reduce || CALM) return 0;
     var d = t - nextFlash;
     if (d < 0) return 0;
     if (d > 2.4) { nextFlash = t + 11 + Math.random() * 10; return 0; }
@@ -166,7 +178,7 @@
   }
   function draw(now) {
     var t = (now - t0) / 1000;
-    gl.uniform2f(uR, cv.width, cv.height); gl.uniform1f(uT, t * 0.5); gl.uniform1f(uF, flash(t));
+    gl.uniform2f(uR, cv.width, cv.height); gl.uniform1f(uT, t * (CALM ? 0.35 : 0.5)); gl.uniform1f(uM, CALM ? 1 : 0); gl.uniform1f(uF, flash(t));
     gl.uniform1f(uRT, t); gl.uniform4fv(uS, splash);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
