@@ -2,42 +2,24 @@
  * Synthesised sound effects (Web Audio). Nothing is downloaded, so there is nothing to license and
  * nothing to block the first paint. The context starts suspended on most browsers; `unlock()` must
  * run from a user gesture (the TV's "press OK" gate, a phone tap).
+ *
+ * The sound itself lives in `lib/sound/*`: one key and one timbre family (`scale.ts`, `palette.ts`),
+ * a shared limiter + room (`engine.ts`) and shared timing with the animations (`timeline.ts`).
+ * This file keeps the stable `sfx.play('<key>')` surface the screens use.
  */
-export type SoundName =
-  | 'tap'
-  | 'join'
-  | 'tick'
-  | 'tickUrgent'
-  | 'countdown'
-  | 'go'
-  | 'whoosh'
-  | 'question'
-  | 'lock'
-  | 'reveal'
-  | 'correct'
-  | 'wrong'
-  | 'score'
-  | 'rankUp'
-  | 'final'
-  | 'fanfare'
-  | 'power'
-  | 'shield'
-  | 'hit'
-  | 'sabotage';
+import { SoundEngine, type AudioContextLike } from './sound/engine';
+import {
+  TRIM_DB,
+  eventsFor,
+  podiumEvents,
+  revealEvents,
+  type SoundEvent,
+  type SoundName,
+  type SoundParams,
+} from './sound/palette';
+import { tickPlan, type RevealPlan } from './sound/timeline';
 
-interface AudioContextLike {
-  currentTime: number;
-  state: string;
-  destination: AudioNode;
-  resume(): Promise<void>;
-  close(): Promise<void>;
-  createOscillator(): OscillatorNode;
-  createGain(): GainNode;
-  createBiquadFilter(): BiquadFilterNode;
-  createBuffer(channels: number, length: number, sampleRate: number): AudioBuffer;
-  createBufferSource(): AudioBufferSourceNode;
-  sampleRate: number;
-}
+export { SOUND_NAMES, hitSoundFor, type SoundName, type SoundParams } from './sound/palette';
 
 type ContextFactory = () => AudioContextLike | null;
 
@@ -50,37 +32,43 @@ const defaultFactory: ContextFactory = () => {
   return Ctor ? new Ctor() : null;
 };
 
-const NOTE = {
-  C4: 261.63,
-  E4: 329.63,
-  G4: 392,
-  A4: 440,
-  C5: 523.25,
-  D5: 587.33,
-  E5: 659.25,
-  G5: 783.99,
-  A5: 880,
-  C6: 1046.5,
-  E6: 1318.5,
-  G6: 1568,
-  D4: 293.66,
-} as const;
+/**
+ * Who is listening. The TV is the stage in a loud room and may use the full range; a phone is held
+ * a hand away from the ear (and several phones in one room add up), so it tops out lower.
+ */
+export type SoundProfile = 'tv' | 'phone';
+export const PROFILE_CEILING: Record<SoundProfile, number> = { tv: 1, phone: 0.5 };
+
+/** Slider (0..1) to linear gain: a perceptual taper, so the lower half of the slider is usable. */
+export function levelFor(volume: number, profile: SoundProfile): number {
+  const clamped = Math.min(1, Math.max(0, volume));
+  return PROFILE_CEILING[profile] * clamped ** 1.6;
+}
+
+export interface PlayOptions extends SoundParams {
+  /** Start this many milliseconds from now (aligns a cue with an animation). */
+  delayMs?: number;
+}
 
 export class Sfx {
   private context: AudioContextLike | null = null;
-  private master: GainNode | null = null;
+  private engine: SoundEngine | null = null;
   private volume = 0.7;
   private muted = false;
+  private profile: SoundProfile = 'tv';
+  private ambienceWanted = false;
   private readonly factory: ContextFactory;
 
   constructor(factory: ContextFactory = defaultFactory) {
     this.factory = factory;
   }
 
-  configure(options: { volume?: number; muted?: boolean }): void {
+  configure(options: { volume?: number; muted?: boolean; profile?: SoundProfile }): void {
     if (options.volume !== undefined) this.volume = Math.min(1, Math.max(0, options.volume));
     if (options.muted !== undefined) this.muted = options.muted;
-    if (this.master) this.master.gain.value = this.muted ? 0 : this.volume;
+    if (options.profile !== undefined) this.profile = options.profile;
+    this.applyLevel();
+    this.syncAmbience();
   }
 
   /** Creates and resumes the context. Safe to call repeatedly; must come from a user gesture. */
@@ -89,12 +77,12 @@ export class Sfx {
       this.context ??= this.factory();
       const context = this.context;
       if (!context) return false;
-      if (!this.master) {
-        this.master = context.createGain();
-        this.master.gain.value = this.muted ? 0 : this.volume;
-        this.master.connect(context.destination);
+      if (!this.engine) {
+        this.engine = new SoundEngine(context, { lite: lowPower() });
+        this.applyLevel();
       }
       if (context.state === 'suspended') await context.resume();
+      this.syncAmbience();
       return context.state !== 'suspended';
     } catch {
       return false;
@@ -105,202 +93,94 @@ export class Sfx {
     return this.context !== null && this.context.state === 'running';
   }
 
-  play(name: SoundName): void {
-    const context = this.context;
-    const master = this.master;
-    if (!context || !master || this.muted || context.state !== 'running') return;
-    try {
-      this.recipes[name](context, master, context.currentTime);
-    } catch {
-      // a failed sound must never break the game
-    }
+  get currentProfile(): SoundProfile {
+    return this.profile;
+  }
+
+  play(name: SoundName, options: PlayOptions = {}): void {
+    this.start(eventsFor(name, options), options.delayMs, name);
+  }
+
+  /** The staggered answer reveal as one score (see `revealPlan` for the matching CSS delays). */
+  playReveal(plan: RevealPlan, outcome: { correct: boolean; streak?: number }): void {
+    this.start(revealEvents(plan, outcome), 0);
+  }
+
+  /** The podium ceremony for the given number of ranked players. */
+  playPodium(places: number): void {
+    this.start(podiumEvents(places), 0);
+  }
+
+  /**
+   * One second of the answer clock: ticks inside the second get denser (half seconds, then quarters)
+   * and climb in pitch as time runs out. Call once per whole second with the seconds left.
+   */
+  countdownTick(secondsLeft: number): void {
+    const plan = tickPlan(secondsLeft);
+    plan.offsets.forEach((offset, index) => {
+      const accent = index === plan.accent;
+      this.play(secondsLeft <= 3 && accent ? 'tickUrgent' : 'tick', {
+        step: secondsLeft,
+        delayMs: offset * 1000,
+      });
+    });
+  }
+
+  /** Very quiet generative bed (lobby). Idempotent; follows mute and volume. */
+  startAmbience(): void {
+    this.ambienceWanted = true;
+    this.syncAmbience();
+  }
+
+  stopAmbience(): void {
+    this.ambienceWanted = false;
+    this.syncAmbience();
   }
 
   async dispose(): Promise<void> {
     try {
+      await this.engine?.dispose();
       await this.context?.close();
     } catch {
       // ignore
     }
     this.context = null;
-    this.master = null;
+    this.engine = null;
   }
 
-  private tone(
-    context: AudioContextLike,
-    out: AudioNode,
-    at: number,
-    options: {
-      from: number;
-      to?: number;
-      duration: number;
-      type?: OscillatorType;
-      gain?: number;
-      attack?: number;
-    },
-  ): void {
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = options.type ?? 'sine';
-    oscillator.frequency.setValueAtTime(options.from, at);
-    if (options.to !== undefined)
-      oscillator.frequency.exponentialRampToValueAtTime(
-        Math.max(1, options.to),
-        at + options.duration,
-      );
-    const peak = options.gain ?? 0.25;
-    const attack = options.attack ?? 0.008;
-    gain.gain.setValueAtTime(0.0001, at);
-    gain.gain.exponentialRampToValueAtTime(peak, at + attack);
-    gain.gain.exponentialRampToValueAtTime(0.0001, at + options.duration);
-    oscillator.connect(gain);
-    gain.connect(out);
-    oscillator.start(at);
-    oscillator.stop(at + options.duration + 0.02);
+  private start(events: SoundEvent[], delayMs = 0, name?: SoundName): void {
+    const context = this.context;
+    const engine = this.engine;
+    if (!context || !engine || this.muted || context.state !== 'running') return;
+    try {
+      const trimDb = name ? (TRIM_DB[name] ?? 0) : 0;
+      const trim = 10 ** (trimDb / 20);
+      engine.play(events, context.currentTime + 0.005 + Math.max(0, delayMs) / 1000, trim);
+    } catch {
+      // a failed sound must never break the game
+    }
   }
 
-  private noise(
-    context: AudioContextLike,
-    out: AudioNode,
-    at: number,
-    options: { duration: number; from: number; to: number; gain?: number },
-  ): void {
-    const length = Math.max(1, Math.floor(context.sampleRate * options.duration));
-    const buffer = context.createBuffer(1, length, context.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
-    const source = context.createBufferSource();
-    source.buffer = buffer;
-    const filter = context.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.Q.value = 1.2;
-    filter.frequency.setValueAtTime(options.from, at);
-    filter.frequency.exponentialRampToValueAtTime(Math.max(1, options.to), at + options.duration);
-    const gain = context.createGain();
-    gain.gain.setValueAtTime(0.0001, at);
-    gain.gain.exponentialRampToValueAtTime(options.gain ?? 0.2, at + options.duration * 0.25);
-    gain.gain.exponentialRampToValueAtTime(0.0001, at + options.duration);
-    source.connect(filter);
-    filter.connect(gain);
-    gain.connect(out);
-    source.start(at);
-    source.stop(at + options.duration + 0.02);
+  private applyLevel(): void {
+    this.engine?.setLevel(this.muted ? 0 : levelFor(this.volume, this.profile));
   }
 
-  private readonly recipes: Record<
-    SoundName,
-    (c: AudioContextLike, out: AudioNode, at: number) => void
-  > = {
-    tap: (c, out, at) =>
-      this.tone(c, out, at, { from: 620, to: 520, duration: 0.07, type: 'triangle', gain: 0.18 }),
-    join: (c, out, at) => {
-      this.tone(c, out, at, { from: NOTE.C5, duration: 0.12, type: 'triangle' });
-      this.tone(c, out, at + 0.09, { from: NOTE.G5, duration: 0.2, type: 'triangle' });
-    },
-    tick: (c, out, at) =>
-      this.tone(c, out, at, { from: NOTE.E6, duration: 0.04, type: 'triangle', gain: 0.07 }),
-    tickUrgent: (c, out, at) =>
-      this.tone(c, out, at, { from: NOTE.G6, duration: 0.07, type: 'triangle', gain: 0.12 }),
-    countdown: (c, out, at) =>
-      this.tone(c, out, at, { from: NOTE.A5, duration: 0.18, type: 'triangle', gain: 0.3 }),
-    go: (c, out, at) => {
-      this.tone(c, out, at, { from: NOTE.E6, duration: 0.45, type: 'triangle', gain: 0.32 });
-      this.tone(c, out, at, { from: NOTE.E5, duration: 0.45, type: 'sine', gain: 0.2 });
-    },
-    whoosh: (c, out, at) =>
-      this.noise(c, out, at, { duration: 0.35, from: 300, to: 3200, gain: 0.16 }),
-    question: (c, out, at) => {
-      this.tone(c, out, at, { from: NOTE.G4, to: NOTE.C5, duration: 0.18, type: 'triangle' });
-      this.tone(c, out, at + 0.16, { from: NOTE.E5, duration: 0.25, type: 'triangle' });
-    },
-    lock: (c, out, at) => {
-      this.tone(c, out, at, { from: 170, to: 90, duration: 0.22, type: 'sine', gain: 0.4 });
-      this.tone(c, out, at, { from: 900, to: 400, duration: 0.05, type: 'triangle', gain: 0.1 });
-    },
-    reveal: (c, out, at) => {
-      this.noise(c, out, at, { duration: 0.5, from: 500, to: 4000, gain: 0.14 });
-      this.tone(c, out, at + 0.45, { from: 220, to: 110, duration: 0.3, type: 'sine', gain: 0.35 });
-    },
-    correct: (c, out, at) => {
-      [NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6].forEach((hz, i) =>
-        this.tone(c, out, at + i * 0.075, {
-          from: hz,
-          duration: 0.22,
-          type: 'triangle',
-          gain: 0.24,
-        }),
-      );
-    },
-    wrong: (c, out, at) => {
-      this.tone(c, out, at, {
-        from: NOTE.E4,
-        to: NOTE.C4 / 2,
-        duration: 0.4,
-        type: 'triangle',
-        gain: 0.2,
-      });
-      this.tone(c, out, at + 0.05, {
-        from: NOTE.D4,
-        to: NOTE.C4 / 2,
-        duration: 0.4,
-        type: 'triangle',
-        gain: 0.1,
-      });
-    },
-    score: (c, out, at) => {
-      for (let i = 0; i < 4; i++)
-        this.tone(c, out, at + i * 0.06, {
-          from: [NOTE.C6, NOTE.E6, NOTE.G6, NOTE.C6 * 2][i] ?? NOTE.C6,
-          duration: 0.09,
-          type: 'triangle',
-          gain: 0.08,
-        });
-    },
-    rankUp: (c, out, at) => {
-      this.tone(c, out, at, { from: NOTE.E5, duration: 0.12, type: 'triangle' });
-      this.tone(c, out, at + 0.1, { from: NOTE.A5, duration: 0.22, type: 'triangle' });
-    },
-    final: (c, out, at) => {
-      this.tone(c, out, at, { from: 90, to: 45, duration: 0.8, type: 'sine', gain: 0.5 });
-      this.noise(c, out, at, { duration: 1.1, from: 200, to: 5000, gain: 0.18 });
-      this.tone(c, out, at + 0.9, { from: NOTE.C5, duration: 0.5, type: 'triangle', gain: 0.16 });
-    },
-    power: (c, out, at) => {
-      this.tone(c, out, at, { from: 70, to: 140, duration: 0.45, type: 'sine', gain: 0.45 });
-      this.noise(c, out, at, { duration: 0.55, from: 400, to: 4500, gain: 0.14 });
-      this.tone(c, out, at + 0.35, {
-        from: NOTE.A4,
-        to: NOTE.A5,
-        duration: 0.3,
-        type: 'triangle',
-        gain: 0.12,
-      });
-    },
-    shield: (c, out, at) => {
-      this.tone(c, out, at, { from: NOTE.E6, duration: 0.09, type: 'triangle', gain: 0.22 });
-      this.tone(c, out, at + 0.07, { from: NOTE.C6, duration: 0.3, type: 'triangle', gain: 0.2 });
-    },
-    hit: (c, out, at) => {
-      this.noise(c, out, at, { duration: 0.28, from: 2400, to: 200, gain: 0.2 });
-      this.tone(c, out, at, { from: 220, to: 60, duration: 0.3, type: 'triangle', gain: 0.22 });
-    },
-    // Warm falling minor-third wobble: reads as "gotcha" without the harshness of the old buzz.
-    sabotage: (c, out, at) => {
-      this.tone(c, out, at, { from: NOTE.G5, to: NOTE.E5, duration: 0.14, gain: 0.22 });
-      this.tone(c, out, at + 0.12, { from: NOTE.E5, to: NOTE.C5, duration: 0.14, gain: 0.22 });
-      this.tone(c, out, at + 0.24, { from: NOTE.C4, to: NOTE.C4 / 2, duration: 0.3, gain: 0.35 });
-    },
-    fanfare: (c, out, at) => {
-      const chord = (when: number, notes: number[], length: number): void =>
-        notes.forEach((hz) =>
-          this.tone(c, out, when, { from: hz, duration: length, type: 'triangle', gain: 0.17 }),
-        );
-      chord(at, [NOTE.G4, NOTE.C5], 0.16);
-      chord(at + 0.18, [NOTE.C5, NOTE.E5], 0.16);
-      chord(at + 0.36, [NOTE.E5, NOTE.G5], 0.16);
-      chord(at + 0.56, [NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6], 0.9);
-    },
-  };
+  private syncAmbience(): void {
+    const engine = this.engine;
+    if (!engine) return;
+    const audible = this.ambienceWanted && !this.muted && this.volume > 0 && this.ready;
+    try {
+      if (audible) engine.startAmbience();
+      else if (engine.ambienceRunning) engine.stopAmbience();
+    } catch {
+      // ambience is optional
+    }
+  }
+}
+
+/** Weak TVs ask for decorative motion to be off; they also get the drier, lighter sound graph. */
+function lowPower(): boolean {
+  return typeof document !== 'undefined' && document.documentElement.dataset.motion === 'low';
 }
 
 /** One shared instance for the page. */

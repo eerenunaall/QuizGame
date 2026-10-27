@@ -1,28 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Sfx, type SoundName } from './audio';
+import { SOUND_NAMES, Sfx, levelFor, type SoundName } from './audio';
 
-const SOUNDS: SoundName[] = [
-  'tap',
-  'join',
-  'tick',
-  'tickUrgent',
-  'countdown',
-  'go',
-  'whoosh',
-  'question',
-  'lock',
-  'reveal',
-  'correct',
-  'wrong',
-  'score',
-  'rankUp',
-  'final',
-  'fanfare',
-  'power',
-  'shield',
-  'hit',
-  'sabotage',
-];
+const SOUNDS: SoundName[] = [...SOUND_NAMES];
 
 function fakeContext(state = 'running') {
   const param = () => ({
@@ -104,5 +83,41 @@ describe('Sfx', () => {
     const sfx = new Sfx(() => context as never);
     await sfx.unlock();
     expect(() => sfx.play('correct')).not.toThrow();
+  });
+
+  it('plays the scored sequences and the tick plan', async () => {
+    const { context, created } = fakeContext();
+    const sfx = new Sfx(() => context as never);
+    await sfx.unlock();
+    sfx.playReveal(
+      { rollMs: 480, dimAt: [480, null, 700], hitAt: 900, popStepMs: 70, totalMs: 1500 },
+      { correct: true, streak: 3 },
+    );
+    sfx.playPodium(3);
+    for (const seconds of [9, 4, 2]) sfx.countdownTick(seconds);
+    sfx.play('correct', { streak: 5 });
+    sfx.play('join', { order: 4, delayMs: 120 });
+    expect(created.oscillators).toBeGreaterThan(40);
+  });
+
+  it('keeps phones quieter than the TV and follows the slider with a taper', () => {
+    expect(levelFor(1, 'tv')).toBe(1);
+    expect(levelFor(1, 'phone')).toBeLessThan(levelFor(1, 'tv'));
+    expect(levelFor(0.5, 'tv')).toBeLessThan(0.5);
+    expect(levelFor(0, 'tv')).toBe(0);
+    expect(levelFor(7, 'tv')).toBe(1);
+  });
+
+  it('starts and stops the lobby ambience, and mute silences it', async () => {
+    const { context } = fakeContext();
+    const sfx = new Sfx(() => context as never);
+    sfx.startAmbience(); // before the unlock: remembered, nothing plays
+    await sfx.unlock();
+    expect(context.createOscillator).toHaveBeenCalled();
+    const before = context.createOscillator.mock.calls.length;
+    sfx.configure({ muted: true });
+    sfx.stopAmbience();
+    expect(context.createOscillator.mock.calls.length).toBe(before);
+    await sfx.dispose();
   });
 });

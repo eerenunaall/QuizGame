@@ -8,6 +8,7 @@
     "assets:build": "node assets/build.ts",
     "assets:brand": "node assets/brand.ts",
     "assets:category-icons": "node assets/category-icons.ts",
+    "audio:render": "node audio/render.ts",
     "question": "tsx question/main.ts",
     "playtest": "tsx dev/playtest.ts",
     "perf": "tsx perf/load.ts",
