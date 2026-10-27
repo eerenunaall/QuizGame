@@ -1,13 +1,11 @@
 {
   "skip": "İçeriğe geç",
-
   "nav.guide": "Kılavuz",
   "nav.play": "Şimdi oyna",
   "nav.menu": "Menü",
   "nav.main": "Ana gezinme",
   "nav.lang": "Dil",
   "nav.home": "Archonbite ana sayfa",
-
   "common.play_now": "Şimdi oyna",
   "common.store_page": "Mağaza sayfası",
   "common.soon": "Yakında",
@@ -20,11 +18,9 @@
   "common.studio": "Stüdyo",
   "common.games": "Oyunlar",
   "common.legal": "Yasal",
-
   "foot.tag": "Bağımsız oyun stüdyosu. Aynı masada oynanan oyunlar.",
   "foot.nocookie": "Bu sitede çerez ve izleyici yok; dil tercihin yalnızca kendi tarayıcında saklanır.",
   "foot.rights": "© 2026 Archonbite. Tüm hakları saklıdır.",
-
   "home.title": "Archonbite: bağımsız oyun stüdyosu | QuizNight ve Salty Pirates",
   "home.desc": "Archonbite bağımsız bir oyun stüdyosu. TV'yi sahne, telefonları kumanda yapan parti oyunu QuizNight'ı tarayıcıda hemen oyna; Salty Pirates'ı keşfet.",
   "home.hero.tagline": "Aynı masada oynanan oyunlar.",
@@ -71,9 +67,7 @@
   "home.about.v4.t": "Adil sunucu",
   "home.about.v4.d": "Süreyi, cevapları ve puanı yalnızca sunucu tutar; telefon sadece niyetini bildirir.",
   "home.about.contact": "Bize yaz",
-
   "games.salty.slide.tab": "Yakında burada",
-
   "store.crumb.home": "Archonbite",
   "store.crumb.games": "Oyunlar",
   "store.crumb.label": "Sayfa yolu",
@@ -111,7 +105,6 @@
   "store.buy.follow": "Haber için bize yaz",
   "store.noinstall": "Kurulum yok. Cihazının tarayıcısı yeterli.",
   "store.editbar": "Düzenleme modu: turuncu çerçeveli kısımlar hâlâ yer tutucu (TODO-OWNER).",
-
   "play.title": "QuizNight'ı oyna | Archonbite",
   "play.desc": "QuizNight'ı tarayıcıda hemen oyna: TV'de aç, QR'ı okut, telefonlarla yarış. Kurulum yok. Kafeler ve oyun barları için mekan modu.",
   "play.hero.eyebrow": "Oyna",
@@ -146,7 +139,6 @@
   "play.venues.p2": "Ödemeyi siz kasada alırsınız: sistem hiçbir zaman para almaz, kart bilgisi istemez. İsterseniz kazanana küçük bir ödül verebilir ve kafenize özel sorular yükleyebilirsiniz. İlk mekan ortağımız Gusto Board Game Cafe (Çanakkale).",
   "play.venues.cta": "Mekan modu için yaz",
   "play.venues.guide": "Mekan modunu oku",
-
   "guide.title": "QuizNight kullanım kılavuzu | Archonbite",
   "guide.desc": "QuizNight nasıl oynanır: kurulum, odaya katılma, tur türleri, risk ve sabotaj kuralları, joker sınırları, ipuçları, erişilebilirlik, mekan modu ve sık sorulanlar.",
   "guide.eyebrow": "Kılavuz",
@@ -315,7 +307,6 @@
   "guide.a8": "Ayrıntılar gizlilik sayfasında: <a href=\"../legal/\">Gizlilik ve çerezler</a>.",
   "guide.q9": "Hangi tarayıcılar çalışıyor?",
   "guide.a9": "Şimdilik yalnızca Chromium tabanlı tarayıcılar (Chrome, Edge) denendi. Diğer tarayıcılar ve TV'ler için testler sürüyor.",
-
   "legal.title": "Gizlilik ve çerezler | Archonbite",
   "legal.desc": "Archonbite sitesi çerez kullanmaz, izleyici içermez. Gizlilik, iletişim ve taslak yasal metinler.",
   "legal.eyebrow": "Yasal",
@@ -335,9 +326,35 @@
   "legal.s5.mail": "İletişim e-postası:",
   "legal.s6.h": "Haklarınız",
   "legal.s6.p": "TODO-OWNER: KVKK madde 11 ve GDPR kapsamındaki başvuru yolları, avukat onayından sonra buraya yazılacak.",
-
   "e404.title": "Sayfa bulunamadı | Archonbite",
   "e404.desc": "Aradığın sayfa bulunamadı.",
   "e404.h": "Bu sayfa kaçıp gitti.",
-  "e404.p": "Aradığın adres yok ya da taşınmış olabilir."
+  "e404.p": "Aradığın adres yok ya da taşınmış olabilir.",
+  "sp.tag.roguelike": "Roguelike",
+  "sp.tag.naval": "Deniz savaşı",
+  "sp.tag.cards": "Her seviyede üç kart",
+  "sp.tag.ship": "Tek gemi, dinmeyen fırtına",
+  "sp.tag.pc": "Windows PC",
+  "sp.q.patient": "Deniz sabırlıdır. Borçlular değil.",
+  "sp.about.title": "Bu oyun hakkında",
+  "sp.about.body": "Tek bir gemi, dinmeyen bir fırtına ve Davy Jones'un karanlık sularında ödenmemiş bir borç. Dümen senin; toplar kendi kendine konuşur. Düşman filoları dalga dalga gelir, battıkça tecrübe bırakır, ve her seviyede önüne üç kart düşer: üç kader, tek seçim. Gemini bir efsaneye çevir ya da fırtınaya bir isim daha ekle.",
+  "sp.q.cannon": "Her ateş edilen top, bir sonraki dalganın kapısını çalar.",
+  "sp.feat.title": "Öne çıkan özellikler",
+  "sp.feat.story.t": "Hikâye",
+  "sp.feat.story.d": "Defterde adın hâlâ yazılı. Davy Jones hesabı unutmaz, sen de unutma.",
+  "sp.feat.play.t": "Oynanış",
+  "sp.feat.play.d": "Sen dümene geç, toplar kendiliğinden ateş eder. Kart seç, silahını yükselt, kuleleri kuşat, derinlere in.",
+  "sp.feat.vis.t": "Görseller",
+  "sp.feat.vis.d": "Yağmur, yıldırım, hayalet filolar ve gecenin ortasında patlayan barut. Ekran görüntüleri ve videolar yukarıda; fragman yakında.",
+  "sp.feat.plat.t": "Platformlar",
+  "sp.feat.plat.d": "Şimdilik Windows PC. Diğer limanlar sonra.",
+  "sp.cards.q": "Üç kart, üç kader. Hiçbiri bedava.",
+  "sp.cards.sub": "Her seviyede önüne üç kart düşer: üç kader, tek seçim.",
+  "sp.cards.hint": "Bir kart çevir.",
+  "sp.card.1": "Birinci kader",
+  "sp.card.2": "İkinci kader",
+  "sp.card.3": "Üçüncü kader",
+  "sp.final.q": "Ölüler pazarlık etmez. Fırtına etmez. Sen edersin mi?",
+  "sp.final.sub": "Batan gemi tecrübe bırakır. Batan gurur bırakmaz.",
+  "sp.final.cta": "Haber için bize yaz"
 }

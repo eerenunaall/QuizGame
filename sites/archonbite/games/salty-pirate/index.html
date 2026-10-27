@@ -35,7 +35,8 @@
 <script src="../../assets/boot.js"></script>
 <script src="../../assets/app.js" defer></script>
 <script src="../../assets/storm.js" defer></script>
-<script src="../../assets/parchment.js" defer></script>
+<script src="../../assets/salty.js" defer></script>
+<script src="../../assets/tentacles.js" defer></script>
 <link rel="preload" href="../../assets/fonts/pirata-one-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="../../data/games.json" as="fetch" crossorigin>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoGame","name":"Salty Pirates","url":"https://archonbite.com/games/salty-pirate/","description":"Archonbite'ın ikinci oyunu. / Archonbite's second game.","image":"https://archonbite.com/assets/img/og-salty-pirate.jpg","applicationCategory":"Game","publisher":{"@type":"Organization","name":"Archonbite","url":"https://archonbite.com/"},"author":{"@type":"Organization","name":"Archonbite","url":"https://archonbite.com/"}}</script>
@@ -58,8 +59,8 @@
   </div>
 </header>
 <!--@/header-->
-<!-- PLACEHOLDER PAGE: every visible fact on this page comes from data/games.json (game "salty-pirate").
-     Fields listed in its "todo" array are not real yet; open this page with ?edit=1 to see them outlined. -->
+<!-- Salty Pirates is a cinematic page, not the store template: gameplay footage dissolves into the dark between the
+     studio's own lines. Hero text comes from data/games.json; everything else is static with i18n keys (sp.*). -->
 <main id="main" data-game-page="salty-pirate">
 
   <header class="store-hero scope-dark">
@@ -71,19 +72,77 @@
         <span data-g="title">Salty Pirates</span>
       </nav>
       <h1 class="store-title" data-g="title">Salty Pirates</h1>
-      <p class="store-tagline" data-g="tagline">Archonbite'ın diğer oyunu. Hikâyesi, görselleri ve oynanışı çok yakında burada.</p>
+      <p class="store-tagline" data-g="tagline">Deniz sana hâlâ bir şey borçlu değil. Ama sen ona borçlusun.</p>
+      <ul class="sp-tags">
+        <li data-i18n="sp.tag.roguelike">Roguelike</li>
+        <li data-i18n="sp.tag.naval">Deniz savaşı</li>
+        <li data-i18n="sp.tag.cards">Her seviyede üç kart</li>
+        <li data-i18n="sp.tag.ship">Tek gemi, dinmeyen fırtına</li>
+        <li data-i18n="sp.tag.pc">Windows PC</li>
+      </ul>
     </div>
   </header>
 
-  <div class="wrap store-grid">
-    <section class="viewer" data-i18n-attr="aria-label:store.media" aria-label="Oyun görselleri">
-      <div class="stage" data-stage data-field="media"></div>
-      <div class="thumbs" data-thumbs data-i18n-attr="aria-label:store.media.thumbs" aria-label="Görsel seçimi"></div>
-    </section>
-    <aside class="capsule-box" data-capsule></aside>
-    <div class="store-main" data-main><p class="loading-skel" data-i18n="store.loading">Yükleniyor…</p></div>
-    <aside class="buybox" data-buy></aside>
-  </div>
+  <section class="sp-quote" aria-hidden="true">
+    <p class="wrap" data-i18n="sp.q.patient">Deniz sabırlıdır. Borçlular değil.</p>
+  </section>
+
+  <section class="sp-about" aria-labelledby="sp-about-h">
+    <div class="wrap sp-split">
+      <div class="sp-parchment" data-sheet>
+        <h2 id="sp-about-h" data-i18n="sp.about.title">Bu oyun hakkında</h2>
+        <p data-i18n="sp.about.body">Tek bir gemi, dinmeyen bir fırtına ve Davy Jones'un karanlık sularında ödenmemiş bir borç. Dümen senin; toplar kendi kendine konuşur. Düşman filoları dalga dalga gelir, battıkça tecrübe bırakır, ve her seviyede önüne üç kart düşer: üç kader, tek seçim. Gemini bir efsaneye çevir ya da fırtınaya bir isim daha ekle.</p>
+      </div>
+      <div class="sp-dissolve">
+        <video data-lazy muted loop playsinline preload="none" poster="../../assets/salty-pirate/video/melee-poster.webp" aria-hidden="true">
+          <source src="../../assets/salty-pirate/video/melee.webm" type="video/webm">
+          <source src="../../assets/salty-pirate/video/melee.mp4" type="video/mp4">
+        </video>
+      </div>
+    </div>
+  </section>
+
+  <section class="sp-cinema" aria-label="Salty Pirates">
+    <video data-lazy muted loop playsinline preload="none" poster="../../assets/salty-pirate/video/cannons-poster.webp" aria-hidden="true">
+      <source src="../../assets/salty-pirate/video/cannons.webm" type="video/webm">
+      <source src="../../assets/salty-pirate/video/cannons.mp4" type="video/mp4">
+    </video>
+    <p class="sp-cinema-line" data-i18n="sp.q.cannon">Her ateş edilen top, bir sonraki dalganın kapısını çalar.</p>
+  </section>
+
+  <section class="sp-features" aria-labelledby="sp-feat-h">
+    <div class="wrap">
+      <h2 id="sp-feat-h" data-i18n="sp.feat.title">Öne çıkan özellikler</h2>
+      <div class="sp-ledger">
+        <article class="sp-entry sp-e1"><span class="sp-num" aria-hidden="true">I</span><h3 data-i18n="sp.feat.story.t">Hikâye</h3><p data-i18n="sp.feat.story.d">Defterde adın hâlâ yazılı. Davy Jones hesabı unutmaz, sen de unutma.</p></article>
+        <article class="sp-entry sp-e2"><span class="sp-num" aria-hidden="true">II</span><h3 data-i18n="sp.feat.play.t">Oynanış</h3><p data-i18n="sp.feat.play.d">Sen dümene geç, toplar kendiliğinden ateş eder. Kart seç, silahını yükselt, kuleleri kuşat, derinlere in.</p></article>
+        <article class="sp-entry sp-e3"><span class="sp-num" aria-hidden="true">III</span><h3 data-i18n="sp.feat.vis.t">Görseller</h3><p data-i18n="sp.feat.vis.d">Yağmur, yıldırım, hayalet filolar ve gecenin ortasında patlayan barut. Ekran görüntüleri ve videolar yukarıda; fragman yakında.</p></article>
+        <article class="sp-entry sp-e4"><span class="sp-num" aria-hidden="true">IV</span><h3 data-i18n="sp.feat.plat.t">Platformlar</h3><p data-i18n="sp.feat.plat.d">Şimdilik Windows PC. Diğer limanlar sonra.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="sp-fates" aria-labelledby="sp-fates-h">
+    <div class="wrap">
+      <h2 id="sp-fates-h" data-i18n="sp.cards.q">Üç kart, üç kader. Hiçbiri bedava.</h2>
+      <p class="sp-fates-sub" data-i18n="sp.cards.sub">Her seviyede önüne üç kart düşer: üç kader, tek seçim.</p>
+      <div class="sp-hand">
+        <button type="button" class="sp-card sp-c1" aria-pressed="false" data-i18n-attr="aria-label:sp.card.1" aria-label="Birinci kader"><span class="sp-back" aria-hidden="true"></span><span class="sp-front" aria-hidden="true"><b>I</b></span></button>
+        <button type="button" class="sp-card sp-c2" aria-pressed="false" data-i18n-attr="aria-label:sp.card.2" aria-label="İkinci kader"><span class="sp-back" aria-hidden="true"></span><span class="sp-front" aria-hidden="true"><b>II</b></span></button>
+        <button type="button" class="sp-card sp-c3" aria-pressed="false" data-i18n-attr="aria-label:sp.card.3" aria-label="Üçüncü kader"><span class="sp-back" aria-hidden="true"></span><span class="sp-front" aria-hidden="true"><b>III</b></span></button>
+      </div>
+      <p class="sp-fates-hint" data-i18n="sp.cards.hint">Bir kart çevir.</p>
+    </div>
+  </section>
+
+  <section class="sp-final" aria-labelledby="sp-final-h">
+    <div class="wrap">
+      <h2 id="sp-final-h" data-i18n="sp.final.q">Ölüler pazarlık etmez. Fırtına etmez. Sen edersin mi?</h2>
+      <p class="sp-final-sub" data-i18n="sp.final.sub">Batan gemi tecrübe bırakır. Batan gurur bırakmaz.</p>
+      <a class="btn btn-gold btn-lg" href="#" data-mailto data-subject="Salty Pirates" data-i18n="sp.final.cta">Haber için bize yaz</a>
+      <p class="sp-final-plat" data-i18n="sp.feat.plat.d">Şimdilik Windows PC. Diğer limanlar sonra.</p>
+    </div>
+  </section>
 
 </main>
 <!--@footer-->

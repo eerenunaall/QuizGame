@@ -22,7 +22,7 @@
   var VS = 'attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}';
   var FS = [
     'precision highp float;',
-    'uniform vec2 R;uniform float T;uniform float F;',
+    'uniform vec2 R;uniform float T;uniform float F;uniform float RT;uniform vec4 S[6];',
     'float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}',
     'float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);',
     ' return mix(mix(hash(i),hash(i+vec2(1.,0.)),f.x),mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),f.x),f.y);}',
@@ -102,7 +102,12 @@
     ' col+=vec3(.62,.72,.70)*r;',
     ' col+=F*.06;',
     ' float g=dot(col,vec3(.299,.587,.114));col=mix(vec3(g),col,.78);', // a little film desaturation
-    ' col*=.72;col*=1.-.45*smoothstep(.35,1.05,length(uv*vec2(.85,1.15)));',
+    ' col*=.44;col*=1.-.45*smoothstep(.35,1.05,length(uv*vec2(.85,1.15)));',
+    ' for(int i=0;i<6;i++){vec4 s=S[i];float age=RT-s.z;if(age<0.||age>3.||s.w<=0.)continue;',
+    '  float d=length(gl_FragCoord.xy-s.xy)/R.y;float r=age*.16*(.6+s.w*.5);',
+    '  float ring=smoothstep(.006,0.,abs(d-r))+.5*smoothstep(.006,0.,abs(d-r*.62));',
+    '  float flash=exp(-age*5.)*smoothstep(.05*s.w,0.,d);',
+    '  col+=vec3(.42,.55,.52)*(ring*exp(-age*1.6)*.32+flash*.7)*s.w;}',
     ' col+=(hash(gl_FragCoord.xy+fract(T)*61.)-.5)*.015;',
     ' gl_FragColor=vec4(col,1.);}'
   ].join('\n');
@@ -121,6 +126,27 @@
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
   var loc = gl.getAttribLocation(pr, 'a'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
   var uR = gl.getUniformLocation(pr, 'R'), uT = gl.getUniformLocation(pr, 'T'), uF = gl.getUniformLocation(pr, 'F');
+  var uRT = gl.getUniformLocation(pr, 'RT'), uS = gl.getUniformLocation(pr, 'S');
+  // pointer splashes: [x, y, birth time, strength] in canvas pixels, ring buffer of six
+  var splash = new Float32Array(24), si = 0, lastWake = 0;
+  function addSplash(cx, cy, strength) {
+    var t = (performance.now() - t0) / 1000;
+    splash.set([cx * scale, (window.innerHeight - cy) * scale, t, strength], si * 4); si = (si + 1) % 6;
+    if (!run) draw(performance.now());
+  }
+  var finePointer = false;
+  try { finePointer = window.matchMedia('(pointer: fine)').matches; } catch (e) {}
+  if (finePointer && !reduce) {
+    // a click on empty dark sea (not on text, links, buttons, media or the parchment) drops a cannonball
+    document.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0 || e.target.closest('a,button,video,input,textarea,select,label,.sp-parchment,.sp-entry,.sp-card,p,h1,h2,h3,li,img,.site-header')) return;
+      addSplash(e.clientX, e.clientY, 1);
+    });
+    document.addEventListener('pointermove', function (e) {
+      var now = performance.now();
+      if (now - lastWake > 140 && (Math.abs(e.movementX) + Math.abs(e.movementY)) > 6) { lastWake = now; addSplash(e.clientX, e.clientY, 0.32); }
+    }, { passive: true });
+  }
 
   // Resolution fraction: the sea is soft and fogged, so half resolution upscaled looks the same and costs a quarter.
   var small = window.innerWidth < 700, scale = small ? 0.4 : 0.5, minScale = small ? 0.28 : 0.33;
@@ -141,6 +167,7 @@
   function draw(now) {
     var t = (now - t0) / 1000;
     gl.uniform2f(uR, cv.width, cv.height); gl.uniform1f(uT, t * 0.5); gl.uniform1f(uF, flash(t));
+    gl.uniform1f(uRT, t); gl.uniform4fv(uS, splash);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
   function loop(now) {

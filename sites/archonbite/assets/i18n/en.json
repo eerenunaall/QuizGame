@@ -1,13 +1,11 @@
 {
   "skip": "Skip to content",
-
   "nav.guide": "Guide",
   "nav.play": "Play now",
   "nav.menu": "Menu",
   "nav.main": "Main navigation",
   "nav.lang": "Language",
   "nav.home": "Archonbite home",
-
   "common.play_now": "Play now",
   "common.store_page": "Store page",
   "common.soon": "Coming soon",
@@ -20,11 +18,9 @@
   "common.studio": "Studio",
   "common.games": "Games",
   "common.legal": "Legal",
-
   "foot.tag": "Independent game studio. Games for the same table.",
   "foot.nocookie": "No cookies and no trackers on this site; your language choice is stored only in your own browser.",
   "foot.rights": "© 2026 Archonbite. All rights reserved.",
-
   "home.title": "Archonbite: independent game studio | QuizNight and Salty Pirates",
   "home.desc": "Archonbite is an independent game studio. Play the TV party quiz QuizNight in your browser right now (TV = stage, phones = controllers) and discover Salty Pirates.",
   "home.hero.tagline": "Games for the same table.",
@@ -71,9 +67,7 @@
   "home.about.v4.t": "A fair server",
   "home.about.v4.d": "Only the server keeps time, answers and score; the phone just says what you want to do.",
   "home.about.contact": "Write to us",
-
   "games.salty.slide.tab": "Coming here soon",
-
   "store.crumb.home": "Archonbite",
   "store.crumb.games": "Games",
   "store.crumb.label": "Breadcrumb",
@@ -111,7 +105,6 @@
   "store.buy.follow": "Write to us for news",
   "store.noinstall": "Nothing to install. Your device's browser is enough.",
   "store.editbar": "Edit mode: parts with an orange outline are still placeholders (TODO-OWNER).",
-
   "play.title": "Play QuizNight | Archonbite",
   "play.desc": "Play QuizNight in your browser right now: open it on the TV, scan the QR, race on your phones. Nothing to install. Venue mode for cafés and game bars.",
   "play.hero.eyebrow": "Play",
@@ -146,7 +139,6 @@
   "play.venues.p2": "You take payment at your till: the system never takes money or asks for card details. You can optionally give the winner a small reward and upload questions of your own. Our first venue partner is Gusto Board Game Cafe (Çanakkale).",
   "play.venues.cta": "Write about venue mode",
   "play.venues.guide": "Read about venue mode",
-
   "guide.title": "QuizNight how-to-play guide | Archonbite",
   "guide.desc": "How to play QuizNight: setup, joining a room, round types, risk and sabotage rules, power limits, tips, accessibility, venue mode and FAQ.",
   "guide.eyebrow": "Guide",
@@ -315,7 +307,6 @@
   "guide.a8": "See the privacy page for details: <a href=\"../legal/\">Privacy and cookies</a>.",
   "guide.q9": "Which browsers work?",
   "guide.a9": "So far only Chromium-based browsers (Chrome, Edge) have been tried. Tests for other browsers and TVs are ongoing.",
-
   "legal.title": "Privacy and cookies | Archonbite",
   "legal.desc": "The Archonbite site uses no cookies and has no trackers. Privacy, contact and draft legal text.",
   "legal.eyebrow": "Legal",
@@ -335,9 +326,35 @@
   "legal.s5.mail": "Contact email:",
   "legal.s6.h": "Your rights",
   "legal.s6.p": "TODO-OWNER: the application routes under KVKK article 11 and the GDPR will be written here after a lawyer's review.",
-
   "e404.title": "Page not found | Archonbite",
   "e404.desc": "The page you were looking for was not found.",
   "e404.h": "This page ran away.",
-  "e404.p": "The address does not exist or may have moved."
+  "e404.p": "The address does not exist or may have moved.",
+  "sp.tag.roguelike": "Roguelike",
+  "sp.tag.naval": "Naval combat",
+  "sp.tag.cards": "Three cards every level",
+  "sp.tag.ship": "One ship, endless storm",
+  "sp.tag.pc": "Windows PC",
+  "sp.q.patient": "The sea is patient. Debtors aren't.",
+  "sp.about.title": "About this game",
+  "sp.about.body": "One ship, one endless storm, and a debt unpaid in Davy Jones' dark waters. The helm is yours; the cannons speak for themselves. Enemy fleets roll in wave after wave, leave their wreckage behind as experience, and every level deals you three cards: three fates, one choice. Turn your ship into a legend, or give the storm one more name to remember.",
+  "sp.q.cannon": "Every cannon fired knocks on the next wave's door.",
+  "sp.feat.title": "Features",
+  "sp.feat.story.t": "Story",
+  "sp.feat.story.d": "Your name is still in the ledger. Davy Jones never forgets a debt, and neither should you.",
+  "sp.feat.play.t": "Gameplay",
+  "sp.feat.play.d": "Take the helm, the cannons fire on their own. Pick your cards, sharpen your guns, besiege the towers, sink deeper.",
+  "sp.feat.vis.t": "Visuals",
+  "sp.feat.vis.d": "Rain, lightning, ghost fleets and gunpowder blooming in the dark. Screenshots and videos above; trailer coming soon.",
+  "sp.feat.plat.t": "Platforms",
+  "sp.feat.plat.d": "Windows PC for now. Other harbors later.",
+  "sp.cards.q": "Three cards, three fates. None of them free.",
+  "sp.cards.sub": "Every level deals you three cards: three fates, one choice.",
+  "sp.cards.hint": "Turn a card.",
+  "sp.card.1": "First fate",
+  "sp.card.2": "Second fate",
+  "sp.card.3": "Third fate",
+  "sp.final.q": "The dead don't bargain. The storm doesn't either. Will you?",
+  "sp.final.sub": "A sinking ship leaves experience. Sinking pride leaves nothing.",
+  "sp.final.cta": "Write to us for news"
 }
