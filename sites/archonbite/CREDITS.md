@@ -41,3 +41,10 @@ Facts about the game on the guide and store pages come from this repository's do
 
 QuizNight, Salty Pirate and Archonbite are names used by the studio. Other product and company names that may appear
 (for example Gusto Board Game Cafe, YouTube) belong to their owners and are used only to identify them.
+
+## Salty Pirate fonts (added)
+
+| Font | Use | Licence |
+| --- | --- | --- |
+| Pirata One | Salty Pirate page headings | SIL Open Font License 1.1 (Google Fonts), self-hosted `assets/fonts/pirata-one-latin.woff2` |
+| Cormorant Garamond (variable) | Salty Pirate page text | © 2015 The Cormorant Project Authors, SIL OFL 1.1, `assets/fonts/cormorant-latin.woff2`; licence text in `assets/fonts/OFL-PirataOne-Cormorant.txt` |

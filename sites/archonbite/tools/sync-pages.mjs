@@ -40,7 +40,7 @@ const pages = [
   },
   {
     file: 'games/salty-pirate/index.html', path: '/games/salty-pirate/', page: 'game', nav: 'salty', og: 'og-salty-pirate.jpg',
-    extraHead: ['<link rel="preload" href="{P}data/games.json" as="fetch" crossorigin>'],
+    extraHead: ['<script src="{P}assets/storm.js" defer></script>', '<link rel="preload" href="{P}assets/fonts/pirata-one-latin.woff2" as="font" type="font/woff2" crossorigin>', '<link rel="preload" href="{P}data/games.json" as="fetch" crossorigin>'],
     title: 'Salty Pirate | Archonbite',
     desc: "Salty Pirate, Archonbite'ın ikinci oyunu. Bilgiler ve görseller eklendikçe bu sayfa dolacak.",
     ld: [{
