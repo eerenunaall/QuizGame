@@ -623,3 +623,10 @@ html:has(main[data-game-page="salty-pirate"]) .site-footer { border-top-color: r
 @media print { canvas.storm { display: none; } }
 html:has(main[data-game-page="salty-pirate"]) .store-hero.scope-dark { background: linear-gradient(180deg, rgba(2, 8, 8, .5), rgba(2, 8, 8, 0)); }
 html:has(main[data-game-page="salty-pirate"]) main > section, html:has(main[data-game-page="salty-pirate"]) main .band { background: transparent; }
+/* the 3D sea draws its own fog and rain, so the CSS fog/rain fallbacks step aside once it runs */
+html.storm-on body::before { display: none; }
+html:has(main[data-game-page="salty-pirate"]) .store-hero::after { background: linear-gradient(180deg, rgba(2, 8, 8, .35), rgba(2, 8, 8, 0) 70%); }
+html:has(main[data-game-page="salty-pirate"]) .store-logo { max-height: clamp(180px, 30vw, 300px); max-width: min(300px, 70vw); margin: 4px 0 14px;
+  filter: drop-shadow(0 3px 2px rgba(0, 0, 0, .9)) drop-shadow(0 0 30px rgba(0, 0, 0, .7)); }
+html.storm-on .store-hero-bg { display: none; }
+html.storm-on .store-hero::after { background: linear-gradient(180deg, rgba(2, 8, 8, .25), rgba(2, 8, 8, 0) 60%); }

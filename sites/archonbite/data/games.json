@@ -203,7 +203,10 @@
         "header": "assets/salty-pirate/key-art.svg",
         "header_w": 1600,
         "header_h": 900,
-        "square": "assets/salty-pirate/key-art.svg"
+        "square": "assets/salty-pirate/key-art.svg",
+        "logo": "assets/salty-pirate/logo.webp",
+        "logo_w": 900,
+        "logo_h": 964
       },
       "media": [
         { "type": "video", "provider": "youtube", "id": "", "poster": "assets/salty-pirate/shot-1.svg", "w": 1280, "h": 720, "placeholder": true,
