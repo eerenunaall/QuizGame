@@ -412,4 +412,20 @@ export const adminTr = {
   'admin.venues.sets.retire': 'Bu yüklemeyi kaldır',
   'admin.venues.sets.retireConfirm': '{file} yüklemesindeki sorular oyundan çıkarılsın mı?',
   'admin.venues.sets.retired': '{count} soru oyundan çıkarıldı.',
+  'admin.venues.displays.title': "Bağlı TV'ler (lisans)",
+  'admin.venues.displays.intro':
+    "Mekanın panelinden eşleştirdiği TV'ler. Her bağlı TV bir lisans hakkı sayılır.",
+  'admin.venues.displays.empty': "Bu mekanın bağlı TV'si yok.",
+  'admin.venues.displays.name': 'Ekran',
+  'admin.venues.displays.lastSeen': 'Son görülme',
+  'admin.venues.displays.state': 'Durum',
+  'admin.venues.displays.active': 'Bağlı',
+  'admin.venues.displays.revoked': 'Kaldırıldı ({reason})',
+  'admin.venues.displays.revoke': 'Kaldır',
+  'admin.venues.displays.revokeConfirm':
+    '{name} ekranı kaldırılsın mı? TV hemen eşleştirme ekranına döner.',
+  'admin.venues.displays.revokedDone': 'Ekran kaldırıldı.',
+  'admin.venues.displays.seats': 'TV hakkı (en fazla 50)',
+  'admin.venues.displays.saveSeats': 'Hakkı kaydet',
+  'admin.venues.displays.seatsSaved': 'TV hakkı güncellendi.',
 } as const;

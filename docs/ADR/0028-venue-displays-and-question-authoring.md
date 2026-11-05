@@ -82,6 +82,12 @@ Per venue: the paired displays (name, paired at, last seen, state), revoke, and 
 and `POST …/seats` (venuesWrite).
 
 ### 6. Question authoring (Soru Stüdyosu), OWNER only
+
+**Status of this section:** the manual form is built (first bullet). File extraction and AI generation
+(the rest of this section) are the accepted design but are **not built yet**: they ship together with
+their hostile-file and prompt-injection tests, or not at all. Migration 0014 already holds their tables
+(`venue_authoring_runs`, `venue_question_drafts`); nothing reads them yet. `AUTHORING_*` variables are
+accepted by the config and unused until then.
 Same rationale as ADR-0025 §2: content is the venue's voice and liability.
 - **Manual**: a form (category from the venue's own and the global ones, question, 4 options, the correct
   one, difficulty, "Biliyor muydun?" explanation, optional source URL). The question is turned into one
@@ -125,7 +131,7 @@ Same rationale as ADR-0025 §2: content is the venue's voice and liability.
 - Rooms opened for a display and the "last room" link are in memory: single instance (ADR-0024).
 - New tables: `venue_displays`, `venue_display_pairings` (migration 0013), `venue_question_drafts`,
   `venue_authoring_runs`, `venue_question_uploads.origin/source_file_hash` (migration 0014).
-- Tests: unit `display-codes.test.ts`, `extract.test.ts`, `authoring.test.ts` (parser, injection);
-  integration `venue-displays.test.ts`, `venue-authoring.test.ts`; red-team `venue-displays.test.ts`
-  (ATTACK 60–64), `venue-authoring.test.ts` (ATTACK 65–67); web `display-pairing.test.tsx`,
-  `question-studio.test.tsx`; e2e `venue-displays.spec.ts`.
+- Tests (built): integration `venue-displays.test.ts`, `venue-studio.test.ts`; red-team
+  `venue-displays.test.ts` (ATTACK 60-64); web `venue/display.test.tsx`, admin `Venues.test.tsx`; e2e
+  `venue-displays.spec.ts`. Planned with file extraction and generation: `extract.test.ts` (hostile PDFs, DOCX),
+  `authoring.test.ts` (strict parser, prompt injection), integration `venue-authoring.test.ts`, ATTACK 65-67.
