@@ -52,6 +52,7 @@ import { registerVenueContentRoutes } from './venue/content-routes';
 import { registerVenueRoutes } from './venue/routes';
 import { registerVenueDisplayRoutes, roomCreationGate } from './venue/display-routes';
 import { VenueDisplays } from './venue/displays';
+import { registerVenueAuthoringRoutes } from './venue/authoring-routes';
 import { VenueService } from './venue/service';
 
 export const MIGRATIONS_DIR = fileURLToPath(
@@ -411,6 +412,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerVenueContentRoutes(app, { config, db, venues, limiter, security, clock });
   const displayRoutes = { config, db, venues, displays, limiter, security };
   registerVenueDisplayRoutes(app, displayRoutes);
+  registerVenueAuthoringRoutes(app, { config, db, venues, limiter, security, clock });
   registerBlindRoutes(app, { config, quizzes, vault, flags, limiter });
   registerPrivacyRoutes(app, {
     sessions: accountSessions,

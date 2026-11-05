@@ -14,6 +14,7 @@ import { QuizEditorPage } from './pages/QuizEditor';
 import { QuizzesPage } from './pages/Quizzes';
 import { RespondPage } from './pages/Respond';
 import { UnlockPage } from './pages/Unlock';
+import { DisplayLockGate } from './venue/DisplayPairing';
 
 // Phones never download the TV screens (and the QR code library); TVs never download the controller.
 const TvApp = lazy(() => import('./tv/TvApp').then((module) => ({ default: module.TvApp })));
@@ -71,9 +72,11 @@ export function App() {
     {
       path: '/tv',
       render: () => (
-        <ClientProvider kind="DISPLAY">
-          <TvApp locale={locale} onLocale={changeLocale} theme={theme} onTheme={changeTheme} />
-        </ClientProvider>
+        <DisplayLockGate>
+          <ClientProvider kind="DISPLAY">
+            <TvApp locale={locale} onLocale={changeLocale} theme={theme} onTheme={changeTheme} />
+          </ClientProvider>
+        </DisplayLockGate>
       ),
     },
     { path: '/join/:code?', render: (params) => <PlayRoute code={params.code} /> },

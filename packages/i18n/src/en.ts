@@ -1,6 +1,7 @@
 import type { MessageKey } from './tr';
 import { teamsContentEn } from './teams-content.en';
 import { venueContentEn } from './venue-content.en';
+import { venueDisplayEn } from './venue-display.en';
 
 export const en: Record<MessageKey, string> = {
   'brand.name': 'QUIZNIGHT',
@@ -770,4 +771,5 @@ export const en: Record<MessageKey, string> = {
   'unlock.staff': 'Venue staff? Open this TV as a table',
   ...venueContentEn,
   ...teamsContentEn,
+  ...venueDisplayEn,
 };
