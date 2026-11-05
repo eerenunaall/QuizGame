@@ -542,7 +542,14 @@ export interface VenueImportResult {
 
 export async function importVenueUpload(
   db: Database,
-  input: { venueId: string; accountId: string; fileName: string; bytes: Uint8Array },
+  input: {
+    venueId: string;
+    accountId: string;
+    fileName: string;
+    bytes: Uint8Array;
+    /** Where the bytes came from (ADR-0028 §6); a file by default. */
+    origin?: 'FILE' | 'MANUAL';
+  },
   options: VenueAnalysisOptions,
 ): Promise<VenueAnalysisFailure | VenueImportResult> {
   const { result, plan: planned } = await plan(db, input, options);
@@ -609,6 +616,7 @@ export async function importVenueUpload(
         rows_invalid: analysis.counts.invalid,
         rows_duplicate: analysis.counts.duplicate,
         by_category: JSON.stringify(byCategory),
+        origin: input.origin ?? 'FILE',
       })
       .returning('id')
       .executeTakeFirstOrThrow();

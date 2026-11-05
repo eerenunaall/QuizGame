@@ -17,9 +17,11 @@ import { SignInForm, useAccount } from '../pages/useAccount';
 import { venueApi, type StaffRole, type StaffTable, type VenueSettingsView } from './api';
 import { formatLeft, useTicker } from './meter';
 import { VenueQuestions } from './VenueQuestions';
+import { DisplayPanel } from './DisplayPanel';
+import { QuestionStudio } from './QuestionStudio';
 import styles from './StaffPage.module.css';
 
-type Tab = 'tables' | 'new' | 'redeem' | 'questions' | 'settings';
+type Tab = 'tables' | 'new' | 'redeem' | 'questions' | 'settings' | 'displays' | 'studio';
 type Venue = { id: string; name: string; role: StaffRole };
 
 /** What a refusal means for the person at the counter (never a code or a status number). */
@@ -68,7 +70,9 @@ export function StaffPage(): ReactNode {
   const [venues, setVenues] = useState<Venue[] | null>(null);
   const [venueId, setVenueId] = useState<string | null>(null);
   const [disabled, setDisabled] = useState(false);
-  const [tab, setTab] = useState<Tab>(link ? 'new' : 'tables');
+  // A TV's pairing QR opens the panel with its code (ADR-0028 §2).
+  const pairCode = useMemo(() => new URLSearchParams(search).get('pair'), [search]);
+  const [tab, setTab] = useState<Tab>(pairCode ? 'displays' : link ? 'new' : 'tables');
 
   useEffect(() => {
     if (state.kind !== 'in') return;
@@ -130,7 +134,8 @@ export function StaffPage(): ReactNode {
                   'new',
                   'redeem',
                   'questions',
-                  ...(venue.role === 'OWNER' ? ['settings'] : []),
+                  'displays',
+                  ...(venue.role === 'OWNER' ? ['studio', 'settings'] : []),
                 ] as Tab[]
               ).map((id) => (
                 <button
@@ -150,6 +155,12 @@ export function StaffPage(): ReactNode {
             ) : null}
             {tab === 'redeem' ? <Redeem venueId={venue.id} /> : null}
             {tab === 'questions' ? <VenueQuestions venueId={venue.id} role={venue.role} /> : null}
+            {tab === 'displays' ? (
+              <DisplayPanel venueId={venue.id} role={venue.role} initialCode={pairCode} />
+            ) : null}
+            {tab === 'studio' && venue.role === 'OWNER' ? (
+              <QuestionStudio venueId={venue.id} />
+            ) : null}
             {tab === 'settings' && venue.role === 'OWNER' ? <Settings venueId={venue.id} /> : null}
             <Button variant="ghost" size="md" block onClick={signOut} className={styles.signOut}>
               {t('staff.signOut')}

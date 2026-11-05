@@ -141,13 +141,22 @@ cd /app/scripts && node -e "const {Client}=require('pg');(async()=>{const c=new 
 
 Çıktıda `enabled: true` görmelisiniz. (Bu komut sandbox'ta denenmedi; konsol yolu esastır.)
 
-## 9. Personeli ekleyin ve ilk test masasını açın
+## 9. Personeli ekleyin, TV'yi bağlayın ve ilk test masasını açın
+
+Bu kurulumda `VENUE_LOCK=1` açıktır (şablonda hazır): **kimse herkese açık sayfadan TV oyunu açamaz.** Misafirler yalnızca
+telefon ekranını görür; TV, kafenin panelinden bir kez **bağlanır**. Her bağlı TV bir lisans hakkıdır (varsayılan 3;
+yönetici konsolunda Mekanlar > mekan > "TV hakkı" ile değişir).
 
 1. Personel telefonlarından `https://<adresiniz>/staff` açıp kendi e-postasıyla kod alır, girer.
-2. TV'de `https://<adresiniz>/tv` açın (TV tarayıcısında) > **TV'de oyunu başlat**: 6 harfli oda kodu çıkar.
-3. Telefonda **Mekan paneli > Yeni masa**: süre seçin (test için 15 dk), TV'deki kodu yazın, **Masayı aç**.
+2. **TV'yi bağlayın (bir kez):** TV tarayıcısında `https://<adresiniz>/tv` açın. Ekranda büyük bir **eşleştirme kodu** ve QR
+   çıkar (5 dakika geçerli, kendiliğinden yenilenir). Sahip telefonunda **Mekan paneli > TV'ler > TV ekle**: kodu yazın
+   (ya da TV'deki QR'ı telefonla okutun, kod kendiliğinden dolar), ekrana bir ad verin (ör. "Salon TV 1"), **Bağla**.
+   TV birkaç saniye içinde kendiliğinden bağlanır. Bu işlemi yalnızca **sahip** yapabilir.
+3. **Oyunu TV'ye gönderin:** panelde **TV'ler** listesinde ekranın yanında **Bu TV'de oyun aç**'a basın; TV'de oda açılır.
+   Ya da TV'de **Oyun aç**'a basın. Sonra **Yeni masa**: süre seçin (test için 15 dk), TV'deki 6 harfli kodu yazın.
 4. TV'de sağ üstte kalan süre görünmeli. Kendi telefonunuzla TV'deki QR'ı okutup katılın, oyunu başlatın.
    **QR'ın adresinin sizin adresiniz olduğunu** kontrol edin.
+5. TV çalınırsa ya da tarayıcısı sıfırlanırsa: panelde **Kaldır** deyin; TV hemen eşleştirme ekranına döner.
 
 ## 10. Kendi alan adınla yayınlamak (isteğe bağlı)
 
@@ -193,6 +202,8 @@ Kodda değişiklik gerekmez: CSP'nin `connect-src` kuralı, QR adresi ve izinli 
       ile kodu girin: "Geçerli!" görünür; aynı kod ikinci kez "zaten kullanıldı" der.
 - [ ] Sorular Türkçe, geliştirme sorusu (örn. "Bir haftada kaç gün vardır?" gibi seed soruları) **hiç çıkmıyor**.
 - [ ] Sunucuyu **Manual Deploy > Restart service** ile yeniden başlatın: açık masa ve kalan süre geri gelir.
+- [ ] **Kilit**: bağlı olmayan bir tarayıcıda `/tv` açın: oyun yok, yalnızca eşleştirme kodu görünür. Panelde TV'yi
+      **Kaldır**: TV hemen eşleştirme ekranına döner.
 - [ ] Yönetim konsolu > Mekanlar > Mekan oturumları raporunda deneme masaları görünür.
 - [ ] Deneme verileri raporu karıştırmasın diye gerekirse deneme masalarını not alın (rapor gün bazlıdır).
 

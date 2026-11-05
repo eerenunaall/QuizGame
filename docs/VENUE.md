@@ -194,6 +194,34 @@ Merkezi soru havuzundaki sorular kaynaklarla denetlenir; **sizin yüklediğiniz 
 biçimi, yazımı, tekrarı ve uygunsuz içeriği kontrol eder, bilginin doğruluğunu kontrol edemez. Yapay zekânın verdiği
 bilgileri yayına almadan önce gözden geçirin; yanlış çıkan soruyu kaldırın.
 
+## TV ekleme (kafeye lisanslı kurulum)
+
+Kafe sürümünde herkese açık bir TV oyunu yoktur: **misafirler yalnızca telefon ekranını görür**, TV ise kafenin
+paneline bağlanır (sunucuda `VENUE_LOCK=1`; Gusto için hazırdır, ADR-0028). Bağlı olmayan bir tarayıcıda `/tv` açılırsa
+oyun değil, büyük bir **eşleştirme kodu** ve QR görünür.
+
+1. TV tarayıcısında `/tv` açın. Ekranda `XXXX-XXXX` biçiminde kod çıkar (5 dakika geçerli, yenilenir).
+2. Sahip, telefonunda **Mekan paneli → TV'ler → TV ekle**: kodu yazın (büyük/küçük harf fark etmez; QR'ı okutursanız kod
+   kendiliğinden dolar), ekrana bir ad verin (**Salon TV 1**), **Bağla**. Her kod yalnızca bir kez çalışır.
+3. **Bu TV'de oyun aç**: TV'de oda hemen açılır; masa süresini **Yeni masa** ya da bu düğmeyle başlatırsınız.
+4. **Kaldır**: TV hemen eşleştirme ekranına döner (çalınan ya da bozulan ekranlar için). Bağlı ekran sayınız
+   **lisans hakkınızı** aşamaz (varsayılan 3); fazlası için bizimle iletişime geçin. TV'ler bir saatte bir kimlik
+   bilgisini yeniler; panelde ekranın **Açık/Kapalı** durumu görünür.
+
+Yalnızca **sahip** TV ekler ve kaldırır; görevli listeyi görür ve **Bu TV'de oyun aç** diyebilir.
+
+## Soru Stüdyosu
+
+Panelde **Soru Stüdyosu** sekmesi (yalnızca sahip): kategori, soru, 4 şık, doğru şık, zorluk, isteğe bağlı **Biliyor
+muydun?** açıklaması ve kaynak adresi. **Kontrol et** hiçbir şey kaydetmez; **Kaydet** soruyu kafenizin havuzuna ekler.
+Soru, dosya yüklemeyle aynı denetimlerden geçer (yazım, tekrar, uygunsuz ifade, bağlantı); sorun varsa neyin nasıl
+düzeltileceği Türkçe yazılır ve soru kaydedilmez. Kaydedilen soru yalnızca sizin masalarınızda çıkar ve **Sorular**
+sekmesinde "Elle yazılan soru" olarak görünür (kaldırılabilir).
+
+**Henüz yapılmadı:** PDF/Word belgesinden otomatik soru üretme (ADR-0028 §6 tasarımı hazır; yapay zekâ taslakları sahibin
+onayından geçmeden havuza girmez). Bugün için belgeden soru çıkarmak istiyorsanız yapay zekâ asistanına şablon
+istemini verip çıktısını Sorular sekmesinden CSV olarak yükleyin.
+
 ## Sık sorulanlar
 
 - **Süre oyunun ortasında biterse?** O soru cevaplanır, gösterilir, puanlar yazılır; sonra sonuçlar gelir.

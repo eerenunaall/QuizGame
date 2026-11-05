@@ -92,3 +92,40 @@ describe('venues in the console (ADR-0024)', () => {
     );
   });
 });
+
+describe('venue displays in the console (ADR-0028)', () => {
+  it('lists TVs, removes one after confirming and saves the seat count', async () => {
+    vi.stubGlobal('confirm', () => true);
+    const { calls } = fakeServer((call) => {
+      if (call.path === '/v1/admin/venues') return { json: { items: [row] } };
+      if (call.path === `/v1/admin/venues/${VENUE}/displays`)
+        return {
+          json: {
+            seats: 3,
+            items: [
+              {
+                id: 'd1',
+                name: 'Salon TV 1',
+                lastSeenAt: 1,
+                online: false,
+                revokedAt: null,
+                revokeReason: null,
+              },
+            ],
+          },
+        };
+      if (call.path.endsWith('/revoke') || call.path.endsWith('/seats'))
+        return { json: { ok: true, seats: 5 } };
+      return undefined;
+    });
+    render(<Venues id={VENUE} />);
+    fireEvent.click(await screen.findByTestId('display-revoke-Salon TV 1'));
+    await waitFor(() =>
+      expect(calls.some((c) => c.path.endsWith('/displays/d1/revoke'))).toBe(true),
+    );
+    fireEvent.change(await screen.findByTestId('venue-seats'), { target: { value: '5' } });
+    fireEvent.submit(screen.getByTestId('venue-seats').closest('form')!);
+    await waitFor(() => expect(calls.some((c) => c.path.endsWith('/seats'))).toBe(true));
+    expect(calls.find((c) => c.path.endsWith('/seats'))!.body).toEqual({ seats: 5 });
+  });
+});

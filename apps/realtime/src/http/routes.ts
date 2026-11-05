@@ -51,6 +51,17 @@ export interface RouteDeps {
   metrics: Metrics;
   pool: Pool;
   migrationsDir: string;
+  /**
+   * VENUE_LOCK (ADR-0028 §1): who may create a room. Answers the request itself when it refuses; the
+   * display it names is told about the room. Absent: anybody (the public game).
+   */
+  roomGate?: {
+    authorize(
+      request: FastifyRequest,
+      reply: FastifyReply,
+    ): Promise<{ displayId: string | null } | null>;
+    created(displayId: string, roomId: string): void;
+  };
 }
 
 const MAX_ROOMS_PER_INSTANCE = 20_000;
@@ -125,6 +136,8 @@ export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
         return apiError(reply, 403, 'BANNED');
       const body = CreateRoomBody.safeParse(request.body);
       if (!body.success) return apiError(reply, 400, 'INVALID_MESSAGE');
+      const allowed = deps.roomGate ? await deps.roomGate.authorize(request, reply) : null;
+      if (deps.roomGate && !allowed) return reply;
       if (manager.size() >= MAX_ROOMS_PER_INSTANCE) return apiError(reply, 503, 'INTERNAL');
 
       const created = await manager.createRoom({
@@ -134,6 +147,7 @@ export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
         ipHash: ipHashOf(request, deps),
       });
       const { room } = created;
+      if (allowed?.displayId) deps.roomGate!.created(allowed.displayId, room.id);
       return reply.code(201).send({
         roomId: room.id,
         code: room.code,

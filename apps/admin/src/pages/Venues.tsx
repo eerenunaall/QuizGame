@@ -2,6 +2,7 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { api, apiText } from '../api';
 import { go, useLoad } from '../hooks';
 import { ErrorNote, Loading, Ok, t, useAction, when } from '../ui';
+import { VenueDisplays } from './VenueDisplays';
 import { VenueSets } from './VenueSets';
 
 interface VenueRow {
@@ -224,6 +225,8 @@ function VenueDetail({ venue, onChanged }: { venue: VenueRow; onChanged: () => v
       ) : report.loading ? (
         <Loading />
       ) : null}
+
+      <VenueDisplays venueId={venue.id} />
 
       <VenueSets venueId={venue.id} />
 

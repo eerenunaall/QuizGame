@@ -137,5 +137,18 @@ export const LIMITS = {
    */
   venueContent: { capacity: 6, refillPerSec: 6 / 600 },
   venueContentVenue: { capacity: 20, refillPerSec: 20 / 3600 },
+  /**
+   * Venue displays (ADR-0028 §2): a TV asking for a pairing code (per address), a TV polling for its
+   * pairing or commands (every 3 s; a café's TVs share one address), and an owner claiming a code (per
+   * account and per venue; a miss costs double, so 8 characters of 31 symbols stay out of reach).
+   */
+  displayPairStart: { capacity: 10, refillPerSec: 10 / 600 },
+  displayPoll: { capacity: 120, refillPerSec: 3 },
+  displayPair: { capacity: 10, refillPerSec: 10 / 600 },
+  displayPairVenue: { capacity: 30, refillPerSec: 30 / 3600 },
+  /** Turning a document into questions (ADR-0028 §6): a paid model call each, per account. */
+  venueAuthoring: { capacity: 3, refillPerSec: 3 / 600 },
+  /** The studio's other writes (manual form, draft edits, approvals), per account. */
+  venueStudio: { capacity: 60, refillPerSec: 1 },
   invalidMessage: { capacity: 8, refillPerSec: 0.2 },
 } as const satisfies Record<string, BucketSpec>;

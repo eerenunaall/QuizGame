@@ -40,6 +40,10 @@ services:
         value: '8080'
       - key: NODE_ENV
         value: production
+      # Licensed installation (ADR-0028): only TVs paired from the venue panel can create rooms. Phones
+      # still join by code or QR. An environment setting on purpose, never a database flag.
+      - key: VENUE_LOCK
+        value: '1'
       # Development content and conveniences: OFF. The server refuses to boot if QP_ALLOW_DEV_SEED is 1.
       - key: QP_ALLOW_DEV_SEED
         value: '0'

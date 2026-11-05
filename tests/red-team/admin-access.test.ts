@@ -57,6 +57,8 @@ describe('ATTACK 18 — the route table is the access policy', () => {
         'GET /metrics [metrics-token]',
         'GET /v1/config [public]',
         'POST /v1/rooms [public]',
+        'POST /v1/display/pairing [public]',
+        'POST /v1/display/poll [public]',
         'GET /v1/flags [public]',
         'GET /v1/categories [public]',
         'GET /v1/rooms/:code/preview [public]',
@@ -115,6 +117,11 @@ describe('ATTACK 18 — the route table is the access policy', () => {
         'GET /v1/venues/:venueId/questions/export [session]',
         'GET /v1/venues/:venueId/questions/reports [session]',
         'POST /v1/venues/:venueId/questions/reports/:reportId/resolve [session]',
+        'POST /v1/venues/:venueId/questions/manual [session]',
+        'GET /v1/venues/:venueId/displays [session]',
+        'POST /v1/venues/:venueId/displays/pair [session]',
+        'POST /v1/venues/:venueId/displays/:displayId/open [session]',
+        'POST /v1/venues/:venueId/displays/:displayId/revoke [session]',
       ].sort(),
     );
   });
