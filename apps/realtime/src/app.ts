@@ -50,6 +50,8 @@ import { createMetrics } from './util/metrics';
 import { Gateway } from './ws/gateway';
 import { registerVenueContentRoutes } from './venue/content-routes';
 import { registerVenueRoutes } from './venue/routes';
+import { registerVenueDisplayRoutes, roomCreationGate } from './venue/display-routes';
+import { VenueDisplays } from './venue/displays';
 import { VenueService } from './venue/service';
 
 export const MIGRATIONS_DIR = fileURLToPath(
@@ -72,6 +74,7 @@ export interface BuiltApp {
   quizzes: QuizService;
   maintenance: MaintenanceJob;
   venues: VenueService;
+  displays: VenueDisplays;
   routes: RouteSpec[];
   /** Graceful shutdown: stop accepting, flush rooms, release leases, close the pool. */
   close(): Promise<void>;
@@ -290,6 +293,17 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     onError,
     onSecurity: (kind, detail) => security.record(kind, { detail }),
   });
+  const displays = new VenueDisplays({
+    db,
+    clock,
+    secret: config.serverSecret,
+    manager,
+    venues,
+    publicWebUrl: config.publicWebUrl,
+    defaultTier: config.defaultRoomTier,
+    onSecurity: (kind, detail) => security.record(kind, { detail }),
+    onError,
+  });
   manager.onGameFinished((room, gameId) => {
     void venues.gameFinished(room, gameId).catch(onError);
   });
@@ -395,6 +409,8 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   });
   registerVenueRoutes(app, { config, venues, limiter, security });
   registerVenueContentRoutes(app, { config, db, venues, limiter, security, clock });
+  const displayRoutes = { config, db, venues, displays, limiter, security };
+  registerVenueDisplayRoutes(app, displayRoutes);
   registerBlindRoutes(app, { config, quizzes, vault, flags, limiter });
   registerPrivacyRoutes(app, {
     sessions: accountSessions,
@@ -433,6 +449,10 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     metrics,
     pool,
     migrationsDir: MIGRATIONS_DIR,
+    roomGate: {
+      authorize: roomCreationGate(displayRoutes),
+      created: (displayId, roomId) => displays.roomCreated(displayId, roomId),
+    },
   });
   await app.ready();
   gateway.attach(app.server);
@@ -474,6 +494,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     quizzes,
     maintenance,
     venues,
+    displays,
     routes,
     close: () => shutdown(true),
     crash: () => shutdown(false),

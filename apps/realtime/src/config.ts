@@ -63,6 +63,11 @@ const EnvSchema = z.object({
   VENUE_MINUTE_MS: int(60_000, 100, 60_000),
   /** Distinct recently played questions per category a venue deck avoids (ADR-0025 §9). */
   VENUE_FRESH_WINDOW: int(300, 0, 5000),
+  /**
+   * Venue-only deployment (ADR-0028 §1): rooms are created only by TVs paired from a venue's panel. An
+   * environment setting, not a database flag, so an unreadable database cannot unlock the TV.
+   */
+  VENUE_LOCK: flag('0'),
   /** A category is listed in the lobby only with this many ACTIVE questions (a thin one repeats within a game or two). */
   CATEGORY_MIN_QUESTIONS: int(1, 1, 500),
   /** Addresses that become ADMIN on their first sign-in (how the first administrator exists). */
@@ -104,6 +109,12 @@ const EnvSchema = z.object({
   AI_DECOYS_MODEL: z.string().min(1).max(100).optional(),
   AI_DECOYS_API_BASE: z.string().url().optional(),
   AI_DECOYS_TIMEOUT_MS: int(4_000, 200, 30_000),
+  /** Question authoring from documents (ADR-0028 §6): off unless key and model are set. */
+  AUTHORING_API_KEY: z.string().min(8).optional(),
+  AUTHORING_MODEL: z.string().min(1).max(100).optional(),
+  AUTHORING_API_BASE: z.string().url().optional(),
+  AUTHORING_TIMEOUT_MS: int(90_000, 1_000, 300_000),
+  AUTHORING_DAILY_RUNS: int(10, 1, 500),
   AUDIT_API_KEY: z.string().min(8).optional(),
   AUDIT_MODEL_FAST: z.string().min(1).max(100).optional(),
   AUDIT_MODEL_STRONG: z.string().min(1).max(100).optional(),
@@ -246,6 +257,16 @@ export interface AppConfig {
   /** Venue mode: milliseconds in one metered minute (60 000 except in tests). */
   venueMinuteMs: number;
   venueFreshWindow: number;
+  /** ADR-0028 §1: only paired venue displays may create rooms. */
+  venueLock: boolean;
+  /** ADR-0028 §6: the document-to-questions model; null = the feature is off. */
+  authoring: {
+    apiKey: string;
+    apiBase: string | null;
+    model: string;
+    timeoutMs: number;
+    dailyRuns: number;
+  } | null;
   categoryMinQuestions: number;
   emailWebhook: { url: string; token: string | null } | null;
   emailProvider: {
@@ -305,6 +326,9 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     if (e.RATE_LIMIT_SCALE !== 1) problems.push('RATE_LIMIT_SCALE must be 1 in production');
     if (e.VENUE_MINUTE_MS !== 60_000) problems.push('VENUE_MINUTE_MS must be 60000 in production');
     if (e.EMAIL_API_BASE) problems.push('EMAIL_API_BASE must not be set in production');
+    // The document text and the key travel to this address: never over plain HTTP.
+    if (e.AUTHORING_API_BASE && !e.AUTHORING_API_BASE.startsWith('https://'))
+      problems.push('AUTHORING_API_BASE must be https in production');
     if (problems.length > 0)
       throw new Error(`Unsafe production configuration: ${problems.join('; ')}`);
   }
@@ -330,6 +354,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
 
   if (e.AI_DECOYS_API_KEY && !e.AI_DECOYS_MODEL)
     throw new Error('Invalid configuration: AI_DECOYS_API_KEY needs AI_DECOYS_MODEL');
+  if (e.AUTHORING_API_KEY && !e.AUTHORING_MODEL)
+    throw new Error('Invalid configuration: AUTHORING_API_KEY needs AUTHORING_MODEL');
   if (e.AUDIT_API_KEY && !e.AUDIT_MODEL_FAST)
     throw new Error('Invalid configuration: AUDIT_API_KEY needs AUDIT_MODEL_FAST');
 
@@ -373,6 +399,17 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     },
     venueMinuteMs: e.VENUE_MINUTE_MS,
     venueFreshWindow: e.VENUE_FRESH_WINDOW,
+    venueLock: e.VENUE_LOCK,
+    authoring:
+      e.AUTHORING_API_KEY && e.AUTHORING_MODEL
+        ? {
+            apiKey: e.AUTHORING_API_KEY,
+            apiBase: e.AUTHORING_API_BASE ?? null,
+            model: e.AUTHORING_MODEL,
+            timeoutMs: e.AUTHORING_TIMEOUT_MS,
+            dailyRuns: e.AUTHORING_DAILY_RUNS,
+          }
+        : null,
     categoryMinQuestions: e.CATEGORY_MIN_QUESTIONS,
     adminBootstrapEmails: e.ADMIN_BOOTSTRAP_EMAILS.map((email) => email.trim().toLowerCase()),
     emailWebhook: e.EMAIL_WEBHOOK_URL

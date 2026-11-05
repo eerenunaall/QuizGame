@@ -488,12 +488,73 @@ export interface TelemetryEvents {
   props: Generated<Json>;
 }
 
+export interface VenueAuthoringRuns {
+  account_id: string | null;
+  at: Timestamp;
+  discarded: Generated<number>;
+  drafts: Generated<number>;
+  id: Generated<string>;
+  input_chars: number;
+  input_tokens: Generated<number>;
+  output_tokens: Generated<number>;
+  source_file_hash: string;
+  source_file_name: string;
+  status: string;
+  venue_id: string;
+}
+
 export interface VenueContentEvents {
   actor_account_id: string | null;
   at: Generated<Timestamp>;
   detail: Generated<Json>;
   id: Generated<Int8>;
   kind: string;
+  upload_id: string | null;
+  venue_id: string;
+}
+
+export interface VenueDisplayPairings {
+  claimed_at: Timestamp | null;
+  claimed_by: string | null;
+  claimed_venue_id: string | null;
+  code_hash: string;
+  collected_at: Timestamp | null;
+  created_at: Timestamp;
+  display_id: string | null;
+  expires_at: Timestamp;
+  id: Generated<string>;
+  secret_hash: string;
+}
+
+export interface VenueDisplays {
+  id: Generated<string>;
+  last_seen_at: Timestamp | null;
+  name: string;
+  paired_at: Timestamp;
+  paired_by: string | null;
+  pending_token_hash: string | null;
+  previous_token_hash: string | null;
+  revoke_reason: string | null;
+  revoked_at: Timestamp | null;
+  revoked_by: string | null;
+  rotated_at: Timestamp;
+  token_hash: string;
+  venue_id: string;
+}
+
+export interface VenueQuestionDrafts {
+  approved_at: Timestamp | null;
+  approved_by: string | null;
+  created_at: Timestamp;
+  created_by: string | null;
+  expires_at: Timestamp;
+  id: Generated<string>;
+  payload: Json;
+  question_id: string | null;
+  run_id: string | null;
+  source_file_hash: string;
+  source_file_name: string;
+  state: Generated<string>;
   upload_id: string | null;
   venue_id: string;
 }
@@ -511,6 +572,7 @@ export interface VenueQuestionUploads {
   file_name: string;
   format: string;
   id: Generated<string>;
+  origin: Generated<string>;
   retired_at: Timestamp | null;
   retired_by: string | null;
   rows_duplicate: Generated<number>;
@@ -519,6 +581,7 @@ export interface VenueQuestionUploads {
   rows_rejected: Generated<number>;
   rows_review: Generated<number>;
   rows_total: number;
+  source_file_hash: string | null;
   state: Generated<string>;
   uploaded_at: Generated<Timestamp>;
   uploaded_by: string | null;
@@ -543,6 +606,7 @@ export interface VenueRewards {
 export interface Venues {
   created_at: Generated<Timestamp>;
   created_by: string | null;
+  display_seats: Generated<number>;
   id: Generated<string>;
   name: string;
   settings: Generated<Json>;
@@ -619,7 +683,11 @@ export interface DB {
   security_events: SecurityEvents;
   store_notifications: StoreNotifications;
   telemetry_events: TelemetryEvents;
+  venue_authoring_runs: VenueAuthoringRuns;
   venue_content_events: VenueContentEvents;
+  venue_display_pairings: VenueDisplayPairings;
+  venue_displays: VenueDisplays;
+  venue_question_drafts: VenueQuestionDrafts;
   venue_question_history: VenueQuestionHistory;
   venue_question_uploads: VenueQuestionUploads;
   venue_rewards: VenueRewards;
