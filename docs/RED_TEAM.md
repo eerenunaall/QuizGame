@@ -52,6 +52,11 @@ it builds on). The attacker plays against the real server over real sockets; the
 | 44 Count who holds a token (simple prep) | prep progress is a bare count (extends ATTACK 27) | › ATTACK 44 | ✅ |
 | 45 Farm a team reward | tie, lone team, team without a connected phone or a second code per game gives nothing | › ATTACK 45 | ✅ one code per game to one representative |
 | 46 Question text on a phone | the question text never reaches a player's phone before the reveal, also not on REQUEST_STATE; options do (as in the default game) | › ATTACK 46 | ✅ server redaction in `playerPhaseData` |
+| 60 Guess, replay or share TV pairing codes | rate-limited even for the right code after misses; used/other-venue codes 404; only the showing browser collects the credential, once | `red-team/venue-displays.test.ts` › ATTACK 60 | ✅ 8 characters, 5 minutes, single use, HMAC only |
+| 61 Revoked, idle or copied display credential | 403; a replayed old token revokes the display | › ATTACK 61 | ✅ rotation with 30 s grace, REUSE revokes |
+| 62 Other café's staff, STAFF, phone or account token against TVs; room creation under VENUE_LOCK | 404/403/401, CREATE_ROOM 403 without a display cookie | › ATTACK 62 | ✅ server-enforced |
+| 63 CSRF and cookie riding on pairing/revoke | 403 from foreign Origin; HttpOnly, SameSite=Strict | › ATTACK 63 | ✅ |
+| 64 Seat-limit bypass by concurrent pairing | exactly the licensed number of displays | › ATTACK 64 | ✅ row lock, 6-way race test |
 
 Findings from running these attacks that changed the code:
 
