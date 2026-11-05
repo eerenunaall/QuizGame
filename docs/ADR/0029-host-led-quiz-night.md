@@ -1,6 +1,6 @@
 # ADR-0029: Host-led quiz night ("Sunucu modu")
 
-Status: Proposed · Date: 2026-10-27
+Status: Proposed, not implemented yet (specification for the next developer) · Date: 2026-10-27
 Builds on: ADR-0024 (venue mode), ADR-0025 (venue questions), ADR-0026 (teams, simple ruleset),
 ADR-0027 (venue admin panel), ADR-0028 (venue displays and question authoring).
 
@@ -40,12 +40,22 @@ Totals and ranks are computed on the server and shown on the TV. Corrections are
 event is closed and are logged.
 
 ### 4. Jokers and sabotages as cards
-Each team gets the same small set per event (default, editable): **Çift puan** (one round counts
-double for that team), **50/50** (the host announces two wrong options for that team only, or the TV
-shows it on request), **Süre kısalt** (the next question's timer is shorter for a rival team: the host
-announces it), **Kalkan** (cancels one sabotage against the team). The host taps the card on the
-tablet when a team plays it; the TV shows a short animation with the team's logo; the server
-enforces one use per card per team and applies the scoring effect (double round) automatically.
+Timer tricks make no sense when a whole room answers on paper, so the cards change points, not
+time, and every sabotage gives the victim a way to turn it around (owner's design, 2026-10-27).
+Each team gets the same set per event (default, editable by the host):
+- **Çift puan (2x):** the team doubles its points for one round. Played before the round starts.
+- **Blokaj (sabotage):** a team names a rival for one round: that rival's correct answers in the
+  round are worth 0 ... unless the rival **holds**: if the blocked team still answers the round's
+  last question (or a host-chosen "blokaj sorusu") correctly, the block backfires and that question
+  is worth **3x** for them. A trailing team gets a real weapon, the leader gets a dramatic comeback
+  moment. One block per team per event; a team cannot be blocked twice in the same round.
+- **Kalkan:** cancels one Blokaj against the team (played when the block is announced).
+- **50/50:** the host announces two wrong options to that team only (on paper events: the host
+  whispers or the TV shows it on request).
+The host taps the card on the tablet when a team plays it; the TV shows a short animation with both
+teams' logos ("Kaplanlar → Baykuşlar: BLOKAJ!" and later "Baykuşlar dayandı: 3x!"); the server
+enforces the limits and applies every scoring effect (2x, 0, 3x) automatically from the marking grid,
+so the host never does arithmetic.
 
 ### 5. Security
 - Only a signed-in owner of the venue can create or run an event; the TV must be a paired display of
