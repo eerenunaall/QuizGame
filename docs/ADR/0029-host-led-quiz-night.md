@@ -39,23 +39,19 @@ open questions). Points per question come from the event settings; the final rou
 Totals and ranks are computed on the server and shown on the TV. Corrections are allowed until the
 event is closed and are logged.
 
-### 4. Jokers and sabotages as cards
-Timer tricks make no sense when a whole room answers on paper, so the cards change points, not
-time, and every sabotage gives the victim a way to turn it around (owner's design, 2026-10-27).
-Each team gets the same set per event (default, editable by the host):
-- **Çift puan (2x):** the team doubles its points for one round. Played before the round starts.
-- **Blokaj (sabotage):** a team names a rival for one round: that rival's correct answers in the
-  round are worth 0 ... unless the rival **holds**: if the blocked team still answers the round's
-  last question (or a host-chosen "blokaj sorusu") correctly, the block backfires and that question
-  is worth **3x** for them. A trailing team gets a real weapon, the leader gets a dramatic comeback
-  moment. One block per team per event; a team cannot be blocked twice in the same round.
-- **Kalkan:** cancels one Blokaj against the team (played when the block is announced).
-- **50/50:** the host announces two wrong options to that team only (on paper events: the host
-  whispers or the TV shows it on request).
-The host taps the card on the tablet when a team plays it; the TV shows a short animation with both
-teams' logos ("Kaplanlar → Baykuşlar: BLOKAJ!" and later "Baykuşlar dayandı: 3x!"); the server
-enforces the limits and applies every scoring effect (2x, 0, 3x) automatically from the marking grid,
-so the host never does arithmetic.
+### 4. One card: the 2x joker (owner decision 2026-11-05)
+Sabotages, blocks and 50/50 were dropped: guests answer on paper and the options are on the TV, so
+there is nothing to whisper or block. The only interaction is the **Çift puan (2x) joker**.
+- Before a question is read or shown, teams that want to double it tell the host. The host notes them
+  on the tablet (a team picker for the current question) and the pick is **locked the moment the
+  question appears on the TV**.
+- Each team has a limited number of jokers per night (default 2, editable). The host can limit
+  doubling to chosen questions (for example the high-value ones); default: any question of a normal
+  round. Remaining jokers show next to each team on the tablet and on the TV standings.
+- The **calculator** applies 2x to that team's points for that question automatically when the host
+  enters the marking grid; optional setting: a wrong doubled answer costs points (off by default).
+- The TV shows a short animation with the team's logo ("Kaplanlar ÇİFT PUAN dedi!").
+- Bonus questions (higher base points) and the closest-number tie-break stay.
 
 ### 5. Security
 - Only a signed-in owner of the venue can create or run an event; the TV must be a paired display of
