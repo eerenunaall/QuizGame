@@ -68,11 +68,11 @@ export class TvBrowser {
   }
 
   createRoom() {
-    return this.send<{ code: string; roomId: string; display: { sessionId: string } }>(
-      'POST',
-      '/v1/rooms',
-      { client: { kind: 'DISPLAY', version: 'test' } },
-    );
+    return this.send<{
+      code: string;
+      roomId: string;
+      display: { sessionId: string; reconnectToken: string };
+    }>('POST', '/v1/rooms', { client: { kind: 'DISPLAY', version: 'test' } });
   }
 
   get credential(): string | null {

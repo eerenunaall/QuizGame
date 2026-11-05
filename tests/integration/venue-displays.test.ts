@@ -220,15 +220,13 @@ describe('the credential', () => {
     try {
       await screen.attachDisplay({
         roomId: created.body.roomId,
-        display: {
-          sessionId: created.body.display.sessionId,
-          reconnectToken: (created.body.display as { reconnectToken: string }).reconnectToken,
-        },
+        display: created.body.display,
       });
       expect((await panel(venue.staff).revoke(displayId)).status).toBe(403);
       expect((await panel(venue.owner).revoke(displayId)).status).toBe(200);
       await screen.next(
         (m) => m.type === 'PHASE_ENTERED' && m.payload.data.phase === 'ROOM_CLOSED',
+        5_000,
         'ROOM_CLOSED',
       );
       const after = await tv.poll();

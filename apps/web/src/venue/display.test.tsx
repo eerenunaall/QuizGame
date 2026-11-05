@@ -113,7 +113,7 @@ describe('panel TV list', () => {
     wrap(<DisplayPanel venueId={VENUE} role="OWNER" initialCode="ABCD2345" />);
     await waitFor(() => expect(screen.getByTestId('display-Salon TV 1')).toBeTruthy());
     expect(screen.getByTestId('displays-seats').textContent).toBe('Lisans: 1 / 3 TV kullanılıyor.');
-    expect((screen.getByTestId('display-code') as HTMLInputElement).value).toBe('ABCD2345');
+    expect(screen.getByTestId<HTMLInputElement>('display-code').value).toBe('ABCD2345');
     fireEvent.change(screen.getByTestId('display-name'), { target: { value: 'Bar TV' } });
     fireEvent.submit(screen.getByTestId('display-add'));
     await waitFor(() => expect(calls.some((c) => c.path.endsWith('/displays/pair'))).toBe(true));

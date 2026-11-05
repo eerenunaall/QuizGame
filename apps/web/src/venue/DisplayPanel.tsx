@@ -100,8 +100,8 @@ export function DisplayPanel({
             <Button
               size="md"
               disabled={!item.online}
-              onClick={() =>
-                displaysApi.open(venueId, item.id).then(
+              onClick={() => {
+                void displaysApi.open(venueId, item.id).then(
                   (result) => {
                     setMessage({
                       tone: 'ok',
@@ -110,8 +110,8 @@ export function DisplayPanel({
                     load();
                   },
                   (error: unknown) => setMessage({ tone: 'error', text: refusal(error) }),
-                )
-              }
+                );
+              }}
               data-testid={`display-open-${item.name}`}
             >
               {t('displays.open')}

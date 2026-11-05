@@ -34,7 +34,10 @@ afterAll(async () => {
 
 const venueRoutes = (s: TestServer) =>
   s.built.routes.filter(
-    (route) => route.url.startsWith('/v1/venues/:venueId') && !route.url.includes('/questions'),
+    (route) =>
+      route.url.startsWith('/v1/venues/:venueId') &&
+      !route.url.includes('/questions') &&
+      !route.url.includes('/displays'), // walked by ATTACK 62 (venue-displays.test.ts)
   );
 const fill = (url: string, venueId: string, sessionId: string, accountId: string) =>
   url
