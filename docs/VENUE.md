@@ -6,8 +6,9 @@ olarak çalıştıranlar içindir. Teknik karar kaydı: `docs/ADR/0024-venue-mod
 ## Kısaca
 
 - Müşteri giriş ücretini **kasada size öder** ve hangi oyunu istediğini söyler. Uygulama hiçbir zaman
-  para almaz, kart bilgisi istemez, fiyat göstermez. Sistem yalnızca **süreyi tutar**.
-- Quiz isteyen masa için görevli, telefonundaki **Mekan paneli** (`/staff`) sayfasından TV'de bir masa açar
+  para almaz, kart bilgisi istemez. **Giriş ücreti** sekmesine yazdığınız satır (ör. "150 TL, içecek dahil")
+  TV'de ve telefonlarda sadece bilgi yazısı olarak görünür; hiçbir hesap yapılmaz. Sistem yalnızca **süreyi tutar**.
+- Quiz isteyen masa için görevli, telefonundaki **Mekan paneli** (`/mekan`) sayfasından TV'de bir masa açar
   (ör. 60 dakika). Süre bitene kadar oyun tam sürüm açıktır ve kendi kendine akar.
 - Süre bitince o anki soru **asla yarıda kesilmez**: soru biter, sonuçlar gösterilir, yeni oyun başlatılamaz.
   TV'de "Süre doldu - uzatmak için görevliye söyleyin" yazar.
@@ -15,14 +16,70 @@ olarak çalıştıranlar içindir. Teknik karar kaydı: `docs/ADR/0024-venue-mod
 - İsterseniz kazanana küçük bir ödül verebilirsiniz (ör. "Bir içecek bizden"). Kazananın telefonunda
   8 haneli bir kod çıkar; kasada bu kodu panelden doğrularsınız. Her kod **bir kez** kullanılır.
 
+## Panel nereden açılır
+
+**Panel nereden açılır: https://<oyun adresi>/mekan** (örneğin `https://quiz.kafeniz.com/mekan`). Eski adres
+`/staff` de aynı sayfayı açar. Telefonunuzda adresi açın, tarayıcı menüsünden **"Ana ekrana ekle"** deyin:
+telefonunuzda "Mekan" adında bir simge olur, bir dokunuşla panel açılır. Giriş, e-postanıza gelen 6 haneli
+kodla yapılır; şifre yoktur.
+
+Panel mekanınızın **kendi renkleri, adı ve logosuyla** açılır (başka bir mekanın adı ya da resmi hiçbir yerde
+görünmez). Alttaki **"Kaydedildi"** kutusu her kayıttan sonra çıkar; yanındaki **Geri al** ile az önceki
+değişikliği 7 saniye içinde geri alabilirsiniz.
+
+## Panelin sekmeleri (adım adım)
+
+Sekmeler ekranın üstünde büyük düğmelerdir; telefonda sağa-sola kaydırılır. Görevliler ilk dört sekmeyi ve
+Sorular sekmesindeki sayıları görür; sahip hepsini görür.
+
+**Görevli ve sahip:**
+
+1. **Masalar**: açık masalar, kalan süre, **+15 / +30 / +60 dk**, **Duraklat / Devam**, **Bitir** (iki kez dokunun).
+2. **Yeni masa**: TV'deki 6 harfli oda kodunu yazın, süreyi seçin, **Masayı aç**.
+3. **Ödül doğrula**: kazananın kodunu yazın, **Doğrula ve kullan**.
+4. **TV'ler**: kafenin bağlı TV'leri ("TV ekle", "Bu TV'de oyun aç"; ekleme ve kaldırma yalnızca sahip).
+
+**Yalnızca sahip:**
+
+5. **Ödül**: *Kazanana ödül ver* anahtarını açın. **Ödül nedir?** kutusuna yazın (örnek: *Bir içecek bizden*).
+   **En az kaç kişi oynamalı** (kazanabilmek için en az oyuncu), **Günde en fazla kaç ödül** (örnek: 10) ve iki
+   ödül arası bekleme süresini seçin. Altta kazananın telefonunda ödül kartının nasıl görüneceğini canlı
+   görürsünüz. **Kaydet**'e basın. Ödül açıkken metin boşsa kırmızı uyarı çıkar ve Kaydet çalışmaz.
+6. **Giriş ücreti**: *TV ve telefonlarda göster* anahtarını açın, **Giriş ücreti yazısı**nı yazın (en fazla 40
+   karakter, örnek: *150 TL, içecek dahil*), isterseniz **küçük not** ekleyin (en fazla 80, örnek: *Hafta sonu +20 TL*).
+   Altta TV'de nasıl görüneceğini görürsünüz. **Kaydet**: açık bir masa varsa TV ve telefonlar **hemen** güncellenir.
+   Bu yalnızca bir yazıdır: bağlantı ve uygunsuz sözcükler kabul edilmez, sistem hiçbir ödeme almaz.
+   TV'de oda kodunun altında ve "Süre doldu" ekranında, telefonlarda bekleme ekranında küçük bir satır olarak çıkar.
+7. **Görünüm**: **Tema** (dört hazır tema; varsayılan gri ve altın), **Vurgu rengi** (hazır renklerden biri; renk
+   kodu yazılmaz, hepsi TV'de okunaklı olacak şekilde seçilmiştir), **Mekan logosu** (**Logo seç**: PNG, WebP ya
+   da JPG, en fazla 300 KB; yatay logo en iyisidir), **Takım adları ve logoları** (her takım için isteğe bağlı
+   ad ve kare bir resim; boş bırakırsanız hazır hayvan simgesi kullanılır; takım resmi 64 ile 1024 piksel arası,
+   kareye yakın olmalıdır). Altta **TV'de** ve **Telefonda** nasıl görüneceğini canlı görürsünüz; panel de seçtiğiniz
+   renge hemen bürünür. **Kaydet**'e basana kadar kimse bir şey görmez. Kabul edilmeyen dosya (SVG, GIF,
+   hareketli resim, başka bir dosyanın adı değiştirilmiş hâli) "Bu dosya olmaz" der. En fazla 12 resim tutulur.
+8. **Oyun**: yeni masaların nasıl başlayacağı: bireysel ya da takım, basit kurallar, basit kurallarda cevap süresi,
+   varsayılan masa süresi ve **Süre uzatma düğmeleri** (ör. 15, 30, 60).
+9. **Sorular**: üç bölüm. **Yükle ve yönet** (kafenin kendi soru dosyası, aşağıdaki bölüme bakın), **Mekanın soruları**
+   (yüklediğiniz sorular, her şık ve **doğru cevap işaretli**, açıklama, durum, zorluk; arama kutusu ve konu seçimi
+   var) ve **Genel soru bankası** (misafirlere sorulabilecek genel sorular; aynı şekilde doğru cevaplarıyla). Bu iki
+   liste yalnızca sahibe görünür ve yalnızca panelde görünür: TV'de, telefonlarda ve görevli hesaplarında yoktur.
+   Her açılış kayda geçer. Böylece misafirlere ne sorulacağını önceden kontrol edebilirsiniz.
+10. **Soru Stüdyosu**: elle soru yazın ya da belgeden soru taslağı çıkarın (aşağıdaki bölüm).
+11. **Personel**: görevlileri e-posta adresiyle ekleyin (örnek: `garson@kafe.com`), **Çıkar** ile kaldırın.
+
+**Resimler nasıl korunur?** Yüklediğiniz resim sunucuda ayrıca incelenir (dosyanın her baytı); yalnızca düz PNG,
+WebP ve JPG kabul edilir; içinde ek bilgi (EXIF, renk profili, yazı), animasyon ya da arkasına eklenmiş veri olan
+dosyalar reddedilir. Resimler yalnızca sizin mekanınızın masalarında gösterilir. Bir resmi yanlışlıkla
+yüklediyseniz **Kaldır**'a basın; yönetici de uygunsuz bir resmi kaldırabilir.
+
 ## Başlamadan önce (bir kez)
 
 1. Yönetici, yönetim konsolunda (`/admin` → **Mekanlar**) mekanınızı oluşturur ve sahibin e-posta adresini girer.
 2. Yönetici **Özellik anahtarları** sayfasında `venue.sessions` anahtarını açar. Kapalıyken mekan paneli
    "Mekan modu bu sunucuda kapalı" der ve oyun eskisi gibi çalışır. Anahtar kapatıldığında açık masalar da bırakılır (en geç 20 saniyede TV
    normal oyuna döner, süre ve ödül işlemez); anahtarı yeniden açıp masayı uzattığınızda masa kaldığı yerden devam eder.
-3. Sahip, telefonundan `https://<sunucu>/staff` adresini açar, e-postasına gelen 6 haneli kodla giriş yapar.
-4. Sahip **Ayarlar** sekmesinden görevlileri e-posta adresiyle ekler. Eklenen kişi aynı adresle giriş
+3. Sahip, telefonundan `https://<oyun adresi>/mekan` adresini açar, e-postasına gelen 6 haneli kodla giriş yapar.
+4. Sahip **Personel** sekmesinden görevlileri e-posta adresiyle ekler. Eklenen kişi aynı adresle giriş
    yaptığında panele girer (davet e-postası gönderilmez; adresi siz söylersiniz).
 
 ## Masa açmak
@@ -57,7 +114,7 @@ masa bitirilince normal bekleme süreleri yeniden geçerli olur.
 
 ## Ödüller
 
-**Ayarlar** (yalnızca sahip):
+**Mekan paneli → Ödül** sekmesi (yalnızca sahip; ayrıntısı aşağıda "Panelin sekmeleri" bölümünde):
 
 - **Kazanana ödül ver**: açık/kapalı. Açıksa **ödül metnini** yazın (ör. "Bir türk kahvesi bizden").
 - **Ödül için en az oyuncu** (varsayılan 3): oyun bittiğinde bağlı ve sıralamada olan oyuncu sayısı.
@@ -83,11 +140,11 @@ bireysel ve tam kurallarla oynanır.
 
 ### Takım modu
 
-- Masayı **Bireysel** ya da **Takım** olarak başlatabilirsiniz. Varsayılanı **Ayarlar → Oyun şekli ve kurallar**
-  bölümünden seçersiniz; oyunun lideri de TV'deki ya da kendi telefonundaki ayarlardan değiştirebilir.
+- Masayı **Bireysel** ya da **Takım** olarak başlatabilirsiniz. Varsayılanı **Oyun** sekmesinden
+  seçersiniz; oyunun lideri de TV'deki ya da kendi telefonundaki ayarlardan değiştirebilir.
 - Takım adlarını, simgelerini ve renklerini **biz** belirleriz; oyuncular yazmaz, yalnızca telefonda bir takım
   düğmesine dokunur. Hazır takımlar: Kaplanlar, Baykuşlar, Tilkiler, Aslanlar, Ayılar, Ejderhalar, Balinalar,
-  Penguenler. İsterseniz sahip olarak **Takım adları** kutularına kendi adlarınızı yazabilirsiniz (en çok 20
+  Penguenler. İsterseniz sahip olarak **Görünüm** sekmesindeki takım adı kutularına kendi adlarınızı (ve isterseniz logolarınızı) yazabilirsiniz (en çok 20
   karakter, boş bırakılan varsayılan adı kullanır).
 - Oyuncu önce takma adını seçer, sonra kendi takımına dokunur. Katılan ilk önce en küçük takıma düşer; arkadaşları
   aynı takıma dokunarak geçer. Lider (ya da TV) bir oyuncuyu başka takıma **taşıyabilir** (oyuncuya dokun, takımı seç).
@@ -111,7 +168,7 @@ Kafe kalabalığının 5 saniyede anlayacağı kurallar: **50/50**, **Çifte Hak
 ekranı vardır (en çok 10 sn); kimsenin kullanacak gücü yoksa hiç gösterilmez.
 
 - **Cevap süresi 30 sn** (Hız turu 12 sn, Final 20 sn). Sorunun okunması için ayrı bir bekleme vardır; seçenekler
-  ondan sonra açılır. Süreyi **Ayarlar → Basit kurallarda cevap süresi** kutusundan 10-60 sn arasında değiştirebilirsiniz.
+  ondan sonra açılır. Süreyi **Oyun** sekmesindeki cevap süresi kutusundan 10-60 sn arasında değiştirebilirsiniz.
 - **Soru yalnızca TV'de görünür.** Basit modda telefonlara soru metni gönderilmez; telefon yalnızca şıkları
   (harf + metin) gösterir ve "Soruyu göster" düğmesi de çıkmaz. Cevaplar açıklanınca her şey görünür.
   Not: yanındaki arkadaşın sesli okuması ya da ikinci bir telefon bu önlemi aşar; bu bir engel değil, kolay yolun
@@ -274,4 +331,4 @@ Haftalık pub quiz gecesi: takımlar masalarda **kağıt ve kalemle** oynar, tel
   Uzatırsanız masa "Revanş" ile devam eder.
 - **Müşteri kendi tam sürümünü bağlarsa?** Sorun değil; masa süresi yine geçerlidir, yeni oyun için süre gerekir.
 - **İnternet kesilirse?** Sunucu yeniden başlarsa açık masalar ve kalan süreleri geri yüklenir.
-- **Görevli işten ayrıldı.** Sahip, **Ayarlar → Görevliler** listesinden **Çıkar**'a basar.
+- **Görevli işten ayrıldı.** Sahip, **Personel** sekmesindeki listeden **Çıkar**'a basar.

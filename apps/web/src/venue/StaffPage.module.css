@@ -507,8 +507,21 @@
   gap: 8px;
 }
 
+.moreTeams {
+  margin-top: 8px;
+}
+
+.moreTeams summary {
+  min-height: 44px;
+  padding: 10px 4px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .teamRow {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   align-items: center;
   padding: 8px;
@@ -516,8 +529,17 @@
   border-radius: 16px;
 }
 
+.logoCompact .logoThumb {
+  min-width: 72px;
+  min-height: 72px;
+}
+
+.logoCompact .logoActions {
+  flex-direction: column;
+}
+
 .teamInput {
-  flex: 1;
+  flex: 1 1 130px;
   min-width: 0;
   padding: 12px;
   font: inherit;

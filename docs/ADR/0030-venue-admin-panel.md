@@ -17,8 +17,9 @@ colours or images.
 ### 1. One panel, two addresses, one tab list
 `/staff` and the alias `/mekan` serve the same page (plus a web app manifest so "Ana ekrana ekle" works).
 The page is defined by one `TABS` array (`id`, i18n label key, icon, `role`); a new section is one line.
-STAFF: Masalar, Yeni masa, Ödül doğrula, TV'ler. OWNER adds: Ödül, Giriş ücreti, Görünüm, Oyun, Sorular,
-Soru Stüdyosu, Personel. The tab is part of the page state and never reset by a late timer (timers are
+STAFF: Masalar, Yeni masa, Ödül doğrula, TV'ler and the question counts of Sorular (ADR-0025). OWNER adds:
+Ödül, Giriş ücreti, Görünüm, Oyun, the answers view inside Sorular, Soru Stüdyosu, Personel (and Quiz Gecesi,
+ADR-0029, which only added a line to `TABS`). The tab is part of the page state and never reset by a late timer (timers are
 cleared on unmount). Authorisation stays where it was: the server checks every call (a hidden tab is
 convenience, not security).
 
@@ -64,6 +65,11 @@ for a venue with its own look).
 - **Residual risk**: bytes are validated, not re-encoded (no image library in the server). A crafted but
   structurally valid image could still exploit a browser decoder bug; mitigated by the strict container
   rules, size limits, same-origin only, CSP and `nosniff`. Re-encoding is a possible follow-up.
+- A refusal is `400 IMAGE_REJECTED` with `params.reason` FORMAT, SIZE or DIMENSIONS (and a security-log row);
+  the 13th image is `409 LIMIT_REACHED` (a per-venue advisory lock keeps the count race-free); a body over the
+  base64 size of 300 KB is cut off by the framework (413) before it is read.
+- Housekeeping: a look save deletes images the venue no longer refers to once they are older than 5 minutes
+  (so "Geri al" still works).
 - Admin console: Venues page lists a venue's images and can remove one (audited). Removing an image drops
   it from the venue's `look` too.
 
@@ -72,8 +78,8 @@ The OWNER tab "Sorular" shows (a) the venue's own questions with answers and (b)
 **global bank** (search, category filter, correct option marked, explanation, status, difficulty) so the
 café can check what guests will be asked. OWNER only: STAFF `403`, players/TV/admin-console sessions
 `401/403/404`. CSRF header, per-account rate limit, every bank read written to the security log with the
-account and venue. Other venues' private questions are never returned (global pool only, venue pool scoped
-to the caller's venue). This is a deliberate, narrow exception to "answers are not sent before reveal": the
+account and venue. Other venues' private questions are never returned (global pool, status ACTIVE only, or the caller's own venue questions; the scope is fixed in the query, never
+taken from a parameter). This is a deliberate, narrow exception to "answers are not sent before reveal": the
 data goes to an authenticated owner's panel, never into a room.
 
 ### 6. Payments off

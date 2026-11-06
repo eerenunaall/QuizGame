@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import {
   MAX_TEAM_LOGOS,
   MAX_TEAM_NAME_LENGTH,
@@ -102,6 +102,32 @@ function LookForm({ settings, venueName }: { settings: VenueSettingsView; venueN
     }).finally(() => setBusy(false));
   };
 
+  const teamRow = (teamId: (typeof TEAM_IDS)[number], slot: number): ReactNode => (
+    <div key={teamId} className={styles.teamRow} data-testid={`look-team-${slot}`}>
+      <LogoField
+        kind="TEAM"
+        compact
+        label={t('staff.play.name', { n: slot + 1 })}
+        hint=""
+        hash={teamLogos[slot] ?? null}
+        teamId={teamId}
+        onChange={(hash) => setTeamLogos(teamLogos.map((old, i) => (i === slot ? hash : old)))}
+        testId={`look-team-logo-${slot}`}
+      />
+      <input
+        className={styles.teamInput}
+        maxLength={MAX_TEAM_NAME_LENGTH}
+        placeholder={t(`team.${teamId}`)}
+        aria-label={t('staff.play.name', { n: slot + 1 })}
+        value={names[slot] ?? ''}
+        onChange={(event) =>
+          setNames(names.map((old, i) => (i === slot ? event.target.value : old)))
+        }
+        data-testid={`staff-play-name-${slot}`}
+      />
+    </div>
+  );
+
   const draft: LookDraft = {
     venueName,
     logoUrl: logo ? assetUrl(venueId, logo) : null,
@@ -188,35 +214,13 @@ function LookForm({ settings, venueName }: { settings: VenueSettingsView; venueN
 
         <div className={styles.label}>{t('panel.look.teams')}</div>
         <p className={styles.hint}>{t('panel.look.teamsHint')}</p>
-        <div className={styles.teamList}>
-          {TEAM_IDS.slice(0, MAX_TEAM_LOGOS).map((teamId, slot) => (
-            <div key={teamId} className={styles.teamRow} data-testid={`look-team-${slot}`}>
-              <LogoField
-                kind="TEAM"
-                compact
-                label={t('staff.play.name', { n: slot + 1 })}
-                hint=""
-                hash={teamLogos[slot] ?? null}
-                teamId={teamId}
-                onChange={(hash) =>
-                  setTeamLogos(teamLogos.map((old, i) => (i === slot ? hash : old)))
-                }
-                testId={`look-team-logo-${slot}`}
-              />
-              <input
-                className={styles.teamInput}
-                maxLength={MAX_TEAM_NAME_LENGTH}
-                placeholder={t(`team.${teamId}`)}
-                aria-label={t('staff.play.name', { n: slot + 1 })}
-                value={names[slot] ?? ''}
-                onChange={(event) =>
-                  setNames(names.map((old, i) => (i === slot ? event.target.value : old)))
-                }
-                data-testid={`staff-play-name-${slot}`}
-              />
-            </div>
-          ))}
-        </div>
+        <div className={styles.teamList}>{TEAM_IDS.slice(0, 4).map(teamRow)}</div>
+        <details className={styles.moreTeams}>
+          <summary>{t('panel.look.moreTeams')}</summary>
+          <div className={styles.teamList}>
+            {TEAM_IDS.slice(4, MAX_TEAM_LOGOS).map((teamId, index) => teamRow(teamId, index + 4))}
+          </div>
+        </details>
 
         <h3 className={styles.previewTitle}>{t('panel.look.previewTv')}</h3>
         <TvLobbyPreview draft={draft} />

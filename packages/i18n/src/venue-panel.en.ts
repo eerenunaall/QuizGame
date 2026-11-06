@@ -71,6 +71,7 @@ export const venuePanelEn = {
     'PNG, WebP or JPG, at most 300 KB. Wide with a transparent background is best.',
   'panel.look.teams': 'Team names and logos',
   'panel.look.teamsHint': 'Leave empty to use the ready-made animal icon and name.',
+  'panel.look.moreTeams': 'More teams (5 to 8)',
   'panel.look.previewTv': 'On the TV',
   'panel.look.previewPhone': 'On the phone',
   'panel.look.previewJoin': 'Scan to join',

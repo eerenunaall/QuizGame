@@ -71,6 +71,7 @@ export const venuePanelTr = {
     'PNG, WebP ya da JPG, en fazla 300 KB. En iyisi yatay ve şeffaf arka plan.',
   'panel.look.teams': 'Takım adları ve logoları',
   'panel.look.teamsHint': 'Boş bırakırsan hazır hayvan simgesi ve adı kullanılır.',
+  'panel.look.moreTeams': 'Daha fazla takım (5 ile 8)',
   'panel.look.previewTv': 'TV’de',
   'panel.look.previewPhone': 'Telefonda',
   'panel.look.previewJoin': 'Katılmak için okut',
