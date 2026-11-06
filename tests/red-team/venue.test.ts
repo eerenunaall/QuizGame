@@ -37,6 +37,7 @@ const venueRoutes = (s: TestServer) =>
     (route) =>
       route.url.startsWith('/v1/venues/:venueId') &&
       !route.url.includes('/questions') &&
+      !route.url.includes('/quiznights') && // walked by ATTACKS 70-79 (quiznight.test.ts)
       !route.url.includes('/displays'), // walked by ATTACK 62 (venue-displays.test.ts)
   );
 const fill = (url: string, venueId: string, sessionId: string, accountId: string) =>

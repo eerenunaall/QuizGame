@@ -712,6 +712,7 @@ export const tr = {
   'error.VENUE_PAUSED': 'Masa duraklatıldı. Görevli devam ettirince başlayabilirsiniz.',
   'error.REWARD_ALREADY_REDEEMED': 'Bu kod zaten kullanıldı.',
   'error.REWARD_EXPIRED': 'Bu kodun süresi geçti.',
+  'error.QUIZNIGHT_REFUSED': 'Quiz gecesi şu an bunu yapamadı.',
   'venue.chip.label': 'Kalan süre',
   'venue.chip.paused': 'Duraklatıldı',
   'venue.chip.up': 'Süre doldu',

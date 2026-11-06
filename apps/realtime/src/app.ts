@@ -50,6 +50,8 @@ import { createMetrics } from './util/metrics';
 import { Gateway } from './ws/gateway';
 import { registerVenueContentRoutes } from './venue/content-routes';
 import { registerVenueRoutes } from './venue/routes';
+import { QuizNightService } from './venue/quiznight-service';
+import { registerQuizNightRoutes } from './venue/quiznight-routes';
 import { registerVenueDisplayRoutes, roomCreationGate } from './venue/display-routes';
 import { VenueDisplays } from './venue/displays';
 import { registerVenueAuthoringRoutes } from './venue/authoring-routes';
@@ -413,6 +415,8 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   const displayRoutes = { config, db, venues, displays, limiter, security };
   registerVenueDisplayRoutes(app, displayRoutes);
   registerVenueAuthoringRoutes(app, { config, db, venues, limiter, security, clock });
+  const quizNights = new QuizNightService({ db, clock, secret: config.serverSecret, onError });
+  registerQuizNightRoutes(app, { config, venues, nights: quizNights, limiter, security });
   registerBlindRoutes(app, { config, quizzes, vault, flags, limiter });
   registerPrivacyRoutes(app, {
     sessions: accountSessions,

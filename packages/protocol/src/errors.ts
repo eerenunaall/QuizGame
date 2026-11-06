@@ -85,6 +85,8 @@ export const ERROR_CODES = {
   REWARD_ALREADY_REDEEMED: { retryable: false },
   /** Venue reward: this code's day is over. */
   REWARD_EXPIRED: { retryable: false },
+  /** Quiz night (ADR-0029): a command or edit was refused; `params.reason` says why (localized by the panel). */
+  QUIZNIGHT_REFUSED: { retryable: false },
   INTERNAL: { retryable: true },
 } as const;
 

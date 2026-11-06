@@ -394,6 +394,52 @@ export interface QuestionStatusLog {
   to_status: string;
 }
 
+export interface QuizNightEvents {
+  actor: string | null;
+  at: Timestamp;
+  cmd: Json;
+  night_id: string;
+  prev: Json | null;
+  seq: number;
+}
+
+export interface QuizNightLinks {
+  created_at: Timestamp;
+  created_by: string | null;
+  expires_at: Timestamp;
+  id: Generated<string>;
+  night_id: string;
+  revoked_at: Timestamp | null;
+}
+
+export interface QuizNightRewards {
+  code_hash: string;
+  expires_at: Timestamp;
+  id: Generated<string>;
+  issued_at: Timestamp;
+  night_id: string;
+  redeemed_at: Timestamp | null;
+  redeemed_by: string | null;
+  reward_text: string;
+  team_id: string;
+  team_name: string;
+  venue_id: string;
+}
+
+export interface QuizNights {
+  config: Json;
+  created_at: Timestamp;
+  created_by: string | null;
+  event_date: Timestamp;
+  finished_at: Timestamp | null;
+  id: Generated<string>;
+  started_at: Timestamp | null;
+  status: Generated<string>;
+  title: string;
+  updated_at: Timestamp;
+  venue_id: string;
+}
+
 export interface RoomEvents {
   at: Int8;
   input: Json;
@@ -674,6 +720,10 @@ export interface DB {
   question_sources: QuestionSources;
   question_status_log: QuestionStatusLog;
   questions: Questions;
+  quiz_night_events: QuizNightEvents;
+  quiz_night_links: QuizNightLinks;
+  quiz_night_rewards: QuizNightRewards;
+  quiz_nights: QuizNights;
   room_events: RoomEvents;
   room_sessions: RoomSessions;
   rooms: Rooms;

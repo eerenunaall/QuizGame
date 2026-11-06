@@ -69,12 +69,13 @@ export interface TvView {
   /** Teams that played 2x on THIS question; only filled once the question is on screen. */
   doubled: string[];
   answer: TvAnswer | null;
-  explanation: string | null;
+  /** Present only on reveal slides (the payload scanner forbids the key before the reveal, ADR-0008). */
+  explanation?: string;
   timer: { seconds: number; remainingMs: number; running: boolean } | null;
   rotation: { teamId: string; markerTeamId: string }[];
   roundScores: {
     rows: { teamId: string; points: number; total: number; rank: number }[];
-    jokers: { teamId: string; number: number; delta: number }[];
+    jokers: { teamId: string; number: number; gain: number }[];
     estimateWinners: { number: number; teamIds: string[] }[];
   } | null;
   standings: TvRow[] | null;
@@ -148,7 +149,6 @@ export function tvView(state: QState, now: number): TvView {
     question: null,
     doubled: [],
     answer: null,
-    explanation: null,
     timer: null,
     rotation: [],
     roundScores: null,
@@ -190,7 +190,7 @@ export function tvView(state: QState, now: number): TvView {
       const def = config.rounds[step.round!]!.questions[step.q!]!;
       base.question = tvQuestion(state, step.round!, step.q!);
       base.answer = tvAnswer(def);
-      base.explanation = def.explanation ?? null;
+      if (def.explanation) base.explanation = def.explanation;
       break;
     }
     case 'SWAP':
@@ -210,7 +210,7 @@ export function tvView(state: QState, now: number): TvView {
         jokers: res.jokerDeltas.map((j) => ({
           teamId: j.teamId,
           number: j.number,
-          delta: j.delta,
+          gain: j.delta,
         })),
         estimateWinners: res.estimateWinners.map((w) => ({ number: w.number, teamIds: w.teamIds })),
       };
@@ -238,7 +238,7 @@ export function tvView(state: QState, now: number): TvView {
     case 'TIE_ANSWER': {
       const tb = config.tieBreak!;
       base.answer = tvAnswer(tb);
-      base.explanation = tb.explanation ?? null;
+      if (tb.explanation) base.explanation = tb.explanation;
       const top = [...ranksFor(state, config.rounds.length, false)]
         .filter(([, rk]) => rk === 1)
         .map(([t]) => t);

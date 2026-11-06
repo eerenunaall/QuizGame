@@ -20,6 +20,7 @@
     "@quizparty/game-engine": "workspace:*",
     "@quizparty/i18n": "workspace:*",
     "@quizparty/protocol": "workspace:*",
+    "@quizparty/quiznight": "workspace:*",
     "@quizparty/question-bank": "workspace:*",
     "@quizparty/question-schema": "workspace:*",
     "@quizparty/shared": "workspace:*",

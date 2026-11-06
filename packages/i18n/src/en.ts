@@ -700,6 +700,7 @@ export const en: Record<MessageKey, string> = {
   'error.VENUE_PAUSED': 'The table is paused. You can start once the staff resume it.',
   'error.REWARD_ALREADY_REDEEMED': 'This code was already used.',
   'error.REWARD_EXPIRED': 'This code has expired.',
+  'error.QUIZNIGHT_REFUSED': 'The quiz night could not do that right now.',
   'venue.chip.label': 'Time left',
   'venue.chip.paused': 'Paused',
   'venue.chip.up': "Time's up",

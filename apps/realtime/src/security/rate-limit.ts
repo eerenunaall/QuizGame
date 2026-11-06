@@ -150,5 +150,10 @@ export const LIMITS = {
   venueAuthoring: { capacity: 3, refillPerSec: 3 / 600 },
   /** The studio's other writes (manual form, draft edits, approvals), per account. */
   venueStudio: { capacity: 60, refillPerSec: 1 },
+  /**
+   * The quiz night TV polls its display link (ADR-0029): a café's TVs share an address, so the allowance
+   * is generous; wrong or expired tokens are counted apart in the route (a few misses per ten minutes).
+   */
+  quizNightLink: { capacity: 120, refillPerSec: 3 },
   invalidMessage: { capacity: 8, refillPerSec: 0.2 },
 } as const satisfies Record<string, BucketSpec>;

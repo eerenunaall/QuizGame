@@ -14,6 +14,7 @@
     "@quizparty/protocol": "workspace:*",
     "@quizparty/question-bank": "workspace:*",
     "@quizparty/question-schema": "workspace:*",
+    "@quizparty/quiznight": "workspace:*",
     "@quizparty/realtime": "workspace:*",
     "@quizparty/scripts": "workspace:*",
     "@quizparty/shared": "workspace:*",
