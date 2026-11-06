@@ -51,10 +51,7 @@ export function inverse(before: VenueSettingsView, patch: SettingsPatch): Settin
       typeof old === 'object'
     )
       out[key] = Object.fromEntries(
-        Object.keys(value).map((field) => [
-          field,
-          (old as Record<string, unknown>)[field],
-        ]),
+        Object.keys(value).map((field) => [field, (old as Record<string, unknown>)[field]]),
       );
     else out[key] = old;
   }
