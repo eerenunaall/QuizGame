@@ -7,14 +7,19 @@ import styles from './EntranceLine.module.css';
  * computes anything; it only exists on rooms with an open table.
  */
 export function TvEntrance({ room }: { room: RoomView }) {
-  const { t } = useI18n();
   const entrance = room.venue?.entrance;
   if (!entrance) return null;
+  return <EntranceCard text={entrance.text} {...(entrance.note ? { note: entrance.note } : {})} />;
+}
+
+/** The card itself, also drawn by the panel's live preview. */
+export function EntranceCard({ text, note }: { text: string; note?: string }) {
+  const { t } = useI18n();
   return (
     <div className={styles.tv} data-testid="tv-entrance">
       <div className={styles.tvLabel}>{t('venue.entrance.title')}</div>
-      <div className={styles.tvText}>{entrance.text}</div>
-      {entrance.note ? <div className={styles.tvNote}>{entrance.note}</div> : null}
+      <div className={styles.tvText}>{text}</div>
+      {note ? <div className={styles.tvNote}>{note}</div> : null}
     </div>
   );
 }

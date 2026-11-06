@@ -1,3 +1,4 @@
+import type { VenueAccentId, VenueThemeId } from '@quizparty/protocol';
 import { AccountApiError } from '../lib/account';
 
 /** The staff page's calls (ADR-0024). Same-origin cookie session; writes carry the CSRF header. */
@@ -16,6 +17,15 @@ export interface StaffTable {
 }
 
 export interface VenueSettingsView {
+  /** The entrance line shown on the TV (ADR-0030 §2): display text only, no money is handled. */
+  entrance?: { enabled: boolean; text: string; note: string };
+  /** Theme, accent from the closed palette and image hashes (ADR-0030 §2). */
+  look?: {
+    theme: VenueThemeId;
+    accent: VenueAccentId | null;
+    logo: string | null;
+    teamLogos: (string | null)[];
+  };
   reward: {
     enabled: boolean;
     text: string;
@@ -35,7 +45,17 @@ export interface VenueSettingsView {
   timezone: string;
 }
 
-async function call<T>(path: string, method: 'GET' | 'POST', body?: unknown): Promise<T> {
+/** What the panel sends: any subset of each section (the server merges it over the stored settings). */
+export interface SettingsPatch {
+  entrance?: Partial<NonNullable<VenueSettingsView['entrance']>>;
+  look?: Partial<NonNullable<VenueSettingsView['look']>>;
+  reward?: Partial<VenueSettingsView['reward']>;
+  play?: Partial<NonNullable<VenueSettingsView['play']>>;
+  defaultMinutes?: number;
+  extendSteps?: number[];
+}
+
+export async function call<T>(path: string, method: 'GET' | 'POST', body?: unknown): Promise<T> {
   const response = await fetch(path, {
     method,
     credentials: 'same-origin',
@@ -89,7 +109,7 @@ export const venueApi = {
     ),
   settings: (venueId: string) =>
     call<{ settings: VenueSettingsView; role: StaffRole }>(`${v(venueId)}/settings`, 'GET'),
-  saveSettings: (venueId: string, patch: Partial<VenueSettingsView>) =>
+  saveSettings: (venueId: string, patch: SettingsPatch) =>
     call<{ settings: VenueSettingsView }>(`${v(venueId)}/settings`, 'POST', patch),
   staff: (venueId: string) =>
     call<{ staff: { accountId: string; email: string | null; role: StaffRole }[] }>(

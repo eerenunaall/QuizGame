@@ -17,7 +17,10 @@ const ACCENT_PROPS = [
  * Dresses the page with a venue's own look (ADR-0030 §3): its theme and, when it picked one, its accent
  * from the closed palette. Pure DOM work so the panel preview and the screens share it.
  */
-export function applyVenueLook(doc: Document, look: Pick<Look, 'theme' | 'accent'>): void {
+export function applyVenueLook(
+  doc: Document,
+  look: { theme: Look['theme']; accent?: Look['accent'] | null },
+): void {
   if (isThemeId(look.theme)) applyTheme(doc, look.theme);
   const style = doc.documentElement.style;
   if (look.accent && isAccentId(look.accent) && look.accent in ACCENTS) {

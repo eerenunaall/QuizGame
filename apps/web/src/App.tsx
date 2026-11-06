@@ -90,6 +90,8 @@ export function App() {
     { path: '/unlock/:token', render: (params) => <UnlockPage token={params.token ?? ''} /> },
     { path: '/purchase', render: () => <PurchasePage /> },
     { path: '/staff', render: () => <StaffPage /> },
+    // Short address for the owner's home-screen shortcut (ADR-0030 §1): the same panel.
+    { path: '/mekan', render: () => <StaffPage /> },
     { path: '/credits', render: () => <CreditsPage /> },
     { path: '/privacy', render: () => <LegalPage doc="privacy" /> },
     { path: '/terms', render: () => <LegalPage doc="terms" /> },
