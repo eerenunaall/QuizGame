@@ -1,6 +1,6 @@
 # ADR-0029: Host-led quiz night ("Sunucu modu")
 
-Status: Proposed, not implemented yet (specification for the next developer) · Date: 2026-10-27
+Status: Accepted, implemented in packages/quiznight + apps/realtime/src/venue/quiznight-* · Date: 2026-10-27, amended 2026-11-06
 Builds on: ADR-0024 (venue mode), ADR-0025 (venue questions), ADR-0026 (teams, simple ruleset),
 ADR-0027 (venue admin panel), ADR-0028 (venue displays and question authoring).
 
@@ -65,6 +65,24 @@ there is nothing to whisper or block. The only interaction is the **Çift puan (
 ### 6. Out of scope (first version)
 Phones for guests, online answering, automatic marking of handwritten answers, sound cues beyond the
 existing palette, public leaderboards across events.
+
+## Amendments 2026-11-06 (research: docs/QUIZ_NIGHT_RESEARCH.md, implementation)
+- Round kinds: NORMAL, PICTURE, MUSIC (text only first), TRUE_FALSE, ESTIMATE, BONUS. ESTIMATE: closest
+  number wins the question's points (ties share) and never allows the joker. An optional TIE-BREAK
+  estimate question breaks a tie for first place after the final round.
+- The state machine is an event-sourced log (`packages/quiznight`): every command appends an event with
+  the actor and an injected timestamp; the view is a pure fold, so replay is deterministic. Corrections are
+  events too (who, when, previous value). Undo appends an UNDO event that steps the cursor back one step.
+- The TV is reached through a signed, expiring (12 h), revocable per-event display link
+  (`/tv/gece?l=token`) polled over HTTP; the paired-display path (ADR-0028) can attach through
+  `QuizNightService.tvViewOf(eventId)`. The TV view is an allow-list: answers appear only from the ANSWER
+  step of that question on; marking grids of teams never reach it, only round totals.
+- Marking: per-question grid, or per-team right-count per round (never for bonus, doubled or estimate
+  questions). Paper rotation: team i marks team i+1 (seat order), host can override.
+- Joker 'Çift puan': picks are accepted only while the question has not been shown; limit per team per
+  night enforced by the server; optional wrong-answer penalty setting (off).
+- Prize: the winning team gets a single-use code, shown only on the host tablet, stored hashed, one per
+  night, only after the podium; staff may redeem it.
 
 ## Consequences
 Cafés get the quiz night they run today, with better slides and no score sheet arithmetic, on the
