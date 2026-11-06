@@ -411,6 +411,12 @@ importers:
         specifier: 22.20.5
         version: 22.20.5
 
+  packages/quiznight:
+    dependencies:
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+
   packages/shared: {}
 
   packages/ui-tokens:
