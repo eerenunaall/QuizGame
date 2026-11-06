@@ -47,3 +47,25 @@
 .phoneNote {
   color: var(--qp-color-muted-text);
 }
+
+.brand {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 4px 0;
+}
+
+.brandLogo {
+  max-width: 120px;
+  max-height: 44px;
+  object-fit: contain;
+}
+
+.brandName {
+  font-family: var(--qp-font-display);
+  font-size: 20px;
+  color: var(--qp-color-accent-a, #ffd34d);
+  overflow-wrap: anywhere;
+}

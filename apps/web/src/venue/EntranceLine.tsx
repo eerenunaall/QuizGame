@@ -36,3 +36,16 @@ export function PhoneEntrance({ room }: { room: RoomView }) {
     </div>
   );
 }
+
+/** The café's own name and logo at the top of the phone lobby (only for a table; nothing is invented). */
+export function PhoneBrand({ room }: { room: RoomView }) {
+  const look = room.venue?.look;
+  if (!look) return null;
+  const logo = room.venue?.branding?.logo;
+  return (
+    <div className={styles.brand} data-testid="ctl-brand">
+      {logo ? <img className={styles.brandLogo} src={logo} alt="" /> : null}
+      {look.name ? <span className={styles.brandName}>{look.name}</span> : null}
+    </div>
+  );
+}

@@ -88,6 +88,50 @@ export function registerVenueAdminRoutes(app: FastifyInstance, deps: VenueAdminD
     },
   );
 
+  // Venue images (ADR-0030 §4): the console lists a venue's logo and team marks (metadata only, never the
+  // bytes) and can remove one; every removal is audited.
+  app.get(
+    '/v1/admin/venues/:id/assets',
+    { config: { auth: 'admin', limit: 'adminRead', roles: CAN.venuesRead } },
+    async (request, reply) => {
+      const params = parse(IdParams, request.params, reply);
+      if (!params) return reply;
+      const assets = await venues.assets.list(params.id);
+      return {
+        assets: assets.map((asset) => ({
+          hash: asset.hash,
+          contentType: asset.contentType,
+          width: asset.width,
+          height: asset.height,
+          bytes: asset.bytes,
+          createdAt: new Date(asset.createdAt).toISOString(),
+        })),
+      };
+    },
+  );
+
+  app.post(
+    '/v1/admin/venues/:id/assets/:hash/remove',
+    { config: { auth: 'admin', limit: 'adminWrite', roles: CAN.venuesWrite } },
+    async (request, reply) => {
+      const params = parse(
+        z.strictObject({ id: z.uuid(), hash: z.string().regex(/^[0-9a-f]{64}$/u) }),
+        request.params,
+        reply,
+      );
+      if (!params) return reply;
+      if (!(await venues.removeAsset(params.id, params.hash)))
+        return adminError(reply, 404, 'NOT_FOUND');
+      await audit.record(
+        request,
+        'venue.asset.remove',
+        { type: 'venue', id: params.id },
+        { hash: params.hash },
+      );
+      return { ok: true };
+    },
+  );
+
   app.get(
     '/v1/admin/venues/:id/report',
     { config: { auth: 'admin', limit: 'adminRead', roles: CAN.venuesRead } },

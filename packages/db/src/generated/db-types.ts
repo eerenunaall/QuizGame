@@ -534,6 +534,18 @@ export interface TelemetryEvents {
   props: Generated<Json>;
 }
 
+export interface VenueAssets {
+  bytes: Buffer;
+  content_type: string;
+  created_at: Timestamp;
+  created_by: string | null;
+  height: number;
+  id: Generated<string>;
+  sha256: string;
+  venue_id: string;
+  width: number;
+}
+
 export interface VenueAuthoringRuns {
   account_id: string | null;
   at: Timestamp;
@@ -733,6 +745,7 @@ export interface DB {
   security_events: SecurityEvents;
   store_notifications: StoreNotifications;
   telemetry_events: TelemetryEvents;
+  venue_assets: VenueAssets;
   venue_authoring_runs: VenueAuthoringRuns;
   venue_content_events: VenueContentEvents;
   venue_display_pairings: VenueDisplayPairings;

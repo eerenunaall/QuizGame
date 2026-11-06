@@ -7,7 +7,7 @@ import { useI18n } from '../lib/i18n';
 import { PlayerStrip } from './PlayerStrip';
 import styles from './TvFrame.module.css';
 import { cx } from '../lib/cx';
-import { VenueLogo } from '../ui/VenueLogo';
+import { BrandLogo } from '../venue/BrandLogo';
 import { VenueChip } from '../venue/VenueChip';
 
 interface Props {
@@ -64,7 +64,7 @@ export function TvFrame({
       <Backdrop theme={theme} />
       <div className={styles.top}>
         <div className={styles.slot}>
-          <VenueLogo className={styles.venueLogo} />
+          <BrandLogo room={room} className={styles.venueLogo} />
           {round ? (
             <span className={cx(styles.roundPill, round.isFinal && styles.final)}>
               {round.isFinal

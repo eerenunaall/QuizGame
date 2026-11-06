@@ -21,6 +21,7 @@ import type { LiveRoom } from '../rooms/live-room';
 import type { RoomManager } from '../rooms/manager';
 import { hmacHex } from '../security/crypto';
 import type { Clock } from '../util/clock';
+import { VenueAssetStore, lookAssetsValid } from './assets';
 import { buildVenueDisplay } from './display-view';
 import {
   localDate,
@@ -34,6 +35,14 @@ import {
 } from './settings';
 
 export const VENUE_FLAG = 'venue.sessions';
+
+/** Every image hash a venue's settings point at. */
+const referencedHashes = (settings: VenueSettings): Set<string> =>
+  new Set(
+    [settings.look.logo, ...settings.look.teamLogos].filter(
+      (hash): hash is string => hash !== null,
+    ),
+  );
 export type VenueRole = 'OWNER' | 'STAFF';
 type SessionState = 'RUNNING' | 'PAUSED' | 'ENDED';
 
@@ -107,7 +116,12 @@ export class VenueService {
   private sweeper: NodeJS.Timeout | null = null;
   private stopped = false;
 
-  constructor(private readonly deps: VenueDeps) {}
+  /** The venue's logo and team marks (ADR-0030 §4). */
+  readonly assets: VenueAssetStore;
+
+  constructor(private readonly deps: VenueDeps) {
+    this.assets = new VenueAssetStore(deps.db, () => deps.clock.now());
+  }
 
   enabled(): Promise<boolean> {
     return this.deps.flags.isEnabled(VENUE_FLAG);
@@ -172,13 +186,39 @@ export class VenueService {
   async updateSettings(venueId: string, patch: VenuePatch): Promise<VenueSettings> {
     const merged = mergeSettings(await this.settings(venueId), patch);
     if (!merged) throw new VenueError(400, 'INVALID_MESSAGE');
+    // A logo or team mark must be an image of THIS venue that fits its slot; anything else is refused.
+    if (patch.look && !lookAssetsValid(merged.look, await this.assets.dimensions(venueId)))
+      throw new VenueError(400, 'INVALID_MESSAGE');
     await this.deps.db
       .updateTable('venues')
       .set({ settings: JSON.stringify(merged) })
       .where('id', '=', venueId)
       .execute();
+    // Images nothing refers to any more are cleaned up once the grace for "Geri al" is over.
+    if (patch.look) await this.assets.collect(venueId, referencedHashes(merged));
     await this.refreshDisplays(venueId);
     return merged;
+  }
+
+  /** An administrator or the owner removes one image: it also leaves the venue's look, and screens update. */
+  async removeAsset(venueId: string, hash: string): Promise<boolean> {
+    const removed = await this.assets.remove(venueId, hash);
+    if (!removed) return false;
+    const current = await this.settings(venueId);
+    const look = {
+      ...current.look,
+      logo: current.look.logo === hash ? null : current.look.logo,
+      teamLogos: current.look.teamLogos.map((entry) => (entry === hash ? null : entry)),
+    };
+    while (look.teamLogos.length > 0 && look.teamLogos[look.teamLogos.length - 1] === null)
+      look.teamLogos.pop();
+    await this.deps.db
+      .updateTable('venues')
+      .set({ settings: JSON.stringify({ ...current, look }) })
+      .where('id', '=', venueId)
+      .execute();
+    await this.refreshDisplays(venueId);
+    return true;
   }
 
   /** The entrance line, look and image paths this venue's open tables show (ADR-0030 §3). */
@@ -189,7 +229,10 @@ export class VenueService {
       .where('id', '=', venueId)
       .executeTakeFirst();
     if (!row) return {};
-    return buildVenueDisplay({ id: row.id, name: row.name }, readSettings(row.settings));
+    const known = await this.assets.dimensions(venueId);
+    return buildVenueDisplay({ id: row.id, name: row.name }, readSettings(row.settings), (hash) =>
+      known.has(hash),
+    );
   }
 
   /** A settings change reaches the TV and phones of every open table at once, no reload (ADR-0030 §3). */

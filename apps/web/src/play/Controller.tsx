@@ -51,7 +51,7 @@ import {
   type SabotageChoice,
 } from './powers';
 import styles from './Controller.module.css';
-import { PhoneEntrance } from '../venue/EntranceLine';
+import { PhoneBrand, PhoneEntrance } from '../venue/EntranceLine';
 import { PhoneReward, PhoneVenueNotice } from '../venue/PhoneVenue';
 import { cx } from '../lib/cx';
 
@@ -129,6 +129,7 @@ export function Controller({ room, state, now, catalog, busy, error, actions, st
       return (
         <>
           <PhoneVenueNotice room={room} now={now} />
+          <PhoneBrand room={room} />
           <PhoneEntrance room={room} />
           <LobbyScreen
             room={room}

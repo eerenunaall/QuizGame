@@ -67,12 +67,12 @@ export function LogoField({
         return t('panel.logo.err.limit');
       case 'RATE_LIMITED':
         return t('staff.error.throttled');
-      case 'PAYLOAD_TOO_LARGE':
-        return t('panel.logo.err.size');
-      case 'UNSUPPORTED_IMAGE':
-        return t('panel.logo.err.format');
-      case 'BAD_IMAGE_SIZE':
-        return t('panel.logo.err.dimensions');
+      case 'IMAGE_REJECTED':
+        return cause.params?.reason === 'SIZE'
+          ? t('panel.logo.err.size')
+          : cause.params?.reason === 'DIMENSIONS'
+            ? t('panel.logo.err.dimensions')
+            : t('panel.logo.err.format');
       default:
         return t('panel.logo.err.generic');
     }

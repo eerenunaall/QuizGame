@@ -399,6 +399,16 @@ export const adminTr = {
   'admin.venues.col.issued': 'Verilen ödül',
   'admin.venues.col.redeemed': 'Kullanılan ödül',
   'admin.venues.total': 'Toplam',
+  'admin.venues.images.title': 'Mekanın resimleri',
+  'admin.venues.images.intro':
+    'Mekanın yüklediği logo ve takım işaretleri (en fazla 12). Uygunsuz bir resmi buradan kaldırabilirsin; kaldırma kayda geçer.',
+  'admin.venues.images.empty': 'Bu mekan henüz resim yüklemedi.',
+  'admin.venues.images.preview': 'Resim',
+  'admin.venues.images.size': 'Boyut',
+  'admin.venues.images.when': 'Yüklendi',
+  'admin.venues.images.remove': 'Kaldır',
+  'admin.venues.images.removeConfirm': 'Bu resim kaldırılsın mı? Mekanın görünümünden de çıkar.',
+  'admin.venues.images.removed': 'Resim kaldırıldı.',
   'admin.venues.sets.title': 'Mekanın soru setleri',
   'admin.venues.sets.intro':
     'Mekan sahibinin yüklediği sorular yalnızca bu mekanın masalarında çıkar. Bir yüklemeyi ya da tek bir soruyu buradan oyundan çıkarabilirsin (silinmez).',

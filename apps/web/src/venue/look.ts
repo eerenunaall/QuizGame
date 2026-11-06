@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import type { RoomView } from '@quizparty/protocol';
 import { ACCENTS, accentVariables, isAccentId, isThemeId } from '@quizparty/ui-tokens';
 import { applyTheme } from '../lib/theme';
+import { setTeamLogos } from '../ui/TeamMark';
 
 type Look = NonNullable<NonNullable<RoomView['venue']>['look']>;
 
@@ -40,4 +41,12 @@ export function useVenueLook(room: RoomView | null): void {
     if (theme === undefined) return;
     applyVenueLook(document, { theme, ...(accent ? { accent } : {}) });
   }, [theme, accent]);
+  const teams = room?.venue?.branding?.teams;
+  const key = JSON.stringify(teams ?? []);
+  useEffect(() => {
+    setTeamLogos(teams);
+    return () => setTeamLogos(undefined);
+    // `key` is the value of `teams`: a new array with the same paths must not reset anything.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 }

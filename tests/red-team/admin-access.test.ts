@@ -135,6 +135,11 @@ describe('ATTACK 18 — the route table is the access policy', () => {
         'POST /v1/venues/:venueId/quiznights/:nightId/reward [session]',
         'POST /v1/venues/:venueId/quiznights/rewards/redeem [session]',
         'GET /v1/quiznight/tv [public]',
+        // venue admin panel (ADR-0030): images (owner) and the public image address
+        'GET /v1/venues/:venueId/assets [session]',
+        'POST /v1/venues/:venueId/assets [session]',
+        'POST /v1/venues/:venueId/assets/:hash/remove [session]',
+        'GET /v1/venue-assets/:venueId/:hash [public]',
       ].sort(),
     );
   });

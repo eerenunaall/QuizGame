@@ -71,6 +71,8 @@ export const ERROR_CODES = {
   STORE_UNAVAILABLE: { retryable: true },
   /** Free text was refused (empty, too long, a link, profanity); `params.reason` says which. */
   TEXT_REJECTED: { retryable: false },
+  /** A venue image was refused (ADR-0030 §4); `params.reason` is FORMAT, SIZE or DIMENSIONS. */
+  IMAGE_REJECTED: { retryable: false },
   /** A personal answer cannot be stored before the person has agreed to the consent text. */
   CONSENT_REQUIRED: { retryable: false },
   /** An account, quiz or room already holds the most of something it may hold. */

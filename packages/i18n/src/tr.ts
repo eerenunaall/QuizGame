@@ -507,6 +507,7 @@ export const tr = {
   'purchase.restore':
     'Daha önce satın aldıysan uygulamada “Satın alımları geri yükle” de, ya da aynı hesapla giriş yapıp TV’deki “Tam oyunu aç” kodunu tara.',
   'purchase.privacy': 'Kart bilgilerin bize hiç ulaşmaz; ödemeyi mağaza yönetir.',
+  'error.IMAGE_REJECTED': 'Bu resim kullanılamaz. PNG, WebP ya da JPG olmalı.',
   'error.TEXT_REJECTED': 'Bu metin kullanılamaz. Kısa tut, bağlantı ve küfür olmasın.',
   'error.CONSENT_REQUIRED': 'Önce onay vermelisin.',
   'error.LIMIT_REACHED': 'Sınıra ulaşıldı.',

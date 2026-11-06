@@ -146,6 +146,16 @@ export const LIMITS = {
   displayPoll: { capacity: 120, refillPerSec: 3 },
   displayPair: { capacity: 10, refillPerSec: 10 / 600 },
   displayPairVenue: { capacity: 30, refillPerSec: 30 / 3600 },
+  /**
+   * Venue images (ADR-0030 §4): uploading is a few per ten minutes per account and an hour's allowance
+   * per venue (each file is parsed whole); serving is per address, and a miss costs more.
+   */
+  venueAsset: { capacity: 8, refillPerSec: 8 / 600 },
+  venueAssetVenue: { capacity: 30, refillPerSec: 30 / 3600 },
+  venueAssetServe: { capacity: 240, refillPerSec: 4 },
+  /** An owner reading the global question bank (ADR-0030 §5): browsing, not scraping. */
+  venueBank: { capacity: 60, refillPerSec: 1 },
+  venueBankVenue: { capacity: 600, refillPerSec: 600 / 3600 },
   /** Turning a document into questions (ADR-0028 §6): a paid model call each, per account. */
   venueAuthoring: { capacity: 3, refillPerSec: 3 / 600 },
   /** The studio's other writes (manual form, draft edits, approvals), per account. */

@@ -493,6 +493,7 @@ export const en: Record<MessageKey, string> = {
   'purchase.restore':
     'If you bought it before, tap “Restore purchases” in the app, or sign in with the same account and scan the “Unlock the full game” code on the TV.',
   'purchase.privacy': 'Your card details never reach us; the store handles the payment.',
+  'error.IMAGE_REJECTED': 'That picture cannot be used. It must be a PNG, WebP or JPG.',
   'error.TEXT_REJECTED': 'That text cannot be used. Keep it short, with no links or swearing.',
   'error.CONSENT_REQUIRED': 'Please agree first.',
   'error.LIMIT_REACHED': 'The limit has been reached.',

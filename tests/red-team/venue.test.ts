@@ -70,7 +70,7 @@ describe('ATTACK 36 — a stranger at the counter', () => {
     const stranger = await person(server, 'stranger');
     const app = await person(server, 'app', 'MOBILE');
     const console = await adminStaff(server, ['ADMIN']);
-    expect(venueRoutes(server).length).toBe(12);
+    expect(venueRoutes(server).length).toBe(15);
     for (const route of venueRoutes(server)) {
       const path = fill(route.url, a.venueId, sessionId, a.staff.accountId);
       const body =

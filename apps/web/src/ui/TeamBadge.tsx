@@ -1,11 +1,10 @@
 import type { TeamId } from '@quizparty/protocol';
-import { Avatar } from './Avatar';
+import { TeamMark } from './TeamMark';
 import { teamColor, teamName } from '../lib/teams';
 import { useI18n } from '../lib/i18n';
 import styles from './TeamBadge.module.css';
 import { cx } from '../lib/cx';
 import type { LobbySettings } from '@quizparty/protocol';
-import { teamColorSlot } from '@quizparty/protocol';
 
 interface BadgeProps {
   teamId: TeamId;
@@ -40,7 +39,7 @@ export function TeamBadge({
       data-testid={`team-badge-${teamId}`}
       data-team={teamId}
     >
-      <Avatar avatarId={teamId} size={size} colorSlot={teamColorSlot(teamId)} />
+      <TeamMark teamId={teamId} size={size} />
       {label ? (
         <span className={styles.name} style={{ fontSize: Math.round(size * 0.52) }}>
           {name}
@@ -88,7 +87,7 @@ export function TeamChip({
       data-testid={testId ?? `team-chip-${teamId}`}
       data-focusable
     >
-      <Avatar avatarId={teamId} size={52} colorSlot={teamColorSlot(teamId)} />
+      <TeamMark teamId={teamId} size={52} />
       <span className={styles.chipText}>
         <span className={styles.chipName}>{name}</span>
         <span className={styles.chipCount}>
