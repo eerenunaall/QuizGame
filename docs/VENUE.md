@@ -222,6 +222,52 @@ sekmesinde "Elle yazılan soru" olarak görünür (kaldırılabilir).
 onayından geçmeden havuza girmez). Bugün için belgeden soru çıkarmak istiyorsanız yapay zekâ asistanına şablon
 istemini verip çıktısını Sorular sekmesinden CSV olarak yükleyin.
 
+## Quiz Gecesi (yalnızca sahip)
+
+Haftalık pub quiz gecesi: takımlar masalarda **kağıt ve kalemle** oynar, telefon yok. **Tablet sizin kumandanız**,
+**TV slayt ekranı**. Panelde **Quiz Gecesi** sekmesinden yönetilir (`/mekan` veya `/staff`). Ayrıntılı tasarım:
+`docs/ADR/0029-host-led-quiz-night.md`, araştırma notları: `docs/QUIZ_NIGHT_RESEARCH.md`.
+
+### Hazırlık (gece öncesi)
+1. **Quiz Gecesi** sekmesi, **Yeni gece**: adını ve tarihini yazın, şablon seçin: *Klasik* (4 tur × 10 soru + final,
+   yarı zaman 2. turdan sonra), *Hızlı* (2 tur × 8 soru) veya *Boş*. **Oluştur**.
+2. **Hazırlık**: giriş ücreti yazısını ve ödül yazısını girin (TV'de ve kazanan takımda görünür).
+3. **Takımlar**: takım adlarını yazın (mekânın takım adları önerilir). Her takıma renk ve hayvan simgesi, masa numarası verilir.
+   Kağıtlar masa numarasına göre bir sonraki masaya gider; sonradan değiştirebilirsiniz.
+4. **Turlar ve sorular**: tur türünü seçin (Normal, Resim, Müzik (yazılı), Doğru/Yanlış, Tahmin, Bonus). Her soruya metin,
+   cevap, puan yazın. Çoktan seçmeli için kutuyu işaretleyin. **Havuzdan seç** ile kafenizin kendi sorularını ekleyin.
+   **Tahmin** sorusunda en yakın sayı kazanır ve çift puan oynanamaz. İsterseniz **eşitlik bozma sorusu** ekleyin.
+5. **Ayarlar**: takım başına çift puan hakkı (varsayılan 2), yanlış çift puanlı cevap puan götürsün mü (varsayılan hayır),
+   soru süresi, yarı zaman.
+6. **Kaydet**. Eksik varsa sayfa "Başlamadan önce tamamlayın" listesi gösterir. Gece başlayınca ayarlar değişmez.
+
+### Sunum (gece)
+1. **Sunum** sekmesinde **TV bağlantısı oluştur**'a basın, çıkan adresi TV'nin tarayıcısında açın (`/tv/gece?l=...`).
+   Bağlantı 12 saat geçerlidir, **Bağlantıları iptal et** ile kapatılır; TV eşleştirmesi gerekmez.
+2. **Geceyi başlat**, sonra **İLERİ** büyük düğmesiyle slaytları ilerletin: açılış, nasıl oynanır, tur başlığı, sorular,
+   *Kalemler bırakılsın*, *Kağıtları değiştirin* (Masa 1 → Masa 2 …), cevaplar tek tek, puanlama, tur puanları, puan durumu.
+   Tabletiniz cevabı ve açıklamayı yalnızca size gösterir (mor "Yalnızca sizde görünür" etiketi); TV cevabı sizin açtığınız
+   anda gösterir.
+3. **Çift puan**: bir takım soru okunmadan önce "çift puan" derse tabletteki takım düğmesine dokunun. Soru TV'ye çıkınca
+   kilitlenir; TV "Takım ÇİFT PUAN dedi!" gösterir. Kalan hak takımın yanında yazar.
+4. **Süre**: soru ekranında 30/60/90 sn başlatabilirsiniz. **Ara ver** süreyi durdurur ve TV'ye "Kısa bir ara" koyar.
+   **Geri** bir slayt geri alır (çift puan kilidi açılmaz). **Puan durumu göster** istediğiniz an sıralamayı TV'ye getirir.
+5. **Puanlama**: kağıtlar değişince tabloya dokunarak doğruları işaretleyin (satır takım, sütun soru). Ya da **Hızlı sayı**
+   ile her takımın doğru sayısını yazın; çift puanlı, bonus ve tahmin soruları yine tabloda kalır. Tahmin sorularında takımların
+   sayılarını yazın, en yakın olan puanı alır. Sonuçları sunucu hesaplar: eşit puanda aynı sıra (1, 1, 3), sıra değişimi okları,
+   çift puanın kaç puan kazandırdığı. Hatalı işareti gece kapanana kadar düzeltebilirsiniz; her düzeltme kayda (kim, ne zaman,
+   önceki değer) yazılır, **Kaydı göster** ile görürsünüz.
+6. Zirvede eşitlik varsa ve eşitlik sorusu eklediyseniz TV soruyu gösterir, tahminleri siz girersiniz.
+7. **Kazananlar** ekranında konfeti çıkar. **Ödülü ver**'e basın: **ödül kodu yalnızca tabletinizde bir kez** görünür
+   (TV'de asla). Kodu kazanan takıma söyleyin. Ödül verilince gece kapanır ve düzeltme yapılamaz. Bir gecede tek ödül verilir.
+8. Kasada personel, **Ödül doğrula** sekmesine kodu yazar (aynı kutu quiz gecesi kodlarını da tanır); kod bir kez geçer. Başka kafenin personeli
+   kodu kullanamaz.
+
+### Güvenlik ve sınırlar
+- Gece yalnızca sahip tarafından kurulur ve yönetilir; personel ve başka kafenin sahibi geceyi göremez.
+- TV bağlantısı yalnızca TV'de gösterilecek bilgiyi verir; doğru cevaplar, takımların işaretleri ve tahminleri TV'ye gitmez.
+- Müzik turu ilk sürümde yalnızca yazılı sorudur (ses dosyası yok); resim turu için resim adresi yazılır.
+
 ## Sık sorulanlar
 
 - **Süre oyunun ortasında biterse?** O soru cevaplanır, gösterilir, puanlar yazılır; sonra sonuçlar gelir.

@@ -7,7 +7,7 @@ import { staff as adminStaff } from '../helpers/admin';
 import { call } from '../helpers/payments';
 import { nightApi, nightConfig, tvFrame, tvFrameByToken } from '../helpers/quiznight';
 import { startServer, type TestServer } from '../helpers/server';
-import { makeVenue, person, setVenueFlag, type VenueFixture } from '../helpers/venue';
+import { makeVenue, person, setVenueFlag, staffApi, type VenueFixture } from '../helpers/venue';
 
 /**
  * ATTACKS 70-79 - the host-led quiz night (ADR-0029). The tablet holds every answer; the TV, a guest or
@@ -382,6 +382,25 @@ describe('ATTACK 76 - the prize: once, and only after the podium', () => {
     const redeemed = await staff.redeem(code);
     expect(redeemed.status).toBe(200);
     expect(redeemed.body.winner).toBe('Takım 2');
+    expect((await staff.redeem(code)).status).toBe(409);
+  });
+});
+
+describe('ATTACK 76b - the counter’s one redeem box', () => {
+  it('accepts a quiz night prize once, and a stranger or another café still gets nothing', async () => {
+    const { id, api } = await newNight();
+    await run(api, id, { type: 'START' }, ...next(7));
+    await run(api, id, { type: 'MARK', questionId: 'a', teamId: 't3', right: true });
+    await run(api, id, ...next(10));
+    await run(api, id, { type: 'ESTIMATE_VALUE', questionId: 'e', teamId: 't3', value: 365 });
+    await run(api, id, ...next(5));
+    const code = (await api.reward(id)).body.code!;
+    const staff = staffApi(server, a.staff, a.venueId);
+    expect((await staffApi(server, b.staff, b.venueId).redeem(code)).status).toBe(404);
+    expect((await staffApi(server, null, a.venueId).redeem(code)).status).toBe(401);
+    const ok = await staff.redeem(code);
+    expect(ok.status).toBe(200);
+    expect(ok.body.winner).toBe('Takım 3');
     expect((await staff.redeem(code)).status).toBe(409);
   });
 });

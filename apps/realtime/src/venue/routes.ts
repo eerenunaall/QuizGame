@@ -15,6 +15,15 @@ export interface VenueRouteDeps {
   venues: VenueService;
   limiter: RateLimiter;
   security: SecurityLog;
+  /**
+   * Quiz night prizes (ADR-0029) are redeemed at the same counter: when a code is not a table reward the
+   * staff page's one redeem box asks the quiz nights too.
+   */
+  redeemQuizNight?: (
+    venueId: string,
+    staffId: string,
+    code: string,
+  ) => Promise<{ text: string; winner: string; issuedAt: number; redeemedAt: number }>;
 }
 
 const VenueParams = z.strictObject({ venueId: z.uuid() });
@@ -178,6 +187,14 @@ export function registerVenueRoutes(app: FastifyInstance, deps: VenueRouteDeps):
       try {
         return await venues.redeem(who.venueId!, who.accountId, code);
       } catch (error) {
+        if (error instanceof VenueError && error.status === 404 && deps.redeemQuizNight) {
+          try {
+            return await deps.redeemQuizNight(who.venueId!, who.accountId, code);
+          } catch (second) {
+            if (second instanceof VenueError && second.status === 404) missed();
+            return fail(reply, second);
+          }
+        }
         if (error instanceof VenueError && error.status === 404) missed();
         return fail(reply, error);
       }

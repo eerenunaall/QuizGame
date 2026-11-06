@@ -116,7 +116,7 @@ export const quizNightEn = {
   'qn.step.PODIUM': 'Podium',
   'qn.onlyYou': 'Only you see this',
   'qn.answerIs': 'Answer: {text}',
-  'qn.joker.title': '2x joker: question {n}',
+  'qn.joker.title': '2x joker: {round}, question {n}',
   'qn.joker.hint':
     'Tap the team that calls 2x before you read the question. It locks when the question is on the TV.',
   'qn.joker.left': '{n} left',

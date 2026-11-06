@@ -115,7 +115,7 @@ export const quizNightTr = {
   'qn.step.PODIUM': 'Kazananlar',
   'qn.onlyYou': 'Yalnızca sizde görünür',
   'qn.answerIs': 'Cevap: {text}',
-  'qn.joker.title': 'Çift puan: {n}. soru',
+  'qn.joker.title': 'Çift puan: {round}, {n}. soru',
   'qn.joker.hint':
     'Soru okunmadan önce çift puan diyen takıma dokunun. Soru ekrana gelince kilitlenir.',
   'qn.joker.left': '{n} hak',

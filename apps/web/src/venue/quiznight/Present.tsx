@@ -261,7 +261,12 @@ export function Present({
 
       {jokerQ && !host.closed ? (
         <section className={styles.card} data-testid="qn-joker">
-          <h3 className={styles.h3}>{t('qn.joker.title', { n: jokerQ.number })}</h3>
+          <h3 className={styles.h3}>
+            {t('qn.joker.title', {
+              round: host.rounds[jokerQ.roundIndex]?.title ?? '',
+              n: jokerQ.number,
+            })}
+          </h3>
           <p className={styles.muted}>
             {jokerQ.eligible ? t('qn.joker.hint') : t('qn.joker.notAllowed')}
           </p>

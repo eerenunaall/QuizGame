@@ -411,13 +411,19 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     engine: buildAuditEngine(config),
     venues,
   });
-  registerVenueRoutes(app, { config, venues, limiter, security });
+  const quizNights = new QuizNightService({ db, clock, secret: config.serverSecret, onError });
+  registerVenueRoutes(app, {
+    config,
+    venues,
+    limiter,
+    security,
+    redeemQuizNight: (venueId, staffId, code) => quizNights.redeem(venueId, staffId, code),
+  });
   registerVenueContentRoutes(app, { config, db, venues, limiter, security, clock });
   registerVenueAssetRoutes(app, { config, venues, limiter, security });
   const displayRoutes = { config, db, venues, displays, limiter, security };
   registerVenueDisplayRoutes(app, displayRoutes);
   registerVenueAuthoringRoutes(app, { config, db, venues, limiter, security, clock });
-  const quizNights = new QuizNightService({ db, clock, secret: config.serverSecret, onError });
   registerQuizNightRoutes(app, { config, venues, nights: quizNights, limiter, security });
   registerBlindRoutes(app, { config, quizzes, vault, flags, limiter });
   registerPrivacyRoutes(app, {

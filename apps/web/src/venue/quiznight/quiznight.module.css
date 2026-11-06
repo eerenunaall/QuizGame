@@ -254,7 +254,7 @@
   font-size: 34px;
 }
 .nextHint {
-  margin: 6px 0;
+  margin: 8px 0 12px;
   font-size: 15px;
   text-align: center;
   color: var(--qp-color-muted-text);
