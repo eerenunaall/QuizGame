@@ -491,7 +491,9 @@ export function Present({
         <section className={styles.card} data-testid="qn-prize">
           <h3 className={styles.h3}>{t('qn.prize')}</h3>
           {night.reward || prize ? (
-            <p>{t('qn.prize.given')}</p>
+            prize ? null : (
+              <p>{t('qn.prize.given')}</p>
+            )
           ) : (
             <>
               {host.winnerTeamIds.length === 1 ? (

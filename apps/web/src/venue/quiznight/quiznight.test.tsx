@@ -207,7 +207,8 @@ describe('Quiz night host tablet', () => {
 describe('pool picker CSV', () => {
   it('reads the venue export: quoted cells, options and the correct letter', () => {
     const csv =
-      '﻿category,difficulty,question,optionA,optionB,optionC,optionD,optionE,optionF,correct,explanation\r\n' +
+      String.fromCharCode(0xfeff) +
+      'category,difficulty,question,optionA,optionB,optionC,optionD,optionE,optionF,correct,explanation\r\n' +
       'Tarih,EASY,"Hangisi, kesinlikle doğru?",Bir,İki,Üç,Dört,,,C,"Çünkü ""öyle"""\r\n' +
       'Tarih,EASY,Eksik,Bir,,,,,,A,\r\n';
     const rows = parsePoolCsv(csv);
