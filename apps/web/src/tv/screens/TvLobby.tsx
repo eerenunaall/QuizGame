@@ -22,6 +22,8 @@ interface Props {
   onStart: () => void;
   onOpenSettings: () => void;
   onOpenUnlock: () => void;
+  /** ADR-0030 §6: with payments off the FREE-tier "unlock" button is not offered (unknown counts as off). */
+  paymentsEnabled?: boolean | null;
   categoryLabel: string;
   /** Server-synchronised clock for the venue chip. */
   now?: () => number;
@@ -39,6 +41,7 @@ export function TvLobby({
   onStart,
   onOpenSettings,
   onOpenUnlock,
+  paymentsEnabled = true,
   categoryLabel,
   now,
 }: Props) {
@@ -136,7 +139,8 @@ export function TvLobby({
             >
               {t('lobby.settings')}
             </Button>
-            {room.tier === 'FREE' || room.settings.mode === 'CLASSIC' ? (
+            {(room.tier === 'FREE' && paymentsEnabled === true) ||
+            (room.tier !== 'FREE' && room.settings.mode === 'CLASSIC') ? (
               <Button variant="ghost" size="lg" onClick={onOpenUnlock} data-testid="lobby-unlock">
                 {room.tier === 'FREE' ? t('tv.unlock.button') : t('tv.quiz.button')}
               </Button>

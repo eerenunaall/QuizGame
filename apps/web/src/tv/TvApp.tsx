@@ -21,6 +21,7 @@ import {
   TvRoundIntro,
 } from './screens/TvInterstitials';
 import { TvExitButton, TvExitDialog } from './screens/TvExit';
+import { usePaymentsEnabled } from '../lib/useServerConfig';
 import { TvLobby } from './screens/TvLobby';
 import { TvPowerResolution } from './screens/TvPower';
 import { TvQuestion, crowdSummary } from './screens/TvQuestion';
@@ -84,7 +85,8 @@ export function TvApp({
   theme?: ThemeId;
   onTheme?: (theme: ThemeId) => void;
 }) {
-  const { storage } = useRuntime();
+  const { storage, endpoints } = useRuntime();
+  const paymentsEnabled = usePaymentsEnabled(endpoints.apiUrl);
   const client = useClient();
   const state = useClientState();
   const { t, td } = useI18n();
@@ -354,6 +356,7 @@ export function TvApp({
               onStart={() => void startGame()}
               onOpenSettings={() => setShowSettings(true)}
               onOpenUnlock={openUnlock}
+              paymentsEnabled={paymentsEnabled}
               categoryLabel={categorySummary(room, catalog, t('settings.mixed'))}
               now={now}
             />

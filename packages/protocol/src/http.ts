@@ -65,6 +65,8 @@ export const ConfigResponseSchema = z.strictObject({
   minProtocolVersion: z.int().positive(),
   webUrl: z.string().max(200),
   wsPath: z.string().max(40),
+  /** ADR-0030 §6: false = no purchase surface is shown (the TV hides "unlock"). Older servers omit it. */
+  paymentsEnabled: z.boolean().optional(),
 });
 export type ConfigResponse = z.infer<typeof ConfigResponseSchema>;
 

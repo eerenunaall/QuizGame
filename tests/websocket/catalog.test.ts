@@ -70,7 +70,10 @@ describe('HTTP contract', () => {
       await (await fetch(`${server.httpUrl}/v1/rooms/${room.code}/preview`)).json(),
     );
     expect(preview).toMatchObject({ code: room.code, joinable: true, playerCount: 0 });
-    ConfigResponseSchema.parse(await (await fetch(`${server.httpUrl}/v1/config`)).json());
+    // PAYMENTS_ENABLED is off in the test server: the TV must hide its purchase surface (ADR-0030 §6).
+    expect(
+      ConfigResponseSchema.parse(await (await fetch(`${server.httpUrl}/v1/config`)).json()),
+    ).toMatchObject({ paymentsEnabled: false });
     const missing = await fetch(`${server.httpUrl}/v1/rooms/ZZZZZZ/preview`);
     expect(ApiErrorBodySchema.parse(await missing.json()).error.code).toBe('ROOM_NOT_FOUND');
   });

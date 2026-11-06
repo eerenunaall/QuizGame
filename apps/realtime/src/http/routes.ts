@@ -123,6 +123,7 @@ export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
     minProtocolVersion: MIN_SUPPORTED_PROTOCOL_VERSION,
     webUrl: config.publicWebUrl,
     wsPath: '/ws',
+    paymentsEnabled: config.payments.enabled,
   }));
 
   app.post(
