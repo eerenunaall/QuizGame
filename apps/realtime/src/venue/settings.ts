@@ -1,6 +1,15 @@
 import { randomInt } from 'node:crypto';
 import { z } from 'zod';
-import { MAX_TEAM_NAME_LENGTH, PLAY_MODES, TEAM_IDS } from '@quizparty/protocol';
+import {
+  MAX_ENTRANCE_NOTE,
+  MAX_ENTRANCE_TEXT,
+  MAX_TEAM_LOGOS,
+  MAX_TEAM_NAME_LENGTH,
+  PLAY_MODES,
+  TEAM_IDS,
+  VENUE_ACCENT_IDS,
+  VENUE_THEME_IDS,
+} from '@quizparty/protocol';
 import { ROOM_CODE_ALPHABET } from '@quizparty/shared';
 import { sanitizeUserText } from '@quizparty/validation';
 
@@ -62,7 +71,40 @@ export const PlaySettingsSchema = z.strictObject({
   simpleAnswerSeconds: playFields.simpleAnswerSeconds.default(null),
 });
 
+/**
+ * The entrance line (ADR-0030 §2): text for the TV and phones such as "150 TL, içecek dahil". It is never
+ * parsed or computed with; the system does not handle money.
+ */
+const entranceFields = {
+  enabled: z.boolean(),
+  text: z.string().trim().max(MAX_ENTRANCE_TEXT),
+  note: z.string().trim().max(MAX_ENTRANCE_NOTE),
+};
+export const EntranceSettingsSchema = z.strictObject({
+  enabled: entranceFields.enabled.default(false),
+  text: entranceFields.text.default(''),
+  note: entranceFields.note.default(''),
+});
+
+/** A venue image is referenced by its content hash (lowercase sha256); existence is checked at write time. */
+export const AssetHashSchema = z.string().regex(/^[0-9a-f]{64}$/u);
+/** How the venue's screens are dressed (ADR-0030 §2): theme, closed-palette accent, logo and team marks. */
+const lookFields = {
+  theme: z.enum(VENUE_THEME_IDS),
+  accent: z.enum(VENUE_ACCENT_IDS).nullable(),
+  logo: AssetHashSchema.nullable(),
+  teamLogos: z.array(AssetHashSchema.nullable()).max(MAX_TEAM_LOGOS),
+};
+export const LookSettingsSchema = z.strictObject({
+  theme: lookFields.theme.default('gusto'),
+  accent: lookFields.accent.default(null),
+  logo: lookFields.logo.default(null),
+  teamLogos: lookFields.teamLogos.default([]),
+});
+
 export const VenueSettingsSchema = z.strictObject({
+  entrance: EntranceSettingsSchema.default(EntranceSettingsSchema.parse({})),
+  look: LookSettingsSchema.default(LookSettingsSchema.parse({})),
   reward: RewardSettingsSchema.default(RewardSettingsSchema.parse({})),
   questions: QuestionSettingsSchema.default(QuestionSettingsSchema.parse({})),
   play: PlaySettingsSchema.default(PlaySettingsSchema.parse({})),
@@ -74,6 +116,8 @@ export type VenueSettings = z.infer<typeof VenueSettingsSchema>;
 
 /** What an owner may send: any subset, merged over the stored settings and validated as a whole. */
 export const VenueSettingsPatchSchema = z.strictObject({
+  entrance: z.strictObject(entranceFields).partial().optional(),
+  look: z.strictObject(lookFields).partial().optional(),
   reward: z.strictObject(rewardFields).partial().optional(),
   questions: z.strictObject(questionFields).partial().optional(),
   play: z.strictObject(playFields).partial().optional(),
@@ -105,6 +149,8 @@ export function mergeSettings(
     ...current,
     ...patch,
     reward: { ...current.reward, ...(patch.reward ?? {}) },
+    entrance: { ...current.entrance, ...(patch.entrance ?? {}) },
+    look: { ...current.look, ...(patch.look ?? {}) },
     questions: { ...current.questions, ...(patch.questions ?? {}) },
     play: { ...current.play, ...(patch.play ?? {}) },
   });
@@ -114,9 +160,29 @@ export function mergeSettings(
   const names = sanitizeTeamNames(merged.data.play.teamNames);
   if (names === null) return null;
   merged.data.play.teamNames = names;
+  // The entrance line goes on the TV for everybody: screened like any typed text, and an enabled line needs words.
+  const entrance = sanitizeEntrance(merged.data.entrance);
+  if (entrance === null) return null;
+  merged.data.entrance = entrance;
   // An enabled reward needs words to show: an empty text would hand out a code for nothing.
   if (merged.data.reward.enabled && merged.data.reward.text.length === 0) return null;
   return merged.data;
+}
+
+/** Screens the entrance text and note; null when either is refused or an enabled line is empty. */
+export function sanitizeEntrance(
+  entrance: z.infer<typeof EntranceSettingsSchema>,
+): z.infer<typeof EntranceSettingsSchema> | null {
+  const screen = (value: string, maxLength: number): string | null => {
+    if (value.trim() === '') return '';
+    const checked = sanitizeUserText(value, { maxLength });
+    return checked.ok ? checked.text : null;
+  };
+  const text = screen(entrance.text, MAX_ENTRANCE_TEXT);
+  const note = screen(entrance.note, MAX_ENTRANCE_NOTE);
+  if (text === null || note === null) return null;
+  if (entrance.enabled && text === '') return null;
+  return { enabled: entrance.enabled, text, note };
 }
 
 /**

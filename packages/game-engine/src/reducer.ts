@@ -2023,7 +2023,8 @@ function onVenueMeter(d: Room, ctx: Ctx, at: number, meter: VenueMeter | null): 
       : meter !== null &&
         d.venue!.state === meter.state &&
         d.venue!.endsAt === meter.endsAt &&
-        d.venue!.remainingMs === meter.remainingMs;
+        d.venue!.remainingMs === meter.remainingMs &&
+        JSON.stringify(d.venue!.display ?? null) === JSON.stringify(meter.display ?? null);
   if (meter)
     emit(
       ctx,

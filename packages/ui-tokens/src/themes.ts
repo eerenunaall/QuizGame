@@ -214,3 +214,53 @@ export function themeCss(): string {
 export function fullCss(): string {
   return cssVariables() + themeCss();
 }
+
+/**
+ * The accent a venue may pick (ADR-0030 §2): a closed palette, never a typed colour. Every entry is
+ * tested for contrast against each theme's background and for dark label text on it (themes.test.ts).
+ * The ids repeat `VENUE_ACCENT_IDS` of the protocol; a web test keeps both lists equal.
+ */
+export const ACCENT_IDS = [
+  'gold',
+  'amber',
+  'coral',
+  'rose',
+  'violet',
+  'sky',
+  'mint',
+  'lime',
+] as const;
+export type AccentId = (typeof ACCENT_IDS)[number];
+
+export const ACCENTS: Record<AccentId, string> = {
+  gold: '#d4af37',
+  amber: '#f5a524',
+  coral: '#ff7a66',
+  rose: '#f48fb1',
+  violet: '#b49cff',
+  sky: '#4cc3ff',
+  mint: '#3ddc97',
+  lime: '#b6e63c',
+};
+
+export const isAccentId = (value: unknown): value is AccentId =>
+  typeof value === 'string' && (ACCENT_IDS as readonly string[]).includes(value);
+
+/** The custom properties that recolour the primary accent (colour, its shades and the glossy gradient). */
+export function accentVariables(id: AccentId): Record<string, string> {
+  const base = ACCENTS[id];
+  const declarations = paletteDeclarations({ ...THEMES.gusto.palette, accentA: base });
+  const wanted = new Set([
+    '--qp-color-accent-a',
+    '--qp-color-accent-a-hi',
+    '--qp-color-accent-a-lo',
+    '--qp-color-accent-a-edge',
+    '--qp-gradient-gold',
+  ]);
+  const out: Record<string, string> = {};
+  for (const line of declarations) {
+    const match = /^\s*(--[a-z0-9-]+):\s*(.+);$/u.exec(line);
+    if (match && wanted.has(match[1]!)) out[match[1]!] = match[2]!;
+  }
+  return out;
+}

@@ -2,7 +2,11 @@
  * Venue mode meter (ADR-0024). Pure arithmetic over server times passed in by the caller: the server
  * owns the clock, tests inject one. `remaining = purchased − (elapsed − paused)`.
  */
+import type { VenueMeterView } from '@quizparty/protocol';
 import type { EpochMs } from './types';
+
+/** The look and entrance line a table's screens are dressed with (ADR-0030 §3): allow-listed, already built by the server. */
+export type VenueDisplay = Pick<VenueMeterView, 'entrance' | 'look' | 'branding'>;
 
 /** What a room knows about its table: enough to gate games and draw the TV chip, nothing else. */
 export interface VenueMeter {
@@ -11,6 +15,8 @@ export interface VenueMeter {
   endsAt: EpochMs | null;
   /** PAUSED / ENDED: what was left when the clock stopped. RUNNING: unused (0). */
   remainingMs: number;
+  /** Entrance line, look and image paths of the venue; absent when the venue set none. */
+  display?: VenueDisplay;
 }
 
 /** The stored facts of a session (milliseconds), as the database keeps them. */
@@ -104,13 +110,13 @@ export const meterHeld = (meter: VenueMeter | null | undefined): boolean =>
   meter !== null && meter !== undefined && meter.state !== 'ENDED';
 
 /** The public view of a meter at a frame's server time. */
-export function meterView(
-  meter: VenueMeter,
-  now: EpochMs,
-): { state: VenueMeter['state']; endsAt: EpochMs | null; remainingMs: number } {
+export function meterView(meter: VenueMeter, now: EpochMs): VenueMeterView {
   return {
     state: meter.state,
     endsAt: meter.state === 'RUNNING' ? meter.endsAt : null,
     remainingMs: Math.floor(meterRemainingMs(meter, now)),
+    ...(meter.display?.entrance ? { entrance: meter.display.entrance } : {}),
+    ...(meter.display?.look ? { look: meter.display.look } : {}),
+    ...(meter.display?.branding ? { branding: meter.display.branding } : {}),
   };
 }

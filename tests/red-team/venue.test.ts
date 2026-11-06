@@ -349,9 +349,15 @@ describe('ATTACK 36 — payload scan: the code and the venue stay off every othe
       a.venueId,
       opened.body.id,
     ];
+    // ADR-0030 §3: a table's own name and image paths are the one deliberate exception, and only inside
+    // `venue.look` / `venue.branding`; everything else is still scanned.
+    const withoutLook = (frame: string): string =>
+      JSON.stringify(JSON.parse(frame), (key, value: unknown) =>
+        key === 'look' || key === 'branding' ? undefined : value,
+      );
     for (const client of [party.display, party.players[0]!, party.players[2]!])
       for (const frame of client.frames)
-        for (const secret of secrets) expect(frame).not.toContain(secret);
+        for (const secret of secrets) expect(withoutLook(frame)).not.toContain(secret);
     for (const frame of [...party.display.frames, ...party.players.flatMap((p) => p.frames)])
       for (const key of [
         'maxPerDay',
@@ -368,7 +374,7 @@ describe('ATTACK 36 — payload scan: the code and the venue stay off every othe
     // the winner learns their code and the reward, nothing about the venue's rules
     for (const frame of winner.frames)
       for (const secret of [venueName, a.staff.email, opened.body.id])
-        expect(frame).not.toContain(secret);
+        expect(withoutLook(frame)).not.toContain(secret);
     stops.forEach((stop) => stop());
     await closeParty(party);
   });

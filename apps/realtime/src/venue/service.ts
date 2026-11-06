@@ -10,6 +10,7 @@ import {
   remainingMs,
   resumeRecord,
   type MeterRecord,
+  type VenueDisplay,
   type VenueMeter,
 } from '@quizparty/game-engine';
 import type { ErrorCode, TeamId } from '@quizparty/protocol';
@@ -20,6 +21,7 @@ import type { LiveRoom } from '../rooms/live-room';
 import type { RoomManager } from '../rooms/manager';
 import { hmacHex } from '../security/crypto';
 import type { Clock } from '../util/clock';
+import { buildVenueDisplay } from './display-view';
 import {
   localDate,
   localDay,
@@ -175,7 +177,31 @@ export class VenueService {
       .set({ settings: JSON.stringify(merged) })
       .where('id', '=', venueId)
       .execute();
+    await this.refreshDisplays(venueId);
     return merged;
+  }
+
+  /** The entrance line, look and image paths this venue's open tables show (ADR-0030 §3). */
+  async display(venueId: string): Promise<VenueDisplay> {
+    const row = await this.deps.db
+      .selectFrom('venues')
+      .select(['id', 'name', 'settings'])
+      .where('id', '=', venueId)
+      .executeTakeFirst();
+    if (!row) return {};
+    return buildVenueDisplay({ id: row.id, name: row.name }, readSettings(row.settings));
+  }
+
+  /** A settings change reaches the TV and phones of every open table at once, no reload (ADR-0030 §3). */
+  async refreshDisplays(venueId: string): Promise<void> {
+    if (!(await this.enabled())) return;
+    const rows = await this.deps.db
+      .selectFrom('venue_sessions')
+      .selectAll()
+      .where('venue_id', '=', venueId)
+      .where('state', '<>', 'ENDED')
+      .execute();
+    for (const row of rows) await this.push(row, 'GRANTED').catch(this.deps.onError);
   }
 
   async staff(
@@ -518,7 +544,10 @@ export class VenueService {
     if (!room) return;
     if (!(await this.enabled())) return this.letGo(room);
     const now = this.now();
-    const meter = meterOf(this.record(row), now);
+    const meter: VenueMeter = {
+      ...meterOf(this.record(row), now),
+      display: await this.display(row.venue_id),
+    };
     await room.applyVenueMeter(meter);
     const blocked = meterBlock(meter, now);
     if (blocked === null) {

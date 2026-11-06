@@ -2,6 +2,7 @@ import type { MessageKey } from './tr';
 import { teamsContentEn } from './teams-content.en';
 import { venueContentEn } from './venue-content.en';
 import { venueDisplayEn } from './venue-display.en';
+import { venuePanelEn } from './venue-panel.en';
 
 export const en: Record<MessageKey, string> = {
   'brand.name': 'QUIZNIGHT',
@@ -772,4 +773,5 @@ export const en: Record<MessageKey, string> = {
   ...venueContentEn,
   ...teamsContentEn,
   ...venueDisplayEn,
+  ...venuePanelEn,
 };

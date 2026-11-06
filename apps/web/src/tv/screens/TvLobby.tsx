@@ -7,6 +7,7 @@ import { QrCode } from '../../ui/QrCode';
 import { Sticker } from '../../ui/Sticker';
 import { useI18n } from '../../lib/i18n';
 import { isSimpleRoom, isTeamRoom, teamsCheck } from '../../lib/teams';
+import { TvEntrance } from '../../venue/EntranceLine';
 import { TvTeamColumns } from './TvTeams';
 import { TvFrame } from '../TvFrame';
 import styles from './TvLobby.module.css';
@@ -64,6 +65,8 @@ export function TvLobby({
     { length: Math.min(SLOTS, room.maxPlayers) },
     (_, index) => room.players[index] ?? null,
   );
+  // ADR-0030: a café table with an entrance line shows it under the room code (a smaller QR makes room).
+  const entrance = room.venue?.entrance !== undefined;
   const difficultyLabel = td(`settings.preset.${room.settings.difficulty}`);
 
   return (
@@ -72,13 +75,17 @@ export function TvLobby({
         <Panel className={styles.join}>
           <h2 className={styles.joinTitle}>{t('lobby.scanToJoin')}</h2>
           <div className={styles.qr} data-testid="lobby-qr">
-            <QrCode value={joinUrl} size={390} label={t('lobby.scanToJoin')} />
+            <QrCode value={joinUrl} size={entrance ? 340 : 390} label={t('lobby.scanToJoin')} />
           </div>
           <div className={styles.url}>{joinLabel}</div>
           <div className={styles.codeBox} data-testid="lobby-code">
             {room.code}
           </div>
-          <div className={styles.fine}>{t('lobby.limits', { max: room.maxPlayers })}</div>
+          {entrance ? (
+            <TvEntrance room={room} />
+          ) : (
+            <div className={styles.fine}>{t('lobby.limits', { max: room.maxPlayers })}</div>
+          )}
         </Panel>
 
         <div className={styles.players}>

@@ -70,7 +70,12 @@ describe('the TV and the meter', () => {
     expect(first.payload.venue.endsAt! - Date.now()).toBeGreaterThan(80_000);
     // phones see the same public meter, nothing more
     const phone = await party.leader.nextOfType('VENUE_METER_CHANGED');
-    expect(Object.keys(phone.payload.venue).sort()).toEqual(['endsAt', 'remainingMs', 'state']);
+    expect(Object.keys(phone.payload.venue).sort()).toEqual([
+      'endsAt',
+      'look',
+      'remainingMs',
+      'state',
+    ]);
 
     await api().extend(opened.body.id, 30);
     const extended = await party.display.nextOfType('VENUE_METER_CHANGED');

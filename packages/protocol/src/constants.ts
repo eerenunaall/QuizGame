@@ -163,3 +163,25 @@ export const QUESTION_REPORT_REASONS = [
   'OTHER',
 ] as const;
 export type QuestionReportReason = (typeof QUESTION_REPORT_REASONS)[number];
+
+/**
+ * Venue look and entrance line (ADR-0030). The theme and accent ids repeat the lists in
+ * `@quizparty/ui-tokens` on purpose (the server has no UI dependency); a web test keeps them equal.
+ */
+export const VENUE_THEME_IDS = ['party', 'venue-gold', 'high-contrast', 'gusto'] as const;
+export type VenueThemeId = (typeof VENUE_THEME_IDS)[number];
+export const VENUE_ACCENT_IDS = [
+  'gold',
+  'amber',
+  'coral',
+  'rose',
+  'violet',
+  'sky',
+  'mint',
+  'lime',
+] as const;
+export type VenueAccentId = (typeof VENUE_ACCENT_IDS)[number];
+export const MAX_ENTRANCE_TEXT = 40;
+export const MAX_ENTRANCE_NOTE = 80;
+export const MAX_VENUE_NAME = 60;
+export const MAX_TEAM_LOGOS = 8;

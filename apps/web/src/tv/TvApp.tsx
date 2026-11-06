@@ -22,6 +22,7 @@ import {
 } from './screens/TvInterstitials';
 import { TvExitButton, TvExitDialog } from './screens/TvExit';
 import { usePaymentsEnabled } from '../lib/useServerConfig';
+import { useVenueLook } from '../venue/look';
 import { TvLobby } from './screens/TvLobby';
 import { TvPowerResolution } from './screens/TvPower';
 import { TvQuestion, crowdSummary } from './screens/TvQuestion';
@@ -111,6 +112,7 @@ export function TvApp({
   const remembered = useRef<Remembered | null>(null);
 
   useTvSounds(room);
+  useVenueLook(room ?? null);
 
   // Preferences → synthesised sound volume.
   useEffect(() => {

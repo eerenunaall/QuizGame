@@ -1,6 +1,7 @@
 import { teamsContentTr } from './teams-content.tr';
 import { venueContentTr } from './venue-content.tr';
 import { venueDisplayTr } from './venue-display.tr';
+import { venuePanelTr } from './venue-panel.tr';
 /**
  * Turkish copy is the source of truth (ADR-0016). `en.ts` must provide exactly the same keys with
  * the same {placeholders}; a unit test enforces parity. `_one` / `_other` suffixes are chosen by
@@ -784,6 +785,7 @@ export const tr = {
   ...venueContentTr,
   ...teamsContentTr,
   ...venueDisplayTr,
+  ...venuePanelTr,
 } as const;
 
 export type MessageKey = keyof typeof tr;

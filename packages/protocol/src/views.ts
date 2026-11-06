@@ -23,8 +23,14 @@ import {
   UuidSchema,
 } from './common';
 import {
+  MAX_ENTRANCE_NOTE,
+  MAX_ENTRANCE_TEXT,
   MAX_ROUNDS,
   MAX_STATEMENT_LENGTH,
+  MAX_TEAM_LOGOS,
+  MAX_VENUE_NAME,
+  VENUE_ACCENT_IDS,
+  VENUE_THEME_IDS,
   MAX_TEAMS,
   MAX_TEAM_NAME_LENGTH,
   MIN_ROUNDS,
@@ -534,10 +540,40 @@ export const PublicGameSchema = z.strictObject({
  * Venue mode (ADR-0024): the table's time meter, the only venue data a room frame ever carries.
  * `endsAt` is server time while RUNNING; `remainingMs` is what is left at the frame's server time.
  */
+/** A venue image as a same-origin path: `/v1/venue-assets/<venue uuid>/<sha256>` and nothing else (ADR-0030 §4). */
+export const VenueAssetPathSchema = z
+  .string()
+  .regex(/^\/v1\/venue-assets\/[0-9a-f-]{36}\/[0-9a-f]{64}$/u);
+
+/**
+ * What a café table adds to the room view (ADR-0030 §3), each part optional so older servers and venues
+ * that set nothing parse: the entrance line (display text only, no money), the venue's own look and its
+ * image paths. Nothing of the venue's settings beyond these allow-listed fields is ever sent.
+ */
 export const VenueMeterViewSchema = z.strictObject({
   state: z.enum(['RUNNING', 'PAUSED', 'ENDED']),
   endsAt: EpochMsSchema.nullable(),
   remainingMs: z.int().nonnegative(),
+  entrance: z
+    .strictObject({
+      text: z.string().min(1).max(MAX_ENTRANCE_TEXT),
+      note: z.string().min(1).max(MAX_ENTRANCE_NOTE).optional(),
+    })
+    .optional(),
+  look: z
+    .strictObject({
+      name: z.string().max(MAX_VENUE_NAME),
+      theme: z.enum(VENUE_THEME_IDS),
+      accent: z.enum(VENUE_ACCENT_IDS).optional(),
+    })
+    .optional(),
+  branding: z
+    .strictObject({
+      logo: VenueAssetPathSchema.optional(),
+      /** In `TEAM_IDS` order; null = the default animal icon of that slot. */
+      teams: z.array(VenueAssetPathSchema.nullable()).max(MAX_TEAM_LOGOS).optional(),
+    })
+    .optional(),
 });
 export type VenueMeterView = z.infer<typeof VenueMeterViewSchema>;
 

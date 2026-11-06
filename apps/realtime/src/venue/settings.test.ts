@@ -14,6 +14,8 @@ import {
 describe('venue settings', () => {
   it('reads an empty or broken row as the documented defaults (reward off)', () => {
     const defaults = {
+      entrance: { enabled: false, text: '', note: '' },
+      look: { theme: 'gusto', accent: null, logo: null, teamLogos: [] },
       reward: { enabled: false, text: '', minPlayers: 3, maxPerDay: 10, rematchCooldownMinutes: 5 },
       questions: { source: 'MIXED', venueSharePercent: 30 },
       play: {
@@ -107,5 +109,36 @@ describe('reward expiry', () => {
     expect(rewardExpiry(earlyWin, localDay(earlyWin, 'Europe/Istanbul').end)).toBe(
       localDay(earlyWin, 'Europe/Istanbul').end,
     );
+  });
+});
+
+describe('the entrance line (ADR-0030 §2)', () => {
+  const merge = (entrance: Record<string, unknown>) =>
+    mergeSettings(readSettings({}), VenueSettingsPatchSchema.parse({ entrance }));
+
+  it('keeps a plain display string, trimmed, and nothing computes with it', () => {
+    expect(
+      merge({ enabled: true, text: '  150 TL, içecek dahil ', note: 'Hafta sonu +20 TL' })
+        ?.entrance,
+    ).toEqual({
+      enabled: true,
+      text: '150 TL, içecek dahil',
+      note: 'Hafta sonu +20 TL',
+    });
+  });
+
+  it('refuses links, hidden characters, an empty enabled line and anything over 40 / 80 characters', () => {
+    expect(merge({ enabled: true, text: 'bit.ly kampanya www.example.com' })).toBeNull();
+    expect(merge({ enabled: true, text: 'abc\u200bdef' })).toBeNull();
+    expect(merge({ enabled: true, text: '   ' })).toBeNull();
+    expect(() => VenueSettingsPatchSchema.parse({ entrance: { text: 'x'.repeat(41) } })).toThrow();
+    expect(() => VenueSettingsPatchSchema.parse({ entrance: { note: 'x'.repeat(81) } })).toThrow();
+    expect(() => VenueSettingsPatchSchema.parse({ entrance: { price: 150 } })).toThrow();
+  });
+
+  it('allows switching the line off while keeping its words', () => {
+    const on = merge({ enabled: true, text: '100 TL' })!;
+    const off = mergeSettings(on, VenueSettingsPatchSchema.parse({ entrance: { enabled: false } }));
+    expect(off?.entrance).toEqual({ enabled: false, text: '100 TL', note: '' });
   });
 });

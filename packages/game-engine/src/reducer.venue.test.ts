@@ -39,6 +39,27 @@ describe('venue meter in the lobby', () => {
       });
   });
 
+  it('carries the venue display (entrance, look, images) to every screen and re-announces a change of it', () => {
+    const { h, ids } = venueRoom();
+    const display = {
+      entrance: { text: '150 TL, içecek dahil' },
+      look: { name: 'Kafe', theme: 'gusto' as const },
+    };
+    setMeter(h, { ...running(h, 120_000), display });
+    expect(h.view({ role: 'PLAYER', playerId: ids[0]! }).venue).toMatchObject(display);
+    // same clock, new words: the stored meter changes, so a reconnecting screen sees the new line
+    setMeter(h, {
+      ...running(h, 120_000),
+      display: { ...display, entrance: { text: '200 TL', note: 'Hafta sonu' } },
+    });
+    expect(h.view({ role: 'DISPLAY' }).venue?.entrance).toEqual({
+      text: '200 TL',
+      note: 'Hafta sonu',
+    });
+    setMeter(h, running(h, 120_000));
+    expect(h.view({ role: 'DISPLAY' }).venue?.entrance).toBeUndefined();
+  });
+
   it('lets a game start while time remains', () => {
     const { h } = venueRoom();
     setMeter(h, running(h, 120_000));

@@ -1,3 +1,4 @@
+import { useVenueLook } from '../venue/look';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from '../lib/router';
 import type { CategoryCatalog } from '@quizparty/protocol';
@@ -122,6 +123,7 @@ export function PlayApp({ code }: { code: string }) {
 
   const room = state.room;
   const inRoom = room !== null && state.session?.code === code;
+  useVenueLook(inRoom ? room : null);
 
   // The leader needs the category list for the lobby settings.
   const inLobby = inRoom && (room?.phase === 'LOBBY' || room?.phase === 'WAITING');
