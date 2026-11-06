@@ -1,0 +1,485 @@
+/* Quiz Gecesi TV slides (ADR-0029): authored at 1920x1080 stage pixels. Everything lives inside the 5 %
+   safe area (96 px at the sides, 54 px top and bottom) so no TV's overscan clips a word. */
+.screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  color: var(--qp-color-text, #fff);
+  background: var(--qp-gradient-stage);
+}
+
+.safe {
+  position: absolute;
+  top: 54px;
+  left: 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  width: 1728px;
+  height: 972px;
+  animation: qp-pop-in 420ms ease-out both;
+}
+
+.center {
+  margin: auto;
+  font-size: 56px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.centerColumn {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 28px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.kicker {
+  margin: 0;
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--qp-color-accent-a);
+}
+
+.hero {
+  margin: 0;
+  font-family: var(--qp-font-display);
+  font-size: 150px;
+  font-weight: 400;
+  line-height: 1.05;
+  text-shadow: 0 6px 0 rgba(0, 0, 0, 0.35);
+}
+
+.heading {
+  margin: 0;
+  font-family: var(--qp-font-display);
+  font-size: 84px;
+  font-weight: 400;
+  text-align: center;
+  color: var(--qp-color-accent-a);
+}
+
+.hint {
+  margin: 0;
+  font-size: 40px;
+  text-align: center;
+  color: var(--qp-color-muted-text, #ddd);
+}
+
+.bigPill {
+  margin: 0;
+  padding: 14px 44px;
+  font-size: 44px;
+  font-weight: 800;
+  background: rgba(var(--qp-deep-rgb, 0, 0, 0), 0.55);
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+}
+
+.howto {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  max-width: 1500px;
+  padding: 0 0 0 60px;
+  margin: 0;
+  font-size: 46px;
+  line-height: 1.25;
+  text-align: left;
+}
+
+.header {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  height: 80px;
+}
+
+.headerTitle {
+  flex: 1;
+  overflow: hidden;
+  font-size: 40px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pill {
+  padding: 8px 28px;
+  font-size: 34px;
+  font-weight: 800;
+  white-space: nowrap;
+  background: rgba(var(--qp-deep-rgb, 0, 0, 0), 0.55);
+  border: 3px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+}
+
+.question {
+  margin: 0;
+  font-size: 78px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.questionSmall {
+  margin: 0;
+  font-size: 54px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.picture {
+  align-self: center;
+  max-width: 900px;
+  max-height: 420px;
+  border-radius: 18px;
+}
+
+.options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.option,
+.optionRight,
+.optionDim {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  min-height: 120px;
+  padding: 12px 28px;
+  font-size: 48px;
+  font-weight: 700;
+  background: rgba(var(--qp-surface-rgb, 30, 30, 50), 0.9);
+  border: 4px solid var(--qp-color-surface-line, rgba(255, 255, 255, 0.2));
+  border-radius: 24px;
+}
+
+.option b,
+.optionRight b,
+.optionDim b {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 70px;
+  height: 70px;
+  font-size: 44px;
+  color: #1b1200;
+  background: var(--qp-color-accent-a);
+  border-radius: 50%;
+}
+
+.optionRight {
+  color: #fff;
+  background: #1f7a3d;
+  border-color: #7ae29b;
+  animation: qp-correct-hit 700ms ease-out both;
+}
+
+.optionDim {
+  opacity: 0.4;
+}
+
+.tf {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  margin-top: 24px;
+  text-align: center;
+}
+
+.tf > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  font-size: 90px;
+  font-weight: 800;
+}
+
+.answerBox {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  padding: 26px 40px;
+  margin-top: 8px;
+  text-align: center;
+  background: #1f7a3d;
+  border: 4px solid #7ae29b;
+  border-radius: 28px;
+}
+
+.answerBox small {
+  font-size: 34px;
+  letter-spacing: 0.14em;
+  text-transform: none;
+}
+
+.answerBox strong {
+  font-size: 80px;
+  line-height: 1.1;
+}
+
+.explanation {
+  margin: 0;
+  font-size: 40px;
+  line-height: 1.3;
+  color: var(--qp-color-muted-text, #ddd);
+}
+
+.timer,
+.timerUrgent {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 150px;
+  height: 150px;
+  font-size: 84px;
+  font-weight: 800;
+  background: rgba(var(--qp-deep-rgb, 0, 0, 0), 0.7);
+  border: 8px solid var(--qp-color-accent-a);
+  border-radius: 50%;
+}
+
+.timerUrgent {
+  color: #fff;
+  background: #b3261e;
+  border-color: #ffb4ab;
+}
+
+.banners {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+}
+
+.banner {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  padding: 14px 52px 14px 22px;
+  font-family: var(--qp-font-display);
+  font-size: 64px;
+  color: #1b1200;
+  background: var(--qp-color-accent-a);
+  border: 5px solid #fff;
+  border-radius: 999px;
+  box-shadow: 0 12px 0 rgba(0, 0, 0, 0.35);
+  animation: qp-pop-in 520ms ease-out both;
+}
+
+.mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 4px solid rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+}
+
+.penIcon {
+  margin: 0;
+  font-size: 220px;
+}
+
+.rotation {
+  padding: 0;
+  margin: 0;
+  font-size: 66px;
+  font-weight: 800;
+  line-height: 1.5;
+  list-style: none;
+}
+
+.standings,
+.standingsCompact {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.standRow {
+  display: grid;
+  grid-template-columns: 70px 80px 1fr 130px 170px 150px;
+  gap: 20px;
+  align-items: center;
+  padding: 8px 28px;
+  font-size: 48px;
+  background: rgba(var(--qp-surface-rgb, 30, 30, 50), 0.9);
+  border: 3px solid var(--qp-color-surface-line, rgba(255, 255, 255, 0.2));
+  border-radius: 22px;
+}
+
+.standingsCompact .standRow {
+  font-size: 40px;
+}
+
+.rank {
+  font-size: 56px;
+  text-align: center;
+  color: var(--qp-color-accent-a);
+}
+
+.teamName {
+  overflow: hidden;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.score {
+  font-size: 64px;
+  text-align: right;
+}
+
+.gain {
+  font-size: 52px;
+  font-weight: 800;
+  color: #7ae29b;
+}
+
+.up {
+  font-weight: 800;
+  color: #7ae29b;
+}
+
+.down {
+  font-weight: 800;
+  color: #ffb4ab;
+}
+
+.same {
+  color: var(--qp-color-muted-text, #bbb);
+}
+
+.jokers {
+  font-size: 30px;
+  color: var(--qp-color-muted-text, #ddd);
+}
+
+.jokerPaid {
+  padding: 0;
+  margin: 0;
+  font-size: 38px;
+  font-weight: 700;
+  color: var(--qp-color-accent-a);
+  list-style: none;
+}
+
+.tieValues {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+  margin: 0;
+  font-size: 48px;
+  list-style: none;
+}
+
+.overlay {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.podiumWrap {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+}
+
+.winner {
+  margin: 0;
+  font-family: var(--qp-font-display);
+  font-size: 96px;
+  text-align: center;
+}
+
+.podium {
+  display: flex;
+  gap: 40px;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  margin-top: auto;
+}
+
+.podium1,
+.podium2,
+.podium3 {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  width: 460px;
+  padding: 24px 12px 12px;
+  font-size: 54px;
+  background: rgba(var(--qp-surface-rgb, 30, 30, 50), 0.92);
+  border: 4px solid var(--qp-color-accent-a);
+  border-radius: 28px 28px 0 0;
+  animation: qp-podium-rise 900ms ease-out both;
+}
+
+.podium1 {
+  min-height: 430px;
+  background: var(--qp-color-accent-a);
+  color: #1b1200;
+}
+
+.podium2 {
+  min-height: 330px;
+}
+
+.podium3 {
+  min-height: 260px;
+}
+
+.offline {
+  position: absolute;
+  right: 96px;
+  bottom: 54px;
+  padding: 6px 20px;
+  font-size: 28px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 999px;
+}
+
+.paused {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1920px;
+  height: 1080px;
+  font-family: var(--qp-font-display);
+  font-size: 130px;
+  background: rgba(0, 0, 0, 0.72);
+}

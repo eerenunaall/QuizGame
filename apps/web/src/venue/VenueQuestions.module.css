@@ -1,0 +1,94 @@
+/* The questions tab of the venue desk: reports and lists read well on a phone in a dim café. */
+.box {
+  margin: 12px 0;
+  padding: 12px;
+  border: 2px solid var(--qp-color-surface-line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.paste {
+  display: block;
+  width: 100%;
+  min-height: 120px;
+  margin-top: 6px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--qp-color-text);
+  background: rgba(0, 0, 0, 0.25);
+  border: 2px solid var(--qp-color-surface-line);
+  border-radius: 12px;
+  resize: vertical;
+}
+
+.counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.count {
+  padding: 6px 10px;
+  font-size: 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.good {
+  color: #0d2b0d;
+  background: #8fe388;
+}
+
+.bad {
+  color: #3a0a0a;
+  background: #ffb3a8;
+}
+
+.warn {
+  color: #2b2000;
+  background: #ffd86b;
+}
+
+.rows {
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rows li {
+  padding: 10px 0;
+  border-top: 1px solid var(--qp-color-surface-line);
+  overflow-wrap: anywhere;
+}
+
+.fix {
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--qp-color-muted-text);
+}
+
+.preview {
+  display: block;
+  font-size: 14px;
+}
+
+.upload {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid var(--qp-color-surface-line);
+}
+
+.promptText {
+  width: 100%;
+  min-height: 160px;
+  font-size: 13px;
+}

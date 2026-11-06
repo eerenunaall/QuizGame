@@ -1,0 +1,19 @@
+# HTTPS front door (docs/DEPLOYMENT.md). Caddy obtains and renews the certificate for {$DOMAIN} by itself
+# (Let's Encrypt) as long as ports 80 and 443 reach this machine and the domain's DNS A/AAAA record points here.
+# WebSockets (/ws) are proxied automatically; nothing else needs configuring.
+# Not exercised in the build sandbox (no Docker, no public domain): first run happens on the owner's server.
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Caddy replaces any X-Forwarded-For sent by a client with the address it actually saw, so the app
+	# can trust exactly one hop (TRUST_PROXY_HOPS=1 in docker-compose.prod.yml).
+	reverse_proxy app:8080 {
+		health_uri /healthz
+		health_interval 15s
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

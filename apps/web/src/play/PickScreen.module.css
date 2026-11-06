@@ -1,0 +1,616 @@
+.screen {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding-bottom: 4px;
+  animation: qp-fade-in 260ms ease-out 1;
+}
+
+.head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.headText {
+  flex: 1;
+  min-width: 0;
+  margin-left: 12px;
+}
+
+.kicker {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--qp-color-muted-text);
+}
+
+.category {
+  overflow: hidden;
+  font-family: var(--qp-font-display);
+  font-size: 28px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+  /* room for the cedilla of Ş and the dot of İ, which overflow:hidden would clip */
+  padding: 0.1em 0 0.2em;
+}
+
+.difficulty {
+  flex: none;
+  margin-left: 8px;
+  padding: 2px 12px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--qp-color-muted-text);
+  background: rgba(var(--qp-deep-rgb), 0.7);
+  border-radius: 999px;
+}
+
+/* The clock sits right under the title in every phone screen, the same place as while answering. */
+.timer {
+  flex: none;
+  padding: 2px 0 10px;
+}
+
+.section {
+  margin-top: 2px;
+}
+
+.titleRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+.title {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--qp-color-muted-text);
+}
+
+/* What the player still owns besides the stake: 50/50 and the shield (Double Down and sabotage have their own rows). */
+.stock {
+  display: flex;
+  gap: 6px;
+}
+.stockItem {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px 0 6px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--qp-color-text, #fff);
+  background: rgba(var(--qp-surface-rgb), 0.8);
+  border: 2px solid var(--qp-color-surface-line);
+  border-radius: 999px;
+}
+.stockItem > img {
+  margin-right: 4px;
+}
+
+.mandatory {
+  margin-top: 6px;
+  padding: 6px 12px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #1b1200;
+  background: var(--qp-gradient-gold);
+  border-radius: 12px;
+}
+
+.ladder {
+  display: flex;
+  margin: 8px -4px 0;
+}
+
+.rung {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  min-height: 112px;
+  margin: 0 4px;
+  padding: 8px 4px 8px;
+  font: inherit;
+  color: #fff;
+  cursor: pointer;
+  background: rgba(var(--qp-surface-rgb), 0.9);
+  border: 3px solid var(--qp-color-surface-line);
+  border-radius: 20px;
+  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.3);
+  transition:
+    transform 120ms ease,
+    background 160ms ease,
+    border-color 160ms ease;
+}
+.rung:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+}
+.rung:disabled {
+  cursor: default;
+}
+/* A blocked stake is dimmed, but the line that says why stays at full strength. */
+.rung:disabled > :not(.conflict) {
+  opacity: 0.45;
+}
+
+.rungName {
+  margin-top: 2px;
+  font-size: 15px;
+  font-weight: 800;
+}
+.rungMult {
+  font-family: var(--qp-font-display);
+  font-size: 30px;
+  line-height: 1.1;
+}
+.rungLoss {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  color: var(--qp-color-muted-text);
+}
+/* "One big gamble per question": the reason a button is grey, in the warning colour so it is read */
+.rungLoss.conflict,
+.powerHint.conflict {
+  font-weight: 800;
+  color: var(--qp-color-warning);
+}
+
+.picked {
+  color: #1b1b3a;
+  border-color: #fff;
+  transform: translateY(-3px) scale(1.03);
+  box-shadow:
+    0 0 26px rgba(255, 255, 255, 0.35),
+    0 8px 0 rgba(0, 0, 0, 0.3);
+}
+.picked .rungLoss {
+  color: rgba(27, 27, 58, 0.78);
+}
+.picked.rungSAFE {
+  background: var(--qp-gradient-success);
+}
+.picked.rungRISK {
+  background: var(--qp-gradient-gold);
+}
+.picked.rungHIGH {
+  background: var(--qp-gradient-danger);
+}
+.picked.rungALL_IN {
+  background: var(--qp-gradient-violet);
+  color: #fff;
+}
+.picked.rungALL_IN .rungLoss {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+/* Power rows: Double Down (a decision) and sabotage (quiet until it is used) */
+.power,
+.sab {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 68px;
+  margin-top: 12px;
+  padding: 6px 14px 6px 10px;
+  font: inherit;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  background: rgba(var(--qp-surface-rgb), 0.9);
+  border: 3px solid var(--qp-color-surface-line);
+  border-radius: 20px;
+  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.3);
+  transition:
+    transform 120ms ease,
+    background 160ms ease,
+    border-color 160ms ease;
+}
+.power:active:not(:disabled),
+.sab:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+}
+.power:disabled {
+  cursor: default;
+  background: rgba(var(--qp-surface-rgb), 0.6);
+}
+.power:disabled > img,
+.power:disabled > svg,
+.power:disabled .powerName,
+.power:disabled .powerCount {
+  opacity: 0.5;
+}
+.powerOn {
+  border-color: var(--qp-color-accent-a);
+  background:
+    linear-gradient(180deg, rgba(255, 201, 40, 0.28), rgba(255, 201, 40, 0.1)),
+    rgb(var(--qp-surface-rgb));
+  box-shadow:
+    0 0 24px rgba(255, 201, 40, 0.35),
+    0 5px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Sabotage is always there but never shouts: glass, no glow, until something is armed. */
+.sab {
+  background: rgba(var(--qp-surface-rgb), 0.5);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: none;
+}
+.sabArmed {
+  border-color: var(--qp-color-accent-a);
+}
+.sabOff {
+  cursor: default;
+  opacity: 0.75;
+}
+.sabOff > img {
+  filter: grayscale(0.8);
+  opacity: 0.6;
+}
+
+.powerText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0 10px;
+}
+.powerName {
+  font-family: var(--qp-font-display);
+  font-size: 21px;
+  line-height: 1.1;
+}
+.powerHint {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--qp-color-muted-text);
+}
+/* a disabled state says why, in one line, in a readable colour */
+.why {
+  color: var(--qp-color-text, #fff);
+}
+.powerCount {
+  display: flex;
+  align-items: center;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--qp-color-accent-a);
+  white-space: nowrap;
+}
+.tokens {
+  flex: none;
+  padding: 3px 12px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #1b1200;
+  white-space: nowrap;
+  background: var(--qp-gradient-gold);
+  border-radius: 999px;
+}
+
+/* The undo window after "send sabotage": the commit is final, so it waits a moment. */
+.going {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 68px;
+  margin-top: 12px;
+  padding: 6px 10px;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 201, 40, 0.28), rgba(255, 201, 40, 0.1)),
+    rgb(var(--qp-surface-rgb));
+  border: 3px solid var(--qp-color-accent-a);
+  border-radius: 20px;
+  animation: qp-pop-in 260ms ease-out 1;
+}
+.goingText {
+  flex: 1;
+  min-width: 0;
+  margin: 0 8px 0 10px;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.2;
+  /* a long nickname breaks inside the row instead of running under the undo button */
+  overflow-wrap: anywhere;
+}
+.undo {
+  flex: none;
+  min-height: 48px;
+  padding: 6px 18px;
+  font-size: 20px;
+}
+.goingBar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 5px;
+  background: var(--qp-color-accent-a);
+  transform-origin: left center;
+  animation-name: qp-undo-drain;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@keyframes qp-undo-drain {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.error {
+  margin: 10px 2px 0;
+  font-size: 15px;
+  font-weight: 800;
+  text-align: center;
+  color: var(--qp-color-danger);
+}
+
+/* The one primary action lives at the bottom, in the thumb zone. */
+.footer {
+  margin-top: auto;
+  padding-top: 14px;
+}
+
+/* after the commitment */
+.done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 8px;
+  padding: 22px 16px;
+  text-align: center;
+}
+.doneIcon {
+  animation: qp-pop-in 420ms ease-out 1;
+}
+.doneTitle {
+  margin-top: 8px;
+  font-family: var(--qp-font-display);
+  font-size: 30px;
+  line-height: 1.1;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 14px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  margin: 4px;
+  padding: 3px 14px 3px 8px;
+  font-size: 16px;
+  font-weight: 800;
+  background: rgba(var(--qp-deep-rgb), 0.8);
+  border: 2px solid var(--qp-color-surface-line);
+  border-radius: 999px;
+}
+.chip > img {
+  flex: none;
+  margin-right: 6px;
+}
+.waiting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 16px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--qp-color-muted-text);
+}
+.waiting > span {
+  margin-left: 10px;
+}
+
+/* Short phones (about 360 x 640 and below): tighter rows so the ready button never leaves the screen. */
+@media (max-height: 700px) {
+  .rung {
+    min-height: 100px;
+  }
+  .power,
+  .sab,
+  .going {
+    min-height: 60px;
+    margin-top: 8px;
+  }
+  .category {
+    font-size: 24px;
+  }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .rung {
+    min-height: 84px;
+  }
+  .power,
+  .sab,
+  .going {
+    min-height: 52px;
+    margin-top: 6px;
+  }
+}
+
+/* The loud title of a timed pick screen, and its one-line rule. */
+.pickTitle {
+  flex: none;
+  padding: 0.1em 0 0.16em;
+  font-family: var(--qp-font-display);
+  font-size: 40px;
+  line-height: 1.05;
+  text-align: center;
+  letter-spacing: 0.02em;
+  text-shadow: 0 4px 0 rgba(0, 0, 0, 0.4);
+  animation: qp-zoom-in 380ms ease-out 1;
+}
+.pickRisk {
+  color: var(--qp-color-accent-a);
+}
+.pickSabotage {
+  color: var(--qp-color-danger);
+}
+.rule {
+  flex: none;
+  margin-bottom: 6px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--qp-color-muted-text);
+}
+
+/* Who has locked in: one tick per player, a count and nothing else. */
+.ticks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+.tick {
+  width: 22px;
+  height: 22px;
+  background: rgba(var(--qp-deep-rgb), 0.8);
+  border: 3px solid var(--qp-color-surface-line);
+  border-radius: 50%;
+  transition:
+    background 200ms ease,
+    border-color 200ms ease;
+}
+.tickOn {
+  background: var(--qp-color-success);
+  border-color: #fff;
+}
+
+/* A player with nothing to choose in a phase: calm, no buttons. */
+.calm {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 8px;
+  text-align: center;
+}
+.calmTitle {
+  margin-top: 10px;
+  font-family: var(--qp-font-display);
+  font-size: 28px;
+  line-height: 1.15;
+}
+.calmText {
+  margin-top: 8px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--qp-color-muted-text);
+}
+.skip {
+  margin-top: 10px;
+}
+
+/* The sabotage chip is the one action of its screen, so it is bigger than in the old prep. */
+.sabBig {
+  min-height: 92px;
+  margin-top: 18px;
+  background: rgba(var(--qp-surface-rgb), 0.9);
+  border-color: var(--qp-color-danger);
+  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* ADR-0023: a Duel challenge aimed at this player, the rival picker and the Stake Cap note */
+.invites {
+  margin-top: 4px;
+}
+.invite {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+  padding: 8px 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 92, 138, 0.28), rgba(255, 92, 138, 0.1)),
+    rgb(var(--qp-surface-rgb));
+  border: 3px solid var(--qp-color-danger);
+  border-radius: 20px;
+  animation: qp-pop-in 260ms ease-out 1;
+}
+.invite[data-answer='ACCEPTED'],
+.invite[data-answer='DECLINED'] {
+  background: rgba(var(--qp-surface-rgb), 0.6);
+  border-color: var(--qp-color-surface-line);
+}
+.inviteText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0 10px;
+}
+.inviteBtns {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 6px;
+}
+.capNote {
+  margin-top: 6px;
+  padding: 6px 12px;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #1b1200;
+  background: var(--qp-gradient-gold);
+  border-radius: 12px;
+}
+.rivals {
+  margin-top: 12px;
+}
+.rivalFaces {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin: 8px 0;
+}
+.rival {
+  display: flex;
+  align-items: center;
+  min-height: 64px;
+  padding: 4px 10px;
+  font: inherit;
+  color: #fff;
+  cursor: pointer;
+  background: rgba(var(--qp-surface-rgb), 0.9);
+  border: 3px solid var(--qp-color-surface-line);
+  border-radius: 18px;
+}
+.rivalOn {
+  border-color: var(--qp-color-accent-a);
+}
+.rivalName {
+  min-width: 0;
+  margin-left: 8px;
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

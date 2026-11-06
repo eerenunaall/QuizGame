@@ -1,0 +1,57 @@
+[
+  {
+    "id": "game-of-thrones",
+    "tr": "Game of Thrones",
+    "en": "Game of Thrones"
+  },
+  {
+    "id": "harry-potter",
+    "tr": "Harry Potter",
+    "en": "Harry Potter"
+  },
+  {
+    "id": "warhammer",
+    "tr": "Warhammer",
+    "en": "Warhammer"
+  },
+  {
+    "id": "breaking-bad",
+    "tr": "Breaking Bad",
+    "en": "Breaking Bad"
+  },
+  {
+    "id": "better-call-saul",
+    "tr": "Better Call Saul",
+    "en": "Better Call Saul"
+  },
+  {
+    "id": "the-office",
+    "tr": "The Office",
+    "en": "The Office"
+  },
+  {
+    "id": "how-i-met-your-mother",
+    "tr": "How I Met Your Mother",
+    "en": "How I Met Your Mother"
+  },
+  {
+    "id": "marvel",
+    "tr": "Marvel",
+    "en": "Marvel"
+  },
+  {
+    "id": "dc",
+    "tr": "DC",
+    "en": "DC"
+  },
+  {
+    "id": "hollywood",
+    "tr": "Hollywood",
+    "en": "Hollywood"
+  },
+  {
+    "id": "cult-films",
+    "tr": "Kült Filmler",
+    "en": "Cult Films"
+  }
+]

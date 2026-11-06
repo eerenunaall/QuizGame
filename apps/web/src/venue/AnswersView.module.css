@@ -1,0 +1,143 @@
+.view {
+  margin-top: 4px;
+}
+
+.list {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  margin: 8px 0 14px;
+  list-style: none;
+}
+
+.card {
+  padding: 14px;
+  background: rgba(var(--qp-deep-rgb), 0.55);
+  border: 2px solid var(--qp-color-surface-line);
+  border-radius: 20px;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.badge,
+.badgeOn {
+  padding: 3px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--qp-color-muted-text);
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+}
+
+.badgeOn {
+  color: #0b0a08;
+  background: var(--qp-color-success);
+}
+
+.question {
+  margin: 0 0 10px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.options {
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.option,
+.optionRight {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 12px;
+  font-size: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid transparent;
+  border-radius: 14px;
+}
+
+.optionRight {
+  font-weight: 800;
+  background: rgba(61, 220, 132, 0.16);
+  border-color: var(--qp-color-success);
+}
+
+.letter {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 26px;
+  text-align: center;
+  color: var(--qp-color-muted-text);
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+}
+
+.optionText {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tick {
+  flex: none;
+  font-size: 20px;
+  color: var(--qp-color-success);
+}
+
+.explanation {
+  margin: 10px 0 0;
+  font-size: 14px;
+  color: var(--qp-color-muted-text);
+  overflow-wrap: anywhere;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.segments {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.segment,
+.segmentOn {
+  flex: 1;
+  min-height: 48px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--qp-color-text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid var(--qp-color-surface-line);
+  border-radius: 14px;
+  cursor: pointer;
+}
+
+.segmentOn {
+  color: #0b0a08;
+  background: var(--qp-color-accent-a);
+  border-color: var(--qp-color-accent-a);
+}
