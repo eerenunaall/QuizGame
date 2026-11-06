@@ -49,6 +49,7 @@ import { systemClock, type Clock } from './util/clock';
 import { createMetrics } from './util/metrics';
 import { Gateway } from './ws/gateway';
 import { registerVenueAssetRoutes } from './venue/asset-routes';
+import { registerVenueBankRoutes } from './venue/bank-routes';
 import { registerVenueContentRoutes } from './venue/content-routes';
 import { registerVenueRoutes } from './venue/routes';
 import { QuizNightService } from './venue/quiznight-service';
@@ -421,6 +422,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   });
   registerVenueContentRoutes(app, { config, db, venues, limiter, security, clock });
   registerVenueAssetRoutes(app, { config, venues, limiter, security });
+  registerVenueBankRoutes(app, { config, db, venues, limiter, security, onError });
   const displayRoutes = { config, db, venues, displays, limiter, security };
   registerVenueDisplayRoutes(app, displayRoutes);
   registerVenueAuthoringRoutes(app, { config, db, venues, limiter, security, clock });

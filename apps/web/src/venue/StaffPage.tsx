@@ -15,6 +15,8 @@ import { SignInForm, useAccount } from '../pages/useAccount';
 import { assetUrl } from './assetsApi';
 import { venueApi, type StaffRole, type StaffTable } from './api';
 import { formatLeft, useTicker } from './meter';
+import { AnswersView } from './AnswersView';
+import answerStyles from './AnswersView.module.css';
 import { VenueQuestions } from './VenueQuestions';
 import { DisplayPanel } from './DisplayPanel';
 import { QuestionStudio } from './QuestionStudio';
@@ -186,7 +188,7 @@ function Shell({
     entrance: <EntrancePanel />,
     look: <LookPanel venueName={venue.name} />,
     play: <PlayPanel />,
-    questions: <VenueQuestions venueId={venue.id} role={venue.role} />,
+    questions: <QuestionsTab venueId={venue.id} role={venue.role} />,
     studio: <QuestionStudio venueId={venue.id} />,
     quiznight: <QuizNightTab venueId={venue.id} />,
     people: <PeoplePanel venueId={venue.id} />,
@@ -252,6 +254,43 @@ function Shell({
         {t('staff.signOut')}
       </Button>
     </>
+  );
+}
+
+// ───────────── questions: upload and manage, plus the owner's answers view ─────────────
+
+type QuestionView = 'manage' | 'venue' | 'bank';
+
+/**
+ * Staff see the counts (ADR-0025). The owner also gets the answers view (ADR-0030 §5): their own questions
+ * and the general bank with the correct option marked, which the server only ever sends to an owner.
+ */
+function QuestionsTab({ venueId, role }: { venueId: string; role: StaffRole }) {
+  const { t } = useI18n();
+  const [view, setView] = useState<QuestionView>('manage');
+  if (role !== 'OWNER') return <VenueQuestions venueId={venueId} role={role} />;
+  const views: QuestionView[] = ['manage', 'venue', 'bank'];
+  return (
+    <div>
+      <div className={answerStyles.segments} role="tablist">
+        {views.map((id) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={view === id}
+            className={view === id ? answerStyles.segmentOn : answerStyles.segment}
+            onClick={() => setView(id)}
+            data-testid={`questions-view-${id}`}
+          >
+            {t(`panel.answers.view.${id}`)}
+          </button>
+        ))}
+      </div>
+      {view === 'manage' ? <VenueQuestions venueId={venueId} role={role} /> : null}
+      {view === 'venue' ? <AnswersView venueId={venueId} scope="VENUE" /> : null}
+      {view === 'bank' ? <AnswersView venueId={venueId} scope="GLOBAL" /> : null}
+    </div>
   );
 }
 

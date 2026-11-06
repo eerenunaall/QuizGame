@@ -117,4 +117,31 @@ export const venuePanelEn = {
   'panel.people.title': 'Staff',
   'panel.people.intro': 'Add the employees who open tables and check prizes here.',
   'panel.people.emailHint': 'Example: waiter@cafe.com',
+
+  // answers view (owner only)
+  'panel.answers.view.manage': 'Upload and manage',
+  'panel.answers.view.venue': 'Your questions',
+  'panel.answers.view.bank': 'General question bank',
+  'panel.answers.intro.venue':
+    'The questions your venue uploaded, with the correct answers. Only you see this page.',
+  'panel.answers.intro.bank':
+    'The general questions guests may be asked, correct answer marked. This list shows only in this panel, never on the TV or phones.',
+  'panel.answers.search': 'Search questions',
+  'panel.answers.searchHint': 'Example: Fatih',
+  'panel.answers.category': 'Topic',
+  'panel.answers.categoryAll': 'All topics',
+  'panel.answers.language': 'Question language',
+  'panel.answers.total': '{n} questions',
+  'panel.answers.empty': 'No question found for this search.',
+  'panel.answers.more': 'Show more',
+  'panel.answers.correct': 'Correct answer',
+  'panel.answers.explanation': 'Explanation',
+  'panel.answers.error': 'Could not load the questions. Try again in a moment.',
+  'panel.answers.status.ACTIVE': 'In play',
+  'panel.answers.status.REVIEW': 'In review',
+  'panel.answers.status.RETIRED': 'Removed',
+  'panel.answers.difficulty.EASY': 'Easy',
+  'panel.answers.difficulty.MEDIUM': 'Medium',
+  'panel.answers.difficulty.HARD': 'Hard',
+  'panel.answers.difficulty.EXPERT': 'Very hard',
 } as const;

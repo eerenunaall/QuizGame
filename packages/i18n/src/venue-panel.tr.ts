@@ -117,4 +117,31 @@ export const venuePanelTr = {
   'panel.people.title': 'Personel',
   'panel.people.intro': 'Masaları açan ve ödülleri doğrulayan çalışanlarını buradan eklersin.',
   'panel.people.emailHint': 'Örnek: garson@kafe.com',
+
+  // answers view (owner only)
+  'panel.answers.view.manage': 'Yükle ve yönet',
+  'panel.answers.view.venue': 'Mekanın soruları',
+  'panel.answers.view.bank': 'Genel soru bankası',
+  'panel.answers.intro.venue':
+    'Mekanın yüklediği sorular ve doğru cevapları. Bu sayfayı sadece sen görürsün.',
+  'panel.answers.intro.bank':
+    'Misafirlere sorulabilecek genel sorular, doğru cevap işaretli. Bu liste yalnızca bu panelde görünür; TV ve telefonlarda asla görünmez.',
+  'panel.answers.search': 'Soru ara',
+  'panel.answers.searchHint': 'Örnek: Fatih',
+  'panel.answers.category': 'Konu',
+  'panel.answers.categoryAll': 'Tüm konular',
+  'panel.answers.language': 'Soru dili',
+  'panel.answers.total': '{n} soru',
+  'panel.answers.empty': 'Bu aramayla soru bulunamadı.',
+  'panel.answers.more': 'Daha fazla göster',
+  'panel.answers.correct': 'Doğru cevap',
+  'panel.answers.explanation': 'Açıklama',
+  'panel.answers.error': 'Sorular getirilemedi. Biraz sonra tekrar dene.',
+  'panel.answers.status.ACTIVE': 'Oyunda',
+  'panel.answers.status.REVIEW': 'İncelemede',
+  'panel.answers.status.RETIRED': 'Kaldırıldı',
+  'panel.answers.difficulty.EASY': 'Kolay',
+  'panel.answers.difficulty.MEDIUM': 'Orta',
+  'panel.answers.difficulty.HARD': 'Zor',
+  'panel.answers.difficulty.EXPERT': 'Çok zor',
 } as const;
