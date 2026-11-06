@@ -114,7 +114,8 @@ const EnvSchema = z.object({
   AUTHORING_MODEL: z.string().min(1).max(100).optional(),
   AUTHORING_API_BASE: z.string().url().optional(),
   AUTHORING_TIMEOUT_MS: int(90_000, 1_000, 300_000),
-  AUTHORING_DAILY_RUNS: int(10, 1, 500),
+  AUTHORING_DAILY_RUNS: int(5, 0, 500),
+  AUTHORING_GLOBAL_DAILY_RUNS: int(300, 1, 100_000),
   AUDIT_API_KEY: z.string().min(8).optional(),
   AUDIT_MODEL_FAST: z.string().min(1).max(100).optional(),
   AUDIT_MODEL_STRONG: z.string().min(1).max(100).optional(),
@@ -266,6 +267,7 @@ export interface AppConfig {
     model: string;
     timeoutMs: number;
     dailyRuns: number;
+    globalDailyRuns: number;
   } | null;
   categoryMinQuestions: number;
   emailWebhook: { url: string; token: string | null } | null;
@@ -408,6 +410,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
             model: e.AUTHORING_MODEL,
             timeoutMs: e.AUTHORING_TIMEOUT_MS,
             dailyRuns: e.AUTHORING_DAILY_RUNS,
+            globalDailyRuns: e.AUTHORING_GLOBAL_DAILY_RUNS,
           }
         : null,
     categoryMinQuestions: e.CATEGORY_MIN_QUESTIONS,

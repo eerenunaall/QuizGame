@@ -538,6 +538,8 @@ export interface VenueImportResult {
   /** The upload this call created, or the live one with the same bytes. */
   uploadId: string | null;
   imported: number;
+  /** The question each stored row became, by its line in the file (AI drafts are matched through it). */
+  created: { line: number; questionId: string }[];
 }
 
 export async function importVenueUpload(
@@ -548,19 +550,27 @@ export async function importVenueUpload(
     fileName: string;
     bytes: Uint8Array;
     /** Where the bytes came from (ADR-0028 §6); a file by default. */
-    origin?: 'FILE' | 'MANUAL';
+    origin?: 'FILE' | 'MANUAL' | 'AI';
+    /** SHA-256 of the document the questions were drafted from (origin AI); the text itself is never kept. */
+    sourceFileHash?: string;
   },
   options: VenueAnalysisOptions,
 ): Promise<VenueAnalysisFailure | VenueImportResult> {
   const { result, plan: planned } = await plan(db, input, options);
   if (!result.ok) return result;
   if (result.alreadyImported)
-    return { analysis: result, uploadId: result.alreadyImported.uploadId, imported: 0 };
+    return {
+      analysis: result,
+      uploadId: result.alreadyImported.uploadId,
+      imported: 0,
+      created: [],
+    };
   const { ready, newCategories, embedderId } = planned!;
   const analysis = result;
   const byCategory: Record<string, number> = {};
   for (const row of ready) byCategory[row.category.id] = (byCategory[row.category.id] ?? 0) + 1;
 
+  const created: { line: number; questionId: string }[] = [];
   const uploadId: string | null = await db.transaction().execute(async (trx) => {
     // One import per venue at a time: the cap and the live-hash rule are checked under this lock.
     await trx
@@ -617,6 +627,7 @@ export async function importVenueUpload(
         rows_duplicate: analysis.counts.duplicate,
         by_category: JSON.stringify(byCategory),
         origin: input.origin ?? 'FILE',
+        source_file_hash: input.sourceFileHash ?? null,
       })
       .returning('id')
       .executeTakeFirstOrThrow();
@@ -676,6 +687,7 @@ export async function importVenueUpload(
         .set({ status: 'ACTIVE' })
         .where('id', '=', inserted.id)
         .execute();
+      created.push({ line: row.line, questionId: inserted.id });
     }
     await trx
       .insertInto('venue_content_events')
@@ -694,7 +706,7 @@ export async function importVenueUpload(
       .execute();
     return upload.id;
   });
-  return { analysis, uploadId, imported: ready.length };
+  return { analysis, uploadId, imported: ready.length, created: uploadId ? created : [] };
 }
 
 // ───────────── the set: list, retire, export ─────────────

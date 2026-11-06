@@ -31,8 +31,26 @@ export interface LlmClientOptions {
   random?: () => number;
 }
 
+/** A function the model must answer through: its reply is then JSON that matches `inputSchema`. */
+export interface ToolSpec {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+}
+
+export interface CompletionRequest {
+  model: string;
+  system: string;
+  user: string;
+  maxTokens: number;
+  /** When set the model is forced to call this tool; `Completion.toolInput` is what it passed. */
+  tool?: ToolSpec;
+}
+
 export interface Completion {
   text: string;
+  /** The arguments of the forced tool call, as the model sent them (unvalidated). */
+  toolInput?: unknown;
   inputTokens: number;
   outputTokens: number;
 }
@@ -49,7 +67,14 @@ export class LlmError extends Error {
 }
 
 const ResponseSchema = z.object({
-  content: z.array(z.object({ type: z.string(), text: z.string().optional() })),
+  content: z.array(
+    z.object({
+      type: z.string(),
+      text: z.string().optional(),
+      name: z.string().optional(),
+      input: z.unknown().optional(),
+    }),
+  ),
   usage: z.object({ input_tokens: z.number(), output_tokens: z.number() }).optional(),
 });
 
@@ -68,12 +93,7 @@ export class AnthropicClient {
     };
   }
 
-  async complete(request: {
-    model: string;
-    system: string;
-    user: string;
-    maxTokens: number;
-  }): Promise<Completion> {
+  async complete(request: CompletionRequest): Promise<Completion> {
     let attempt = 0;
     for (;;) {
       try {
@@ -88,12 +108,7 @@ export class AnthropicClient {
     }
   }
 
-  private async once(request: {
-    model: string;
-    system: string;
-    user: string;
-    maxTokens: number;
-  }): Promise<Completion> {
+  private async once(request: CompletionRequest): Promise<Completion> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.options.timeoutMs);
     try {
@@ -110,6 +125,18 @@ export class AnthropicClient {
           temperature: 0,
           system: request.system,
           messages: [{ role: 'user', content: request.user }],
+          ...(request.tool
+            ? {
+                tools: [
+                  {
+                    name: request.tool.name,
+                    description: request.tool.description,
+                    input_schema: request.tool.inputSchema,
+                  },
+                ],
+                tool_choice: { type: 'tool', name: request.tool.name },
+              }
+            : {}),
         }),
         signal: controller.signal,
       });
@@ -123,8 +150,14 @@ export class AnthropicClient {
         .filter((part) => part.type === 'text')
         .map((part) => part.text ?? '')
         .join('');
+      const call = request.tool
+        ? parsed.data.content.find(
+            (part) => part.type === 'tool_use' && part.name === request.tool?.name,
+          )
+        : undefined;
       return {
         text,
+        ...(call ? { toolInput: call.input } : {}),
         inputTokens: parsed.data.usage?.input_tokens ?? 0,
         outputTokens: parsed.data.usage?.output_tokens ?? 0,
       };

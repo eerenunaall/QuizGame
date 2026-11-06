@@ -39,7 +39,8 @@ const venueRoutes = (s: TestServer) =>
       !route.url.includes('/questions') &&
       !route.url.includes('/bank/') && // walked by ATTACK 52 (venue-admin.test.ts)
       !route.url.includes('/quiznights') && // walked by ATTACKS 70-79 (quiznight.test.ts)
-      !route.url.includes('/displays'), // walked by ATTACK 62 (venue-displays.test.ts)
+      !route.url.includes('/displays') && // walked by ATTACK 62 (venue-displays.test.ts)
+      !route.url.includes('/authoring'), // walked by ATTACKS 80-89 (venue-authoring.test.ts)
   );
 const fill = (url: string, venueId: string, sessionId: string, accountId: string) =>
   url

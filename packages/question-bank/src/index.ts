@@ -1,4 +1,5 @@
 export * from './audit-runner';
+export * from './authoring';
 export * from './categories';
 export * from './context';
 export * from './export';

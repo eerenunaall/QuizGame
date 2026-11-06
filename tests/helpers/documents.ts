@@ -33,7 +33,8 @@ export function buildPdf(options: PdfOptions): Uint8Array {
   objects[2] = `<< /Type /Pages /Kids [${kids}] /Count ${options.declaredCount ?? pageCount} >>`;
   objects[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
   options.pages.forEach((text, i) => {
-    const lines = text.split('\n');
+    // pdf.js drops glyphs that fall off the page, as a reader does: wrap like a typesetter would.
+    const lines = text.split('\n').flatMap((line) => line.match(/.{1,85}(?:\s|$)|\S+/gu) ?? ['']);
     const stream = `BT /F1 12 Tf 14 TL 40 760 Td ${lines
       .map((line) => `(${escapePdf(line)}) Tj T*`)
       .join(' ')} ET`;

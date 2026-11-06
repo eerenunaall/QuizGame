@@ -56,7 +56,9 @@ import { QuizNightService } from './venue/quiznight-service';
 import { registerQuizNightRoutes } from './venue/quiznight-routes';
 import { registerVenueDisplayRoutes, roomCreationGate } from './venue/display-routes';
 import { VenueDisplays } from './venue/displays';
+import { VenueDrafts } from './venue/authoring-drafts';
 import { registerVenueAuthoringRoutes } from './venue/authoring-routes';
+import { AuthoringService } from './venue/authoring-service';
 import { VenueService } from './venue/service';
 
 export const MIGRATIONS_DIR = fileURLToPath(
@@ -425,7 +427,26 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerVenueBankRoutes(app, { config, db, venues, limiter, security, onError });
   const displayRoutes = { config, db, venues, displays, limiter, security };
   registerVenueDisplayRoutes(app, displayRoutes);
-  registerVenueAuthoringRoutes(app, { config, db, venues, limiter, security, clock });
+  const authoring = new AuthoringService({
+    db,
+    settings: config.authoring,
+    clock,
+    log: { info: (o, m) => log.info(o, m), warn: (o, m) => log.warn(o, m) },
+  });
+  maintenance.addTask(async () => {
+    const swept = await authoring.sweep();
+    if (swept.expired > 0 || swept.interrupted > 0) log.info(swept, 'authoring sweep');
+  });
+  registerVenueAuthoringRoutes(app, {
+    config,
+    db,
+    venues,
+    authoring,
+    drafts: new VenueDrafts({ db, clock }),
+    limiter,
+    security,
+    clock,
+  });
   registerQuizNightRoutes(app, { config, venues, nights: quizNights, limiter, security });
   registerBlindRoutes(app, { config, quizzes, vault, flags, limiter });
   registerPrivacyRoutes(app, {
@@ -489,6 +510,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     gateway.shutdown();
     if (graceful) await manager.stop();
     else manager.abandonForTest();
+    await authoring.idle(); // a model run still writing its drafts must not meet a closed pool
     await telemetry.stop();
     await app.close();
     await pool.end();

@@ -549,8 +549,11 @@ export interface VenueAssets {
 export interface VenueAuthoringRuns {
   account_id: string | null;
   at: Timestamp;
+  category: string | null;
   discarded: Generated<number>;
   drafts: Generated<number>;
+  failure: string | null;
+  finished_at: Timestamp | null;
   id: Generated<string>;
   input_chars: number;
   input_tokens: Generated<number>;
@@ -662,6 +665,7 @@ export interface VenueRewards {
 }
 
 export interface Venues {
+  authoring_daily_runs: number | null;
   created_at: Generated<Timestamp>;
   created_by: string | null;
   display_seats: Generated<number>;
