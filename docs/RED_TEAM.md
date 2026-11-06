@@ -57,6 +57,29 @@ it builds on). The attacker plays against the real server over real sockets; the
 | 62 Other café's staff, STAFF, phone or account token against TVs; room creation under VENUE_LOCK | 404/403/401, CREATE_ROOM 403 without a display cookie | › ATTACK 62 | ✅ server-enforced |
 | 63 CSRF and cookie riding on pairing/revoke | 403 from foreign Origin; HttpOnly, SameSite=Strict | › ATTACK 63 | ✅ |
 | 64 Seat-limit bypass by concurrent pairing | exactly the licensed number of displays | › ATTACK 64 | ✅ row lock, 6-way race test |
+| 47 Hostile image files (venue logos) | SVG, GIF, HTML renamed, polyglot, text chunk, EXIF, animated WebP, huge, truncated: nothing stored, attempt logged | `red-team/venue-admin.test.ts` › ATTACK 47 | ✅ full container parse, no re-encode (residual decoder risk in ADR-0030) |
+| 48 CSRF on asset and settings writes | cookie-only writes refused | › ATTACK 48 | ✅ |
+| 49 Upload and enumeration floods | per-account upload limit; per-IP limit on the public image address | › ATTACK 49 | ✅ |
+| 50 Venue A against venue B's images | cannot manage, read, reference or show them | › ATTACK 50 | ✅ |
+| 51 Image address as an oracle | every wrong pair gives the same 404, no listing, redirect or traversal | › ATTACK 51 | ✅ |
+| 52 Answers view for non-owners | staff, stranger, player app, console session, TV cookie, other owner refused; other venues' private questions never returned | › ATTACK 52 | ✅ owner only |
+| 53 Scraping the question bank | each read logged, search words not stored, 429 after the limit | › ATTACK 53 | ✅ |
+| 54 Entrance line hostile text | links, zero-width, profanity, length, money fields refused | › ATTACK 54 | ✅ |
+| 55 Table frame leaks | only allow-listed venue keys | › ATTACK 55 | ✅ |
+| 56 `paymentsEnabled` | follows the server flag | › ATTACK 56 | ✅ |
+| 57 Console sessions on owner asset/bank routes | refused; SUPPORT cannot remove images | › ATTACK 57 | ✅ |
+| 58 Look settings | closed set: no typed colour, odd hash, max 8 marks | › ATTACK 58 | ✅ |
+| 59 24 parallel uploads | exactly 12 stored | › ATTACK 59 | ✅ advisory lock |
+| 70 Quiz night routes | anonymous 401, stranger/player 404, other café's owner 404, console 403, staff 403 (except prize redeem) | `red-team/quiznight.test.ts` › ATTACK 70 | ✅ |
+| 71 CSRF on quiz night writes | cookie writes without the proof refused | › ATTACK 71 | ✅ |
+| 72 Display links | forged, extended, swapped, unknown tokens refused; 12 h expiry and revocation; guessing limited | › ATTACK 72 | ✅ |
+| 73 TV frames leak scan | a whole night walked, every frame scanned: no answer, explanation or marking data before the reveal | › ATTACK 73 | ✅ |
+| 74 Forged actor, time, seq, prev | refused; the log shows the real actor | › ATTACK 74 | ✅ |
+| 75 2x joker abuse | after the question is on screen, over the limit, on estimate questions, after Back: refused | › ATTACK 75 | ✅ |
+| 76 Prize | refused before the podium, issued once, stored hashed, never in TV or log; redeemed once, only at its own café | › ATTACK 76 | ✅ |
+| 77 Concurrency | 12 concurrent NEXT with expectedSeq: one winner | › ATTACK 77 | ✅ |
+| 78 Cross-venue night | another café's night not found under either venue path | › ATTACK 78 | ✅ |
+| 79 Config tampering | draft cannot start, live config locked, junk 400, stale seq refused | › ATTACK 79 | ✅ |
 
 Findings from running these attacks that changed the code:
 
