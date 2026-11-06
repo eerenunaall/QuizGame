@@ -43,7 +43,10 @@ const api = (who: { token: string } | null, venue = a) => contentApi(server, who
 const rows = (venueId: string) =>
   server.db.db.selectFrom('questions').selectAll().where('owner_venue_id', '=', venueId).execute();
 const questionRoutes = () =>
-  server.built.routes.filter((route) => route.url.includes('/questions'));
+  // the owner's answers view (/bank, /answers) has its own walk in venue-panel.test.ts (ATTACK 47-52)
+  server.built.routes.filter(
+    (route) => route.url.includes('/questions') && !/\/(bank|answers)(\/|$)/u.test(route.url),
+  );
 
 describe('ATTACK 37 — every question route', () => {
   it('is walked with no credentials (401), a stranger (404), the other venue (404), staff (403 but the list) and a console session (403)', async () => {
