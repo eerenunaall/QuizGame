@@ -25,6 +25,7 @@ import { PanelIcon } from './PanelIcon';
 import { tabsFor, type TabId } from './tabs';
 import styles from './StaffPage.module.css';
 
+import { QuizNightTab } from './quiznight/QuizNightTab';
 type Venue = { id: string; name: string; role: StaffRole };
 
 /** What a refusal means for the person at the counter (never a code or a status number). */
@@ -187,6 +188,7 @@ function Shell({
     play: <PlayPanel />,
     questions: <VenueQuestions venueId={venue.id} role={venue.role} />,
     studio: <QuestionStudio venueId={venue.id} />,
+    quiznight: <QuizNightTab venueId={venue.id} />,
     people: <PeoplePanel venueId={venue.id} />,
   };
   const allowed = tabs.some((entry) => entry.id === tab) ? tab : 'tables';

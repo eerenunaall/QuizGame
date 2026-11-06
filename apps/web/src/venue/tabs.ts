@@ -13,6 +13,7 @@ export type PanelIconName =
   | 'play'
   | 'questions'
   | 'studio'
+  | 'quiznight'
   | 'people';
 
 export interface TabDef {
@@ -41,6 +42,8 @@ export const TABS = [
   // The question counts stay visible to staff (ADR-0025); the answers browser inside is owner-only.
   { id: 'questions', label: 'panel.tab.questions', icon: 'questions', role: 'STAFF' },
   { id: 'studio', label: 'panel.tab.studio', icon: 'studio', role: 'OWNER' },
+  // Host-led quiz night (ADR-0029): its own files under venue/quiznight and tv/night.
+  { id: 'quiznight', label: 'staff.tab.quiznight', icon: 'quiznight', role: 'OWNER' },
   { id: 'people', label: 'panel.tab.people', icon: 'people', role: 'OWNER' },
 ] as const satisfies readonly TabDef[];
 

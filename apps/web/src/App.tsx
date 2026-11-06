@@ -22,6 +22,10 @@ const TvApp = lazy(() => import('./tv/TvApp').then((module) => ({ default: modul
 const StaffPage = lazy(() =>
   import('./venue/StaffPage').then((module) => ({ default: module.StaffPage })),
 );
+// The quiz night TV (ADR-0029) is reached through a signed display link; it has its own small chunk.
+const NightTv = lazy(() =>
+  import('./tv/night/NightTv').then((module) => ({ default: module.NightTv })),
+);
 const PlayApp = lazy(() =>
   import('./play/PlayApp').then((module) => ({ default: module.PlayApp })),
 );
@@ -78,6 +82,10 @@ export function App() {
           </ClientProvider>
         </DisplayLockGate>
       ),
+    },
+    {
+      path: '/tv/gece',
+      render: () => <NightTv />,
     },
     { path: '/join/:code?', render: (params) => <PlayRoute code={params.code} /> },
     { path: '/play/:code?', render: (params) => <PlayRoute code={params.code} /> },

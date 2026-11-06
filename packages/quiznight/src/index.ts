@@ -1,6 +1,6 @@
 export * from './types';
 export * from './steps';
-export { createState, execute, replay, validateConfig } from './machine';
+export { createState, execute, peekNext, replay, validateConfig } from './machine';
 export type { Context, Issue, Outcome } from './machine';
 export {
   countModeAvailable,

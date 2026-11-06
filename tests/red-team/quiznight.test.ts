@@ -49,6 +49,7 @@ async function run(api: ReturnType<typeof nightApi>, id: string, ...cmds: Comman
     last = await api.command(id, cmd);
     expect(last.status, JSON.stringify(last.body)).toBe(200);
   }
+  if (!last) throw new Error('run needs at least one command');
   return last;
 }
 

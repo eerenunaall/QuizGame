@@ -11,6 +11,7 @@ import {
   standings,
   type StandingRow,
 } from './scoring';
+import { peekNext } from './machine';
 import { buildSteps, stepIndex } from './steps';
 import type { Answer, QState, QuestionDef, RoundKind, Step, TeamDef, Timer } from './types';
 import { TIE_QUESTION_ID } from './types';
@@ -64,6 +65,8 @@ export interface TvView {
   overlay: 'STANDINGS' | null;
   entranceText: string;
   prizeText: string;
+  /** The joker allowance is a public rule of the night (it is on the how-to slide). */
+  jokersPerTeam: number;
   round: { index: number; count: number; kind: RoundKind; title: string; questions: number } | null;
   question: TvQuestion | null;
   /** Teams that played 2x on THIS question; only filled once the question is on screen. */
@@ -145,6 +148,7 @@ export function tvView(state: QState, now: number): TvView {
     overlay: state.overlay,
     entranceText: config.settings.entranceText,
     prizeText: config.settings.prizeText,
+    jokersPerTeam: config.settings.jokersPerTeam,
     round: null,
     question: null,
     doubled: [],
@@ -314,6 +318,7 @@ export interface HostView {
   cursor: number;
   stepCount: number;
   step: Step | null;
+  nextStep: Step | null;
   paused: boolean;
   overlay: 'STANDINGS' | null;
   timerSeconds: number;
@@ -421,6 +426,7 @@ export function hostView(state: QState, now: number): HostView {
     cursor: state.cursor,
     stepCount: steps.length,
     step: steps[state.cursor] ?? null,
+    nextStep: state.started && !state.closed ? peekNext(state) : null,
     paused: state.paused,
     overlay: state.overlay,
     timerSeconds: config.settings.timerSec,

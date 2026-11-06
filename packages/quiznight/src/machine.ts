@@ -7,7 +7,7 @@ import {
   tieNeeded,
 } from './scoring';
 import { buildSteps, stepIndex } from './steps';
-import type { Command, LogEvent, QError, QState, QuizConfig } from './types';
+import type { Command, LogEvent, QError, QState, QuizConfig, Step } from './types';
 import { TIE_QUESTION_ID } from './types';
 
 export type Issue =
@@ -97,6 +97,12 @@ function clone(s: QState): QState {
   const { config, ...rest } = s;
   // State is JSON-safe by construction (no Dates, maps or undefined), so a JSON round trip is a deep copy.
   return { config, ...(JSON.parse(JSON.stringify(rest)) as typeof rest) };
+}
+
+/** The slide NEXT would show, for the button label on the tablet. */
+export function peekNext(s: QState): Step | null {
+  const n = nextCursor(s);
+  return n === null ? null : (buildSteps(s.config)[n] ?? null);
 }
 
 /** Next step that applies right now (tie-break steps vanish unless the top is tied). */
