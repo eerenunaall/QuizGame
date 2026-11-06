@@ -8,7 +8,16 @@ import { describe, expect, it } from 'vitest';
  */
 
 const ROOT = new URL('../../', import.meta.url).pathname;
-const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.turbo', 'coverage', '.expo']);
+const SKIP_DIRS = new Set([
+  'node_modules',
+  '.git',
+  '.claude', // agent worktrees; each is checked on its own branch
+  'dist',
+  'build',
+  '.turbo',
+  'coverage',
+  '.expo',
+]);
 const TEXT_EXTENSIONS = new Set([
   '.ts',
   '.tsx',

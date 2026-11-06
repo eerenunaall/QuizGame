@@ -14,6 +14,8 @@ export default tseslint.config(
       '**/node_modules/**',
       'docs/**',
       'seed/**',
+      // agent worktrees carry full copies of the repo with their own node_modules
+      '.claude/**',
       // self-contained static studio site with its own browser/node scripts
       'sites/archonbite/**',
       'playwright-report/**',
