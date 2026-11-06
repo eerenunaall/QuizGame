@@ -358,7 +358,7 @@ describe('ATTACK 54 — the entrance line is text for a TV, not a price engine o
       'bit.ly/kampanya',
       'https://evil.example/odeme',
       'www.evil.example',
-      `150 TL${'​'}`,
+      `150 TL${'\u200b'}`,
       'x'.repeat(41),
       '',
     ])
