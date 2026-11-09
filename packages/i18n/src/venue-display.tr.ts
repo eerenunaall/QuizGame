@@ -54,8 +54,6 @@ export const venueDisplayTr = {
   'studio.ok': 'Soru uygun görünüyor.',
   'studio.saved': 'Soru kaydedildi, oyunlarda kullanılacak.',
   'studio.problems': 'Düzeltilmesi gereken yerler:',
-  'studio.files':
-    'PDF veya Word belgesinden soru üretme yakında. Şimdilik CSV/JSONL yükleyebilirsiniz (Sorular sekmesi).',
   'studio.error.owner': 'Soru yazmak için kafe sahibi olmalısın.',
   'studio.error.generic': 'İşlem yapılamadı. Tekrar dene.',
   'studio.error.throttled': 'Çok sık denendi. Biraz bekleyip tekrar dene.',
@@ -65,4 +63,69 @@ export const venueDisplayTr = {
   'studio.verdict.INVALID': 'Soru eksik ya da hatalı.',
   'studio.verdict.DUPLICATE': 'Bu soru zaten var.',
   'studio.verdict.FULL': 'Kafenin soru sınırı doldu.',
+  'studio.files': 'CSV ya da JSONL dosyası yüklemek için Sorular sekmesine bakın.',
+  'studio.ai.title': 'Belgeden soru üret',
+  'studio.ai.intro':
+    'PDF, Word (.docx), TXT veya MD dosyası yükleyin. Yapay zekâ belgeden taslak sorular hazırlar. Siz onaylamadan hiçbir soru oyuna girmez.',
+  'studio.ai.tip':
+    "İpucu: Başlıkları olan, düzgün yazılmış kısa bir belge (ders notu, menü tanıtımı, mekânın hikâyesi) en iyi sonucu verir. Resimden oluşan taranmış PDF'lerin yazısı okunamaz.",
+  'studio.ai.example': 'Örnek dosyayı indir',
+  'studio.ai.off':
+    'Belgeden soru üretme bu kurulumda kapalı: yönetici henüz açmadı. Soruları aşağıdan elle yazabilirsiniz.',
+  'studio.ai.category': 'Soruların kategorisi',
+  'studio.ai.pick': 'Dosya seç',
+  'studio.ai.chosen': 'Seçilen dosya: {name}',
+  'studio.ai.none': 'Henüz dosya seçilmedi.',
+  'studio.ai.start': 'Soruları hazırla',
+  'studio.ai.quota': 'Bugün {used} / {limit} belge kullanıldı.',
+  'studio.ai.working':
+    'Belge okunuyor ve sorular hazırlanıyor. Bu bir iki dakika sürebilir, sayfayı kapatmayın.',
+  'studio.ai.elapsed': '{s} sn geçti',
+  'studio.ai.done': '{n} taslak soru hazır. Aşağıdan gözden geçirin.',
+  'studio.ai.doneDropped':
+    '{n} taslak soru hazır. {dropped} öneri belgeye ya da kurallara uymadığı için atıldı.',
+  'studio.ai.empty':
+    'Bu belgeden uygun soru çıkarılamadı. Daha çok bilgi içeren bir belge deneyin.',
+  'studio.ai.fail.unavailable':
+    'Soru hazırlama servisine şu an ulaşılamıyor. Biraz sonra tekrar deneyin; hakkınızdan düşmedi.',
+  'studio.ai.fail.rejected_key':
+    'Soru hazırlama servisinin ayarında bir sorun var. Lütfen yöneticiye haber verin.',
+  'studio.ai.fail.bad_output':
+    'Servis anlaşılır bir cevap vermedi. Tekrar deneyin; hakkınızdan düşmedi.',
+  'studio.ai.fail.interrupted': 'İşlem yarıda kaldı. Tekrar deneyin; hakkınızdan düşmedi.',
+  'studio.ai.error.too_big': 'Dosya çok büyük (en fazla 10 MB).',
+  'studio.ai.error.too_long':
+    'Belge çok uzun (en fazla 50 sayfa ya da yaklaşık 200 bin karakter). Daha kısa bir bölüm yükleyin.',
+  'studio.ai.error.unsupported': 'Bu dosya türü desteklenmiyor. PDF, DOCX, TXT veya MD yükleyin.',
+  'studio.ai.error.pdf_encrypted': 'Bu PDF şifreli, açılamadı.',
+  'studio.ai.error.corrupt': 'Bu dosya açılamadı ya da bozuk görünüyor.',
+  'studio.ai.error.no_text': 'Belgede soru yapılacak kadar metin yok.',
+  'studio.ai.error.binary': 'Bu dosya bir metin dosyası değil.',
+  'studio.ai.error.timeout': 'Dosyayı okurken süre doldu. Daha küçük bir dosya deneyin.',
+  'studio.ai.error.busy': 'Şu an başka belgeler okunuyor. Biraz sonra tekrar deneyin.',
+  'studio.ai.error.quota':
+    'Bugünkü belge hakkınız doldu. Yarın tekrar deneyin ya da soruları elle yazın.',
+  'studio.ai.error.running': 'Hazırlanan bir belge zaten var, bitmesini bekleyin.',
+  'studio.ai.error.same_file':
+    'Bu belgeden hazırlanan taslaklar zaten aşağıda bekliyor. Önce onları onaylayın ya da silin.',
+  'studio.ai.error.off': 'Belgeden soru üretme kapalı.',
+  'studio.ai.drafts': 'Taslak sorular ({n})',
+  'studio.ai.draftsNote':
+    'Bunlar henüz oyunda değil. Her soruyu okuyup onaylayın. Onaylamadıklarınız 7 gün sonra silinir.',
+  'studio.ai.noDrafts': 'Onay bekleyen taslak yok.',
+  'studio.ai.approveAll': 'Hepsini onayla',
+  'studio.ai.confirmAll':
+    'Bekleyen {n} sorunun hepsi onaylansın mı? Onaylananlar oyunlarda kullanılır.',
+  'studio.ai.approve': 'Onayla',
+  'studio.ai.edit': 'Düzenle',
+  'studio.ai.delete': 'Sil',
+  'studio.ai.save': 'Kaydet',
+  'studio.ai.cancel': 'Vazgeç',
+  'studio.ai.correctMark': 'Doğru cevap',
+  'studio.ai.quote': 'Belgeden alıntı',
+  'studio.ai.where': 'Yer: {where}',
+  'studio.ai.explanation': 'Biliyor muydun?',
+  'studio.ai.approved': '{n} soru onaylandı, oyunlarda kullanılacak.',
+  'studio.ai.notApproved': '{n} soru onaylanamadı. Nedenleri kartlarında yazıyor.',
+  'studio.ai.fixThese': 'Bu soruda düzeltilmesi gerekenler:',
 } as const;

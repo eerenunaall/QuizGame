@@ -54,8 +54,6 @@ export const venueDisplayEn = {
   'studio.ok': 'The question looks fine.',
   'studio.saved': 'Question saved, it will be used in games.',
   'studio.problems': 'Things to fix:',
-  'studio.files':
-    'Making questions from a PDF or Word file is coming. For now you can upload CSV/JSONL (Questions tab).',
   'studio.error.owner': 'Only the café owner can write questions.',
   'studio.error.generic': 'That did not work. Try again.',
   'studio.error.throttled': 'Too many tries. Wait a little and try again.',
@@ -65,4 +63,71 @@ export const venueDisplayEn = {
   'studio.verdict.INVALID': 'The question is incomplete or wrong.',
   'studio.verdict.DUPLICATE': 'This question already exists.',
   'studio.verdict.FULL': "The café's question limit is reached.",
+  'studio.files': 'To upload a CSV or JSONL file, see the Questions tab.',
+  'studio.ai.title': 'Make questions from a document',
+  'studio.ai.intro':
+    'Upload a PDF, Word (.docx), TXT or MD file. An AI prepares draft questions from it. No question enters a game until you approve it.',
+  'studio.ai.tip':
+    "Tip: a short, well-written document with headings (class notes, a menu introduction, the venue's story) works best. Scanned PDFs made of pictures cannot be read.",
+  'studio.ai.example': 'Download an example file',
+  'studio.ai.off':
+    'Making questions from a document is switched off on this installation: the administrator has not turned it on. You can still write questions by hand below.',
+  'studio.ai.category': 'Category of the questions',
+  'studio.ai.pick': 'Choose a file',
+  'studio.ai.chosen': 'Chosen file: {name}',
+  'studio.ai.none': 'No file chosen yet.',
+  'studio.ai.start': 'Prepare the questions',
+  'studio.ai.quota': 'Documents used today: {used} / {limit}.',
+  'studio.ai.working':
+    'Reading the document and preparing questions. This can take a minute or two, please keep the page open.',
+  'studio.ai.elapsed': '{s} s elapsed',
+  'studio.ai.done': '{n} draft questions are ready. Review them below.',
+  'studio.ai.doneDropped':
+    '{n} draft questions are ready. {dropped} suggestions were dropped because they did not match the document or the rules.',
+  'studio.ai.empty':
+    'No usable questions could be made from this document. Try one with more facts in it.',
+  'studio.ai.fail.unavailable':
+    'The question service cannot be reached right now. Try again in a while; this did not use up your allowance.',
+  'studio.ai.fail.rejected_key':
+    'The question service is set up wrongly. Please tell the administrator.',
+  'studio.ai.fail.bad_output':
+    'The service did not give a usable answer. Try again; this did not use up your allowance.',
+  'studio.ai.fail.interrupted':
+    'The job was interrupted. Try again; this did not use up your allowance.',
+  'studio.ai.error.too_big': 'The file is too big (10 MB at most).',
+  'studio.ai.error.too_long':
+    'The document is too long (50 pages or about 200 thousand characters at most). Upload a shorter part.',
+  'studio.ai.error.unsupported':
+    'This file type is not supported. Upload a PDF, DOCX, TXT or MD file.',
+  'studio.ai.error.pdf_encrypted': 'This PDF is password-protected and could not be opened.',
+  'studio.ai.error.corrupt': 'This file could not be opened or looks damaged.',
+  'studio.ai.error.no_text': 'The document does not have enough text to make questions from.',
+  'studio.ai.error.binary': 'This file is not a text file.',
+  'studio.ai.error.timeout': 'Reading the file took too long. Try a smaller file.',
+  'studio.ai.error.busy': 'Other documents are being read right now. Try again in a moment.',
+  'studio.ai.error.quota':
+    "Today's document allowance is used up. Try again tomorrow or write questions by hand.",
+  'studio.ai.error.running': 'A document is already being prepared, wait for it to finish.',
+  'studio.ai.error.same_file':
+    'Drafts from this document are already waiting below. Approve or delete them first.',
+  'studio.ai.error.off': 'Making questions from a document is switched off.',
+  'studio.ai.drafts': 'Draft questions ({n})',
+  'studio.ai.draftsNote':
+    'These are not in any game yet. Read each question and approve it. Drafts you do not approve are deleted after 7 days.',
+  'studio.ai.noDrafts': 'No drafts are waiting for approval.',
+  'studio.ai.approveAll': 'Approve all',
+  'studio.ai.confirmAll':
+    'Approve all {n} waiting questions? Approved questions are used in games.',
+  'studio.ai.approve': 'Approve',
+  'studio.ai.edit': 'Edit',
+  'studio.ai.delete': 'Delete',
+  'studio.ai.save': 'Save',
+  'studio.ai.cancel': 'Cancel',
+  'studio.ai.correctMark': 'Correct answer',
+  'studio.ai.quote': 'Quote from the document',
+  'studio.ai.where': 'Where: {where}',
+  'studio.ai.explanation': 'Did you know?',
+  'studio.ai.approved': '{n} questions approved, they will be used in games.',
+  'studio.ai.notApproved': '{n} questions could not be approved. The reasons are on their cards.',
+  'studio.ai.fixThese': 'Things to fix in this question:',
 } as const;
