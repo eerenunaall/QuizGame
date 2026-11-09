@@ -31,28 +31,58 @@ export interface LlmClientOptions {
   random?: () => number;
 }
 
-/** A function the model must answer through: its reply is then JSON that matches `inputSchema`. */
-export interface ToolSpec {
-  name: string;
-  description: string;
-  inputSchema: Record<string, unknown>;
+/** A reply the service constrains to this JSON Schema (structured output); validated again by the caller. */
+export interface JsonSpec {
+  /** Our schema, with any constraint; `wireSchema` drops what the service does not compile. */
+  schema: Record<string, unknown>;
 }
 
 export interface CompletionRequest {
   model: string;
   system: string;
   user: string;
+  /** Tokens the reply itself may take; room for the model's thinking is added on the wire. */
   maxTokens: number;
-  /** When set the model is forced to call this tool; `Completion.toolInput` is what it passed. */
-  tool?: ToolSpec;
+  /** When set the reply is one JSON value of this shape; `Completion.json` is that value. */
+  json?: JsonSpec;
 }
 
 export interface Completion {
   text: string;
-  /** The arguments of the forced tool call, as the model sent them (unvalidated). */
-  toolInput?: unknown;
+  /** The parsed JSON reply when `json` was asked for and the reply is complete (unvalidated). */
+  json?: unknown;
+  /** `end_turn`, `max_tokens` (cut short), `refusal` (declined), or null when the service names none. */
+  stopReason: string | null;
   inputTokens: number;
   outputTokens: number;
+}
+
+/**
+ * Current models think before they answer and that thinking counts against `max_tokens`; it cannot be
+ * switched off on the newest ones. Without room for it a short reply is cut before it starts.
+ */
+export const THINKING_HEADROOM_TOKENS = 4_000;
+
+/** Constraints the service refuses in an output schema; the caller's own parser still enforces them. */
+const UNCOMPILED_KEYWORDS = new Set([
+  'minLength',
+  'maxLength',
+  'minimum',
+  'maximum',
+  'multipleOf',
+  'minItems',
+  'maxItems',
+]);
+
+/** The schema as the service accepts it: the same shape, without the constraints it cannot compile. */
+export function wireSchema(schema: unknown): unknown {
+  if (Array.isArray(schema)) return schema.map(wireSchema);
+  if (typeof schema !== 'object' || schema === null) return schema;
+  return Object.fromEntries(
+    Object.entries(schema)
+      .filter(([key]) => !UNCOMPILED_KEYWORDS.has(key))
+      .map(([key, value]) => [key, wireSchema(value)]),
+  );
 }
 
 export class LlmError extends Error {
@@ -71,10 +101,9 @@ const ResponseSchema = z.object({
     z.object({
       type: z.string(),
       text: z.string().optional(),
-      name: z.string().optional(),
-      input: z.unknown().optional(),
     }),
   ),
+  stop_reason: z.string().nullable().optional(),
   usage: z.object({ input_tokens: z.number(), output_tokens: z.number() }).optional(),
 });
 
@@ -119,22 +148,17 @@ export class AnthropicClient {
           'x-api-key': this.options.apiKey,
           'anthropic-version': '2023-06-01',
         },
+        // No sampling parameters and no forced tool call: the current models answer both with a 400.
         body: JSON.stringify({
           model: request.model,
-          max_tokens: request.maxTokens,
-          temperature: 0,
+          max_tokens: request.maxTokens + THINKING_HEADROOM_TOKENS,
           system: request.system,
           messages: [{ role: 'user', content: request.user }],
-          ...(request.tool
+          ...(request.json
             ? {
-                tools: [
-                  {
-                    name: request.tool.name,
-                    description: request.tool.description,
-                    input_schema: request.tool.inputSchema,
-                  },
-                ],
-                tool_choice: { type: 'tool', name: request.tool.name },
+                output_config: {
+                  format: { type: 'json_schema', schema: wireSchema(request.json.schema) },
+                },
               }
             : {}),
         }),
@@ -150,14 +174,20 @@ export class AnthropicClient {
         .filter((part) => part.type === 'text')
         .map((part) => part.text ?? '')
         .join('');
-      const call = request.tool
-        ? parsed.data.content.find(
-            (part) => part.type === 'tool_use' && part.name === request.tool?.name,
-          )
-        : undefined;
+      const stopReason = parsed.data.stop_reason ?? null;
+      // A reply cut by the token limit or declined is not the JSON that was asked for, whatever it holds.
+      let json: unknown;
+      if (request.json && stopReason !== 'max_tokens' && stopReason !== 'refusal') {
+        try {
+          json = JSON.parse(text) as unknown;
+        } catch {
+          json = undefined;
+        }
+      }
       return {
         text,
-        ...(call ? { toolInput: call.input } : {}),
+        ...(json !== undefined ? { json } : {}),
+        stopReason,
         inputTokens: parsed.data.usage?.input_tokens ?? 0,
         outputTokens: parsed.data.usage?.output_tokens ?? 0,
       };

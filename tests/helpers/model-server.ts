@@ -8,11 +8,13 @@ export interface ModelRequest {
   body: {
     model: string;
     max_tokens: number;
-    temperature: number;
     system: string;
     messages: { role: string; content: string }[];
   };
 }
+
+/** What this stand-in "spends" on thinking before the reply: a request must leave room for it. */
+export const THINKING_TOKENS = 1024;
 
 export interface ModelServer {
   url: string;
@@ -31,7 +33,9 @@ const TASKS: [string, keyof typeof GOOD][] = [
 /**
  * A local server that speaks the Messages API wire format: the stand-in for the remote model
  * service, so the real client, prompts, parsing and routing run unchanged. `answer` receives each
- * request and returns the text of the model's reply (or a status to fail with).
+ * request and returns the text of the model's reply (or a status to fail with). Like the current
+ * models it refuses sampling parameters and a forced tool call with a 400, thinks before it answers
+ * (a thinking block precedes the text) and needs room for that in `max_tokens`.
  */
 export async function startModelServer(
   answer: (request: ModelRequest) => { text: string; delayMs?: number } | { status: number },
@@ -48,14 +52,27 @@ export async function startModelServer(
       };
       requests.push(request);
       let reply: { text: string; delayMs?: number } | { status: number };
+      const body = request.body as unknown as Record<string, unknown>;
       try {
-        reply = answer(request);
+        reply =
+          ['temperature', 'top_p', 'top_k', 'tool_choice'].some((key) => key in body) ||
+          request.body.max_tokens < THINKING_TOKENS + 1
+            ? { status: 400 }
+            : answer(request);
       } catch {
         reply = { status: 400 }; // a bug in the double: fail loudly and do not invite retries
       }
       if ('status' in reply) {
         res.writeHead(reply.status, { 'content-type': 'application/json' });
-        res.end(JSON.stringify({ error: { type: 'overloaded_error' } }));
+        res.end(
+          JSON.stringify({
+            type: 'error',
+            error: {
+              type: reply.status === 400 ? 'invalid_request_error' : 'overloaded_error',
+              message: 'refused',
+            },
+          }),
+        );
         return;
       }
       const send = () => {
@@ -65,7 +82,11 @@ export async function startModelServer(
             id: 'msg_test',
             type: 'message',
             role: 'assistant',
-            content: [{ type: 'text', text: reply.text }],
+            content: [
+              { type: 'thinking', thinking: '', signature: 'sig_test' },
+              { type: 'text', text: reply.text },
+            ],
+            stop_reason: 'end_turn',
             usage: { input_tokens: 120, output_tokens: 40 },
           }),
         );

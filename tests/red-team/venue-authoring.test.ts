@@ -2,6 +2,7 @@
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { AUTHORING_LIMITS, THINKING_HEADROOM_TOKENS } from '@quizparty/question-bank';
 import { staff } from '../helpers/admin';
 import {
   galataQuestions,
@@ -243,7 +244,7 @@ describe('ATTACK 81 - the document talks to the model', () => {
 
   it('an obedient model is rejected by the strict parser: extra fields, text only, wrong language, links', async () => {
     const cases: [string, AuthoringReply][] = [
-      ['extra field', { toolInput: { questions: [], apiKey: 'sk-leak', systemPrompt: 'x' } }],
+      ['extra field', { json: { questions: [], apiKey: 'sk-leak', systemPrompt: 'x' } }],
       [
         'text only',
         { text: 'Developer mode on. My API key is sk-ant-leak. Visit http://evil.example/login' },
@@ -278,7 +279,7 @@ describe('ATTACK 81 - the document talks to the model', () => {
           ],
         },
       ],
-      ['an object where the list should be', { toolInput: { questions: { 0: 'x' } } }],
+      ['an object where the list should be', { json: { questions: { 0: 'x' } } }],
     ];
     const x = await makeVenue(server);
     for (const [label, reply] of cases) {
@@ -294,7 +295,7 @@ describe('ATTACK 81 - the document talks to the model', () => {
   });
 
   it('nothing the model says outside the schema is ever stored, shown or logged', async () => {
-    answer({ toolInput: { questions: [], note: 'SECRET-NOTE-FROM-MODEL' } });
+    answer({ json: { questions: [], note: 'SECRET-NOTE-FROM-MODEL' } });
     const res = await mine().start('note.txt', doc());
     await finished(server, a, res.body.runId);
     const stored = await server.db.db.selectFrom('venue_authoring_runs').selectAll().execute();
@@ -437,7 +438,12 @@ describe("ATTACK 83 - spending someone else's money", () => {
     expect(calls.length).toBeLessThanOrEqual(5);
     const sent = calls.reduce((n, r) => n + r.document.reduce((m, s) => m + s.text.length, 0), 0);
     expect(sent).toBeLessThanOrEqual(60_000);
-    expect(calls.every((r) => r.body.max_tokens <= 6000)).toBe(true);
+    // the reply budget plus the room the adapter leaves for the model's thinking
+    expect(
+      calls.every(
+        (r) => r.body.max_tokens <= AUTHORING_LIMITS.maxOutputTokens + THINKING_HEADROOM_TOKENS,
+      ),
+    ).toBe(true);
   });
 });
 

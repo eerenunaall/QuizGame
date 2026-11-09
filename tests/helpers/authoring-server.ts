@@ -3,10 +3,12 @@ import type { AddressInfo } from 'node:net';
 
 /**
  * A local server that speaks the Messages API of the remote model service as the authoring adapter uses
- * it (`POST /v1/messages`, `x-api-key`, `anthropic-version`, a forced tool call answered with a
- * `tool_use` block, the service's error envelopes). It rejects a request that drifts from the contract
- * (wrong key, wrong version, no forced tool, malformed body) the way the service does, so the adapter
- * cannot pass on a bad shape. What the "model" answers is up to the test.
+ * it (`POST /v1/messages`, `x-api-key`, `anthropic-version`, a JSON reply constrained by
+ * `output_config.format`, the service's error envelopes). It rejects what the current models reject
+ * (wrong key, wrong version, sampling parameters, a forced `tool_choice`, a schema with keywords the
+ * service does not compile, malformed body), so the adapter cannot pass on a bad shape. The reply
+ * carries a thinking block before the text, as a model that thinks by default sends it. What the
+ * "model" answers is up to the test.
  */
 export interface AuthoringRequest {
   headers: IncomingMessage['headers'];
@@ -15,8 +17,7 @@ export interface AuthoringRequest {
     max_tokens: number;
     system: string;
     messages: { role: string; content: string }[];
-    tools: { name: string; description: string; input_schema: Record<string, unknown> }[];
-    tool_choice: { type: string; name: string };
+    output_config: { format: { type: string; schema: Record<string, unknown> } };
   };
   /** The untrusted document as the adapter sent it. */
   document: { ref: string; text: string }[];
@@ -24,10 +25,10 @@ export interface AuthoringRequest {
 
 export type AuthoringReply =
   | { questions: unknown[]; raw?: never }
-  /** The tool input exactly as given (to send malformed output). */
-  | { toolInput: unknown }
-  /** A plain text answer with no tool call: a model that ignored the forced tool. */
-  | { text: string }
+  /** The JSON reply exactly as given (to send output outside our schema). */
+  | { json: unknown }
+  /** A reply that is not the JSON asked for, e.g. cut by the token limit or declined (`stopReason`). */
+  | { text: string; stopReason?: 'max_tokens' | 'refusal' }
   | { status: number }
   | { questions: unknown[]; delayMs: number };
 
@@ -48,6 +49,33 @@ const ERROR_TYPES: Record<number, string> = {
   500: 'api_error',
   529: 'overloaded_error',
 };
+
+/** Keywords the service refuses to compile into an output schema. */
+const UNSUPPORTED_KEYWORDS = [
+  'minLength',
+  'maxLength',
+  'minimum',
+  'maximum',
+  'multipleOf',
+  'minItems',
+  'maxItems',
+];
+
+/** True when the schema is one the service accepts: closed objects, no unsupported constraint. */
+function compilable(schema: unknown): boolean {
+  if (Array.isArray(schema)) return schema.every(compilable);
+  if (typeof schema !== 'object' || schema === null) return true;
+  const node = schema as Record<string, unknown>;
+  if (UNSUPPORTED_KEYWORDS.some((keyword) => keyword in node)) return false;
+  if (node.type === 'object' && node.additionalProperties !== false) return false;
+  return Object.entries(node).every(([key, value]) =>
+    key === 'properties'
+      ? Object.values(value as Record<string, unknown>).every(compilable)
+      : key === 'items' || key === 'anyOf'
+        ? compilable(value)
+        : true,
+  );
+}
 
 export async function startAuthoringServer(
   apiKey: string,
@@ -88,11 +116,13 @@ export async function startAuthoringServer(
         body.messages?.length !== 1 ||
         body.messages[0]?.role !== 'user' ||
         typeof user !== 'string' ||
-        body.tool_choice?.type !== 'tool' ||
-        body.tool_choice.name !== body.tools?.[0]?.name
+        // current models: sampling parameters and a forced tool call are a 400
+        ['temperature', 'top_p', 'top_k', 'tool_choice', 'thinking'].some((key) => key in body) ||
+        body.output_config?.format?.type !== 'json_schema' ||
+        !compilable(body.output_config.format.schema)
       )
         return refuse(400);
-      let document: AuthoringRequest['document'] = [];
+      let document: AuthoringRequest['document'];
       try {
         const parsed = JSON.parse(user) as {
           document: { sections: { ref: string; text: string }[] };
@@ -107,22 +137,23 @@ export async function startAuthoringServer(
       if (forced !== undefined) return refuse(forced);
       const reply = current(request);
       if ('status' in reply) return refuse(reply.status);
-      const respond = (content: unknown[]): void =>
+      const respond = (text: string, stopReason: string): void =>
         send(200, {
           id: 'msg_test',
           type: 'message',
           role: 'assistant',
           model,
-          content,
-          stop_reason: content.some((part) => (part as { type: string }).type === 'tool_use')
-            ? 'tool_use'
-            : 'end_turn',
+          content: [
+            { type: 'thinking', thinking: '', signature: 'sig_test' },
+            { type: 'text', text },
+          ],
+          stop_reason: stopReason,
           usage: { input_tokens: 900, output_tokens: 300 },
         });
       const done = (): void => {
-        if ('text' in reply) return respond([{ type: 'text', text: reply.text }]);
-        const input = 'toolInput' in reply ? reply.toolInput : { questions: reply.questions };
-        respond([{ type: 'tool_use', id: 'toolu_test', name: body.tools[0]!.name, input }]);
+        if ('text' in reply) return respond(reply.text, reply.stopReason ?? 'end_turn');
+        const output = 'json' in reply ? reply.json : { questions: reply.questions };
+        respond(JSON.stringify(output), 'end_turn');
       };
       if ('delayMs' in reply) setTimeout(done, reply.delayMs).unref();
       else done();

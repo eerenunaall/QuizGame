@@ -308,7 +308,8 @@ describe('audit with a model', () => {
       expect(new Set(server.requests.map((request) => request.body.model))).toEqual(
         new Set(['fast-model']),
       );
-      expect(server.requests.every((request) => request.body.temperature === 0)).toBe(true);
+      // current models refuse sampling parameters; the double answers 400 to them
+      expect(server.requests.every((request) => !('temperature' in request.body))).toBe(true);
       // The blind check never sees the official answer.
       const blind = server.requests.filter((request) =>
         request.body.system.startsWith('You are an expert quiz player'),

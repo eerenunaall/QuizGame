@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ToolSpec } from './providers/anthropic';
+import type { JsonSpec } from './providers/anthropic';
 
 /**
  * Question drafts from a document (ADR-0028 §6): everything that is not network or database. The
@@ -14,8 +14,11 @@ export const AUTHORING_LIMITS = {
   maxChunks: 5,
   /** Drafts kept per run. */
   maxDrafts: 30,
-  /** Output tokens allowed per call: a cost guard independent of what the prompt says. */
-  maxOutputTokens: 6_000,
+  /**
+   * Output tokens allowed per call: a cost guard independent of what the prompt says. Thirty Turkish
+   * questions with explanations and quotes need about 9,000; a cut reply is no reply at all.
+   */
+  maxOutputTokens: 12_000,
   quoteMinChars: 15,
   /** Share of the quote's words that must be found, in a window of the text, to count as a near match. */
   nearMatch: 0.9,
@@ -31,8 +34,6 @@ export interface DocSection {
 
 // ───────────── what the model is told and shown ─────────────
 
-export const TOOL_NAME = 'submit_questions';
-
 export const AUTHORING_SYSTEM = [
   'You write multiple-choice quiz questions in Turkish for a cafe quiz night, using ONLY the document that the user message provides.',
   '',
@@ -40,15 +41,13 @@ export const AUTHORING_SYSTEM = [
   '',
   'RULES. Every question must be answerable from a fact stated in the document and nowhere else; do not use outside knowledge. Write natural Turkish with the correct characters. Exactly 4 options, exactly one correct, three plausible wrong options of similar length. No "all of the above", no "none of the above", no negative questions, no URLs, no personal data. The question and the options must stand alone, without saying "according to the text". Spread difficulty: mostly EASY and MEDIUM, a few HARD.',
   '`explanation` is the "Biliyor muydun?" line shown after the answer: one or two short Turkish sentences that restate the fact from the document.',
-  '`sourceQuote` must be copied character for character from the document, contiguous, 15 to 300 characters, and must contain the fact that makes the correct option correct. `page` is the label of the section it comes from.',
+  '`sourceQuote` must be copied character for character from the document, contiguous, 15 to 300 characters, and must contain the fact that makes the correct option correct.',
   '',
-  `Deliver the result ONLY by calling the tool \`${TOOL_NAME}\`. If the document has no suitable facts, call it with an empty list. Write nothing else.`,
+  'Reply with the JSON object only. If the document has no suitable facts, reply with an empty `questions` list.',
 ].join('\n');
 
-export const QUESTION_TOOL: ToolSpec = {
-  name: TOOL_NAME,
-  description: 'Submit the quiz questions written from the document.',
-  inputSchema: {
+export const QUESTION_OUTPUT: JsonSpec = {
+  schema: {
     type: 'object',
     additionalProperties: false,
     required: ['questions'],
@@ -79,7 +78,6 @@ export const QUESTION_TOOL: ToolSpec = {
             difficulty: { type: 'string', enum: [...DIFFICULTIES] },
             explanation: { type: 'string', maxLength: 400 },
             sourceQuote: { type: 'string', maxLength: 400 },
-            page: { type: 'string', maxLength: 40 },
           },
         },
       },
@@ -314,7 +312,7 @@ export class QuoteIndex {
 }
 
 /**
- * The reply of one call (the tool's arguments, unvalidated) against the schema and the document.
+ * The reply of one call (the JSON value, unvalidated) against the schema and the document.
  * Throws nothing: a malformed envelope yields `null` (the call produced nothing usable).
  */
 export function acceptModelQuestions(

@@ -244,7 +244,7 @@ export function registerVenueAuthoringRoutes(app: FastifyInstance, deps: Authori
               });
             return apiError(reply, 422, 'INVALID_MESSAGE', { reason: code });
           }
-          default:
+          case 'NOT_FOUND':
             return apiError(reply, 404, 'NOT_FOUND');
         }
       }

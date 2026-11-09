@@ -4,7 +4,7 @@ import {
   AUTHORING_SYSTEM,
   AnthropicClient,
   LlmError,
-  QUESTION_TOOL,
+  QUESTION_OUTPUT,
   QuoteIndex,
   acceptModelQuestions,
   analyzeVenueUpload,
@@ -305,18 +305,18 @@ export class AuthoringService {
         failure ??= 'unavailable';
         break;
       }
-      let toolInput: unknown;
+      let reply: unknown;
       try {
         const completion = await client.complete({
           model: settings.model,
           system: AUTHORING_SYSTEM,
           user: authoringUserMessage(chunk.sections, wantedPerChunk(chunks.length)),
           maxTokens: AUTHORING_LIMITS.maxOutputTokens,
-          tool: QUESTION_TOOL,
+          json: QUESTION_OUTPUT,
         });
         inputTokens += completion.inputTokens;
         outputTokens += completion.outputTokens;
-        toolInput = completion.toolInput;
+        reply = completion.json;
         this.breaker.success();
       } catch (error) {
         const status = error instanceof LlmError ? error.status : null;
@@ -327,7 +327,7 @@ export class AuthoringService {
         if (failure === 'rejected_key') break;
         continue;
       }
-      const accepted = acceptModelQuestions(toolInput, index, state, this.random);
+      const accepted = acceptModelQuestions(reply, index, state, this.random);
       if (!accepted) {
         // A reply that is not our schema is not an outage: it does not trip the breaker.
         discards.schema++;
