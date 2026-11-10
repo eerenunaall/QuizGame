@@ -1,7 +1,7 @@
 # Quiz Party — working agreement for coding sessions
 
 TV-first multiplayer quiz party game: **TV = stage, phone = controller, server = game master.**
-Read in this order: `docs/STATUS.md` → `docs/PLAN.md` → the ADR relevant to your task → `docs/GDD.md`.
+Read in this order: `docs/TODO.md` (the open work list) → `docs/STATUS.md` → `docs/PLAN.md` → the ADR relevant to your task → `docs/GDD.md`.
 Sessions are ephemeral: commit and push to the designated branch after every green milestone.
 
 ## Hard rules
