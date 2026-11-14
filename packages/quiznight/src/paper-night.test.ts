@@ -257,7 +257,7 @@ describe('estimate top 3', () => {
   function estimateNight(over: Partial<QuizConfig['settings']>): QState {
     const c = fixture(over);
     c.rounds[1]!.questions[0]!.points = 5;
-    let s = run(createState(c), { type: 'START' }, ...next(7), ...next(10));
+    const s = run(createState(c), { type: 'START' }, ...next(7), ...next(10));
     return run(
       s,
       { type: 'ESTIMATE_VALUE', questionId: 'e', teamId: 't1', value: 90 }, // distance 10

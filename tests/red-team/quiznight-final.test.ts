@@ -100,7 +100,9 @@ describe('ATTACK 90 - the final question and the stakes never reach the TV early
     expect(intro.json).not.toContain('ACIKLAMA-final');
     expect(intro.view.answer).toBeNull();
     expect(intro.view.final.reveal).toEqual([]);
-    expect(intro.view.final.limits.map((l: any) => [l.teamId, l.max])).toEqual([
+    expect(
+      (intro.view.final.limits as { teamId: string; max: number }[]).map((l) => [l.teamId, l.max]),
+    ).toEqual([
       ['t1', 3],
       ['t2', 1],
       ['t3', 0],
@@ -115,7 +117,7 @@ describe('ATTACK 90 - the final question and the stakes never reach the TV early
     for (const f of answers) expect(f.view.final.reveal).toEqual([]);
     // stakes and results appear on the reveal slide, last place first, never on earlier ones
     const reveal = by('FINAL_REVEAL').view.final.reveal;
-    expect(reveal.map((r: any) => r.teamId)).toEqual(['t3', 't2', 't1']);
+    expect((reveal as { teamId: string }[]).map((r) => r.teamId)).toEqual(['t3', 't2', 't1']);
     expect(reveal.find((r: any) => r.teamId === 't1')).toMatchObject({
       wager: 3,
       right: true,
@@ -171,7 +173,7 @@ describe('ATTACK 91 - stakes: limits, locks, other cafés', () => {
     expect(await reason(api, id, { type: 'WAGER', teamId: 't2', amount: 1 })).toBe('WAGER_LOCKED');
     // junk amounts never get past the schema
     for (const amount of [-1, 51, 1.5, '3', null, Number.NaN]) {
-      const r = await api.command(id, { type: 'WAGER', teamId: 't1', amount } as never);
+      const r = await api.command(id, { type: 'WAGER', teamId: 't1', amount });
       expect(r.status).toBe(400);
     }
     // a night without a final refuses the commands
@@ -241,7 +243,7 @@ describe('ATTACK 92 - the new settings and fields are validated', () => {
       { unknownRule: true },
     ];
     for (const over of bad) {
-      const r = await api.create(nightConfig(over as never));
+      const r = await api.create(nightConfig(over));
       expect(r.status, JSON.stringify(over)).toBe(400);
     }
     const noFinalFields = nightConfig();
@@ -258,9 +260,9 @@ describe('ATTACK 92 - the new settings and fields are validated', () => {
     numberFinal.finalWager!.question.answer = { type: 'NUMBER', value: 3 };
     const created = await api.create(numberFinal);
     expect((created.body as any).night.status).toBe('DRAFT');
-    expect((created.body as any).night.issues.map((i: any) => i.issue)).toContain(
-      'FINAL_NEEDS_PLAIN_ANSWER',
-    );
+    expect(
+      ((created.body as any).night.issues as { issue: string }[]).map((i) => i.issue),
+    ).toContain('FINAL_NEEDS_PLAIN_ANSWER');
   });
 
   it('the host tablet is told the rules it needs and nothing a guest could use', async () => {
