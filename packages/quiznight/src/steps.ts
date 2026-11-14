@@ -5,7 +5,7 @@ const cache = new WeakMap<QuizConfig, Step[]>();
 /**
  * The fixed script of a night (ADR-0029 §2, research notes): intro, how-to, then per round
  * title → questions → pens down → paper swap → answers one by one → marking → round scores → standings
- * (+ half-time), tie-break when needed, podium. The tie-break steps are skipped at run time unless
+ * (+ half-time), the final wager (intro, question, answer, reveal), tie-break when needed, podium. The tie-break steps are skipped at run time unless
  * the top is actually tied.
  */
 export function buildSteps(config: QuizConfig): Step[] {
@@ -28,6 +28,13 @@ export function buildSteps(config: QuizConfig): Step[] {
     )
       steps.push({ kind: 'HALF_TIME', round: r });
   });
+  if (config.finalWager)
+    steps.push(
+      { kind: 'FINAL_INTRO' },
+      { kind: 'FINAL_QUESTION' },
+      { kind: 'FINAL_ANSWER' },
+      { kind: 'FINAL_REVEAL' },
+    );
   if (config.tieBreak) steps.push({ kind: 'TIE_QUESTION' }, { kind: 'TIE_ANSWER' });
   steps.push({ kind: 'PODIUM' });
   cache.set(config, steps);

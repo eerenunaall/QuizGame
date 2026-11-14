@@ -68,20 +68,42 @@ export const SettingsSchema = z.strictObject({
   halfTimeAfterRound: z.int().min(0).max(20),
   entranceText: Text(120),
   prizeText: Text(160),
+  // Added with the paper-night research (docs/ADR/0031). Optional so nights saved before them still parse;
+  // read them only through `rules()` (scoring.ts), which supplies the defaults.
+  /** First round (1-based) in which the 2x joker may be played; 1 = from the start. */
+  jokerFromRound: z.int().min(1).max(12).optional(),
+  /** Points for a team the host marks as having the best team name; 0 = off. */
+  nameBonus: z.int().min(0).max(10).optional(),
+  /** What the last-placed team gets (shown at the podium); empty = nothing. */
+  consolationText: Text(160).optional(),
+  /** Estimate questions pay 1st/2nd/3rd closest (points, 60 %, 20 %, rounded down) instead of only the closest. */
+  estimateTop3: z.boolean().optional(),
+  /** Largest stake in the final wager round, never more than the points a team holds. */
+  wagerCap: z.int().min(1).max(50).optional(),
 });
 export type Settings = z.infer<typeof SettingsSchema>;
+
+/** The last question of the night: every team stakes points on it before it is shown (ADR-0031). */
+export const FinalWagerSchema = z.strictObject({
+  category: Text(80),
+  question: QuestionDefSchema,
+});
+export type FinalWager = z.infer<typeof FinalWagerSchema>;
 
 export const ConfigSchema = z.strictObject({
   title: Text(80),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   rounds: z.array(RoundDefSchema).max(12),
   tieBreak: QuestionDefSchema.nullable(),
+  finalWager: FinalWagerSchema.nullable().optional(),
   teams: z.array(TeamDefSchema).max(40),
   settings: SettingsSchema,
 });
 export type QuizConfig = z.infer<typeof ConfigSchema>;
 
 export const TIE_QUESTION_ID = 'tie-break';
+/** Marks of the final wager question are stored under this id (it is not part of any round). */
+export const FINAL_QUESTION_ID = 'final-wager';
 
 // ---- commands (what the tablet may send; the server stamps seq/at/actor itself) ----------------------
 
@@ -109,6 +131,8 @@ export const CommandSchema = z.discriminatedUnion('type', [
     value: z.number().finite().nullable(),
   }),
   z.strictObject({ type: z.literal('MARKER'), teamId: Id, markerTeamId: Id }),
+  z.strictObject({ type: z.literal('WAGER'), teamId: Id, amount: z.int().min(0).max(50) }),
+  z.strictObject({ type: z.literal('TEAM_NAME_BONUS'), teamId: Id, on: z.boolean() }),
   z.strictObject({ type: z.literal('SHOW_STANDINGS') }),
   z.strictObject({ type: z.literal('HIDE_OVERLAY') }),
   z.strictObject({ type: z.literal('CLOSE') }),
@@ -139,6 +163,10 @@ export type QError =
   | 'COUNT_UNAVAILABLE'
   | 'COUNT_TOO_HIGH'
   | 'NOT_ESTIMATE'
+  | 'NO_FINAL'
+  | 'WAGER_LOCKED'
+  | 'WAGER_TOO_HIGH'
+  | 'BONUS_OFF'
   | 'NO_TIMER_HERE'
   | 'NOT_PAUSED'
   | 'BAD_MARKER'
@@ -172,6 +200,10 @@ export interface QState {
   modes: Record<string, 'GRID' | 'COUNT'>;
   estimates: Record<string, Record<string, number>>;
   markers: Record<string, string>;
+  /** Final wager stakes per team (secret on paper until the reveal slide). */
+  wagers: Record<string, number>;
+  /** Teams the host gave the team-name bonus. */
+  bonusTeams: string[];
   seq: number;
 }
 
@@ -187,6 +219,10 @@ export type StepKind =
   | 'ROUND_SCORES'
   | 'STANDINGS'
   | 'HALF_TIME'
+  | 'FINAL_INTRO'
+  | 'FINAL_QUESTION'
+  | 'FINAL_ANSWER'
+  | 'FINAL_REVEAL'
   | 'TIE_QUESTION'
   | 'TIE_ANSWER'
   | 'PODIUM';

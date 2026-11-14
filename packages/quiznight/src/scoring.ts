@@ -1,6 +1,26 @@
 import { buildSteps, stepIndex } from './steps';
-import type { QState, QuestionDef, QuizConfig } from './types';
-import { TIE_QUESTION_ID } from './types';
+import type { FinalWager, QState, QuestionDef, QuizConfig } from './types';
+import { FINAL_QUESTION_ID, TIE_QUESTION_ID } from './types';
+
+/** Settings added after the first release, with their defaults (nights saved earlier lack them). */
+export function rules(config: QuizConfig): {
+  jokerFromRound: number;
+  nameBonus: number;
+  consolationText: string;
+  estimateTop3: boolean;
+  wagerCap: number;
+  finalWager: FinalWager | null;
+} {
+  const s = config.settings;
+  return {
+    jokerFromRound: s.jokerFromRound ?? 1,
+    nameBonus: s.nameBonus ?? 0,
+    consolationText: s.consolationText ?? '',
+    estimateTop3: s.estimateTop3 ?? false,
+    wagerCap: s.wagerCap ?? 10,
+    finalWager: config.finalWager ?? null,
+  };
+}
 
 /** A NUMBER answer means "closest wins"; such a question never takes a joker (ADR-0029 amended). */
 export const isEstimate = (q: QuestionDef): boolean => q.answer.type === 'NUMBER';
@@ -21,6 +41,11 @@ export function jokerEligible(q: QuestionDef): boolean {
   return q.jokerAllowed && !isEstimate(q) && q.id !== TIE_QUESTION_ID;
 }
 
+/** A question of round `r` (0-based) may be doubled: allowed on the card and the round is not before `jokerFromRound`. */
+export function jokerEligibleIn(config: QuizConfig, r: number, q: QuestionDef): boolean {
+  return jokerEligible(q) && r + 1 >= rules(config).jokerFromRound;
+}
+
 /** Teams whose number is closest to the answer; equal distance shares the win. */
 export function estimateWinners(state: QState, q: QuestionDef): string[] {
   if (q.answer.type !== 'NUMBER') return [];
@@ -29,6 +54,40 @@ export function estimateWinners(state: QState, q: QuestionDef): string[] {
   if (values.length === 0) return [];
   const best = Math.min(...values.map(([, v]) => Math.abs(v - target)));
   return values.filter(([, v]) => Math.abs(v - target) === best).map(([t]) => t);
+}
+
+export interface EstimatePlace {
+  place: number;
+  teamIds: string[];
+  points: number;
+}
+
+/**
+ * Who earns what on an estimate question. Competition ranking by distance (equal distance shares a place and
+ * the next place is skipped). Without `estimateTop3` only the closest team scores; with it the first three
+ * places pay the question's points, 60 % and 20 % (rounded down, so 5 -> 5/3/1).
+ */
+export function estimatePlaces(state: QState, q: QuestionDef): EstimatePlace[] {
+  if (q.answer.type !== 'NUMBER') return [];
+  const target = q.answer.value;
+  const values = Object.entries(state.estimates[q.id] ?? {}).map(
+    ([teamId, v]) => [teamId, Math.abs(v - target)] as const,
+  );
+  if (values.length === 0) return [];
+  const tiers = rules(state.config).estimateTop3
+    ? [q.points, Math.floor(q.points * 0.6), Math.floor(q.points * 0.2)]
+    : [q.points];
+  const distances = [...new Set(values.map(([, d]) => d))].sort((a, b) => a - b);
+  const out: EstimatePlace[] = [];
+  let taken = 0;
+  for (const d of distances) {
+    const teamIds = values.filter(([, x]) => x === d).map(([t]) => t);
+    const place = taken + 1;
+    taken += teamIds.length;
+    const points = tiers[place - 1] ?? 0;
+    if (points > 0) out.push({ place, teamIds, points });
+  }
+  return out;
 }
 
 /** Questions that a per-team count can stand for: not estimate, not doubled by anyone. */
@@ -53,8 +112,13 @@ export interface JokerDelta {
 export interface RoundResult {
   points: Record<string, number>;
   jokerDeltas: JokerDelta[];
-  /** For estimate questions: who was closest. */
-  estimateWinners: { questionId: string; number: number; teamIds: string[] }[];
+  /** For estimate questions: who was closest (place 1) and, with the top-3 setting, who else scored. */
+  estimateWinners: {
+    questionId: string;
+    number: number;
+    teamIds: string[];
+    places: EstimatePlace[];
+  }[];
 }
 
 /**
@@ -73,9 +137,10 @@ export function roundResult(state: QState, r: number, scored: boolean): RoundRes
 
   round.questions.forEach((q, i) => {
     if (isEstimate(q)) {
-      const w = estimateWinners(state, q);
-      if (w.length) winners.push({ questionId: q.id, number: i + 1, teamIds: w });
-      for (const t of w) if (t in points) points[t]! += q.points;
+      const places = estimatePlaces(state, q);
+      const first = places[0]?.place === 1 ? places[0].teamIds : [];
+      if (places.length) winners.push({ questionId: q.id, number: i + 1, teamIds: first, places });
+      for (const p of places) for (const t of p.teamIds) if (t in points) points[t]! += p.points;
       return;
     }
     if (countMode && plain.has(q.id)) return;
@@ -101,6 +166,12 @@ export function roundResult(state: QState, r: number, scored: boolean): RoundRes
       const n = Math.min(state.counts[round.id]?.[team.id] ?? 0, plain.size);
       points[team.id]! += n * plainPts;
     }
+  }
+  // The team-name bonus is announced at the start of the night, so it rides on round 1 and every
+  // later total (and the "this round" column) already includes it.
+  if (r === 0) {
+    const bonus = rules(config).nameBonus;
+    for (const t of state.bonusTeams) if (t in points) points[t]! += bonus;
   }
   return { points, jokerDeltas, estimateWinners: winners };
 }
@@ -140,18 +211,56 @@ function rankDescending<T extends { teamId: string }>(
   return out;
 }
 
-function totalsFor(state: QState, rounds: number): Map<string, number> {
+function totalsFor(state: QState, rounds: number, withFinal: boolean): Map<string, number> {
   const totals = new Map(state.config.teams.map((t) => [t.id, 0]));
   for (let r = 0; r < rounds; r++) {
     const res = roundResult(state, r, true);
     for (const [t, p] of Object.entries(res.points)) totals.set(t, (totals.get(t) ?? 0) + p);
   }
+  if (withFinal && rounds === state.config.rounds.length) {
+    for (const f of finalResults(state))
+      totals.set(f.teamId, (totals.get(f.teamId) ?? 0) + f.delta);
+  }
   return totals;
 }
 
+/** Points a team holds after every round, before the final wager: the stake can never exceed them. */
+export function pointsBeforeFinal(state: QState, teamId: string): number {
+  return totalsFor(state, state.config.rounds.length, false).get(teamId) ?? 0;
+}
+
+/** Largest stake a team may write down: the cap, or what it holds if that is less, never below 0. */
+export function wagerMax(state: QState, teamId: string): number {
+  return Math.max(0, Math.min(rules(state.config).wagerCap, pointsBeforeFinal(state, teamId)));
+}
+
+export interface FinalResult {
+  teamId: string;
+  /** The stake that counts (a written stake above the limit is cut down; no stake means 0). */
+  wager: number;
+  /** null until the host has marked the team's answer: an unmarked team neither wins nor loses. */
+  right: boolean | null;
+  delta: number;
+}
+
+/** Right wins the stake, wrong loses it (Final-Jeopardy rule, research notes). Empty without a final round. */
+export function finalResults(state: QState): FinalResult[] {
+  if (!rules(state.config).finalWager) return [];
+  return state.config.teams.map((t) => {
+    const wager = Math.min(state.wagers[t.id] ?? 0, wagerMax(state, t.id));
+    const right = state.marks[FINAL_QUESTION_ID]?.[t.id] ?? null;
+    return { teamId: t.id, wager, right, delta: right === null ? 0 : right ? wager : -wager };
+  });
+}
+
 /** Competition ranking (1,1,3). With `withTie` the closest-number tie-break orders the teams tied for first. */
-export function ranksFor(state: QState, rounds: number, withTie: boolean): Map<string, number> {
-  const totals = totalsFor(state, rounds);
+export function ranksFor(
+  state: QState,
+  rounds: number,
+  withTie: boolean,
+  withFinal = true,
+): Map<string, number> {
+  const totals = totalsFor(state, rounds, withFinal);
   const rows = [...totals].map(([teamId, total]) => ({ teamId, total }));
   const ranks = rankDescending(rows, (r) => r.total);
   const tb = state.config.tieBreak;
@@ -184,12 +293,13 @@ export function tieNeeded(state: QState): boolean {
 export function standings(
   state: QState,
   rounds: number,
-  opts: { withTie: boolean; lockedJokersOnly: boolean },
+  opts: { withTie: boolean; lockedJokersOnly: boolean; withFinal?: boolean },
 ): StandingRow[] {
   const { config } = state;
-  const totals = totalsFor(state, rounds);
-  const ranks = ranksFor(state, rounds, opts.withTie);
-  const prevRanks = rounds > 1 ? ranksFor(state, rounds - 1, false) : null;
+  const withFinal = opts.withFinal ?? true;
+  const totals = totalsFor(state, rounds, withFinal);
+  const ranks = ranksFor(state, rounds, opts.withTie, withFinal);
+  const prevRanks = rounds > 1 ? ranksFor(state, rounds - 1, false, false) : null;
   const last = rounds > 0 ? roundResult(state, rounds - 1, true) : null;
   const steps = buildSteps(config);
   const used = (teamId: string): number => {

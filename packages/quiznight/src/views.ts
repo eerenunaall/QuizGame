@@ -1,14 +1,18 @@
 import {
   countModeAvailable,
   estimateWinners,
+  finalResults,
   isEstimate,
-  jokerEligible,
+  jokerEligibleIn,
   plainQuestions,
   ranksFor,
   roundResult,
   rotation,
+  rules,
   scoredRounds,
   standings,
+  wagerMax,
+  type EstimatePlace,
   type StandingRow,
 } from './scoring';
 import { peekNext } from './machine';
@@ -79,8 +83,25 @@ export interface TvView {
   roundScores: {
     rows: { teamId: string; points: number; total: number; rank: number }[];
     jokers: { teamId: string; number: number; gain: number }[];
-    estimateWinners: { number: number; teamIds: string[] }[];
+    /** Closest team(s) per estimate question; `places` lists the other scoring places with the top-3 setting. */
+    estimateWinners: { number: number; teamIds: string[]; places: EstimatePlace[] }[];
   } | null;
+  /** The final wager round: category and limits on the intro, stakes and results only on the reveal. */
+  final: {
+    category: string;
+    limits: { teamId: string; max: number }[];
+    /** Last place first, so the slide can build up to the winner. */
+    reveal: {
+      teamId: string;
+      wager: number;
+      right: boolean | null;
+      delta: number;
+      total: number;
+      rank: number;
+    }[];
+  } | null;
+  /** Podium only: the last-placed team(s) and what they get. */
+  consolation: { teamIds: string[]; text: string } | null;
   standings: TvRow[] | null;
   tie: { values: { teamId: string; value: number }[] } | null;
   podium: { teamId: string; rank: number; total: number }[] | null;
@@ -110,6 +131,20 @@ function tvQuestion(state: QState, r: number, q: number): TvQuestion {
   };
 }
 
+function tvFinalQuestion(def: QuestionDef): TvQuestion {
+  return {
+    number: 1,
+    total: 1,
+    text: def.text,
+    options: def.options ? [...def.options] : null,
+    imageUrl: def.imageUrl ?? null,
+    points: 0,
+    kind: 'NORMAL',
+    trueFalse: def.answer.type === 'BOOL',
+    estimate: false,
+  };
+}
+
 function tvAnswer(def: QuestionDef): TvAnswer {
   const a: Answer = def.answer;
   switch (a.type) {
@@ -122,6 +157,18 @@ function tvAnswer(def: QuestionDef): TvAnswer {
     case 'BOOL':
       return { type: 'BOOL', value: a.value };
   }
+}
+
+/** The last place gets the consolation prize; with fewer than three teams or everybody tied there is no "last". */
+function consolationOf(
+  rows: StandingRow[],
+  text: string,
+): { teamIds: string[]; text: string } | null {
+  const trimmed = text.trim();
+  if (!trimmed || rows.length < 3) return null;
+  const worst = Math.max(...rows.map((r) => r.rank));
+  if (worst === 1) return null;
+  return { teamIds: rows.filter((r) => r.rank === worst).map((r) => r.teamId), text: trimmed };
 }
 
 const toTvRow = (r: StandingRow): TvRow => ({
@@ -156,6 +203,8 @@ export function tvView(state: QState, now: number): TvView {
     timer: null,
     rotation: [],
     roundScores: null,
+    final: null,
+    consolation: null,
     standings: null,
     tie: null,
     podium: null,
@@ -173,8 +222,13 @@ export function tvView(state: QState, now: number): TvView {
     };
   }
   const visibleRounds = scoredRounds(state, true);
+  const finalDef = rules(config).finalWager;
+  // The final's points join the totals only once the reveal slide is on screen.
+  const finalShown = !finalDef || state.cursor >= stepIndex(steps, 'FINAL_REVEAL');
   const standingsRows = (rounds: number, withTie: boolean): TvRow[] =>
-    standings(state, rounds, { withTie, lockedJokersOnly: true }).map(toTvRow);
+    standings(state, rounds, { withTie, lockedJokersOnly: true, withFinal: finalShown }).map(
+      toTvRow,
+    );
 
   switch (step.kind) {
     case 'QUESTION': {
@@ -203,7 +257,11 @@ export function tvView(state: QState, now: number): TvView {
     case 'ROUND_SCORES': {
       const r = step.round!;
       const res = roundResult(state, r, true);
-      const rows = standings(state, r + 1, { withTie: false, lockedJokersOnly: true });
+      const rows = standings(state, r + 1, {
+        withTie: false,
+        lockedJokersOnly: true,
+        withFinal: finalShown,
+      });
       base.roundScores = {
         rows: rows.map((x) => ({
           teamId: x.teamId,
@@ -216,7 +274,11 @@ export function tvView(state: QState, now: number): TvView {
           number: j.number,
           gain: j.delta,
         })),
-        estimateWinners: res.estimateWinners.map((w) => ({ number: w.number, teamIds: w.teamIds })),
+        estimateWinners: res.estimateWinners.map((w) => ({
+          number: w.number,
+          teamIds: w.teamIds,
+          places: w.places.map((p) => ({ ...p, teamIds: [...p.teamIds] })),
+        })),
       };
       break;
     }
@@ -224,6 +286,59 @@ export function tvView(state: QState, now: number): TvView {
     case 'HALF_TIME':
       base.standings = standingsRows(step.round! + 1, false);
       break;
+    case 'FINAL_INTRO': {
+      base.final = {
+        category: finalDef!.category,
+        limits: config.teams.map((t) => ({ teamId: t.id, max: wagerMax(state, t.id) })),
+        reveal: [],
+      };
+      base.standings = standingsRows(config.rounds.length, false);
+      break;
+    }
+    case 'FINAL_QUESTION': {
+      base.final = { category: finalDef!.category, limits: [], reveal: [] };
+      base.question = tvFinalQuestion(finalDef!.question);
+      const t = state.timer;
+      if (t)
+        base.timer = {
+          seconds: t.seconds,
+          remainingMs: timerRemainingMs(t, now) ?? 0,
+          running: t.pausedAt === null,
+        };
+      break;
+    }
+    case 'FINAL_ANSWER': {
+      base.final = { category: finalDef!.category, limits: [], reveal: [] };
+      base.question = tvFinalQuestion(finalDef!.question);
+      base.answer = tvAnswer(finalDef!.question);
+      if (finalDef!.question.explanation) base.explanation = finalDef!.question.explanation;
+      break;
+    }
+    case 'FINAL_REVEAL': {
+      const rows = standings(state, config.rounds.length, {
+        withTie: false,
+        lockedJokersOnly: true,
+        withFinal: true,
+      });
+      const results = new Map(finalResults(state).map((f) => [f.teamId, f]));
+      base.final = {
+        category: finalDef!.category,
+        limits: [],
+        reveal: [...rows].reverse().map((x) => {
+          const f = results.get(x.teamId);
+          return {
+            teamId: x.teamId,
+            wager: f?.wager ?? 0,
+            right: f?.right ?? null,
+            delta: f?.delta ?? 0,
+            total: x.total,
+            rank: x.rank,
+          };
+        }),
+      };
+      base.standings = rows.map(toTvRow);
+      break;
+    }
     case 'TIE_QUESTION': {
       const tb = config.tieBreak!;
       base.question = {
@@ -263,6 +378,7 @@ export function tvView(state: QState, now: number): TvView {
         .filter((x) => x.rank <= 3)
         .map((x) => ({ teamId: x.teamId, rank: x.rank, total: x.total }));
       base.standings = rows.map(toTvRow);
+      base.consolation = consolationOf(rows, rules(config).consolationText);
       break;
     }
     case 'INTRO':
@@ -338,6 +454,27 @@ export interface HostView {
   rotation: { teamId: string; markerTeamId: string }[];
   standings: StandingRow[];
   tie: { needed: boolean; text: string; answerText: string; values: Record<string, number> } | null;
+  /** The final wager round with what the host enters: stakes before the question, marks after the answer. */
+  final: {
+    category: string;
+    questionText: string;
+    answerText: string;
+    explanation: string | null;
+    /** Stakes may be entered (final intro reached) and are locked once the question is on the TV. */
+    wagersOpen: boolean;
+    wagersLocked: boolean;
+    marksOpen: boolean;
+    cap: number;
+    teams: {
+      teamId: string;
+      max: number;
+      wager: number | null;
+      right: boolean | null;
+      delta: number;
+    }[];
+  } | null;
+  nameBonus: { points: number; teamIds: string[] } | null;
+  consolation: { teamIds: string[]; text: string } | null;
   winnerTeamIds: string[];
 }
 
@@ -381,7 +518,7 @@ export function hostView(state: QState, now: number): HostView {
         text: q.text,
         points: q.points,
         estimate: isEstimate(q),
-        jokerEligible: jokerEligible(q),
+        jokerEligible: jokerEligibleIn(config, r, q),
         answerText: answerText(q),
         explanation: q.explanation ?? null,
         doubled: [...(state.jokers[q.id] ?? [])],
@@ -419,6 +556,30 @@ export function hostView(state: QState, now: number): HostView {
   const t = state.timer;
   const jokersLeft = new Map(finalRows.map((x) => [x.teamId, x.jokersLeft]));
   const podiumReached = state.reached >= stepIndex(steps, 'PODIUM');
+  const finalDef = rules(config).finalWager;
+  const finalByTeam = new Map(finalResults(state).map((f) => [f.teamId, f]));
+  const final: HostView['final'] = finalDef
+    ? {
+        category: finalDef.category,
+        questionText: finalDef.question.text,
+        answerText: answerText(finalDef.question),
+        explanation: finalDef.question.explanation ?? null,
+        wagersOpen: state.reached >= stepIndex(steps, 'FINAL_INTRO'),
+        wagersLocked: state.reached >= stepIndex(steps, 'FINAL_QUESTION'),
+        marksOpen: state.reached >= stepIndex(steps, 'FINAL_ANSWER'),
+        cap: rules(config).wagerCap,
+        teams: config.teams.map((tm) => {
+          const f = finalByTeam.get(tm.id);
+          return {
+            teamId: tm.id,
+            max: wagerMax(state, tm.id),
+            wager: state.wagers[tm.id] ?? null,
+            right: f?.right ?? null,
+            delta: f?.delta ?? 0,
+          };
+        }),
+      }
+    : null;
   return {
     started: state.started,
     closed: state.closed,
@@ -453,6 +614,12 @@ export function hostView(state: QState, now: number): HostView {
           values: { ...(state.estimates[TIE_QUESTION_ID] ?? {}) },
         }
       : null,
+    final,
+    nameBonus:
+      rules(config).nameBonus > 0
+        ? { points: rules(config).nameBonus, teamIds: [...state.bonusTeams] }
+        : null,
+    consolation: podiumReached ? consolationOf(finalRows, rules(config).consolationText) : null,
     winnerTeamIds: podiumReached ? finalRows.filter((x) => x.rank === 1).map((x) => x.teamId) : [],
   };
 }

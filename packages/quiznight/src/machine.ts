@@ -1,14 +1,16 @@
 import {
   countModeAvailable,
   isEstimate,
-  jokerEligible,
+  jokerEligibleIn,
   locate,
   plainQuestions,
+  rules,
   tieNeeded,
+  wagerMax,
 } from './scoring';
 import { buildSteps, stepIndex } from './steps';
 import type { Command, LogEvent, QError, QState, QuizConfig, Step } from './types';
-import { TIE_QUESTION_ID } from './types';
+import { FINAL_QUESTION_ID, TIE_QUESTION_ID } from './types';
 
 export type Issue =
   | 'TITLE_MISSING'
@@ -20,7 +22,9 @@ export type Issue =
   | 'ESTIMATE_NEEDS_NUMBER'
   | 'TOO_FEW_TEAMS'
   | 'DUPLICATE_ID'
-  | 'TIE_BREAK_NEEDS_NUMBER';
+  | 'TIE_BREAK_NEEDS_NUMBER'
+  | 'FINAL_NEEDS_PLAIN_ANSWER'
+  | 'FINAL_QUESTION_MISSING';
 
 /** What must be true before an event may go READY (the tablet shows these as a checklist). */
 export function validateConfig(config: QuizConfig): { issue: Issue; where?: string }[] {
@@ -50,6 +54,15 @@ export function validateConfig(config: QuizConfig): { issue: Issue; where?: stri
       out.push({ issue: 'QUESTION_TEXT_MISSING', where: config.tieBreak.id });
     if (!isEstimate(config.tieBreak))
       out.push({ issue: 'TIE_BREAK_NEEDS_NUMBER', where: config.tieBreak.id });
+  }
+  const fin = config.finalWager;
+  if (fin) {
+    if (!fin.question.text.trim())
+      out.push({ issue: 'FINAL_QUESTION_MISSING', where: FINAL_QUESTION_ID });
+    checkAnswer(fin.question, out);
+    // A closest-number question has no right/wrong to stake on.
+    if (isEstimate(fin.question))
+      out.push({ issue: 'FINAL_NEEDS_PLAIN_ANSWER', where: FINAL_QUESTION_ID });
   }
   return out;
 }
@@ -81,6 +94,8 @@ export function createState(config: QuizConfig): QState {
     modes: {},
     estimates: {},
     markers: {},
+    wagers: {},
+    bonusTeams: [],
     seq: 0,
   };
 }
@@ -182,7 +197,11 @@ export function execute(prev: QState, cmd: Command, ctx: Context): Outcome {
       break;
     }
     case 'TIMER_START': {
-      if (steps[s.cursor]?.kind !== 'QUESTION' && steps[s.cursor]?.kind !== 'TIE_QUESTION')
+      if (
+        steps[s.cursor]?.kind !== 'QUESTION' &&
+        steps[s.cursor]?.kind !== 'TIE_QUESTION' &&
+        steps[s.cursor]?.kind !== 'FINAL_QUESTION'
+      )
         return fail('NO_TIMER_HERE');
       s.timer = { seconds: cmd.seconds, startedAt: ctx.now, pausedAt: null, pausedMs: 0 };
       s.paused = false;
@@ -191,7 +210,7 @@ export function execute(prev: QState, cmd: Command, ctx: Context): Outcome {
     case 'JOKER': {
       const loc = cmd.questionId === TIE_QUESTION_ID ? null : locate(config, cmd.questionId);
       if (!loc || !team(cmd.teamId)) return fail('UNKNOWN_REF');
-      if (!jokerEligible(loc.question)) return fail('JOKER_NOT_ALLOWED');
+      if (!jokerEligibleIn(config, loc.r, loc.question)) return fail('JOKER_NOT_ALLOWED');
       // Locked the moment the question has been on the TV; BACK does not reopen it (`reached`).
       if (stepIndex(steps, 'QUESTION', loc.r, loc.q) <= s.reached) return fail('JOKER_LOCKED');
       const cur = s.jokers[cmd.questionId] ?? [];
@@ -208,6 +227,14 @@ export function execute(prev: QState, cmd: Command, ctx: Context): Outcome {
       break;
     }
     case 'MARK': {
+      if (cmd.questionId === FINAL_QUESTION_ID) {
+        if (!rules(config).finalWager) return fail('NO_FINAL');
+        if (!team(cmd.teamId)) return fail('UNKNOWN_REF');
+        if (s.reached < stepIndex(steps, 'FINAL_ANSWER')) return fail('MARK_NOT_OPEN');
+        before = s.marks[FINAL_QUESTION_ID]?.[cmd.teamId] ?? null;
+        (s.marks[FINAL_QUESTION_ID] ??= {})[cmd.teamId] = cmd.right;
+        break;
+      }
       const loc = locate(config, cmd.questionId);
       if (!loc || !team(cmd.teamId)) return fail('UNKNOWN_REF');
       if (isEstimate(loc.question)) return fail('MODE_CONFLICT');
@@ -264,6 +291,29 @@ export function execute(prev: QState, cmd: Command, ctx: Context): Outcome {
       if (cmd.teamId === cmd.markerTeamId) return fail('BAD_MARKER');
       before = s.markers[cmd.teamId] ?? null;
       s.markers[cmd.teamId] = cmd.markerTeamId;
+      break;
+    }
+    case 'WAGER': {
+      if (!rules(config).finalWager) return fail('NO_FINAL');
+      if (!team(cmd.teamId)) return fail('UNKNOWN_REF');
+      // Stakes depend on the final standings, so they open with the final intro slide and lock the
+      // moment the question is on the TV (BACK does not reopen them: `reached`).
+      if (s.reached < stepIndex(steps, 'FINAL_INTRO')) return fail('MARK_NOT_OPEN');
+      if (s.reached >= stepIndex(steps, 'FINAL_QUESTION')) return fail('WAGER_LOCKED');
+      if (cmd.amount > wagerMax(s, cmd.teamId)) return fail('WAGER_TOO_HIGH');
+      before = s.wagers[cmd.teamId] ?? null;
+      s.wagers[cmd.teamId] = cmd.amount;
+      break;
+    }
+    case 'TEAM_NAME_BONUS': {
+      if (rules(config).nameBonus === 0) return fail('BONUS_OFF');
+      if (!team(cmd.teamId)) return fail('UNKNOWN_REF');
+      const has = s.bonusTeams.includes(cmd.teamId);
+      before = has;
+      if (cmd.on === has) return fail('NOOP');
+      s.bonusTeams = cmd.on
+        ? [...s.bonusTeams, cmd.teamId]
+        : s.bonusTeams.filter((t) => t !== cmd.teamId);
       break;
     }
     case 'SHOW_STANDINGS': {
