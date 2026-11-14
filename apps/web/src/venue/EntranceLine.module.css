@@ -1,0 +1,72 @@
+/* TV: 1920x1080 stage pixels (never vh/vw); the lobby card holds it between the room code and its foot. */
+.tv {
+  margin: 14px auto 0;
+  width: 470px;
+  padding: 8px 14px 10px;
+  text-align: center;
+  background: rgba(var(--qp-deep-rgb), 0.8);
+  border: 4px solid var(--qp-color-accent-a, #ffd34d);
+  border-radius: 24px;
+}
+
+.tvLabel {
+  font-size: 26px;
+  letter-spacing: 0.06em;
+  color: var(--qp-color-muted-text);
+}
+
+.tvText {
+  font-family: var(--qp-font-display);
+  font-size: 40px;
+  line-height: 1.15;
+  color: var(--qp-color-accent-a, #ffd34d);
+  overflow-wrap: anywhere;
+}
+
+.tvNote {
+  margin-top: 2px;
+  font-size: 26px;
+  line-height: 1.2;
+  color: var(--qp-color-text, #fff);
+  overflow-wrap: anywhere;
+}
+
+.phone {
+  width: 100%;
+  /* the leader's crown rises above the avatar below: leave it room */
+  margin: 6px 0 34px;
+  padding: 8px 12px;
+  font-size: 16px;
+  text-align: center;
+  color: var(--qp-color-text, #fff);
+  background: rgba(var(--qp-deep-rgb), 0.6);
+  border: 2px solid var(--qp-color-accent-a, #ffd34d);
+  border-radius: 14px;
+  overflow-wrap: anywhere;
+}
+
+.phoneNote {
+  color: var(--qp-color-muted-text);
+}
+
+.brand {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 4px 0;
+}
+
+.brandLogo {
+  max-width: 120px;
+  max-height: 44px;
+  object-fit: contain;
+}
+
+.brandName {
+  font-family: var(--qp-font-display);
+  font-size: 20px;
+  color: var(--qp-color-accent-a, #ffd34d);
+  overflow-wrap: anywhere;
+}

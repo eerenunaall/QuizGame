@@ -1,0 +1,10 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["OWNER-TO-FILL-TEAMID.com.example.quiznight"],
+        "components": [{ "/": "/j/*" }, { "/": "/join/*" }, { "/": "/unlock/*" }]
+      }
+    ]
+  }
+}

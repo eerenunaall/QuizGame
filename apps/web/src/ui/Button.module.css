@@ -1,0 +1,140 @@
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  min-width: 0;
+  font-family: var(--qp-font-display);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  text-align: center;
+  color: #1b1200;
+  border-radius: 24px;
+  transition:
+    transform 90ms ease,
+    box-shadow 90ms ease,
+    filter 120ms ease;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(5px);
+}
+
+.button:disabled {
+  filter: grayscale(0.65) brightness(0.8);
+  cursor: default;
+}
+
+.block {
+  display: flex;
+  width: 100%;
+}
+
+.label {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.icon {
+  position: relative;
+  z-index: 1;
+  margin-right: 12px;
+}
+
+.shine {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 36%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0),
+    rgba(255, 255, 255, 0.55),
+    rgba(255, 255, 255, 0)
+  );
+  opacity: 0;
+  transform: translateX(-130%) skewX(-18deg);
+  pointer-events: none;
+}
+
+.button:focus .shine,
+.button:hover .shine {
+  opacity: 1;
+  animation: qp-shine 900ms ease-out 1;
+}
+
+/* sizes */
+.md {
+  min-height: 56px;
+  padding: 8px 26px;
+  font-size: 24px;
+  box-shadow: 0 5px 0 var(--edge);
+}
+.lg {
+  min-height: 76px;
+  padding: 10px 40px;
+  font-size: 32px;
+  box-shadow: 0 7px 0 var(--edge);
+}
+.xl {
+  min-height: 104px;
+  padding: 12px 64px;
+  font-size: 46px;
+  border-radius: 32px;
+  box-shadow: 0 10px 0 var(--edge);
+}
+.button:active:not(:disabled).md {
+  box-shadow: 0 0 0 var(--edge);
+}
+.button:active:not(:disabled).lg {
+  box-shadow: 0 2px 0 var(--edge);
+}
+.button:active:not(:disabled).xl {
+  box-shadow: 0 5px 0 var(--edge);
+}
+
+/* variants: gradient, lip colour and label colour */
+.gold {
+  --edge: var(--qp-color-accent-a-edge);
+  background: var(--qp-gradient-gold);
+}
+.violet {
+  --edge: var(--qp-color-accent-b-edge);
+  background: var(--qp-gradient-violet);
+  color: #fff;
+}
+.violet .label {
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+}
+.success {
+  --edge: var(--qp-color-success-edge);
+  background: var(--qp-gradient-success);
+  color: #052b12;
+}
+.danger {
+  --edge: var(--qp-color-danger-edge);
+  background: var(--qp-gradient-danger);
+  color: #fff;
+}
+.danger .label {
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+}
+.ghost {
+  --edge: rgba(0, 0, 0, 0.35);
+  color: var(--qp-color-text);
+  background: rgba(255, 255, 255, 0.1);
+  border: 3px solid rgba(255, 255, 255, 0.22);
+}
+.ghost .label {
+  text-shadow: none;
+}
+
+.busy .label {
+  opacity: 0.6;
+}

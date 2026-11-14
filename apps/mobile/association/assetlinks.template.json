@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.example.quiznight",
+      "sha256_cert_fingerprints": ["OWNER-TO-FILL:AA:BB:...:SHA-256 of the Play app signing key"]
+    }
+  }
+]

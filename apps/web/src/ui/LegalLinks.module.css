@@ -1,0 +1,18 @@
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 18px;
+  font-size: 14px;
+}
+
+.tv {
+  gap: 0 36px;
+  font-size: 22px;
+}
+
+.link {
+  color: var(--qp-color-muted-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

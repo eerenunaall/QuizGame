@@ -1,0 +1,59 @@
+.flame {
+  --flame-outer-a: #ff7a1a;
+  --flame-outer-b: #ffb62e;
+  --flame-inner-a: #ffd44d;
+  --flame-inner-b: #fff3a8;
+  position: relative;
+  display: inline-block;
+  flex: none;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.35));
+}
+
+/* hotter streaks burn brighter, never in a new hue family: red/orange/yellow, then white-gold */
+.lvl2 {
+  --flame-outer-a: #ff5a1f;
+  --flame-outer-b: #ffc02e;
+  --flame-inner-a: #ffe05c;
+  --flame-inner-b: #ffffff;
+}
+.lvl3 {
+  --flame-outer-a: #ff4a1f;
+  --flame-outer-b: #ffd24a;
+  --flame-inner-a: #fff1a0;
+  --flame-inner-b: #ffffff;
+}
+
+.svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  transform-origin: 50% 100%;
+  animation: qp-flame-sway 1.1s ease-in-out infinite alternate;
+}
+
+.outer {
+  transform-origin: 50% 100%;
+  animation: qp-flame-flicker 0.7s ease-in-out infinite alternate;
+}
+
+.inner {
+  transform-origin: 50% 100%;
+  animation: qp-flame-flicker 0.46s ease-in-out infinite alternate-reverse;
+}
+
+.lvl3 .svg {
+  animation-duration: 0.8s;
+}
+
+.count {
+  position: absolute;
+  left: 0;
+  bottom: 12%;
+  width: 100%;
+  font-family: var(--qp-font-display);
+  line-height: 1;
+  text-align: center;
+  color: #4a1500;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+}

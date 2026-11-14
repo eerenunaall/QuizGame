@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://archonbite.com/</loc>
+    <xhtml:link rel="alternate" hreflang="tr" href="https://archonbite.com/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://archonbite.com/?lang=en"/>
+    <lastmod>2026-10-26</lastmod><priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://archonbite.com/games/quiznight/</loc>
+    <xhtml:link rel="alternate" hreflang="tr" href="https://archonbite.com/games/quiznight/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://archonbite.com/games/quiznight/?lang=en"/>
+    <lastmod>2026-10-26</lastmod><priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://archonbite.com/games/salty-pirate/</loc>
+    <xhtml:link rel="alternate" hreflang="tr" href="https://archonbite.com/games/salty-pirate/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://archonbite.com/games/salty-pirate/?lang=en"/>
+    <lastmod>2026-10-26</lastmod><priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://archonbite.com/play/</loc>
+    <xhtml:link rel="alternate" hreflang="tr" href="https://archonbite.com/play/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://archonbite.com/play/?lang=en"/>
+    <lastmod>2026-10-26</lastmod><priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://archonbite.com/guide/</loc>
+    <xhtml:link rel="alternate" hreflang="tr" href="https://archonbite.com/guide/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://archonbite.com/guide/?lang=en"/>
+    <lastmod>2026-10-26</lastmod><priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://archonbite.com/legal/</loc>
+    <xhtml:link rel="alternate" hreflang="tr" href="https://archonbite.com/legal/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://archonbite.com/legal/?lang=en"/>
+    <lastmod>2026-10-26</lastmod><priority>0.3</priority>
+  </url>
+</urlset>

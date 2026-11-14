@@ -1,0 +1,51 @@
+.screen {
+  position: absolute;
+  top: 150px;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 820px;
+  text-align: center;
+  animation: qp-fade-in 300ms ease-out 1;
+}
+
+.logo {
+  max-width: 320px;
+  max-height: 220px;
+  margin-bottom: 18px;
+  object-fit: contain;
+}
+
+.venue {
+  font-size: 34px;
+  letter-spacing: 0.08em;
+  color: var(--qp-color-muted-text);
+}
+
+.title {
+  margin: 18px 0 10px;
+  font-family: var(--qp-font-display);
+  font-size: 120px;
+  line-height: 1.05;
+  color: var(--qp-color-accent-a, #ffd34d);
+}
+
+.body {
+  margin: 0;
+  font-size: 52px;
+  color: var(--qp-color-text, #fff);
+}
+
+.code {
+  margin-top: 40px;
+  padding: 8px 32px;
+  font-family: var(--qp-font-display);
+  font-size: 36px;
+  letter-spacing: 0.1em;
+  color: var(--qp-color-muted-text);
+  background: rgba(var(--qp-deep-rgb), 0.6);
+  border-radius: 999px;
+}

@@ -1,0 +1,9 @@
+.sticker {
+  display: inline-block;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.float {
+  animation: qp-float 4.2s ease-in-out infinite;
+}

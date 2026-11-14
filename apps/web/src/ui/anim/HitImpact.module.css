@@ -1,0 +1,35 @@
+.anchor {
+  display: block;
+  width: 0;
+  height: 0;
+}
+
+.flash {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0;
+  animation: qp-hit-flash 800ms ease-out 1 both;
+}
+
+.hit {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 71, 102, 0) 38%,
+    rgba(255, 71, 102, 0.55) 78%,
+    rgba(255, 71, 102, 0.85) 100%
+  );
+}
+
+.blocked {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(47, 227, 110, 0) 40%,
+    rgba(47, 227, 110, 0.4) 80%,
+    rgba(255, 255, 255, 0.55) 100%
+  );
+}
