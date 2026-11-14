@@ -67,6 +67,104 @@ function show(s: QState, secondsLeft: number | null = null) {
 }
 afterEach(cleanup);
 
+/** The same night with a final wager question, a consolation prize and the top-3 estimate setting. */
+const finalConfig: QuizConfig = {
+  ...config,
+  finalWager: {
+    category: 'Tarih',
+    question: {
+      id: 'fin',
+      text: 'Truva hangi ülkede?',
+      options: ['Yunanistan', 'Türkiye', 'İtalya', 'Mısır'],
+      answer: { type: 'OPTION', index: 1 },
+      points: 0,
+      jokerAllowed: false,
+    },
+  },
+  settings: { ...config.settings, wagerCap: 5, consolationText: 'Bir kahve' },
+};
+function playFinal(...cmds: Command[]): QState {
+  let s = createState(finalConfig);
+  for (const cmd of cmds) {
+    const o = execute(s, cmd, { now: 1000, actor: 'h' });
+    if (!o.ok) throw new Error(`${cmd.type}: ${o.error}`);
+    s = o.state;
+  }
+  return s;
+}
+/** START, then marks at the paper swap, then on to the final intro (cursor 12). */
+const toFinal = (): Command[] => [
+  { type: 'START' },
+  ...next(6),
+  { type: 'MARK', questionId: 'a', teamId: 't1', right: true },
+  { type: 'MARK', questionId: 'b', teamId: 't1', right: true },
+  { type: 'MARK', questionId: 'a', teamId: 't2', right: true },
+  ...next(6),
+];
+
+describe('Quiz night TV: final wager slides', () => {
+  it("intro shows the category and each team's limit, but not the question or any stake", () => {
+    const s = playFinal(...toFinal(), { type: 'WAGER', teamId: 't1', amount: 2 });
+    const { container } = show(s);
+    expect(screen.getByTestId('night-final-intro').textContent).toContain('Kategori: Tarih');
+    expect(container.textContent).toContain('Takım 1');
+    expect(container.textContent).toContain('En fazla 2');
+    expect(container.textContent).not.toContain('Truva');
+    expect(container.textContent).not.toContain('Bahis');
+  });
+
+  it('question shows the options and no answer; the answer slide shows it', () => {
+    let s = playFinal(...toFinal(), { type: 'NEXT' });
+    show(s, 20);
+    expect(screen.getByTestId('night-question').textContent).toBe('Truva hangi ülkede?');
+    expect(screen.getByTestId('night-option-1')).toBeTruthy();
+    expect(screen.getByTestId('night-timer').textContent).toBe('20');
+    expect(document.querySelector('[data-testid="night-answer"]')).toBeNull();
+    cleanup();
+    s = playFinal(...toFinal(), { type: 'NEXT' }, { type: 'NEXT' });
+    show(s);
+    expect(screen.getByTestId('night-answer').textContent).toContain('Türkiye');
+  });
+
+  it('reveal lists stakes and results from last place to first, then the podium names the consolation prize', () => {
+    const s = playFinal(
+      ...toFinal(),
+      { type: 'WAGER', teamId: 't1', amount: 2 },
+      { type: 'WAGER', teamId: 't2', amount: 1 },
+      { type: 'NEXT' },
+      { type: 'NEXT' },
+      { type: 'MARK', questionId: 'final-wager', teamId: 't1', right: true },
+      { type: 'MARK', questionId: 'final-wager', teamId: 't2', right: false },
+      { type: 'NEXT' },
+    );
+    show(s);
+    const rows = [...screen.getByTestId('night-final-reveal').querySelectorAll('li')];
+    expect(rows.map((r) => r.getAttribute('data-testid'))).toEqual([
+      'night-reveal-t3',
+      'night-reveal-t2',
+      'night-reveal-t1',
+    ]);
+    expect(screen.getByTestId('night-reveal-t1').textContent).toContain('Bahis 2');
+    expect(screen.getByTestId('night-reveal-t1').textContent).toContain('+2');
+    expect(screen.getByTestId('night-reveal-t2').textContent).toContain('-1');
+    cleanup();
+    show(run(s, { type: 'NEXT' }));
+    expect(screen.getByTestId('night-consolation').textContent).toBe(
+      'Teselli ödülü: Takım 2, Takım 3: Bir kahve',
+    );
+  });
+
+  function run(s: QState, ...cmds: Command[]): QState {
+    let out = s;
+    for (const cmd of cmds) {
+      const o = execute(out, cmd, { now: 1000, actor: 'h' });
+      if (!o.ok) throw new Error(`${cmd.type}: ${o.error}`);
+      out = o.state;
+    }
+    return out;
+  }
+});
+
 describe('Quiz night TV slides', () => {
   it('intro shows the title, the entrance price and the prize', () => {
     const { container } = show(play({ type: 'START' }));

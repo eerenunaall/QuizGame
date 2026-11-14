@@ -240,7 +240,9 @@ export function Present({
             {host.overlay ? t('qn.hideStandings') : t('qn.standings')}
           </Button>
         </div>
-        {step?.kind === 'QUESTION' || step?.kind === 'TIE_QUESTION' ? (
+        {step?.kind === 'QUESTION' ||
+        step?.kind === 'TIE_QUESTION' ||
+        step?.kind === 'FINAL_QUESTION' ? (
           <div className={styles.row} data-testid="qn-timer">
             {[30, 60, 90].map((n) => (
               <Button
@@ -326,6 +328,105 @@ export function Present({
               }
             />
           ))}
+        </section>
+      ) : null}
+
+      {host.nameBonus && !host.closed ? (
+        <section className={styles.card} data-testid="qn-bonus">
+          <h3 className={styles.h3}>{t('qn.bonus.title', { n: host.nameBonus.points })}</h3>
+          <p className={styles.muted}>{t('qn.bonus.hint')}</p>
+          <div className={styles.chips}>
+            {host.teams.map((team) => {
+              const on = host.nameBonus!.teamIds.includes(team.id);
+              return (
+                <button
+                  key={team.id}
+                  type="button"
+                  disabled={busy}
+                  className={on ? styles.chipOn : styles.chip}
+                  aria-pressed={on}
+                  onClick={() => void send({ type: 'TEAM_NAME_BONUS', teamId: team.id, on: !on })}
+                  data-testid={`qn-bonus-${team.id}`}
+                >
+                  <span aria-hidden="true">{team.badge.emoji}</span> {team.name}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
+      {host.final && host.final.wagersOpen && !host.closed ? (
+        <section className={styles.card} data-testid="qn-final">
+          <h3 className={styles.h3}>{t('qn.wager.title', { category: host.final.category })}</h3>
+          <span className={styles.secret}>{t('qn.onlyYou')}</span>
+          {host.final.wagersLocked ? (
+            <>
+              <p className={styles.bigText}>{host.final.questionText}</p>
+              <p className={styles.answerLine}>
+                {t('qn.answerIs', { text: host.final.answerText })}
+              </p>
+              {host.final.explanation ? (
+                <p className={styles.muted}>{host.final.explanation}</p>
+              ) : null}
+              <p className={styles.muted}>{t('qn.wager.locked')}</p>
+            </>
+          ) : (
+            <p className={styles.muted}>{t('qn.wager.hint')}</p>
+          )}
+          {host.final.teams.map((row) => {
+            const team = teamOf(row.teamId);
+            return (
+              <div
+                key={row.teamId}
+                className={styles.finalRow}
+                data-testid={`qn-final-${row.teamId}`}
+              >
+                {host.final!.wagersLocked ? (
+                  <span className={styles.grow}>
+                    {team?.badge.emoji} {team?.name}:{' '}
+                    {row.wager === null ? t('qn.wager.none') : row.wager}
+                  </span>
+                ) : (
+                  <span className={styles.grow}>
+                    <NumberRow
+                      label={`${team?.badge.emoji ?? ''} ${team?.name ?? ''} (${t('qn.wager.max', { n: row.max })})`}
+                      value={row.wager ?? undefined}
+                      onCommit={(value) =>
+                        void send({ type: 'WAGER', teamId: row.teamId, amount: value ?? 0 })
+                      }
+                      testId={`qn-wager-${row.teamId}`}
+                    />
+                  </span>
+                )}
+                {host.final!.marksOpen ? (
+                  <span className={styles.row}>
+                    {([true, false] as const).map((right) => (
+                      <button
+                        key={String(right)}
+                        type="button"
+                        disabled={busy}
+                        className={row.right === right ? styles.chipOn : styles.chip}
+                        aria-pressed={row.right === right}
+                        onClick={() =>
+                          void send({
+                            type: 'MARK',
+                            questionId: 'final-wager',
+                            teamId: row.teamId,
+                            right,
+                          })
+                        }
+                        data-testid={`qn-final-${right ? 'right' : 'wrong'}-${row.teamId}`}
+                      >
+                        {t(right ? 'qn.wager.right' : 'qn.wager.wrong')}
+                      </button>
+                    ))}
+                    <strong>{t('qn.wager.result', { n: row.delta })}</strong>
+                  </span>
+                ) : null}
+              </div>
+            );
+          })}
         </section>
       ) : null}
 
@@ -490,6 +591,14 @@ export function Present({
       {host.podiumReached ? (
         <section className={styles.card} data-testid="qn-prize">
           <h3 className={styles.h3}>{t('qn.prize')}</h3>
+          {host.consolation ? (
+            <p data-testid="qn-consolation-line">
+              {t('qn.consolation', {
+                teams: host.consolation.teamIds.map((id) => teamOf(id)?.name ?? '').join(', '),
+              })}
+              : {host.consolation.text}
+            </p>
+          ) : null}
           {night.reward || prize ? (
             prize ? null : (
               <p>{t('qn.prize.given')}</p>

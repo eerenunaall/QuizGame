@@ -4,7 +4,10 @@ import { call } from './payments';
 import type { TestServer } from './server';
 
 /** Quiz night fixtures (ADR-0029): a small valid night with recognisable secrets in its answers. */
-export function nightConfig(over: Partial<QuizConfig['settings']> = {}): QuizConfig {
+export function nightConfig(
+  over: Partial<QuizConfig['settings']> = {},
+  withFinal = false,
+): QuizConfig {
   const q = (id: string, points: number) => ({
     id,
     text: `Soru ${id}?`,
@@ -41,6 +44,22 @@ export function nightConfig(over: Partial<QuizConfig['settings']> = {}): QuizCon
       },
     ],
     tieBreak: null,
+    ...(withFinal
+      ? {
+          finalWager: {
+            category: 'FINAL-KATEGORI',
+            question: {
+              id: 'fin',
+              text: 'Final sorusu?',
+              options: ['Bir', 'Iki', 'Uc', 'Dort'],
+              answer: { type: 'OPTION' as const, index: 1 },
+              explanation: 'ACIKLAMA-final',
+              points: 0,
+              jokerAllowed: false,
+            },
+          },
+        }
+      : {}),
     teams: [1, 2, 3].map((n) => ({
       id: `t${n}`,
       name: `Takım ${n}`,

@@ -27,7 +27,7 @@ const q = (id: string) => ({
   points: 1,
   jokerAllowed: true,
 });
-const config: QuizConfig = {
+const baseConfig: QuizConfig = {
   title: 'Cuma Gecesi',
   date: '2026-11-06',
   rounds: [
@@ -44,6 +44,8 @@ const config: QuizConfig = {
     prizeText: 'Bir içecek',
   },
 };
+
+let config: QuizConfig = baseConfig;
 
 interface Sent {
   url: string;
@@ -104,6 +106,7 @@ const commands = (): Command[] =>
   sent.filter((s) => s.url.endsWith('/command')).map((s) => s.body.cmd as Command);
 
 beforeEach(() => {
+  config = baseConfig;
   sent = [];
   rewardIssued = false;
   state = createState(config);
@@ -219,5 +222,88 @@ describe('pool picker CSV', () => {
       correctIndex: 2,
       explanation: 'Çünkü "öyle"',
     });
+  });
+});
+
+describe('Quiz night host tablet: paper-night rules', () => {
+  const finalConfig = (): QuizConfig => ({
+    ...baseConfig,
+    finalWager: { category: 'Tarih', question: { ...q('fin'), points: 0 } },
+    settings: { ...baseConfig.settings, nameBonus: 2, wagerCap: 5 },
+  });
+  const advance = (...cmds: Command[]): void => {
+    for (const cmd of cmds) {
+      const o = execute(state, cmd, { now: Date.now(), actor: 'owner' });
+      if (!o.ok) throw new Error(`${cmd.type}: ${o.error}`);
+      state = o.state;
+    }
+  };
+  const next = (n: number): Command[] => Array.from({ length: n }, () => ({ type: 'NEXT' }));
+  // INTRO, HOWTO, ROUND_TITLE, a, b, c, LOCKED, SWAP, 3 answers, MARKING, ROUND_SCORES, STANDINGS, FINAL_INTRO
+  const toFinalIntro = (): void => {
+    config = finalConfig();
+    state = createState(config);
+    advance({ type: 'START' }, ...next(7));
+    advance(
+      { type: 'MARK', questionId: 'a', teamId: 't1', right: true },
+      { type: 'MARK', questionId: 'b', teamId: 't1', right: true },
+      { type: 'MARK', questionId: 'a', teamId: 't2', right: true },
+    );
+    advance(...next(7));
+  };
+
+  it('the team-name bonus toggle sends TEAM_NAME_BONUS and shows the points', async () => {
+    config = finalConfig();
+    state = createState(config);
+    advance({ type: 'START' });
+    presentView();
+    expect(screen.getByTestId('qn-bonus').textContent).toContain('+2 puan');
+    fireEvent.click(screen.getByTestId('qn-bonus-t2'));
+    await waitFor(() =>
+      expect(commands()).toContainEqual({ type: 'TEAM_NAME_BONUS', teamId: 't2', on: true }),
+    );
+  });
+
+  it('final intro: stakes are typed per team with their limit; too high is refused by the server', async () => {
+    toFinalIntro();
+    presentView();
+    const box = screen.getByTestId('qn-final');
+    expect(box.textContent).toContain('Final bahsi: Tarih');
+    expect(screen.getByTestId('qn-final-t1').textContent).toContain('en fazla 2');
+    const input = screen.getByTestId('qn-wager-t1');
+    fireEvent.change(input, { target: { value: '2' } });
+    fireEvent.blur(input);
+    await waitFor(() =>
+      expect(commands()).toContainEqual({ type: 'WAGER', teamId: 't1', amount: 2 }),
+    );
+    fireEvent.change(screen.getByTestId('qn-wager-t2'), { target: { value: '4' } });
+    fireEvent.blur(screen.getByTestId('qn-wager-t2'));
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toContain('Bahis, takımın puanından'),
+    );
+  });
+
+  it('after the answer slide the host marks right or wrong per team and sees the result', async () => {
+    toFinalIntro();
+    advance({ type: 'WAGER', teamId: 't1', amount: 2 }, ...next(2));
+    presentView();
+    expect(screen.getByTestId('qn-final').textContent).toContain('Cevap: Cevap fin');
+    fireEvent.click(screen.getByTestId('qn-final-right-t1'));
+    await waitFor(() =>
+      expect(commands()).toContainEqual({
+        type: 'MARK',
+        questionId: 'final-wager',
+        teamId: 't1',
+        right: true,
+      }),
+    );
+    await waitFor(() => expect(screen.getByTestId('qn-final-t1').textContent).toContain('2 puan'));
+  });
+
+  it('the final card is absent on a night without a final', () => {
+    advance({ type: 'START' });
+    presentView();
+    expect(screen.queryByTestId('qn-final')).toBeNull();
+    expect(screen.queryByTestId('qn-bonus')).toBeNull();
   });
 });

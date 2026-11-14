@@ -51,6 +51,7 @@ function QuestionEditor({
   onChange,
   onMove,
   onRemove,
+  bare = false,
 }: {
   q: QuestionDef;
   kind: RoundKind;
@@ -58,6 +59,8 @@ function QuestionEditor({
   onChange: (q: QuestionDef) => void;
   onMove: (delta: -1 | 1) => void;
   onRemove: () => void;
+  /** The final question has no points or joker of its own (the stake is the points). */
+  bare?: boolean;
 }) {
   const { t } = useI18n();
   const multi = q.options !== undefined;
@@ -215,31 +218,33 @@ function QuestionEditor({
           onChange={(e) => set({ explanation: e.target.value })}
         />
       </label>
-      <div className={styles.row}>
-        <label className={styles.field}>
-          <span>{t('qn.question.points')}</span>
-          <input
-            type="number"
-            min={0}
-            max={100}
-            value={q.points}
-            onChange={(e) =>
-              set({ points: Math.max(0, Math.min(100, Number(e.target.value) || 0)) })
-            }
-            data-testid={`qn-q-points-${q.id}`}
-          />
-        </label>
-        {kind !== 'ESTIMATE' ? (
-          <label className={styles.check}>
+      {bare ? null : (
+        <div className={styles.row}>
+          <label className={styles.field}>
+            <span>{t('qn.question.points')}</span>
             <input
-              type="checkbox"
-              checked={q.jokerAllowed}
-              onChange={(e) => set({ jokerAllowed: e.target.checked })}
+              type="number"
+              min={0}
+              max={100}
+              value={q.points}
+              onChange={(e) =>
+                set({ points: Math.max(0, Math.min(100, Number(e.target.value) || 0)) })
+              }
+              data-testid={`qn-q-points-${q.id}`}
             />
-            {t('qn.question.joker')}
           </label>
-        ) : null}
-      </div>
+          {kind !== 'ESTIMATE' ? (
+            <label className={styles.check}>
+              <input
+                type="checkbox"
+                checked={q.jokerAllowed}
+                onChange={(e) => set({ jokerAllowed: e.target.checked })}
+              />
+              {t('qn.question.joker')}
+            </label>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
@@ -633,6 +638,69 @@ export function Prepare({
           ) : null}
         </section>
 
+        <section className={styles.card} data-testid="qn-final">
+          <h3 className={styles.h3}>{t('qn.finalWager')}</h3>
+          <p className={styles.muted}>{t('qn.final.hint')}</p>
+          <label className={styles.check}>
+            <input
+              type="checkbox"
+              checked={Boolean(config.finalWager)}
+              onChange={(e) =>
+                edit((d) => {
+                  d.finalWager = e.target.checked
+                    ? { category: '', question: blankQuestion(uid(), 0) }
+                    : null;
+                })
+              }
+              data-testid="qn-final-on"
+            />
+            {t('qn.final.on')}
+          </label>
+          {config.finalWager ? (
+            <>
+              <label className={styles.field}>
+                <span>{t('qn.final.category')}</span>
+                <input
+                  value={config.finalWager.category}
+                  maxLength={80}
+                  onChange={(e) => edit((d) => void (d.finalWager!.category = e.target.value))}
+                  data-testid="qn-final-category"
+                />
+              </label>
+              <QuestionEditor
+                q={config.finalWager.question}
+                kind="NORMAL"
+                index={0}
+                bare
+                onChange={(next) =>
+                  edit((d) => void (d.finalWager!.question = { ...next, points: 0 }))
+                }
+                onMove={() => undefined}
+                onRemove={() => edit((d) => void (d.finalWager = null))}
+              />
+              <label className={styles.field}>
+                <span>{t('qn.set.wagerCap')}</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={config.settings.wagerCap ?? 10}
+                  onChange={(e) =>
+                    edit(
+                      (d) =>
+                        void (d.settings.wagerCap = Math.max(
+                          1,
+                          Math.min(50, Number(e.target.value) || 1),
+                        )),
+                    )
+                  }
+                  data-testid="qn-wager-cap"
+                />
+              </label>
+            </>
+          ) : null}
+        </section>
+
         <section className={styles.card}>
           <h3 className={styles.h3}>{t('qn.settings')}</h3>
           <label className={styles.field}>
@@ -693,6 +761,62 @@ export function Prepare({
                     )),
                 )
               }
+            />
+          </label>
+          <label className={styles.field}>
+            <span>{t('qn.set.jokerFrom')}</span>
+            <input
+              type="number"
+              min={1}
+              max={12}
+              value={config.settings.jokerFromRound ?? 1}
+              onChange={(e) =>
+                edit(
+                  (d) =>
+                    void (d.settings.jokerFromRound = Math.max(
+                      1,
+                      Math.min(12, Number(e.target.value) || 1),
+                    )),
+                )
+              }
+              data-testid="qn-joker-from"
+            />
+          </label>
+          <label className={styles.field}>
+            <span>{t('qn.set.nameBonus')}</span>
+            <input
+              type="number"
+              min={0}
+              max={10}
+              value={config.settings.nameBonus ?? 0}
+              onChange={(e) =>
+                edit(
+                  (d) =>
+                    void (d.settings.nameBonus = Math.max(
+                      0,
+                      Math.min(10, Number(e.target.value) || 0),
+                    )),
+                )
+              }
+              data-testid="qn-name-bonus"
+            />
+          </label>
+          <label className={styles.check}>
+            <input
+              type="checkbox"
+              checked={config.settings.estimateTop3 ?? false}
+              onChange={(e) => edit((d) => void (d.settings.estimateTop3 = e.target.checked))}
+              data-testid="qn-top3"
+            />
+            {t('qn.set.top3')}
+          </label>
+          <label className={styles.field}>
+            <span>{t('qn.set.consolation')}</span>
+            <input
+              value={config.settings.consolationText ?? ''}
+              maxLength={160}
+              onChange={(e) => edit((d) => void (d.settings.consolationText = e.target.value))}
+              data-testid="qn-consolation"
             />
           </label>
         </section>

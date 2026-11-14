@@ -309,6 +309,79 @@ export function NightSlide({ view, secondsLeft }: { view: NightView; secondsLeft
         </>
       );
       break;
+    case 'FINAL_INTRO':
+      body = view.final ? (
+        <div className={styles.centerColumn} data-testid="night-final-intro">
+          <p className={styles.kicker}>{t('qn.tvs.final')}</p>
+          <h1 className={styles.hero}>
+            {t('qn.tvs.finalCategory', { category: view.final.category })}
+          </h1>
+          <p className={styles.hint}>{t('qn.tvs.finalHint')}</p>
+          <ul className={styles.finalLimits}>
+            {view.final.limits.map((l) => (
+              <li key={l.teamId}>
+                <TeamMark team={findTeam(view, l.teamId)} size={44} />{' '}
+                {findTeam(view, l.teamId)?.name}: <b>{t('qn.tvs.finalMax', { n: l.max })}</b>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null;
+      break;
+    case 'FINAL_QUESTION':
+    case 'FINAL_ANSWER':
+      body = view.question ? (
+        <>
+          <header className={styles.header}>
+            <span className={styles.pill}>{t('qn.tvs.final')}</span>
+            <span className={styles.headerTitle}>{view.final?.category}</span>
+          </header>
+          <QuestionBody view={view} question={view.question} reveal={step === 'FINAL_ANSWER'} />
+          {step === 'FINAL_ANSWER' ? (
+            <>
+              <AnswerBox view={view} />
+              {view.explanation ? <p className={styles.explanation}>{view.explanation}</p> : null}
+            </>
+          ) : secondsLeft !== null ? (
+            <div
+              className={secondsLeft <= 5 ? styles.timerUrgent : styles.timer}
+              data-testid="night-timer"
+            >
+              {secondsLeft}
+            </div>
+          ) : null}
+        </>
+      ) : null;
+      break;
+    case 'FINAL_REVEAL':
+      body = view.final ? (
+        <>
+          <h1 className={styles.heading}>{t('qn.tvs.finalReveal')}</h1>
+          <ol className={styles.standings} data-testid="night-final-reveal">
+            {view.final.reveal.map((row, i) => {
+              const team = findTeam(view, row.teamId);
+              return (
+                <li
+                  key={row.teamId}
+                  className={`${styles.standRow} ${styles.revealRow}`}
+                  style={{ animationDelay: `${i * 0.9}s` }}
+                  data-testid={`night-reveal-${row.teamId}`}
+                >
+                  <b className={styles.rank}>{row.rank}</b>
+                  <TeamMark team={team} size={60} />
+                  <span className={styles.teamName}>{team?.name}</span>
+                  <small className={styles.jokers}>{t('qn.tvs.stake', { n: row.wager })}</small>
+                  <span className={row.delta < 0 ? styles.down : styles.gain}>
+                    {row.delta > 0 ? `+${row.delta}` : row.delta}
+                  </span>
+                  <b className={styles.score}>{row.total}</b>
+                </li>
+              );
+            })}
+          </ol>
+        </>
+      ) : null;
+      break;
     case 'MARKING':
       body = (
         <div className={styles.centerColumn}>
@@ -346,13 +419,25 @@ export function NightSlide({ view, secondsLeft }: { view: NightView; secondsLeft
                 })}
               </li>
             ))}
-            {view.roundScores.estimateWinners.map((w) => (
-              <li key={w.number}>
-                {t('qn.tvs.closest', {
-                  teams: w.teamIds.map((id) => findTeam(view, id)?.name ?? '').join(', '),
-                })}
-              </li>
-            ))}
+            {view.roundScores.estimateWinners.map((w) =>
+              w.places.length > 1 ? (
+                w.places.map((p) => (
+                  <li key={`${w.number}-${p.place}`}>
+                    {t('qn.tvs.place', {
+                      n: p.place,
+                      teams: p.teamIds.map((id) => findTeam(view, id)?.name ?? '').join(', '),
+                      points: p.points,
+                    })}
+                  </li>
+                ))
+              ) : (
+                <li key={w.number}>
+                  {t('qn.tvs.closest', {
+                    teams: w.teamIds.map((id) => findTeam(view, id)?.name ?? '').join(', '),
+                  })}
+                </li>
+              ),
+            )}
           </ul>
         </>
       ) : null;
@@ -411,6 +496,14 @@ function Podium({ view }: { view: NightView }) {
           team: winners.map((w) => findTeam(view, w.teamId)?.name ?? '').join(' & '),
         })}
       </p>
+      {view.consolation ? (
+        <p className={styles.consolation} data-testid="night-consolation">
+          {t('qn.tvs.consolation', {
+            teams: view.consolation.teamIds.map((id) => findTeam(view, id)?.name ?? '').join(', '),
+          })}
+          : {view.consolation.text}
+        </p>
+      ) : null}
       <div className={styles.podium}>
         {order.map((rank) =>
           places

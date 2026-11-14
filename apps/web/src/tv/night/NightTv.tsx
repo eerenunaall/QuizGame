@@ -38,7 +38,15 @@ function useNightEffects(view: NightView | null): void {
         break;
       case 'ANSWER':
       case 'TIE_ANSWER':
+      case 'FINAL_ANSWER':
         sfx.play('revealHit');
+        break;
+      case 'FINAL_INTRO':
+        sfx.play('stinger');
+        break;
+      case 'FINAL_REVEAL':
+        sfx.play('drumroll', { length: 2 });
+        sfx.play('score', { delayMs: 2000 });
         break;
       case 'MARKING':
         sfx.play('drumroll', { length: 2 });
@@ -64,6 +72,7 @@ function useNightEffects(view: NightView | null): void {
       case 'SWAP':
       case 'HALF_TIME':
       case 'TIE_QUESTION':
+      case 'FINAL_QUESTION':
         break;
     }
     if (view.step === 'QUESTION' && view.doubled.length > 0) sfx.play('doubleDown');
