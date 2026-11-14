@@ -18,3 +18,6 @@ packages/ui-tokens/src/tokens.css
 # the studio site is a self-contained static folder whose pages are written by its own tools/sync-pages.mjs
 sites/archonbite
 .claude
+# research output (generated notes and reports, not source)
+research_notes
+reports
