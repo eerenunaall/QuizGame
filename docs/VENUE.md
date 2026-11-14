@@ -286,17 +286,22 @@ Haftalık pub quiz gecesi: takımlar masalarda **kağıt ve kalemle** oynar, tel
 `docs/ADR/0029-host-led-quiz-night.md`, araştırma notları: `docs/QUIZ_NIGHT_RESEARCH.md`.
 
 ### Hazırlık (gece öncesi)
-1. **Quiz Gecesi** sekmesi, **Yeni gece**: adını ve tarihini yazın, şablon seçin: *Klasik* (4 tur × 10 soru + final,
-   yarı zaman 2. turdan sonra), *Hızlı* (2 tur × 8 soru) veya *Boş*. **Oluştur**.
+1. **Quiz Gecesi** sekmesi, **Yeni gece**: adını ve tarihini yazın, şablon seçin: *Önerilen* (3 tur × 10 soru + tahmin turu + final bahsi,
+   yarı zaman 2. turdan sonra, çift puan 2. turdan itibaren), *Klasik* (4 tur × 10 soru + bonus tur), *Hızlı* (2 tur × 8 soru)
+   veya *Boş*. **Oluştur**.
 2. **Hazırlık**: giriş ücreti yazısını ve ödül yazısını girin (TV'de ve kazanan takımda görünür).
 3. **Takımlar**: takım adlarını yazın (mekânın takım adları önerilir). Her takıma renk ve hayvan simgesi, masa numarası verilir.
    Kağıtlar masa numarasına göre bir sonraki masaya gider; sonradan değiştirebilirsiniz.
 4. **Turlar ve sorular**: tur türünü seçin (Normal, Resim, Müzik (yazılı), Doğru/Yanlış, Tahmin, Bonus). Her soruya metin,
    cevap, puan yazın. Çoktan seçmeli için kutuyu işaretleyin. **Havuzdan seç** ile kafenizin kendi sorularını ekleyin.
    **Tahmin** sorusunda en yakın sayı kazanır ve çift puan oynanamaz. İsterseniz **eşitlik bozma sorusu** ekleyin.
-5. **Ayarlar**: takım başına çift puan hakkı (varsayılan 2), yanlış çift puanlı cevap puan götürsün mü (varsayılan hayır),
-   soru süresi, yarı zaman.
-6. **Kaydet**. Eksik varsa sayfa "Başlamadan önce tamamlayın" listesi gösterir. Gece başlayınca ayarlar değişmez.
+5. **Final bahis sorusu** (isteğe bağlı): kategori ve bir doğru/yanlış sorusu yazın, en fazla bahsi seçin (varsayılan 10).
+   Gece sonunda takımlar soruyu görmeden önce puanlarından kağıda bir bahis yazar; bilen bahsi kadar kazanır, bilemeyen o kadar
+   kaybeder. Geride kalan takımı oyunda tutan en iyi yol budur.
+6. **Ayarlar**: takım başına çift puan hakkı (varsayılan 2), **çift puan kaçıncı turdan itibaren** (örneğin 2 = ilk turda yok),
+   yanlış çift puanlı cevap puan götürsün mü (varsayılan hayır), **en iyi takım ismi bonusu** (puan, 0 = yok), **tahmin sorusunda
+   en yakın 3 takım puan alsın** (5/3/1), **sonuncuya teselli ödülü** yazısı, soru süresi, yarı zaman.
+7. **Kaydet**. Eksik varsa sayfa "Başlamadan önce tamamlayın" listesi gösterir. Gece başlayınca ayarlar değişmez.
 
 ### Sunum (gece)
 1. **Sunum** sekmesinde **TV bağlantısı oluştur**'a basın, çıkan adresi TV'nin tarayıcısında açın (`/tv/gece?l=...`).
@@ -314,10 +319,16 @@ Haftalık pub quiz gecesi: takımlar masalarda **kağıt ve kalemle** oynar, tel
    sayılarını yazın, en yakın olan puanı alır. Sonuçları sunucu hesaplar: eşit puanda aynı sıra (1, 1, 3), sıra değişimi okları,
    çift puanın kaç puan kazandırdığı. Hatalı işareti gece kapanana kadar düzeltebilirsiniz; her düzeltme kayda (kim, ne zaman,
    önceki değer) yazılır, **Kaydı göster** ile görürsünüz.
-6. Zirvede eşitlik varsa ve eşitlik sorusu eklediyseniz TV soruyu gösterir, tahminleri siz girersiniz.
-7. **Kazananlar** ekranında konfeti çıkar. **Ödülü ver**'e basın: **ödül kodu yalnızca tabletinizde bir kez** görünür
+6. **Final bahsi**: puan durumundan sonra TV kategoriyi ve her takımın en fazla yatırabileceği puanı gösterir. Takımlar bahsi
+   kağıda yazar; siz tabletteki **Final bahsi** kutusuna her takımın bahsini girersiniz (sunucu üst sınırı denetler). **İLERİ** ile
+   soru ekrana gelince bahisler **kilitlenir**. Cevap gelince her takım için *Doğru* / *Yanlış* dokunun; **Final sonuçları** slaytı
+   bahisleri sondan başa doğru açar.
+7. **En iyi takım ismi**: ayar açıksa tabletteki kutudan beğendiğiniz takıma dokunun; puan 1. tura eklenir.
+8. Zirvede eşitlik varsa ve eşitlik sorusu eklediyseniz TV soruyu gösterir, tahminleri siz girersiniz.
+9. **Kazananlar** ekranında konfeti çıkar. **Ödülü ver**'e basın: **ödül kodu yalnızca tabletinizde bir kez** görünür
    (TV'de asla). Kodu kazanan takıma söyleyin. Ödül verilince gece kapanır ve düzeltme yapılamaz. Bir gecede tek ödül verilir.
-8. Kasada personel, **Ödül doğrula** sekmesine kodu yazar (aynı kutu quiz gecesi kodlarını da tanır); kod bir kez geçer. Başka kafenin personeli
+   Teselli ödülü yazdıysanız TV sonuncu takımı ve yazıyı gösterir.
+10. Kasada personel, **Ödül doğrula** sekmesine kodu yazar (aynı kutu quiz gecesi kodlarını da tanır); kod bir kez geçer. Başka kafenin personeli
    kodu kullanamaz.
 
 ### Güvenlik ve sınırlar

@@ -80,6 +80,9 @@ it builds on). The attacker plays against the real server over real sockets; the
 | 77 Concurrency | 12 concurrent NEXT with expectedSeq: one winner | › ATTACK 77 | ✅ |
 | 78 Cross-venue night | another café's night not found under either venue path | › ATTACK 78 | ✅ |
 | 79 Config tampering | draft cannot start, live config locked, junk 400, stale seq refused | › ATTACK 79 | ✅ |
+| 90 Final wager TV frames | category and limits only on the intro; question text only from its own slide; answer only from the answer slide; stakes and results only on the reveal slide; totals include the final only from the reveal; raw `wagers`/`marks` never leak | `red-team/quiznight-final.test.ts` › ATTACK 90 | ✅ |
+| 91 Stakes: limits, locks, other cafés | early, over the limit, after the question is shown, after Back, unknown team, junk amounts, nights without a final, another café's owner: refused; the log keeps actor and previous value | › ATTACK 91 | ✅ |
+| 92 New settings validation | out-of-range and unknown settings 400; nights saved before the new fields still accepted; numeric final answer flagged | › ATTACK 92 | ✅ |
 
 Findings from running these attacks that changed the code:
 

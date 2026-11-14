@@ -1,11 +1,13 @@
 import type { QuestionDef, QuizConfig, RoundDef, TeamDef } from './types';
 
-export type TemplateId = 'CLASSIC' | 'QUICK' | 'BLANK';
+export type TemplateId = 'RECOMMENDED' | 'CLASSIC' | 'QUICK' | 'BLANK';
 
 export interface TemplateLabels {
   /** Title of round n (1-based). */
   round: (n: number) => string;
   final: string;
+  /** Title of the closest-number round of the recommended night. */
+  estimate?: string;
 }
 
 export const DEFAULT_SETTINGS: QuizConfig['settings'] = {
@@ -57,7 +59,40 @@ export function templateConfig(
     Array.from({ length: n }, () => blankQuestion(o.newId()));
   const rounds: RoundDef[] = [];
   let halfTime = 0;
-  if (id === 'CLASSIC') {
+  let extra: Partial<QuizConfig['settings']> = {};
+  let finalWager: QuizConfig['finalWager'] = null;
+  let tieBreak: QuizConfig['tieBreak'] = null;
+  if (id === 'RECOMMENDED') {
+    // The night the paper-quiz research recommends (docs/ADR/0031): three rounds of ten, a closest-number round
+    // paying 5/3/1, a half-time break, jokers from round 2, a secret-stake final and a tie-break.
+    for (let i = 1; i <= 3; i++)
+      rounds.push(blankRound(o.newId(), o.labels.round(i), 'NORMAL', mk(10)));
+    rounds.push(
+      blankRound(
+        o.newId(),
+        o.labels.estimate ?? o.labels.round(4),
+        'ESTIMATE',
+        Array.from({ length: 3 }, () => ({
+          ...blankQuestion(o.newId(), 5),
+          answer: { type: 'NUMBER' as const, value: 0 },
+          jokerAllowed: false,
+        })),
+      ),
+    );
+    halfTime = 2;
+    extra = {
+      jokerFromRound: 2,
+      nameBonus: 2,
+      estimateTop3: true,
+      wagerCap: 10,
+    };
+    finalWager = { category: '', question: blankQuestion(o.newId(), 0) };
+    tieBreak = {
+      ...blankQuestion('tie-break', 0),
+      answer: { type: 'NUMBER', value: 0 },
+      jokerAllowed: false,
+    };
+  } else if (id === 'CLASSIC') {
     for (let i = 1; i <= 4; i++)
       rounds.push(blankRound(o.newId(), o.labels.round(i), 'NORMAL', mk(10)));
     rounds.push(
@@ -77,8 +112,9 @@ export function templateConfig(
     title: o.title,
     date: o.date,
     rounds,
-    tieBreak: null,
+    tieBreak,
+    ...(finalWager ? { finalWager } : {}),
     teams: [],
-    settings: { ...DEFAULT_SETTINGS, halfTimeAfterRound: halfTime },
+    settings: { ...DEFAULT_SETTINGS, halfTimeAfterRound: halfTime, ...extra },
   };
 }

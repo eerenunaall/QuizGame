@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ConfigSchema,
   buildSteps,
   createState,
   execute,
   hostView,
   replay,
+  templateConfig,
   tvView,
   validateConfig,
   type Command,
@@ -327,5 +329,44 @@ describe('replay with the new commands', () => {
       }
     }
     expect(replay(config, log)).toEqual(state);
+  });
+});
+
+describe('recommended template', () => {
+  it('builds the researched night and validates once teams and texts are filled in', () => {
+    let n = 0;
+    const config = templateConfig('RECOMMENDED', {
+      title: 'Cuma',
+      date: '2026-11-20',
+      newId: () => `id${n++}`,
+      labels: { round: (i) => `Tur ${i}`, final: 'Final', estimate: 'Tahmin' },
+    });
+    expect(config.rounds.map((r) => [r.kind, r.questions.length])).toEqual([
+      ['NORMAL', 10],
+      ['NORMAL', 10],
+      ['NORMAL', 10],
+      ['ESTIMATE', 3],
+    ]);
+    expect(config.rounds[3]!.questions.every((x) => x.points === 5)).toBe(true);
+    expect(config.settings).toMatchObject({
+      jokerFromRound: 2,
+      nameBonus: 2,
+      estimateTop3: true,
+      wagerCap: 10,
+      halfTimeAfterRound: 2,
+    });
+    expect(config.finalWager).not.toBeNull();
+    expect(config.tieBreak?.answer.type).toBe('NUMBER');
+    // what is still missing is exactly what the host must write: texts, answers, teams
+    const issues = new Set(validateConfig(config).map((i) => i.issue));
+    expect(issues).toEqual(
+      new Set([
+        'QUESTION_TEXT_MISSING',
+        'ANSWER_MISSING',
+        'TOO_FEW_TEAMS',
+        'FINAL_QUESTION_MISSING',
+      ]),
+    );
+    expect(ConfigSchema.safeParse(config).success).toBe(true);
   });
 });

@@ -52,7 +52,7 @@ production); rewards stay valid at least four hours. Not done: native mobile UI 
 ADR-0028 (VENUE_LOCK: TVs pair through the panel, licence seats, manual question form), ADR-0030 (panel `/staff` and `/mekan`: one TABS list, reward, entrance
 price on TV and phones, white-label look and logos with a strict image parser (migration 0015), the owner's answers view, TV unlock button hidden while
 payments are off), ADR-0029 (host-led Quiz Gecesi: event-sourced engine `packages/quiznight`, migration 0016, tablet UI, TV slides at `/tv/gece`, the 2x
-joker as the only card, prize on the tablet). Research note `docs/QUIZ_NIGHT_RESEARCH.md`. Open: PDF/DOCX upload with AI drafts (ADR-0028 §6, in progress),
+joker as the only card, prize on the tablet; ADR-0031 adds the final wager, joker-from-round, team-name bonus, top-3 estimates, consolation prize and the recommended template). Research note `docs/QUIZ_NIGHT_RESEARCH.md`. Open: PDF/DOCX upload with AI drafts (ADR-0028 §6, in progress),
 paired-display attach for quiz nights, team logos inside quiz-night screens, music/picture uploads.
 
 ## Studio site (`sites/archonbite/`)

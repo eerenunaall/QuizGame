@@ -239,4 +239,6 @@ export const quizNightTr = {
   'qn.tvs.stake': 'Bahis {n}',
   'qn.tvs.consolation': 'Teselli ödülü: {teams}',
   'qn.tvs.place': '{n}. en yakın: {teams} (+{points})',
+  'qn.template.RECOMMENDED': 'Önerilen: 3 tur × 10 soru + tahmin + final bahsi',
+  'qn.template.estimateRound': 'Tahmin turu',
 } as const;

@@ -40,7 +40,7 @@ export function QuizNightTab({ venueId }: { venueId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState(() => t('qn.defaultTitle'));
   const [date, setDate] = useState(today);
-  const [template, setTemplate] = useState<TemplateId>('CLASSIC');
+  const [template, setTemplate] = useState<TemplateId>('RECOMMENDED');
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(() => {
@@ -62,7 +62,11 @@ export function QuizNightTab({ venueId }: { venueId: string }) {
         date,
         newId: () =>
           `${Date.now().toString(36)}${(n++).toString(36)}${Math.random().toString(36).slice(2, 6)}`,
-        labels: { round: (i) => t('qn.round', { n: i }), final: t('qn.final') },
+        labels: {
+          round: (i) => t('qn.round', { n: i }),
+          final: t('qn.final'),
+          estimate: t('qn.template.estimateRound'),
+        },
       });
       const created = await nightsApi.create(venueId, config);
       setOpenId(created.night.id);
@@ -125,6 +129,7 @@ export function QuizNightTab({ venueId }: { venueId: string }) {
             onChange={(e) => setTemplate(e.target.value as TemplateId)}
             data-testid="qn-template"
           >
+            <option value="RECOMMENDED">{t('qn.template.RECOMMENDED')}</option>
             <option value="CLASSIC">{t('qn.template.CLASSIC')}</option>
             <option value="QUICK">{t('qn.template.QUICK')}</option>
             <option value="BLANK">{t('qn.template.BLANK')}</option>

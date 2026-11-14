@@ -27,6 +27,13 @@ to "optional". Work top to bottom; tick an item here in the same commit that fin
   server). Questions are prepared with the owner's own chat assistant; the panel gets two key-free ways in
   (items A3a, A3b). The AI code stays, tested against the wire-contract double only.
 
+## Done since this list was written
+
+- 2026-11-14 **Quiz Gecesi v2** (ADR-0031, research report `reports/Quiz gecesi mekanikleri ve formatları.md`): final
+  wager round, 2x joker from round N, team-name bonus, top-3 estimate scoring (5/3/1), consolation prize, the
+  `RECOMMENDED` template; engine, tablet, TV, owner guide, red-team ATTACKS 90-92. Still open from that report:
+  the TV "how to play" slide does not yet mention the final or the bonus; a Chase-style risk round was left out.
+
 ## A. Must, before go-live
 
 - [ ] **A1 Browser CI.** Read the failed job's log (run 42721529318, job 129516413506, step "Install

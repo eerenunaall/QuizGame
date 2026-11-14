@@ -240,4 +240,6 @@ export const quizNightEn = {
   'qn.tvs.stake': 'Stake {n}',
   'qn.tvs.consolation': 'Consolation prize: {teams}',
   'qn.tvs.place': '{n}. closest: {teams} (+{points})',
+  'qn.template.RECOMMENDED': 'Recommended: 3 rounds × 10 + estimates + final wager',
+  'qn.template.estimateRound': 'Estimate round',
 } as const;

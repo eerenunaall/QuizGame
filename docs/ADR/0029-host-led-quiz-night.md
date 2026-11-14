@@ -84,6 +84,9 @@ existing palette, public leaderboards across events.
 - Prize: the winning team gets a single-use code, shown only on the host tablet, stored hashed, one per
   night, only after the podium; staff may redeem it.
 
+## Amendment 2026-11-14
+Final wager, joker-from-round, team-name bonus, top-3 estimates and the consolation prize: ADR-0031.
+
 ## Consequences
 Cafés get the quiz night they run today, with better slides and no score sheet arithmetic, on the
 same licence and panel. The phone game and the host-led night share questions, teams, logos,
