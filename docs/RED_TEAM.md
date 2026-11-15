@@ -84,6 +84,7 @@ it builds on). The attacker plays against the real server over real sockets; the
 | 91 Stakes: limits, locks, other cafés | early, over the limit, after the question is shown, after Back, unknown team, junk amounts, nights without a final, another café's owner: refused; the log keeps actor and previous value | › ATTACK 91 | ✅ |
 | 92 New settings validation | out-of-range and unknown settings 400; nights saved before the new fields still accepted; numeric final answer flagged | › ATTACK 92 | ✅ |
 | 93 Text reader (no model) | hostile pasted text finishes fast; oversized and malformed bodies refused; the draft list stays at 200 and says what did not fit; owner only, never across cafés; hostile documents give calm codes; no model is reachable | `red-team/venue-text-import.test.ts` › ATTACK 93 | ✅ |
+| 94 Question pictures | upload kind PICTURE with its own size rule and 60-picture shelf; outside addresses, script/data URLs, another café's image and deleted images refused on save (question, tie-break, final); TV frame carries only the hash path; brand cleanup never deletes pictures; a full shelf frees unused pictures, keeps used ones | `red-team/quiznight-pictures.test.ts` › ATTACK 94 | ✅ |
 
 Findings from running these attacks that changed the code:
 

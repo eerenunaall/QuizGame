@@ -3,8 +3,13 @@ import { sql } from 'kysely';
 import type { Database } from '@quizparty/db';
 import { type ImageKind, type ParsedImage, checkDimensions, parseImageFor } from './images';
 
-/** Most images one venue may keep: a logo, eight team marks and a few spares (ADR-0030 §4). */
+/** Most brand images one venue may keep: a logo, eight team marks and a few spares (ADR-0030 §4). */
 export const MAX_ASSETS_PER_VENUE = 12;
+/** Most question pictures one venue may keep (quiz night picture rounds): about 18 MB at the 300 KB cap. */
+export const MAX_PICTURES_PER_VENUE = 60;
+
+const storedKind = (kind: ImageKind): 'BRAND' | 'QUESTION' =>
+  kind === 'PICTURE' ? 'QUESTION' : 'BRAND';
 
 export interface AssetMeta extends ParsedImage {
   hash: string;
@@ -16,6 +21,8 @@ export class AssetLimitError extends Error {}
 
 /** An unreferenced image younger than this survives a settings save, so "Geri al" can bring it back. */
 export const ASSET_GC_GRACE_MS = 5 * 60_000;
+/** A picture waits a day for the night that will use it to be saved. */
+export const PICTURE_GC_GRACE_MS = 24 * 60 * 60_000;
 
 /**
  * A venue's images in PostgreSQL. Everything here is keyed by the venue: a hash that exists for another
@@ -27,6 +34,7 @@ export class VenueAssetStore {
     private readonly now: () => number,
   ) {}
 
+  /** The venue's brand images (logo, team marks). Question pictures are not listed here. */
   async list(venueId: string): Promise<AssetMeta[]> {
     const rows = await this.db
       .selectFrom('venue_assets')
@@ -39,6 +47,7 @@ export class VenueAssetStore {
         sql<number>`octet_length(bytes)`.as('size'),
       ])
       .where('venue_id', '=', venueId)
+      .where('kind', '=', 'BRAND')
       .orderBy('created_at')
       .execute();
     return rows.map((row) => ({
@@ -69,10 +78,10 @@ export class VenueAssetStore {
   async put(
     venueId: string,
     accountId: string,
-    kind: ImageKind,
+    imageKind: ImageKind,
     bytes: Uint8Array,
   ): Promise<AssetMeta> {
-    const image = parseImageFor(bytes, kind);
+    const image = parseImageFor(bytes, imageKind);
     const hash = createHash('sha256').update(bytes).digest('hex');
     return this.db.transaction().execute(async (trx) => {
       // One writer per venue at a time, so the count below cannot be raced past the limit.
@@ -92,12 +101,15 @@ export class VenueAssetStore {
           bytes: bytes.length,
           createdAt: new Date(existing.created_at).getTime(),
         };
+      const kind = storedKind(imageKind);
       const count = await trx
         .selectFrom('venue_assets')
         .select(sql<number>`count(*)`.as('n'))
         .where('venue_id', '=', venueId)
+        .where('kind', '=', kind)
         .executeTakeFirstOrThrow();
-      if (Number(count.n) >= MAX_ASSETS_PER_VENUE) throw new AssetLimitError('venue is full');
+      const most = kind === 'QUESTION' ? MAX_PICTURES_PER_VENUE : MAX_ASSETS_PER_VENUE;
+      if (Number(count.n) >= most) throw new AssetLimitError('venue is full');
       const createdAt = this.now();
       await trx
         .insertInto('venue_assets')
@@ -105,6 +117,7 @@ export class VenueAssetStore {
           venue_id: venueId,
           sha256: hash,
           content_type: image.contentType,
+          kind,
           width: image.width,
           height: image.height,
           bytes: Buffer.from(bytes),
@@ -141,13 +154,42 @@ export class VenueAssetStore {
     return Number(result.numDeletedRows) > 0;
   }
 
-  /** Drops images nothing refers to any more (older than the grace), so the 12 slots do not fill up. */
+  /**
+   * Drops brand images nothing refers to any more (older than the grace), so the 12 slots do not fill up.
+   * Question pictures are never touched here: the look does not refer to them (see `collectPictures`).
+   */
   async collect(venueId: string, referenced: ReadonlySet<string>): Promise<number> {
-    const cutoff = new Date(this.now() - ASSET_GC_GRACE_MS);
+    return this.collectKind(venueId, 'BRAND', referenced, ASSET_GC_GRACE_MS);
+  }
+
+  /** Drops question pictures no quiz night of the venue uses (a day's grace for a night being prepared). */
+  async collectPictures(venueId: string): Promise<number> {
+    const nights = await this.db
+      .selectFrom('quiz_nights')
+      .select('config')
+      .where('venue_id', '=', venueId)
+      .execute();
+    const used = new Set<string>();
+    for (const night of nights)
+      for (const match of JSON.stringify(night.config).matchAll(
+        /\/v1\/venue-assets\/[0-9a-f-]{36}\/([0-9a-f]{64})/gu,
+      ))
+        used.add(match[1]!);
+    return this.collectKind(venueId, 'QUESTION', used, PICTURE_GC_GRACE_MS);
+  }
+
+  private async collectKind(
+    venueId: string,
+    kind: 'BRAND' | 'QUESTION',
+    referenced: ReadonlySet<string>,
+    graceMs: number,
+  ): Promise<number> {
+    const cutoff = new Date(this.now() - graceMs);
     const rows = await this.db
       .selectFrom('venue_assets')
       .select('sha256')
       .where('venue_id', '=', venueId)
+      .where('kind', '=', kind)
       .where('created_at', '<', cutoff)
       .execute();
     const stale = rows.map((row) => row.sha256).filter((hash) => !referenced.has(hash));

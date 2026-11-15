@@ -6,6 +6,9 @@ import styles from './night.module.css';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
+/** Only a picture from the venue's own store is ever requested (an older night may hold an outside address). */
+const OWN_PICTURE = /^\/v1\/venue-assets\/[0-9a-f-]{36}\/[0-9a-f]{64}$/u;
+
 function TeamMark({ team, size = 64 }: { team: TvTeam | undefined; size?: number }) {
   return (
     <span
@@ -57,7 +60,14 @@ function QuestionBody({
       <p className={reveal ? styles.questionSmall : styles.question} data-testid="night-question">
         {question.text}
       </p>
-      {question.imageUrl ? <img className={styles.picture} src={question.imageUrl} alt="" /> : null}
+      {question.imageUrl && OWN_PICTURE.test(question.imageUrl) ? (
+        <img
+          className={styles.picture}
+          src={question.imageUrl}
+          alt=""
+          data-testid="night-picture"
+        />
+      ) : null}
       {question.options ? (
         <ul className={styles.options}>
           {question.options.map((option, i) => (

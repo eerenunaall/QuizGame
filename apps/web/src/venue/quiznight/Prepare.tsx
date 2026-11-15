@@ -14,6 +14,7 @@ import { useI18n } from '../../lib/i18n';
 import { venueApi } from '../api';
 import { nightsApi, type NightDetail, type PoolQuestion } from './api';
 import { useNightError } from './QuizNightTab';
+import { PictureField } from './PictureField';
 import styles from './quiznight.module.css';
 
 let counter = 0;
@@ -45,6 +46,7 @@ function withoutOptions(q: QuestionDef): QuestionDef {
 }
 
 function QuestionEditor({
+  venueId,
   q,
   kind,
   index,
@@ -53,6 +55,7 @@ function QuestionEditor({
   onRemove,
   bare = false,
 }: {
+  venueId: string;
   q: QuestionDef;
   kind: RoundKind;
   index: number;
@@ -107,14 +110,17 @@ function QuestionEditor({
         />
       </label>
       {kind === 'PICTURE' ? (
-        <label className={styles.field}>
-          <span>{t('qn.question.image')}</span>
-          <input
-            value={q.imageUrl ?? ''}
-            maxLength={500}
-            onChange={(e) => set({ imageUrl: e.target.value })}
-          />
-        </label>
+        <PictureField
+          venueId={venueId}
+          value={q.imageUrl}
+          onChange={(url) => {
+            const next = { ...q };
+            if (url === undefined) delete next.imageUrl;
+            else next.imageUrl = url;
+            onChange(next);
+          }}
+          testId={`qn-q-picture-${q.id}`}
+        />
       ) : null}
       {q.answer.type === 'NUMBER' ? (
         <div className={styles.row}>
@@ -517,6 +523,7 @@ export function Prepare({
             </label>
             {round.questions.map((q, i) => (
               <QuestionEditor
+                venueId={venueId}
                 key={q.id}
                 q={q}
                 kind={round.kind}
@@ -626,6 +633,7 @@ export function Prepare({
           </label>
           {config.tieBreak ? (
             <QuestionEditor
+              venueId={venueId}
               q={config.tieBreak}
               kind="ESTIMATE"
               index={0}
@@ -668,6 +676,7 @@ export function Prepare({
                 />
               </label>
               <QuestionEditor
+                venueId={venueId}
                 q={config.finalWager.question}
                 kind="NORMAL"
                 index={0}

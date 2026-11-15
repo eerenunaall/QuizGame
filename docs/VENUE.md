@@ -367,7 +367,11 @@ Haftalık pub quiz gecesi: takımlar masalarda **kağıt ve kalemle** oynar, tel
 ### Güvenlik ve sınırlar
 - Gece yalnızca sahip tarafından kurulur ve yönetilir; personel ve başka kafenin sahibi geceyi göremez.
 - TV bağlantısı yalnızca TV'de gösterilecek bilgiyi verir; doğru cevaplar, takımların işaretleri ve tahminleri TV'ye gitmez.
-- Müzik turu ilk sürümde yalnızca yazılı sorudur (ses dosyası yok); resim turu için resim adresi yazılır.
+- Müzik turu ilk sürümde yalnızca yazılı sorudur (ses dosyası yok).
+- **Resim turu**: tur türünü *Resim* seçin, her soruda **Soru resmi** için dosya seçin (PNG, WebP veya JPG, en fazla 300 KB,
+  en küçük kenar 200, en büyük 1600 piksel). Resim kafenizin kendi deposuna yüklenir ve TV'de soruyla birlikte görünür; dış bir
+  internet adresi kullanılamaz (güvenlik ve TV'nin tarayıcısı için). En fazla 60 resim tutulur; hiçbir gecede kullanılmayan
+  resimler bir gün sonra kendiliğinden silinir. Resimler logo ve takım logosu hakkını azaltmaz.
 
 ## Sık sorulanlar
 

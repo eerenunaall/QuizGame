@@ -51,6 +51,8 @@ export interface NightDetail extends NightSummary {
 const refused = (reason: string, status = 409): VenueError =>
   new VenueError(status, 'QUIZNIGHT_REFUSED', { reason });
 
+const PICTURE_PATH = /^\/v1\/venue-assets\/([0-9a-f-]{36})\/([0-9a-f]{64})$/u;
+
 interface Cached {
   state: QState;
 }
@@ -124,6 +126,33 @@ export class QuizNightService {
     return rows.map((r) => this.summary(r));
   }
 
+  /**
+   * A question picture is an image of THIS venue's own store (the web app's CSP allows only its own origin, and
+   * an outside address would also tell a third party which guests are looking): the address must be
+   * `/v1/venue-assets/<this venue>/<hash>` and the image must still exist. Anything else is refused on save.
+   */
+  private async checkPictures(venueId: string, config: QuizConfig): Promise<void> {
+    const urls = [
+      ...config.rounds.flatMap((round) => round.questions.map((q) => q.imageUrl)),
+      config.tieBreak?.imageUrl,
+      config.finalWager?.question.imageUrl,
+    ].filter((url): url is string => typeof url === 'string' && url !== '');
+    if (urls.length === 0) return;
+    const hashes = new Set<string>();
+    for (const url of urls) {
+      const match = PICTURE_PATH.exec(url);
+      if (!match || match[1] !== venueId) throw refused('BAD_IMAGE');
+      hashes.add(match[2]!);
+    }
+    const known = await this.deps.db
+      .selectFrom('venue_assets')
+      .select('sha256')
+      .where('venue_id', '=', venueId)
+      .where('sha256', 'in', [...hashes])
+      .execute();
+    if (known.length !== hashes.size) throw refused('BAD_IMAGE');
+  }
+
   async create(venueId: string, accountId: string, input: unknown): Promise<NightDetail> {
     const count = await this.deps.db
       .selectFrom('quiz_nights')
@@ -134,6 +163,7 @@ export class QuizNightService {
     const config = input;
     const parsed = ConfigSchema.safeParse(config);
     if (!parsed.success) throw new VenueError(400, 'INVALID_MESSAGE');
+    await this.checkPictures(venueId, parsed.data);
     const now = new Date(this.now());
     const row = await this.deps.db
       .insertInto('quiz_nights')
@@ -192,6 +222,7 @@ export class QuizNightService {
   async updateConfig(venueId: string, nightId: string, input: unknown): Promise<NightDetail> {
     const parsed = ConfigSchema.safeParse(input);
     if (!parsed.success) throw new VenueError(400, 'INVALID_MESSAGE');
+    await this.checkPictures(venueId, parsed.data);
     await this.exclusive(nightId, async () => {
       const row = await this.row(venueId, nightId);
       if (row.status === 'LIVE' || row.status === 'FINISHED') throw refused('CONFIG_LOCKED');

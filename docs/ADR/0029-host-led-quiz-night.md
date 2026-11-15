@@ -84,6 +84,12 @@ existing palette, public leaderboards across events.
 - Prize: the winning team gets a single-use code, shown only on the host tablet, stored hashed, one per
   night, only after the podium; staff may redeem it.
 
+## Amendment 2026-11-15 (question pictures)
+A question's `imageUrl` is only ever `/v1/venue-assets/<this venue>/<sha256>` of an image in the venue's own store (new kind
+`QUESTION`, migration 0019, at most 60 per venue, separate from the 12 brand images; shelf cleaned of pictures no night uses
+after a day). The server refuses any other address on save (`BAD_IMAGE`), and the TV slide requests nothing else. The web
+app's CSP stays `img-src 'self'`. Red-team ATTACK 94, browser test `quiznight-picture.spec.ts`.
+
 ## Amendment 2026-11-14
 Final wager, joker-from-round, team-name bonus, top-3 estimates and the consolation prize: ADR-0031.
 

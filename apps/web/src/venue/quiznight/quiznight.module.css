@@ -363,3 +363,11 @@
   padding: 0.4rem 0;
   border-top: 1px solid var(--line, rgba(255, 255, 255, 0.12));
 }
+
+.pictureThumb {
+  max-width: 220px;
+  max-height: 140px;
+  border-radius: 8px;
+  object-fit: contain;
+  background: rgba(127, 127, 127, 0.15);
+}

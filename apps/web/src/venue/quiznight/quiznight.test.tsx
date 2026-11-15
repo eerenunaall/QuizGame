@@ -14,6 +14,7 @@ import { I18nProvider } from '../../lib/i18n';
 import { parsePoolCsv } from './api';
 import { QuizNightTab } from './QuizNightTab';
 import { Present } from './Present';
+import { Prepare } from './Prepare';
 import type { NightDetail } from './api';
 
 /**
@@ -305,5 +306,96 @@ describe('Quiz night host tablet: paper-night rules', () => {
     presentView();
     expect(screen.queryByTestId('qn-final')).toBeNull();
     expect(screen.queryByTestId('qn-bonus')).toBeNull();
+  });
+});
+
+describe('Quiz night host tablet: question pictures', () => {
+  const venueId = '11111111-1111-4111-8111-111111111111';
+  const hash = 'cd'.repeat(32);
+  const prepare = (imageUrl?: string) => {
+    const cfg: QuizConfig = {
+      ...baseConfig,
+      rounds: [
+        {
+          id: 'r1',
+          kind: 'PICTURE',
+          title: 'Resim turu',
+          questions: [{ ...q('a'), ...(imageUrl ? { imageUrl } : {}) }],
+        },
+      ],
+    };
+    config = cfg;
+    state = createState(cfg);
+    return render(
+      <I18nProvider locale="tr">
+        <Prepare
+          venueId={venueId}
+          night={nightDetail()}
+          onSaved={() => undefined}
+          onGoPresent={() => undefined}
+        />
+      </I18nProvider>,
+    );
+  };
+
+  it('uploads a picture as kind PICTURE and keeps its same-origin address in the question', async () => {
+    const calls: { url: string; body: any }[] = []; // eslint-disable-line @typescript-eslint/no-explicit-any
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string, init?: RequestInit) => {
+        const body = init?.body ? JSON.parse(init.body as string) : undefined;
+        calls.push({ url, body });
+        if (url.endsWith('/assets'))
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                asset: { hash, contentType: 'image/png', width: 800, height: 600, bytes: 1000 },
+              }),
+              { status: 201 },
+            ),
+          );
+        if (url.endsWith('/config'))
+          return Promise.resolve(
+            new Response(JSON.stringify({ night: nightDetail() }), { status: 200 }),
+          );
+        return Promise.resolve(new Response('{}', { status: 404 }));
+      }),
+    );
+    prepare();
+    const input = screen.getByTestId(`qn-q-picture-a-file`);
+    fireEvent.change(input, {
+      target: { files: [new File([new Uint8Array(500)], 'kule.png', { type: 'image/png' })] },
+    });
+    await waitFor(() => expect(screen.getByTestId('qn-q-picture-a-img')).toBeTruthy());
+    expect(screen.getByTestId('qn-q-picture-a-img').getAttribute('src')).toBe(
+      `/v1/venue-assets/${venueId}/${hash}`,
+    );
+    expect(calls.find((c) => c.url.endsWith('/assets'))!.body.kind).toBe('PICTURE');
+    fireEvent.click(screen.getByTestId('qn-save'));
+    await waitFor(() => expect(calls.some((c) => c.url.endsWith('/config'))).toBe(true));
+    expect(calls.find((c) => c.url.endsWith('/config'))!.body.rounds[0].questions[0].imageUrl).toBe(
+      `/v1/venue-assets/${venueId}/${hash}`,
+    );
+  });
+
+  it('refuses a wrong file type or an oversized file before uploading, and warns about an old outside address', () => {
+    vi.stubGlobal('fetch', vi.fn());
+    prepare('https://old.example/x.png');
+    expect(screen.getByTestId('qn-q-picture-a-external').textContent).toMatch(/TV onu göstermez/u);
+    fireEvent.change(screen.getByTestId('qn-q-picture-a-file'), {
+      target: { files: [new File(['x'], 'a.gif', { type: 'image/gif' })] },
+    });
+    return waitFor(() =>
+      expect(screen.getByTestId('qn-q-picture-a-error').textContent).toMatch(/PNG/u),
+    ).then(() => {
+      fireEvent.change(screen.getByTestId('qn-q-picture-a-file'), {
+        target: {
+          files: [new File([new Uint8Array(400 * 1024)], 'big.png', { type: 'image/png' })],
+        },
+      });
+      return waitFor(() =>
+        expect(screen.getByTestId('qn-q-picture-a-error').textContent).toMatch(/300 KB/u),
+      );
+    });
   });
 });

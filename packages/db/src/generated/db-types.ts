@@ -541,6 +541,7 @@ export interface VenueAssets {
   created_by: string | null;
   height: number;
   id: Generated<string>;
+  kind: Generated<string>;
   sha256: string;
   venue_id: string;
   width: number;

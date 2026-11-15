@@ -54,7 +54,6 @@ export const quizNightEn = {
   'qn.question.unit': 'Unit (optional)',
   'qn.question.points': 'Points',
   'qn.question.joker': '2x joker allowed',
-  'qn.question.image': 'Picture address',
   'qn.question.multi': 'Multiple choice',
   'qn.question.option': 'Option {n}',
   'qn.question.explanation': 'Explanation (shown with the answer)',
@@ -242,4 +241,14 @@ export const quizNightEn = {
   'qn.tvs.place': '{n}. closest: {teams} (+{points})',
   'qn.template.RECOMMENDED': 'Recommended: 3 rounds × 10 + estimates + final wager',
   'qn.template.estimateRound': 'Estimate round',
+  'qn.picture.label': 'Question picture',
+  'qn.picture.hint':
+    'PNG, WebP or JPG, at most 300 KB; shortest side at least 200 and longest at most 1600 pixels. The picture shows on the TV with the question.',
+  'qn.picture.err.dimensions':
+    'The picture size does not fit: the shortest side must be at least 200 and the longest at most 1600 pixels.',
+  'qn.picture.err.full':
+    'The picture shelf is full (at most 60). Pictures no night uses are deleted automatically after a day.',
+  'qn.picture.external':
+    'This question has an old outside address; the TV will not show it. Upload the picture.',
+  'qn.err.BAD_IMAGE': 'A picture does not belong to this café or was deleted. Upload it again.',
 } as const;

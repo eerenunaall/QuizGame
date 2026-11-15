@@ -23,7 +23,7 @@ const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/u;
 const VenueParams = z.strictObject({ venueId: z.uuid() });
 const HashParams = z.strictObject({ venueId: z.uuid(), hash: z.string().regex(/^[0-9a-f]{64}$/u) });
 const UploadBody = z.strictObject({
-  kind: z.enum(['LOGO', 'TEAM']),
+  kind: z.enum(['LOGO', 'TEAM', 'PICTURE']),
   /** The file's bytes in base64. No file name and no content type: the server decides from the bytes. */
   data: z.string().min(1).max(UPLOAD_BODY_LIMIT),
 });
@@ -105,7 +105,15 @@ export function registerVenueAssetRoutes(app: FastifyInstance, deps: VenueAssetD
         return apiError(reply, 400, 'INVALID_MESSAGE');
       const bytes = new Uint8Array(Buffer.from(body.data.data, 'base64'));
       try {
-        const asset = await venues.assets.put(who.venueId, who.accountId, body.data.kind, bytes);
+        let asset;
+        try {
+          asset = await venues.assets.put(who.venueId, who.accountId, body.data.kind, bytes);
+        } catch (error) {
+          // A full picture shelf: free the pictures no night uses any more, then try once more.
+          if (!(error instanceof AssetLimitError) || body.data.kind !== 'PICTURE') throw error;
+          if ((await venues.assets.collectPictures(who.venueId)) === 0) throw error;
+          asset = await venues.assets.put(who.venueId, who.accountId, body.data.kind, bytes);
+        }
         return reply.code(201).send({
           asset: {
             hash: asset.hash,

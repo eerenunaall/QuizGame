@@ -19,7 +19,10 @@ export const MAX_IMAGE_PIXELS = 1_600_000;
 export const TEAM_MARK = { min: 64, max: 1024, maxRatio: 1.25 } as const;
 export const LOGO_BOX = { minSide: 32, maxWidth: 1600, maxHeight: 600 } as const;
 
-export type ImageKind = 'LOGO' | 'TEAM';
+/** A picture on a quiz night slide: big enough for a TV, small enough for the pixel cap above. */
+export const PICTURE_BOX = { minSide: 200, maxSide: 1600 } as const;
+
+export type ImageKind = 'LOGO' | 'TEAM' | 'PICTURE';
 
 /** Why a file was refused: its structure, its weight, or its size in pixels. */
 export type ImageReason = 'FORMAT' | 'SIZE' | 'DIMENSIONS';
@@ -68,6 +71,12 @@ export function checkDimensions(kind: ImageKind, width: number, height: number):
     const small = Math.min(width, height);
     const large = Math.max(width, height);
     return small >= TEAM_MARK.min && large <= TEAM_MARK.max && large / small <= TEAM_MARK.maxRatio;
+  }
+  if (kind === 'PICTURE') {
+    return (
+      Math.min(width, height) >= PICTURE_BOX.minSide &&
+      Math.max(width, height) <= PICTURE_BOX.maxSide
+    );
   }
   return (
     width >= LOGO_BOX.minSide &&

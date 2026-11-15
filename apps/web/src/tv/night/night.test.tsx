@@ -102,6 +102,46 @@ const toFinal = (): Command[] => [
   ...next(6),
 ];
 
+describe('Quiz night TV: picture questions', () => {
+  const pictureConfig = (url: string): QuizConfig => ({
+    ...config,
+    rounds: [
+      {
+        id: 'r1',
+        kind: 'PICTURE',
+        title: 'Resim turu',
+        questions: [{ ...q('a'), imageUrl: url }, q('b')],
+      },
+    ],
+  });
+  const slide = (url: string) => {
+    let s = createState(pictureConfig(url));
+    for (const cmd of [{ type: 'START' } as Command, ...next(3)]) {
+      const o = execute(s, cmd, { now: 1000, actor: 'h' });
+      if (!o.ok) throw new Error(o.error);
+      s = o.state;
+    }
+    return render(
+      <I18nProvider locale="tr">
+        <NightSlide view={view(s)} secondsLeft={null} />
+      </I18nProvider>,
+    );
+  };
+  const own = `/v1/venue-assets/11111111-1111-4111-8111-111111111111/${'ab'.repeat(32)}`;
+
+  it("shows a picture of the venue's own store above the options", () => {
+    slide(own);
+    expect(screen.getByTestId('night-picture').getAttribute('src')).toBe(own);
+    expect(screen.getByTestId('night-option-0')).toBeTruthy();
+  });
+
+  it('never requests an outside address, even from an older night that still holds one', () => {
+    const { container } = slide('https://evil.example/pixel.png');
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.textContent).toContain('Soru a?');
+  });
+});
+
 describe('Quiz night TV: final wager slides', () => {
   it("intro shows the category and each team's limit, but not the question or any stake", () => {
     const s = playFinal(...toFinal(), { type: 'WAGER', teamId: 't1', amount: 2 });

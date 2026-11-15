@@ -53,7 +53,6 @@ export const quizNightTr = {
   'qn.question.unit': 'Birim (isteğe bağlı)',
   'qn.question.points': 'Puan',
   'qn.question.joker': 'Çift puan oynanabilir',
-  'qn.question.image': 'Resim adresi',
   'qn.question.multi': 'Çoktan seçmeli',
   'qn.question.option': 'Seçenek {n}',
   'qn.question.explanation': 'Açıklama (cevap gösterilirken)',
@@ -241,4 +240,13 @@ export const quizNightTr = {
   'qn.tvs.place': '{n}. en yakın: {teams} (+{points})',
   'qn.template.RECOMMENDED': 'Önerilen: 3 tur × 10 soru + tahmin + final bahsi',
   'qn.template.estimateRound': 'Tahmin turu',
+  'qn.picture.label': 'Soru resmi',
+  'qn.picture.hint':
+    "PNG, WebP veya JPG, en fazla 300 KB; en küçük kenar 200, en büyük 1600 piksel. Resim TV'de soruyla birlikte görünür.",
+  'qn.picture.err.dimensions':
+    'Resmin boyutu uygun değil: en küçük kenar en az 200, en büyük kenar en çok 1600 piksel olmalı.',
+  'qn.picture.err.full':
+    'Resim rafı dolu (en fazla 60). Hiçbir gecede kullanılmayan resimler bir gün sonra kendiliğinden silinir.',
+  'qn.picture.external': 'Bu soruda eski bir dış adres var; TV onu göstermez. Resmi yükleyin.',
+  'qn.err.BAD_IMAGE': 'Bir resim bu kafeye ait değil ya da silinmiş. Resmi yeniden yükleyin.',
 } as const;

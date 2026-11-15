@@ -29,7 +29,7 @@ const base = (venueId: string): string => `/v1/venues/${encodeURIComponent(venue
 export const assetsApi = {
   list: (venueId: string) => call<{ assets: VenueAssetView[] }>(base(venueId), 'GET'),
   /** Same bytes, same answer: re-uploading an image the venue already has returns it. */
-  upload: (venueId: string, kind: 'LOGO' | 'TEAM', bytes: Uint8Array) =>
+  upload: (venueId: string, kind: 'LOGO' | 'TEAM' | 'PICTURE', bytes: Uint8Array) =>
     call<{ asset: VenueAssetView }>(base(venueId), 'POST', { kind, data: toBase64(bytes) }),
   remove: (venueId: string, hash: string) =>
     call<{ ok: true }>(`${base(venueId)}/${hash}/remove`, 'POST', {}),

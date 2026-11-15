@@ -9,7 +9,7 @@ to "optional". Work top to bottom; tick an item here in the same commit that fin
   agent worktrees under `.claude/worktrees/`) was lost once. Fetch, rebase, push; never force-push.
 - Bug → failing regression test first. Never skip a test. Strings only in `packages/i18n` (tr + en).
 - Source hygiene guard: no literal invisible/bidi characters in source, write escapes.
-- Next free numbers: migration `0019`, red-team `ATTACK 94`.
+- Next free numbers: migration `0020`, red-team `ATTACK 95`.
 - Gate before a final push: `pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test &&
   pnpm run test:web && pnpm run test:integration && pnpm run test:ws && pnpm run test:red-team`, then
   `pnpm run build:web && pnpm run build:admin && pnpm exec playwright test` (about 18 minutes, 47 tests).
@@ -36,14 +36,14 @@ to "optional". Work top to bottom; tick an item here in the same commit that fin
 
 - 2026-11-15 **Studio without a model** (A3a, A3b, A3c, A4): `parseQuestionText` (`packages/question-bank/src/question-text.ts`),
   routes `import-text` / `import-file`, migration 0018 (`venue_question_drafts.origin`), the "Hazır sorularım" box,
-  `docs/VENUE.md`, `GUSTO_GO_LIVE.md`, blueprint and `.env.example`. Red-team ATTACK 93 covers the two new routes (next free ATTACK 94).
+  `docs/VENUE.md`, `GUSTO_GO_LIVE.md`, blueprint and `.env.example`. Red-team ATTACK 93 covers the two new routes.
 
 ## A. Must, before go-live
 
 - [~] **A1 Browser CI.** (2026-11-15: cause found, `ubuntu-latest` is now Ubuntu 26.04 which Playwright 1.56 does not support; the e2e job is pinned to `ubuntu-24.04`, waiting for a green run on GitHub.) Read the failed job's log (run 42721529318, job 129516413506, step "Install
       Chromium"; `.github/workflows/ci.yml`), fix it, then get one full green browser run on the head commit
       (locally and on GitHub).
-- [ ] **A2 Quiz night picture rounds do not show pictures.** A question's `imageUrl`
+- [x] **A2 Quiz night picture rounds do not show pictures.** (done 2026-11-15, ADR-0029 amendment, ATTACK 94) A question's `imageUrl`
       (`packages/quiznight/src/types.ts`) is an outside address, but the web app's CSP is `img-src 'self'`
       (`apps/realtime/src/http/static-web.ts`). Do not loosen the CSP: add picture upload through the venue
       asset store (`apps/realtime/src/venue/images.ts`, `assets.ts`, `asset-routes.ts`, migration 0015) with a
