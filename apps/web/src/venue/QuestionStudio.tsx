@@ -29,6 +29,9 @@ export function QuestionStudio({ venueId }: { venueId: string }): ReactNode {
   const [answer, setAnswer] = useState<ManualAnswer | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [labels, setLabels] = useState<string[]>([]);
+  const [ownList, setOwnList] = useState('');
+  const [autoNote, setAutoNote] = useState<string | null>(null);
+  const [autoBusy, setAutoBusy] = useState(false);
 
   useEffect(() => {
     studioApi.categories(venueId).then(
@@ -54,6 +57,39 @@ export function QuestionStudio({ venueId }: { venueId: string }): ReactNode {
         if (result.saved) setForm({ ...EMPTY, category: form.category });
       },
       (cause: unknown) => setError(refusal(cause)),
+    );
+  };
+  /** The option marked right is the answer; the other three are suggested, and everything stays editable. */
+  const autoFill = (): void => {
+    const correct = form.options[form.correctIndex]?.trim() ?? '';
+    if (!correct) return;
+    setError(null);
+    setAutoNote(null);
+    setAutoBusy(true);
+    const own = ownList
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .slice(0, 200);
+    studioApi.options(venueId, correct, form.category, own).then(
+      (result) => {
+        setAutoBusy(false);
+        const filled = [...result.options];
+        while (filled.length < 4) filled.push('');
+        setForm((current) => ({ ...current, options: filled, correctIndex: result.correctIndex }));
+        setAnswer(null);
+        setAutoNote(
+          result.missing > 0
+            ? t('studio.auto.missing', { n: result.missing })
+            : result.fromOwn > 0
+              ? t('studio.auto.ownUsed', { n: result.fromOwn })
+              : t('studio.auto.done'),
+        );
+      },
+      (cause: unknown) => {
+        setAutoBusy(false);
+        setError(refusal(cause));
+      },
     );
   };
   const submit = (event: FormEvent): void => {
@@ -123,6 +159,36 @@ export function QuestionStudio({ venueId }: { venueId: string }): ReactNode {
             </span>
           </label>
         ))}
+        <div className={staff.field} data-testid="studio-auto">
+          <Button
+            size="md"
+            variant="violet"
+            type="button"
+            busy={autoBusy}
+            disabled={autoBusy || !form.options[form.correctIndex]?.trim()}
+            onClick={autoFill}
+            data-testid="studio-auto-fill"
+          >
+            {t('studio.auto.button')}
+          </Button>
+          <p className={staff.hint}>{t('studio.auto.hint')}</p>
+          {autoNote ? (
+            <p className={staff.ok} role="status" data-testid="studio-auto-note">
+              {autoNote}
+            </p>
+          ) : null}
+          <details>
+            <summary className={staff.hint}>{t('studio.auto.ownTitle')}</summary>
+            <textarea
+              rows={4}
+              value={ownList}
+              maxLength={20000}
+              placeholder={t('studio.auto.ownPlaceholder')}
+              onChange={(event) => setOwnList(event.target.value)}
+              data-testid="studio-auto-own"
+            />
+          </details>
+        </div>
         <label className={staff.field}>
           {t('studio.difficulty')}
           <select

@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { sql } from 'kysely';
 import { z } from 'zod';
 import type { Database } from '@quizparty/db';
 import {
@@ -6,6 +7,7 @@ import {
   VenueContentError,
   analyzeVenueUpload,
   importVenueUpload,
+  suggestOptions,
 } from '@quizparty/question-bank';
 import type { VenueIssue } from '@quizparty/question-schema';
 import { AdminAudit } from '../admin/audit';
@@ -63,6 +65,12 @@ const ImportFileBody = z.strictObject({
 /** A spreadsheet export or JSON lines belong in the question upload box, not in the text reader. */
 const TABLE_HEAD =
   /^\s*(?:[{[]|"?(?:category|kategori|question|soru)"?\s*[,;\t].*(?:option|[sş][ıi]k|correct|do[gğ]ru))/iu;
+/** "Yanlış seçenekleri otomatik doldur": the right answer in, three look-alike wrong ones out (no model). */
+const OptionsBody = z.strictObject({
+  correct: z.string().trim().min(1).max(200),
+  category: z.string().trim().max(80).optional(),
+  own: z.array(z.string().max(200)).max(200).optional(),
+});
 const ApproveBody = z.union([
   z.strictObject({ all: z.literal(true) }),
   z.strictObject({ ids: z.array(z.uuid()).min(1).max(100) }),
@@ -270,6 +278,47 @@ export function registerVenueAuthoringRoutes(app: FastifyInstance, deps: Authori
           difficulty: body.data.difficulty,
         }),
       );
+    },
+  );
+
+  app.post(
+    '/v1/venues/:venueId/authoring/options',
+    { config: { auth: 'session', limit: 'venueStudio' } },
+    async (request, reply) => {
+      const who = await ownerGate(request, reply);
+      if (!who) return reply;
+      const body = OptionsBody.safeParse(request.body);
+      if (!body.success) return apiError(reply, 400, 'INVALID_MESSAGE');
+      const category = body.data.category?.toLocaleLowerCase('tr') ?? '';
+      const fetchPool = async (sameCategory: boolean): Promise<string[]> => {
+        let query = db
+          .selectFrom('question_options as o')
+          .innerJoin('questions as q', 'q.id', 'o.question_id')
+          .innerJoin('categories as c', 'c.id', 'q.category_id')
+          .select('o.text')
+          .where('o.is_correct', '=', true)
+          .where('q.status', '=', 'ACTIVE')
+          .where('q.language', '=', 'tr')
+          // The global pool and this café's own questions; another café's private ones are never read.
+          .where((eb) =>
+            eb.or([eb('q.owner_venue_id', 'is', null), eb('q.owner_venue_id', '=', who.venueId)]),
+          );
+        if (sameCategory) query = query.where(sql<boolean>`lower(c.label_tr) = ${category}`);
+        const rows = await query
+          .orderBy(sql`random()`)
+          .limit(400)
+          .execute();
+        return rows.map((row) => row.text);
+      };
+      let candidates = category ? await fetchPool(true) : [];
+      // A small or unknown category borrows from the whole bank: the shape (words, capitals, digits) still matches.
+      if (candidates.length < 12) candidates = [...candidates, ...(await fetchPool(false))];
+      return suggestOptions({
+        correct: body.data.correct,
+        candidates,
+        ...(body.data.own ? { own: body.data.own } : {}),
+        random: Math.random,
+      });
     },
   );
 

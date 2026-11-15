@@ -157,4 +157,13 @@ export const venueDisplayTr = {
   'studio.text.skip.check': 'kontrolden geçmedi',
   'studio.ai.error.table_format':
     'Bu bir tablo (CSV ya da JSON) gibi görünüyor. Sorular sekmesindeki "Soru yükle" kutusunu kullanın.',
+  'studio.auto.button': 'Yanlış seçenekleri otomatik doldur',
+  'studio.auto.hint':
+    'Doğru cevabı işaretli kutuya yazın (örneğin "Bryan Cranston"), düğmeye basın: diğer üç şık benzer cevaplardan seçilir ve doğru şık rastgele bir yere konur. Hepsini yine elle değiştirebilirsiniz. Tekrar basarsanız başka şıklar gelir.',
+  'studio.auto.done': 'Şıklar hazırlandı. Kontrol edip gerekirse değiştirin.',
+  'studio.auto.ownUsed': 'Şıklar hazırlandı; {n} tanesi sizin listenizden. Kontrol edin.',
+  'studio.auto.missing': '{n} şık bulunamadı; boş kalanları kendiniz yazın.',
+  'studio.auto.ownTitle': 'Kendi yanlış cevap listem (isteğe bağlı)',
+  'studio.auto.ownPlaceholder':
+    'Her satıra bir yanlış cevap yazın, örneğin diğer oyuncu adları. Önce bunlar kullanılır.',
 } as const;

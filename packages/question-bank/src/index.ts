@@ -17,3 +17,4 @@ export * from './results-import';
 export * from './review';
 export * from './venue-import';
 export * from './question-text';
+export * from './distractors';

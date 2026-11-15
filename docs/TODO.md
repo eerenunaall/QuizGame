@@ -9,7 +9,7 @@ to "optional". Work top to bottom; tick an item here in the same commit that fin
   agent worktrees under `.claude/worktrees/`) was lost once. Fetch, rebase, push; never force-push.
 - Bug → failing regression test first. Never skip a test. Strings only in `packages/i18n` (tr + en).
 - Source hygiene guard: no literal invisible/bidi characters in source, write escapes.
-- Next free numbers: migration `0020`, red-team `ATTACK 96`.
+- Next free numbers: migration `0020`, red-team `ATTACK 97`.
 - Gate before a final push: `pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test &&
   pnpm run test:web && pnpm run test:integration && pnpm run test:ws && pnpm run test:red-team`, then
   `pnpm run build:web && pnpm run build:admin && pnpm exec playwright test` (about 18 minutes, 47 tests).
@@ -37,6 +37,11 @@ to "optional". Work top to bottom; tick an item here in the same commit that fin
 - 2026-11-15 **Studio without a model** (A3a, A3b, A3c, A4): `parseQuestionText` (`packages/question-bank/src/question-text.ts`),
   routes `import-text` / `import-file`, migration 0018 (`venue_question_drafts.origin`), the "Hazır sorularım" box,
   `docs/VENUE.md`, `GUSTO_GO_LIVE.md`, blueprint and `.env.example`. Red-team ATTACK 93 covers the two new routes.
+
+- 2026-11-15 **Automatic wrong options** (owner request): `suggestOptions` (`packages/question-bank/src/distractors.ts`), route
+  `authoring/options`, button in the Soru Stüdyosu form. Numbers and years get near numbers; names get look-alikes from the same
+  category's right answers or the owner's own list. Idea for later: a "series pack" (one actor list, many questions) and the same button
+  inside the quiz night question editor.
 
 ## A. Must, before go-live
 

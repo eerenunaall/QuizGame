@@ -67,7 +67,22 @@ export const displaysApi = {
     call<{ ok: true }>(`${v(venueId)}/displays/${displayId}/revoke`, 'POST', {}),
 };
 
+export interface SuggestedOptions {
+  options: string[];
+  correctIndex: number;
+  kind: 'NUMBER' | 'TEXT';
+  fromOwn: number;
+  missing: number;
+}
+
 export const studioApi = {
+  /** Look-alike wrong options for a right answer, the right one at a random place (no model). */
+  options: (venueId: string, correct: string, category: string, own: string[]) =>
+    call<SuggestedOptions>(`${v(venueId)}/authoring/options`, 'POST', {
+      correct,
+      ...(category.trim() ? { category: category.trim() } : {}),
+      ...(own.length > 0 ? { own } : {}),
+    }),
   manual: (venueId: string, mode: 'check' | 'save', form: ManualForm) =>
     call<ManualAnswer>(`${v(venueId)}/questions/manual`, 'POST', {
       mode,

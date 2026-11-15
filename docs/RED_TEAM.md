@@ -96,6 +96,7 @@ it builds on). The attacker plays against the real server over real sockets; the
 | 93 Text reader (no model) | hostile pasted text finishes fast; oversized and malformed bodies refused; the draft list stays at 200 and says what did not fit; owner only, never across cafés; hostile documents give calm codes; no model is reachable | `red-team/venue-text-import.test.ts` › ATTACK 93 | ✅ |
 | 94 Question pictures | upload kind PICTURE with its own size rule and 60-picture shelf; outside addresses, script/data URLs, another café's image and deleted images refused on save (question, tie-break, final); TV frame carries only the hash path; brand cleanup never deletes pictures; a full shelf frees unused pictures, keeps used ones | `red-team/quiznight-pictures.test.ts` › ATTACK 94 | ✅ |
 | 95 A quiz night on a paired TV | owner only (staff 403, stranger 404, nobody 401); another café's TV or night, a revoked or unknown TV: 404; offline TV 409; strict body; one hand-over per request, taken once; the TV page follows only `/tv/gece?l=` paths | `red-team/quiznight-screens.test.ts` › ATTACK 95, `web display.test.tsx` | ✅ |
+| 96 Automatic wrong options | owner only (staff 403, stranger 404, nobody 401); strict body and size limits; candidates are only the global bank and the caller's own café, never another café's private answers | `integration/venue-options.test.ts` | ✅ |
 
 Findings from running these attacks that changed the code:
 

@@ -410,3 +410,74 @@ describe('DocumentAuthoring: questions I already have (no model)', () => {
     expect((await screen.findByTestId('text-none')).textContent).toMatch(/Cevap:/u);
   });
 });
+
+describe('QuestionStudio: wrong options filled in automatically', () => {
+  const open = (answer: { status?: number; json?: unknown }) => {
+    const calls = network((call) => {
+      if (call.path.endsWith('/authoring') && call.method === 'GET')
+        return { json: { ...STATE, enabled: false } };
+      if (call.path.endsWith('/authoring/options')) return answer;
+      if (call.path.endsWith('/authoring/drafts')) return { json: { items: [] } };
+      if (call.path.endsWith('/questions') && call.method === 'GET')
+        return { json: { categories: [] } };
+      return undefined;
+    });
+    wrap(<QuestionStudio venueId={VENUE} />);
+    return calls;
+  };
+
+  it('sends the right answer and the category, puts the suggestions in the boxes and keeps them editable', async () => {
+    const calls = open({
+      json: {
+        options: ['Aaron Paul', 'Bob Odenkirk', 'Bryan Cranston', 'Dean Norris'],
+        correctIndex: 2,
+        kind: 'TEXT',
+        fromOwn: 0,
+        missing: 0,
+      },
+    });
+    await screen.findByTestId('studio-auto');
+    expect(screen.getByTestId<HTMLButtonElement>('studio-auto-fill').disabled).toBe(true);
+    fireEvent.change(screen.getByTestId('studio-category'), { target: { value: 'Diziler' } });
+    fireEvent.change(screen.getByTestId('studio-option-0'), {
+      target: { value: 'Bryan Cranston' },
+    });
+    fireEvent.change(screen.getByTestId('studio-auto-own'), {
+      target: { value: 'Hugh Laurie\n\n  Jon Hamm  \n' },
+    });
+    fireEvent.click(screen.getByTestId('studio-auto-fill'));
+    expect((await screen.findByTestId('studio-auto-note')).textContent).toMatch(/hazırlandı/u);
+    const post = calls.find((c) => c.path.endsWith('/authoring/options'))!;
+    expect(post.body).toEqual({
+      correct: 'Bryan Cranston',
+      category: 'Diziler',
+      own: ['Hugh Laurie', 'Jon Hamm'],
+    });
+    expect(screen.getByTestId<HTMLInputElement>('studio-option-2').value).toBe('Bryan Cranston');
+    expect(screen.getByTestId<HTMLInputElement>('studio-correct-2').checked).toBe(true);
+    fireEvent.change(screen.getByTestId('studio-option-1'), { target: { value: 'Elle yazdım' } });
+    expect(screen.getByTestId<HTMLInputElement>('studio-option-1').value).toBe('Elle yazdım');
+  });
+
+  it('says how many options it could not find and leaves those boxes empty', async () => {
+    open({
+      json: {
+        options: ['Bryan Cranston', 'Aaron Paul'],
+        correctIndex: 0,
+        kind: 'TEXT',
+        fromOwn: 0,
+        missing: 2,
+      },
+    });
+    await screen.findByTestId('studio-auto');
+    fireEvent.change(screen.getByTestId('studio-option-0'), {
+      target: { value: 'Bryan Cranston' },
+    });
+    fireEvent.click(screen.getByTestId('studio-auto-fill'));
+    expect((await screen.findByTestId('studio-auto-note')).textContent).toMatch(
+      /2 şık bulunamadı/u,
+    );
+    expect(screen.getByTestId<HTMLInputElement>('studio-option-1').value).toBe('Aaron Paul');
+    expect(screen.getByTestId<HTMLInputElement>('studio-option-2').value).toBe('');
+  });
+});

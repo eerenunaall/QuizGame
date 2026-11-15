@@ -159,4 +159,13 @@ export const venueDisplayEn = {
   'studio.text.skip.check': 'did not pass the checks',
   'studio.ai.error.table_format':
     'This looks like a table (CSV or JSON). Use the "Upload questions" box on the Questions tab.',
+  'studio.auto.button': 'Fill the wrong options automatically',
+  'studio.auto.hint':
+    'Type the right answer in the marked box (for example "Bryan Cranston") and press the button: the other three options are picked from look-alike answers and the right one goes to a random place. You can still change everything. Press again for other options.',
+  'studio.auto.done': 'Options prepared. Check them and change what you like.',
+  'studio.auto.ownUsed': 'Options prepared; {n} of them from your list. Check them.',
+  'studio.auto.missing': '{n} options could not be found; type the empty ones yourself.',
+  'studio.auto.ownTitle': 'My own list of wrong answers (optional)',
+  'studio.auto.ownPlaceholder':
+    "One wrong answer per line, for example other actors' names. They are used first.",
 } as const;

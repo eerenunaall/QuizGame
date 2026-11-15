@@ -275,6 +275,21 @@ Soru, dosya yüklemeyle aynı denetimlerden geçer (yazım, tekrar, uygunsuz ifa
 düzeltileceği Türkçe yazılır ve soru kaydedilmez. Kaydedilen soru yalnızca sizin masalarınızda çıkar ve **Sorular**
 sekmesinde "Elle yazılan soru" olarak görünür (kaldırılabilir).
 
+### Yanlış seçenekleri otomatik doldur
+
+Elle soru yazarken yalnızca **doğru cevabı** bilmeniz yeter. Soruyu ve kategoriyi yazın, doğru cevabı işaretli kutuya yazın
+(örneğin *Bryan Cranston*), **Yanlış seçenekleri otomatik doldur**'a basın. Sistem diğer üç şıkkı kendisi seçer ve doğru şıkkı
+**rastgele bir yere** koyar. Yine de hepsini elle değiştirebilirsiniz; tekrar basarsanız başka şıklar gelir.
+- Cevap **sayı ya da yıl** ise yakın sayılar üretilir (1923 için 1919, 1925, 1931 gibi; "67 metre" için "61 metre" gibi).
+- Cevap **ad ya da kelime** ise, aynı kategorideki başka soruların doğru cevaplarından **biçimce benzer** olanlar seçilir (iki
+  kelimelik bir ad için iki kelimelik adlar). Havuz ne kadar büyükse seçenekler o kadar iyi olur: *Diziler* kategorisinde çok
+  oyuncu adı varsa şıklar oyuncu adı olur.
+- **Kendi yanlış cevap listem** kutusuna (isteğe bağlı) her satıra bir ad yazarsanız, önce onlar kullanılır. Yeni bir dizi için
+  oyuncu listesini bir kez yazın, o dizinin tüm sorularında kullanın.
+- Yeterli benzer cevap bulunamazsa sistem uydurmaz; kaç şık bulunamadığını söyler, boş kalanları siz yazarsınız.
+- Yapay zekâ kullanılmaz, anahtar gerekmez. Yalnızca genel havuzun ve kendi kafenizin soruları taranır, başka kafenin özel sorularına
+  bakılmaz. Soru yine **Kontrol et** ve **Kaydet** ile aynı denetimlerden geçer.
+
 ### Hazır sorularım (yapay zekâ ve anahtar gerekmez)
 
 Sorularınız zaten yazılıysa (Word, PDF, metin dosyası ya da kendi sohbet asistanınızın cevabı) **Soru Stüdyosu** sekmesindeki
