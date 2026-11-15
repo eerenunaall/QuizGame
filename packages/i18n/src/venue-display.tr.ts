@@ -71,7 +71,7 @@ export const venueDisplayTr = {
     "İpucu: Başlıkları olan, düzgün yazılmış kısa bir belge (ders notu, menü tanıtımı, mekânın hikâyesi) en iyi sonucu verir. Resimden oluşan taranmış PDF'lerin yazısı okunamaz.",
   'studio.ai.example': 'Örnek dosyayı indir',
   'studio.ai.off':
-    'Belgeden soru üretme bu kurulumda kapalı: yönetici henüz açmadı. Soruları aşağıdan elle yazabilirsiniz.',
+    'Belgeden soru üretme bu kurulumda kapalı: yönetici henüz açmadı. Yukarıdaki "Hazır sorularım" kutusu ve aşağıdaki el formu yine çalışır.',
   'studio.ai.category': 'Soruların kategorisi',
   'studio.ai.pick': 'Dosya seç',
   'studio.ai.chosen': 'Seçilen dosya: {name}',
@@ -128,4 +128,33 @@ export const venueDisplayTr = {
   'studio.ai.approved': '{n} soru onaylandı, oyunlarda kullanılacak.',
   'studio.ai.notApproved': '{n} soru onaylanamadı. Nedenleri kartlarında yazıyor.',
   'studio.ai.fixThese': 'Bu soruda düzeltilmesi gerekenler:',
+  'studio.text.title': 'Hazır sorularım (yapay zekâ gerekmez)',
+  'studio.text.intro':
+    'Sorularınız zaten yazılıysa (Word, PDF, metin dosyası ya da kendi asistanınızın cevabı) buraya yapıştırın veya dosyayı seçin. Soru, A–D şıkları ve "Cevap: B" satırı yeterli. Hiçbir şey otomatik yayınlanmaz: önce taslak olur, siz onaylarsınız.',
+  'studio.text.format': 'Örnek biçim',
+  'studio.text.exampleBody':
+    '1. Galata Kulesi hangi şehirdedir?\nA) Ankara\nB) İzmir\nC) İstanbul\nD) Bursa\nCevap: C\nAçıklama: İstanbul, Beyoğlu.\n\n2. Sonraki soru...',
+  'studio.text.keyHint':
+    'Cevaplar sonda da olabilir: "Cevap anahtarı: 1-C 2-A". Doğru şıkkı * ile de işaretleyebilirsiniz.',
+  'studio.text.paste': 'Soruları buraya yapıştırın',
+  'studio.text.pick': 'Ya da dosya seç (PDF, DOCX, TXT)',
+  'studio.text.read': 'Soruları oku',
+  'studio.text.done': '{n} soru taslak oldu. Aşağıda gözden geçirip onaylayın.',
+  'studio.text.keyUsed': 'Cevaplar, sondaki cevap anahtarından alındı.',
+  'studio.text.none':
+    'Okunabilen soru bulunamadı. Her soru için dört şık (A, B, C, D) ve bir "Cevap:" satırı gerekir.',
+  'studio.text.skipped': '{n} soru okunamadı, yazmayı düzeltip tekrar deneyin:',
+  'studio.text.skipItem': '{where}: {reason}',
+  'studio.text.skipWhere': 'Soru {n}',
+  'studio.text.skipNoNumber': 'Numarasız soru',
+  'studio.text.skip.options_count': 'şık sayısı 4 değil',
+  'studio.text.skip.no_answer': 'cevap yok ("Cevap: B" satırı ya da cevap anahtarı ekleyin)',
+  'studio.text.skip.answer_unknown': 'cevap şıklardan biriyle eşleşmedi',
+  'studio.text.skip.no_text': 'soru metni boş',
+  'studio.text.skip.too_long': 'soru ya da şık çok uzun',
+  'studio.text.skip.duplicate_options': 'iki şık aynı',
+  'studio.text.skip.over_cap': 'taslak listesi dolu (en fazla 200)',
+  'studio.text.skip.check': 'kontrolden geçmedi',
+  'studio.ai.error.table_format':
+    'Bu bir tablo (CSV ya da JSON) gibi görünüyor. Sorular sekmesindeki "Soru yükle" kutusunu kullanın.',
 } as const;

@@ -100,6 +100,13 @@ services:
       # `Gusto QuizNight <giris@your-domain.com>` : an address on a domain you verified at the mail provider.
       - key: EMAIL_FROM
         sync: false
+      # OPTIONAL, off by default: drafts of questions made from a PDF/Word document by a language model (paid, daily quota).
+      # Leave both empty; the panel's "Hazır sorularım" box (questions already written as text) needs neither.
+      # Set both together or neither.
+      - key: AUTHORING_API_KEY
+        sync: false
+      - key: AUTHORING_MODEL
+        sync: false
       # Keys that seal Blind Quiz (personal quiz) answers: id:base64key. Venue mode does not need it:
       # leave the value EMPTY and personal quizzes stay off (docs/BACKUP.md section 5).
       - key: BLIND_DATA_KEYS

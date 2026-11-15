@@ -129,6 +129,12 @@ const readFile = (file: File): Promise<Uint8Array> =>
     reader.readAsArrayBuffer(file);
   });
 
+export interface TextImport {
+  drafts: number;
+  keyUsed: boolean;
+  skipped: { reason: string; number: number | null; excerpt: string; codes?: string[] }[];
+}
+
 export const authoringApi = {
   state: (venueId: string) => call<AuthoringState>(`${v(venueId)}/authoring`, 'GET'),
   start: async (venueId: string, file: File, category: string) =>
@@ -136,6 +142,18 @@ export const authoringApi = {
       fileName: file.name,
       data: toBase64(await readFile(file)),
       category,
+    }),
+  /** Questions that already exist as text become drafts with no model (ADR-0028 §6, key-free path). */
+  importText: (
+    venueId: string,
+    body: { text: string; fileName?: string; category: string; difficulty: string },
+  ) => call<TextImport>(`${v(venueId)}/authoring/import-text`, 'POST', body),
+  importFile: async (venueId: string, file: File, category: string, difficulty: string) =>
+    call<TextImport>(`${v(venueId)}/authoring/import-file`, 'POST', {
+      fileName: file.name,
+      data: toBase64(await readFile(file)),
+      category,
+      difficulty,
     }),
   run: (venueId: string, runId: string) =>
     call<AuthoringRun>(`${v(venueId)}/authoring/runs/${encodeURIComponent(runId)}`, 'GET'),

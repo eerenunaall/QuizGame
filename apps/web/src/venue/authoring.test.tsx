@@ -307,3 +307,106 @@ describe('DocumentAuthoring', () => {
     );
   });
 });
+
+describe('DocumentAuthoring: questions I already have (no model)', () => {
+  const paste = (text: string): void => {
+    fireEvent.change(screen.getByTestId('text-paste'), { target: { value: text } });
+  };
+
+  it('works while the model is switched off: paste, read, drafts appear, nothing is published', async () => {
+    let imported = false;
+    const calls = network((call) => {
+      if (call.path.endsWith('/authoring') && call.method === 'GET')
+        return { json: { ...STATE, enabled: false } };
+      if (call.path.endsWith('/authoring/import-text')) {
+        imported = true;
+        return {
+          json: {
+            drafts: 2,
+            keyUsed: true,
+            skipped: [{ reason: 'options_count', number: 3, excerpt: 'Üç şıklı soru' }],
+          },
+        };
+      }
+      if (call.path.endsWith('/authoring/drafts'))
+        return { json: { items: imported ? [draft(1), draft(2)] : [] } };
+      return undefined;
+    });
+    wrap(<QuestionStudio venueId={VENUE} />);
+    expect((await screen.findByTestId('authoring-off')).textContent).toMatch(/Hazır sorularım/u);
+    expect((screen.getByTestId('text-read') as HTMLButtonElement).disabled).toBe(true);
+    paste('1. Soru metni?\nA) a\nB) b\nC) c\nD) d\nCevap: B');
+    fireEvent.change(screen.getByTestId('text-category'), { target: { value: 'Galata' } });
+    fireEvent.click(screen.getByTestId('text-read'));
+    expect((await screen.findByTestId('text-done')).textContent).toContain('2 soru taslak oldu');
+    expect(screen.getByTestId('text-done').textContent).toContain('cevap anahtarından');
+    // What could not be read is listed in Turkish with the place in the document.
+    const skipped = screen.getByTestId('text-skipped').textContent ?? '';
+    expect(skipped).toContain('Soru 3');
+    expect(skipped).toContain('şık sayısı 4 değil');
+    expect(skipped).toContain('Üç şıklı soru');
+    const post = calls.find((c) => c.path.endsWith('/authoring/import-text'))!;
+    expect(post.body).toEqual({
+      text: '1. Soru metni?\nA) a\nB) b\nC) c\nD) d\nCevap: B',
+      category: 'Galata',
+      difficulty: 'MEDIUM',
+    });
+    await waitFor(() => expect(screen.getAllByTestId('draft-card')).toHaveLength(2));
+    // Reading is not approving: no approve call was made.
+    expect(calls.some((c) => c.path.endsWith('/drafts/approve'))).toBe(false);
+  });
+
+  it('sends a chosen document to the file route and explains a spreadsheet and a repeat', async () => {
+    const calls = network((call) => {
+      if (call.path.endsWith('/authoring') && call.method === 'GET') return { json: STATE };
+      if (call.path.endsWith('/authoring/import-file'))
+        return {
+          status: 409,
+          json: { error: { code: 'INVALID_STATE', params: { reason: 'same_file' } } },
+        };
+      if (call.path.endsWith('/authoring/import-text'))
+        return {
+          status: 422,
+          json: { error: { code: 'INVALID_MESSAGE', params: { reason: 'table_format' } } },
+        };
+      if (call.path.endsWith('/authoring/drafts')) return { json: { items: [] } };
+      return undefined;
+    });
+    wrap(<DocumentAuthoring venueId={VENUE} />);
+    await screen.findByTestId('text-import');
+    fireEvent.change(screen.getByTestId('text-file'), {
+      target: { files: [new File(['1. Soru?'], 'sorular.docx')] },
+    });
+    expect(screen.getByTestId('text-chosen').textContent).toContain('sorular.docx');
+    fireEvent.click(screen.getByTestId('text-read'));
+    await waitFor(() =>
+      expect(screen.getByTestId('authoring-error').textContent).toMatch(/zaten|aynı/u),
+    );
+    expect(calls.find((c) => c.path.endsWith('/authoring/import-file'))!.body).toMatchObject({
+      fileName: 'sorular.docx',
+      category: 'Genel kültür',
+      difficulty: 'MEDIUM',
+    });
+    fireEvent.change(screen.getByTestId('text-file'), { target: { files: [] } });
+    paste('category,question\nx,y');
+    fireEvent.click(screen.getByTestId('text-read'));
+    await waitFor(() =>
+      expect(screen.getByTestId('authoring-error').textContent).toMatch(/Soru yükle/u),
+    );
+  });
+
+  it('says plainly when no question could be read', async () => {
+    network((call) => {
+      if (call.path.endsWith('/authoring') && call.method === 'GET') return { json: STATE };
+      if (call.path.endsWith('/authoring/import-text'))
+        return { json: { drafts: 0, keyUsed: false, skipped: [] } };
+      if (call.path.endsWith('/authoring/drafts')) return { json: { items: [] } };
+      return undefined;
+    });
+    wrap(<DocumentAuthoring venueId={VENUE} />);
+    await screen.findByTestId('text-import');
+    paste('Sadece bir başlık.');
+    fireEvent.click(screen.getByTestId('text-read'));
+    expect((await screen.findByTestId('text-none')).textContent).toMatch(/Cevap:/u);
+  });
+});

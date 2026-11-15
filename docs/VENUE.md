@@ -275,9 +275,42 @@ Soru, dosya yüklemeyle aynı denetimlerden geçer (yazım, tekrar, uygunsuz ifa
 düzeltileceği Türkçe yazılır ve soru kaydedilmez. Kaydedilen soru yalnızca sizin masalarınızda çıkar ve **Sorular**
 sekmesinde "Elle yazılan soru" olarak görünür (kaldırılabilir).
 
-**Henüz yapılmadı:** PDF/Word belgesinden otomatik soru üretme (ADR-0028 §6 tasarımı hazır; yapay zekâ taslakları sahibin
-onayından geçmeden havuza girmez). Bugün için belgeden soru çıkarmak istiyorsanız yapay zekâ asistanına şablon
-istemini verip çıktısını Sorular sekmesinden CSV olarak yükleyin.
+### Hazır sorularım (yapay zekâ ve anahtar gerekmez)
+
+Sorularınız zaten yazılıysa (Word, PDF, metin dosyası ya da kendi sohbet asistanınızın cevabı) **Soru Stüdyosu** sekmesindeki
+**Hazır sorularım** kutusuna yapıştırın ya da dosyayı seçin, **Soruları oku**'ya basın. Bu yol bir yapay zekâ çağırmaz ve
+sunucuda hiçbir anahtar gerektirmez. Okunan her soru önce **taslak** olur; hiçbiri sizin onayınız olmadan oyuna girmez.
+
+Okunan biçim (kutuda "Örnek biçim" olarak da görürsünüz):
+
+```
+1. Galata Kulesi hangi şehirdedir?
+A) Ankara
+B) İzmir
+C) İstanbul
+D) Bursa
+Cevap: C
+Açıklama: İstanbul, Beyoğlu.   (isteğe bağlı)
+```
+
+- Numara ("1.", "1)", "Soru 1:") olabilir ya da hiç olmayabilir; numarasızsa sorular arasında **boş satır** bırakın.
+- Tam **dört şık** (A, B, C, D) gerekir. Cevap `Cevap: C`, `Doğru cevap: C) İstanbul` ya da şıkkın metni (`Cevap: İstanbul`) olabilir.
+- Cevaplar sonda da toplanabilir: `Cevap anahtarı: 1-C 2-A 3-D` ya da her satırda `1. C`. Doğru şıkkı `*` ile de işaretleyebilirsiniz.
+- Okunamayan sorular **Türkçe nedenle** listelenir (şık sayısı 4 değil, cevap yok, cevap şıklarla eşleşmedi, iki şık aynı, çok uzun ...).
+  Metni düzeltip tekrar yapıştırın. Kafenizin havuzundaki bir soruyla aynı olan ya da kontrolden geçmeyen sorular da nedeniyle
+  birlikte listelenir.
+- Aynı metni ikinci kez yapıştırırsanız "zaten yüklendi" uyarısı alırsınız. Tablo (CSV) ya da JSON satırları bu kutuya değil,
+  **Sorular** sekmesindeki **Soru yükle** kutusuna aittir.
+- Taslaklar 7 gün saklanır. Her taslağı düzenleyebilir, silebilir, tek tek ya da **Hepsini onayla** ile havuza alabilirsiniz;
+  onaylananlar **Sorular** sekmesinde "Belge: dosya adı" olarak görünür ve oradan toplu kaldırılabilir. Onay, elle yazılan
+  sorularla aynı denetimlerden geçer.
+
+### Belgeden yapay zekâyla soru üretme (isteğe bağlı, kapalı)
+
+Aynı sekmede **Belgeden soru üret**, bir PDF/Word belgesinden yapay zekâyla taslak çıkarır. Bu özellik **varsayılan olarak kapalıdır**:
+yöneticinin sunucuya bir `AUTHORING_API_KEY` ve `AUTHORING_MODEL` girmesi gerekir (paralı bir hizmettir, günlük kota vardır;
+bkz. `docs/GUSTO_GO_LIVE.md` bölüm 4). Kapalıyken sekmede "kapalı" yazar ve **Hazır sorularım** ile elle form çalışmaya devam eder.
+Kendi asistanınızla soru hazırlamak istiyorsanız, ona yukarıdaki biçimi verin ve çıktısını **Hazır sorularım** kutusuna yapıştırın.
 
 ## Quiz Gecesi (yalnızca sahip)
 

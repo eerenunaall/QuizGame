@@ -8,6 +8,7 @@ import {
   type AuthoringState,
   type DraftIssue,
   type DraftItem,
+  type TextImport,
 } from './displaysApi';
 import styles from './DocumentAuthoring.module.css';
 import staff from './StaffPage.module.css';
@@ -54,6 +55,12 @@ export function DocumentAuthoring({
   const [notice, setNotice] = useState<string | null>(null);
   const [problems, setProblems] = useState<Record<string, DraftIssue[]>>({});
   const [busy, setBusy] = useState(false);
+  const [pasted, setPasted] = useState('');
+  const [textFile, setTextFile] = useState<File | null>(null);
+  const [textCategory, setTextCategory] = useState('Genel kültür');
+  const [textLevel, setTextLevel] = useState<(typeof DIFFICULTIES)[number]>('MEDIUM');
+  const [textBusy, setTextBusy] = useState(false);
+  const [textResult, setTextResult] = useState<TextImport | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const alive = useRef(true);
 
@@ -152,6 +159,35 @@ export function DocumentAuthoring({
     );
   };
 
+  const readText = (): void => {
+    if (!pasted.trim() && !textFile) return;
+    setError(null);
+    setNotice(null);
+    setTextResult(null);
+    setTextBusy(true);
+    const category = textCategory.trim() || 'Genel kültür';
+    const request = textFile
+      ? authoringApi.importFile(venueId, textFile, category, textLevel)
+      : authoringApi.importText(venueId, { text: pasted, category, difficulty: textLevel });
+    request.then(
+      (result) => {
+        if (!alive.current) return;
+        setTextBusy(false);
+        setTextResult(result);
+        if (result.drafts > 0) {
+          setPasted('');
+          setTextFile(null);
+        }
+        void loadDrafts();
+      },
+      (cause: unknown) => {
+        if (!alive.current) return;
+        setTextBusy(false);
+        setError(refuse(cause));
+      },
+    );
+  };
+
   const approve = (which: string[] | 'all'): void => {
     setError(null);
     setNotice(null);
@@ -188,6 +224,111 @@ export function DocumentAuthoring({
 
   return (
     <section className={styles.box} data-testid="authoring">
+      <div data-testid="text-import">
+        <h3 className={staff.sectionTitle}>{t('studio.text.title')}</h3>
+        <p className={staff.hint}>{t('studio.text.intro')}</p>
+        <details className={staff.hint}>
+          <summary>{t('studio.text.format')}</summary>
+          <pre className={styles.sample}>{t('studio.text.exampleBody')}</pre>
+          <p>{t('studio.text.keyHint')}</p>
+        </details>
+        <label className={staff.field}>
+          {t('studio.text.paste')}
+          <textarea
+            rows={8}
+            value={pasted}
+            maxLength={100000}
+            disabled={textBusy || textFile !== null}
+            onChange={(event) => setPasted(event.target.value)}
+            data-testid="text-paste"
+          />
+        </label>
+        <div className={styles.pick}>
+          <label className={styles.fileButton}>
+            {t('studio.text.pick')}
+            <input
+              type="file"
+              accept=".pdf,.docx,.txt,.md,.markdown,application/pdf,text/plain,text/markdown"
+              className={styles.fileInput}
+              disabled={textBusy}
+              onChange={(event) => setTextFile(event.target.files?.[0] ?? null)}
+              data-testid="text-file"
+            />
+          </label>
+          <span className={staff.hint} data-testid="text-chosen">
+            {textFile ? t('studio.ai.chosen', { name: textFile.name }) : t('studio.ai.none')}
+          </span>
+        </div>
+        <label className={staff.field}>
+          {t('studio.ai.category')}
+          <input
+            value={textCategory}
+            maxLength={80}
+            onChange={(event) => setTextCategory(event.target.value)}
+            data-testid="text-category"
+          />
+        </label>
+        <label className={staff.field}>
+          {t('studio.difficulty')}
+          <select
+            value={textLevel}
+            onChange={(event) => setTextLevel(event.target.value as (typeof DIFFICULTIES)[number])}
+          >
+            {DIFFICULTIES.map((level) => (
+              <option key={level} value={level}>
+                {td(`studio.difficulty.${level}`)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <Button
+          size="lg"
+          block
+          disabled={(!pasted.trim() && !textFile) || textBusy}
+          busy={textBusy}
+          onClick={readText}
+          data-testid="text-read"
+        >
+          {t('studio.text.read')}
+        </Button>
+        {textResult ? (
+          <div data-testid="text-result">
+            {textResult.drafts > 0 ? (
+              <p className={staff.ok} data-testid="text-done">
+                {t('studio.text.done', { n: textResult.drafts })}
+                {textResult.keyUsed ? ` ${t('studio.text.keyUsed')}` : ''}
+              </p>
+            ) : textResult.skipped.length === 0 ? (
+              <p className={staff.message} data-testid="text-none">
+                {t('studio.text.none')}
+              </p>
+            ) : null}
+            {textResult.skipped.length > 0 ? (
+              <div className={staff.message} data-testid="text-skipped">
+                <p>{t('studio.text.skipped', { n: textResult.skipped.length })}</p>
+                <ul>
+                  {textResult.skipped.map((item, index) => (
+                    <li key={index}>
+                      {t('studio.text.skipItem', {
+                        where:
+                          item.number !== null
+                            ? t('studio.text.skipWhere', { n: item.number })
+                            : t('studio.text.skipNoNumber'),
+                        reason:
+                          item.reason === 'check' && item.codes?.length
+                            ? item.codes.map((code) => td(`venue.issue.${code}`, {})).join('; ')
+                            : td(`studio.text.skip.${item.reason}`),
+                      })}{' '}
+                      <em>({item.excerpt})</em>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
       <h3 className={staff.sectionTitle}>{t('studio.ai.title')}</h3>
       <p className={staff.hint}>{t('studio.ai.intro')}</p>
       <p className={staff.hint}>

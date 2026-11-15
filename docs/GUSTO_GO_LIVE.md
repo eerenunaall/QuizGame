@@ -81,6 +81,11 @@ Hepsini parola yöneticinize de yazın.
 | `EMAIL_FROM` | `Gusto QuizNight <giris@mail.gustocafe.com>` | 3. adım |
 | `BLIND_DATA_KEYS` | **Boş bırakın** | Kişisel (Blind) quiz gerekmiyor; boşken o özellik kapalı kalır, mekan modu etkilenmez. (Kullanmak isterseniz bir bilgisayarda `echo "k1:$(openssl rand -base64 32)"` ile üretilir; `docs/BACKUP.md` bölüm 5.) |
 
+**İsteğe bağlı, pilot için gerekmez:** `AUTHORING_API_KEY` ve `AUTHORING_MODEL` (ikisi birlikte; model adını size sohbette söylerim). Bunlar
+yalnızca panelde "Belgeden soru üret" (yapay zekâ taslakları) düğmesini açar; paralıdır ve günlük kotası vardır (`AUTHORING_DAILY_RUNS`,
+varsayılan 5). **Boş bırakın**: o zaman o düğme "kapalı" der, sizin yazdığınız ya da yapıştırdığınız sorular (Soru Stüdyosu >
+Hazır sorularım) yine çalışır. Anahtarı asla sohbete yazmayın; yalnızca Render'ın Environment sayfasına girin.
+
 Sunucu yanlış/eksik bir ayarla **açılmayı reddeder** ve nedeni Logs'ta yazar (örn. `PUBLIC_WEB_URL must be https`,
 `EMAIL_PROVIDER, EMAIL_API_KEY and EMAIL_FROM go together`). Düzeltip kaydedin.
 

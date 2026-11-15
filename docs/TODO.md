@@ -34,9 +34,14 @@ to "optional". Work top to bottom; tick an item here in the same commit that fin
   `RECOMMENDED` template; engine, tablet, TV, owner guide, red-team ATTACKS 90-92. Still open from that report:
   the TV "how to play" slide does not yet mention the final or the bonus; a Chase-style risk round was left out.
 
+- 2026-11-15 **Studio without a model** (A3a, A3b, A3c, A4): `parseQuestionText` (`packages/question-bank/src/question-text.ts`),
+  routes `import-text` / `import-file`, migration 0018 (`venue_question_drafts.origin`), the "Hazır sorularım" box,
+  `docs/VENUE.md`, `GUSTO_GO_LIVE.md`, blueprint and `.env.example`. Still open here: the red-team rows for the two new
+  routes (next free ATTACK 93).
+
 ## A. Must, before go-live
 
-- [ ] **A1 Browser CI.** Read the failed job's log (run 42721529318, job 129516413506, step "Install
+- [~] **A1 Browser CI.** (2026-11-15: cause found, `ubuntu-latest` is now Ubuntu 26.04 which Playwright 1.56 does not support; the e2e job is pinned to `ubuntu-24.04`, waiting for a green run on GitHub.) Read the failed job's log (run 42721529318, job 129516413506, step "Install
       Chromium"; `.github/workflows/ci.yml`), fix it, then get one full green browser run on the head commit
       (locally and on GitHub).
 - [ ] **A2 Quiz night picture rounds do not show pictures.** A question's `imageUrl`
@@ -45,18 +50,18 @@ to "optional". Work top to bottom; tick an item here in the same commit that fin
       asset store (`apps/realtime/src/venue/images.ts`, `assets.ts`, `asset-routes.ts`, migration 0015) with a
       new kind and its own count limit, reference it by hash from the question, show it on the TV slide and
       the tablet. Regression test: a night with a picture question, TV frame carries only the hash path.
-- [ ] **A3a Read a document that already holds questions (no model).** On top of `extractDocument`
+- [x] **A3a Read a document that already holds questions (no model).** On top of `extractDocument`
       (`apps/realtime/src/venue/extract.ts`), parse text of the shape "question, A) B) C) D), Cevap: X,
       optional Açıklama" (also numbered, also "Doğru cevap", also a trailing answer key) into the same draft
       cards the AI path uses (`authoring-drafts.ts`, `packages/question-bank/src/authoring.ts`,
       `apps/web/src/venue/DocumentAuthoring.tsx`). Works with no `AUTHORING_*` key. Rows it cannot read are
       listed with the reason in Turkish. Drafts still need the owner's approval and the venue import checks.
-- [ ] **A3b Paste box.** The owner pastes the text their own assistant produced (same shapes as A3a, plus the
+- [x] **A3b Paste box.** The owner pastes the text their own assistant produced (same shapes as A3a, plus the
       CSV/JSONL template of `docs/venue-question-template.md`) and gets the same draft cards.
-- [ ] **A3c One browser test for the studio** (upload a small text file of formatted questions → drafts →
+- [x] **A3c One browser test for the studio** (upload a small text file of formatted questions → drafts →
       approve all → listed under Sorular). The AI path keeps its integration and red-team tests; a run with a
       real key is optional and needs the owner's key.
-- [ ] **A4 Owner guides.** `docs/VENUE.md` still says document questions are "henüz yapılmadı": rewrite the
+- [x] **A4 Owner guides.** `docs/VENUE.md` still says document questions are "henüz yapılmadı": rewrite the
       Soru Stüdyosu section (manual form, A3a, A3b, optional AI). Add the optional `AUTHORING_API_KEY`,
       `AUTHORING_MODEL` to `docs/GUSTO_GO_LIVE.md`, `render.production.yaml` (commented, `sync: false`) and
       `.env.example`. No model names in docs (the owner is told in chat).

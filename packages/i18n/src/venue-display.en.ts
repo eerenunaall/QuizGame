@@ -71,7 +71,7 @@ export const venueDisplayEn = {
     "Tip: a short, well-written document with headings (class notes, a menu introduction, the venue's story) works best. Scanned PDFs made of pictures cannot be read.",
   'studio.ai.example': 'Download an example file',
   'studio.ai.off':
-    'Making questions from a document is switched off on this installation: the administrator has not turned it on. You can still write questions by hand below.',
+    'Making questions from a document is switched off on this installation: the administrator has not turned it on. The "Questions I already have" box above and the form below still work.',
   'studio.ai.category': 'Category of the questions',
   'studio.ai.pick': 'Choose a file',
   'studio.ai.chosen': 'Chosen file: {name}',
@@ -130,4 +130,33 @@ export const venueDisplayEn = {
   'studio.ai.approved': '{n} questions approved, they will be used in games.',
   'studio.ai.notApproved': '{n} questions could not be approved. The reasons are on their cards.',
   'studio.ai.fixThese': 'Things to fix in this question:',
+  'studio.text.title': 'Questions I already have (no AI needed)',
+  'studio.text.intro':
+    'If your questions are already written (Word, PDF, a text file or your own assistant\'s answer), paste them here or choose the file. A question, A–D options and a "Cevap: B" line are enough. Nothing is published automatically: they become drafts first and you approve them.',
+  'studio.text.format': 'Example format',
+  'studio.text.exampleBody':
+    '1. In which city is the Galata Tower?\nA) Ankara\nB) Izmir\nC) Istanbul\nD) Bursa\nCevap: C\nAçıklama: Istanbul, Beyoğlu.\n\n2. Next question...',
+  'studio.text.keyHint':
+    'Answers may also come at the end: "Cevap anahtarı: 1-C 2-A". You can also mark the right option with *.',
+  'studio.text.paste': 'Paste the questions here',
+  'studio.text.pick': 'Or choose a file (PDF, DOCX, TXT)',
+  'studio.text.read': 'Read the questions',
+  'studio.text.done': '{n} questions became drafts. Review and approve them below.',
+  'studio.text.keyUsed': 'The answers were taken from the answer key at the end.',
+  'studio.text.none':
+    'No readable question was found. Every question needs four options (A, B, C, D) and a "Cevap:" line.',
+  'studio.text.skipped': '{n} questions could not be read, fix the writing and try again:',
+  'studio.text.skipItem': '{where}: {reason}',
+  'studio.text.skipWhere': 'Question {n}',
+  'studio.text.skipNoNumber': 'Unnumbered question',
+  'studio.text.skip.options_count': 'the number of options is not 4',
+  'studio.text.skip.no_answer': 'no answer (add a "Cevap: B" line or an answer key)',
+  'studio.text.skip.answer_unknown': 'the answer matches none of the options',
+  'studio.text.skip.no_text': 'the question text is empty',
+  'studio.text.skip.too_long': 'the question or an option is too long',
+  'studio.text.skip.duplicate_options': 'two options are the same',
+  'studio.text.skip.over_cap': 'the draft list is full (at most 200)',
+  'studio.text.skip.check': 'did not pass the checks',
+  'studio.ai.error.table_format':
+    'This looks like a table (CSV or JSON). Use the "Upload questions" box on the Questions tab.',
 } as const;
