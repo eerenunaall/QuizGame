@@ -80,6 +80,16 @@ it builds on). The attacker plays against the real server over real sockets; the
 | 77 Concurrency | 12 concurrent NEXT with expectedSeq: one winner | › ATTACK 77 | ✅ |
 | 78 Cross-venue night | another café's night not found under either venue path | › ATTACK 78 | ✅ |
 | 79 Config tampering | draft cannot start, live config locked, junk 400, stale seq refused | › ATTACK 79 | ✅ |
+| 80 Hostile documents | PDF with JavaScript or a form submit, zip bombs, encrypted, binary, oversized, too many pages: read in a worker with heap and time caps, calm codes, nothing fetched or run | `red-team/venue-authoring.test.ts` › ATTACK 80 | ✅ |
+| 81 The document talks to the model | instructions inside a document are only data: the model call is fixed, the reply is parsed by a strict schema | › ATTACK 81 | ✅ (model is a double speaking the wire contract) |
+| 82 Secrets and the document never leak | key, document text and model reply absent from logs, errors, security events and responses | › ATTACK 82 | ✅ |
+| 83 Spending someone else's money | per-venue daily quota, global daily cap, one run at a time per venue, failed reads do not count | › ATTACK 83 | ✅ |
+| 84 Drafts of another café | list, edit, delete, approve and read of another venue's drafts or runs: not found | › ATTACK 84 | ✅ |
+| 85 Approving around the pipeline | a draft becomes a question only through the same import checks as a file; edits are re-checked | › ATTACK 85 | ✅ |
+| 86 Lifetime of drafts and runs | drafts expire after seven days; a run whose process is gone fails cleanly | › ATTACK 86 | ✅ |
+| 87 The model as an adversary | invented quotes, wrong language, duplicates, extra keys, oversized or refusing replies are dropped or counted | › ATTACK 87 | ✅ |
+| 88 Malformed requests | strict bodies, bad base64, junk ids, wrong content | › ATTACK 88 | ✅ |
+| 89 Size | body and document limits enforced before reading | › ATTACK 89 | ✅ |
 | 90 Final wager TV frames | category and limits only on the intro; question text only from its own slide; answer only from the answer slide; stakes and results only on the reveal slide; totals include the final only from the reveal; raw `wagers`/`marks` never leak | `red-team/quiznight-final.test.ts` › ATTACK 90 | ✅ |
 | 91 Stakes: limits, locks, other cafés | early, over the limit, after the question is shown, after Back, unknown team, junk amounts, nights without a final, another café's owner: refused; the log keeps actor and previous value | › ATTACK 91 | ✅ |
 | 92 New settings validation | out-of-range and unknown settings 400; nights saved before the new fields still accepted; numeric final answer flagged | › ATTACK 92 | ✅ |

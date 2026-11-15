@@ -90,7 +90,7 @@ to "optional". Work top to bottom; tick an item here in the same commit that fin
 - [ ] B11 Integration test: the server restarts in the middle of a quiz night and the night continues
       (replay is covered by engine property tests only).
 - [ ] B12 Let a venue allow STAFF to run a quiz night (owner only today).
-- [ ] B13 Docs: `docs/RED_TEAM.md` rows 80–89 (`tests/red-team/venue-authoring.test.ts`), `docs/STATUS.md`
+- [x] B13 Docs: `docs/RED_TEAM.md` rows 80–89 (`tests/red-team/venue-authoring.test.ts`), `docs/STATUS.md`
       section for the studio's document path and the model adapter fix.
 - [ ] B14 GitHub hand-over: a real `README.md` (what it is, how to run, where to deploy) and
       `docs/HANDOFF.md` (one page: what a site integrator must do). `main` holds only the initial commit;

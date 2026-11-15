@@ -52,8 +52,15 @@ production); rewards stay valid at least four hours. Not done: native mobile UI 
 ADR-0028 (VENUE_LOCK: TVs pair through the panel, licence seats, manual question form), ADR-0030 (panel `/staff` and `/mekan`: one TABS list, reward, entrance
 price on TV and phones, white-label look and logos with a strict image parser (migration 0015), the owner's answers view, TV unlock button hidden while
 payments are off), ADR-0029 (host-led Quiz Gecesi: event-sourced engine `packages/quiznight`, migration 0016, tablet UI, TV slides at `/tv/gece`, the 2x
-joker as the only card, prize on the tablet; ADR-0031 adds the final wager, joker-from-round, team-name bonus, top-3 estimates, consolation prize and the recommended template). Research note `docs/QUIZ_NIGHT_RESEARCH.md`. Open: PDF/DOCX upload with AI drafts (ADR-0028 §6, in progress),
-paired-display attach for quiz nights, team logos inside quiz-night screens, music/picture uploads.
+joker as the only card, prize on the tablet; ADR-0031 adds the final wager, joker-from-round, team-name bonus, top-3 estimates, consolation prize and the recommended template). Research note `docs/QUIZ_NIGHT_RESEARCH.md`. Open: paired-display attach for quiz nights, team logos inside quiz-night screens, music uploads.
+
+## Question Studio, no model needed (2026-11-15)
+ADR-0028 §6: the panel's Soru Stüdyosu has three ways in. (1) The manual form. (2) **Hazır sorularım**: questions that already exist as text
+(a pasted answer of the owner's own assistant, a Word/PDF/text file) are read by a deterministic parser (`packages/question-bank/src/question-text.ts`,
+no model, no key) into the same draft cards; what cannot be read is listed with a reason; migration 0018 marks the draft's origin; routes
+`authoring/import-text` and `authoring/import-file`; ATTACK 93; browser test `question-studio.spec.ts`. (3) **Belgeden soru üret**: the model path, off
+unless `AUTHORING_API_KEY` and `AUTHORING_MODEL` are set. The model adapter now uses structured outputs with thinking headroom (no sampling parameters, no
+forced tool choice), checked by the test doubles. Quiz night pictures: ADR-0029 amendment (migration 0019, ATTACK 94).
 
 ## Studio site (`sites/archonbite/`)
 Static, build-free, bilingual site for archonbite.com: Steam-style store pages for QuizNight and Salty Pirate (the latter is a
