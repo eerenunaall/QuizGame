@@ -40,7 +40,7 @@ to "optional". Work top to bottom; tick an item here in the same commit that fin
 
 ## A. Must, before go-live
 
-- [~] **A1 Browser CI.** (2026-11-15: cause found, `ubuntu-latest` is now Ubuntu 26.04 which Playwright 1.56 does not support; the e2e job is pinned to `ubuntu-24.04`, waiting for a green run on GitHub.) Read the failed job's log (run 42721529318, job 129516413506, step "Install
+- [x] **A1 Browser CI.** (done 2026-11-15: `ubuntu-latest` became Ubuntu 26.04, which Playwright 1.56 does not support; the e2e job is pinned to `ubuntu-24.04`; run 43718691077 is fully green, browser suite included.) Read the failed job's log (run 42721529318, job 129516413506, step "Install
       Chromium"; `.github/workflows/ci.yml`), fix it, then get one full green browser run on the head commit
       (locally and on GitHub).
 - [x] **A2 Quiz night picture rounds do not show pictures.** (done 2026-11-15, ADR-0029 amendment, ATTACK 94) A question's `imageUrl`
