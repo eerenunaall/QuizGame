@@ -89,7 +89,9 @@ jobs:
 
   e2e:
     name: Browser end-to-end tests (Chromium, 1 TV + 3 phones)
-    runs-on: ubuntu-latest
+    # Playwright 1.56 has no browser build for Ubuntu 26.04, which `ubuntu-latest` now points to (run 43580932019).
+    # Pinned until Playwright is upgraded together with its Chromium path in the sandbox notes (CLAUDE.md).
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16
