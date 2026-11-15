@@ -1,0 +1,56 @@
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  text-align: center;
+  color: var(--qp-color-text);
+  background: var(--qp-color-bg);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--qp-font-display);
+  font-size: 64px;
+}
+
+.steps {
+  max-width: 1200px;
+  margin: 0;
+  font-size: 34px;
+  color: var(--qp-color-muted-text);
+}
+
+.label {
+  font-size: 30px;
+  letter-spacing: 0.08em;
+  color: var(--qp-color-muted-text);
+}
+
+.code {
+  font-family: var(--qp-font-display);
+  font-size: 150px;
+  letter-spacing: 0.12em;
+  line-height: 1;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 60px;
+}
+
+.hint {
+  margin: 0;
+  font-size: 28px;
+  color: var(--qp-color-muted-text);
+}
+
+.error {
+  margin: 0;
+  font-size: 28px;
+  color: var(--qp-color-warning, #f5a623);
+}

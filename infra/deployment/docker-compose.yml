@@ -1,0 +1,45 @@
+# Playtest stack: PostgreSQL + the game server (web app included).
+#
+#   docker compose -f infra/deployment/docker-compose.yml up --build
+#   open http://localhost:8080/tv   (phones: the QR code on the TV; set PUBLIC_WEB_URL for other devices)
+#
+# Development mode with the development question bank: for playtests only, never for real players.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: quizparty
+      POSTGRES_PASSWORD: quizparty
+      POSTGRES_DB: quizparty_dev
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U quizparty -d quizparty_dev']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    ports:
+      - '5432:5432'
+
+  app:
+    build:
+      context: ../..
+      dockerfile: infra/deployment/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://quizparty:quizparty@db:5432/quizparty_dev
+      # What the QR code on the TV points to. Use the machine's LAN address (or a tunnel URL) so that
+      # phones can open it; ALLOWED_ORIGINS must list the same origin.
+      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-http://localhost:8080}
+      ALLOWED_ORIGINS: ${PUBLIC_WEB_URL:-http://localhost:8080}
+      QP_ALLOW_DEV_SEED: '1'
+      QP_SEED_DEV: '1'
+      LOG_LEVEL: warn
+    ports:
+      - '8080:8080'
+
+volumes:
+  db-data:

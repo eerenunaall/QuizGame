@@ -1,0 +1,161 @@
+/**
+ * Brand artwork supplied by the owner (QuizNight logo, party-cone mascot, nine letter characters).
+ * Source PNGs live in docs/design/brand/source; this script trims them and writes the optimised webp
+ * files the web app bundles. Run `pnpm assets:brand` after replacing a source file.
+ */
+import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import sharp from 'sharp';
+
+const ROOT = fileURLToPath(new URL('../../', import.meta.url));
+const SRC = join(ROOT, 'docs/design/brand/source');
+const OUT = join(ROOT, 'apps/web/src/assets/brand');
+mkdirSync(OUT, { recursive: true });
+
+/** Output id → [source file, target height in px]. Letters share one height scale so they line up. */
+const JOBS: Record<string, [string, number]> = {
+  logo: ['logo.png', 360],
+  mascot: ['00_mascot_party_cone.png', 560],
+  'letter-q': ['01_letter_Q.png', 300],
+  'letter-u': ['02_letter_u.png', 300],
+  'letter-i1': ['03_letter_i_top.png', 300],
+  'letter-z': ['04_letter_z.png', 300],
+  'letter-n': ['05_letter_N.png', 300],
+  'letter-i2': ['06_letter_i_bottom.png', 300],
+  'letter-g': ['07_letter_g.png', 300],
+  'letter-h': ['08_letter_h.png', 300],
+  'letter-t': ['09_letter_t.png', 300],
+};
+
+/**
+ * The crops were cut from one sheet, so slivers of the neighbouring characters cling to the edges.
+ * Remove every connected piece that touches the image border (except the biggest one, the character)
+ * and any speck, then trim again.
+ */
+async function clean(file: string): Promise<Buffer> {
+  const { data, info } = await sharp(join(SRC, file))
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const { width, height } = info;
+  const label = new Int32Array(width * height).fill(-1);
+  const pieces: { size: number; border: boolean; pixels: number[] }[] = [];
+  const EDGE = 5;
+  const solid = (i: number): boolean => data[i * 4 + 3]! > 24;
+  for (let start = 0; start < width * height; start += 1) {
+    if (label[start] !== -1 || !solid(start)) continue;
+    const id = pieces.length;
+    const piece = { size: 0, border: false, pixels: [] as number[] };
+    const stack = [start];
+    label[start] = id;
+    while (stack.length > 0) {
+      const at = stack.pop()!;
+      piece.size += 1;
+      piece.pixels.push(at);
+      const x = at % width;
+      const y = Math.floor(at / width);
+      if (x < EDGE || y < EDGE || x >= width - EDGE || y >= height - EDGE) piece.border = true;
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+        [1, 1],
+        [-1, -1],
+        [1, -1],
+        [-1, 1],
+      ] as const) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+        const next = ny * width + nx;
+        if (label[next] === -1 && solid(next)) {
+          label[next] = id;
+          stack.push(next);
+        }
+      }
+    }
+    pieces.push(piece);
+  }
+  const box = (pixels: number[]) => {
+    let x0 = width,
+      y0 = height,
+      x1 = 0,
+      y1 = 0;
+    for (const at of pixels) {
+      const x = at % width;
+      const y = Math.floor(at / width);
+      x0 = Math.min(x0, x);
+      x1 = Math.max(x1, x);
+      y0 = Math.min(y0, y);
+      y1 = Math.max(y1, y);
+    }
+    return { x0, y0, x1, y1 };
+  };
+  const main = pieces.reduce((a, b) => (b.size > a.size ? b : a));
+  const frame = box(main.pixels);
+  for (const piece of pieces) {
+    if (piece === main) continue;
+    const mine = box(piece.pixels);
+    // only a piece that sits wholly inside the character's own outline (an eye, a highlight) stays
+    const inside =
+      mine.x0 >= frame.x0 && mine.x1 <= frame.x1 && mine.y0 >= frame.y0 && mine.y1 <= frame.y1;
+    if (inside) continue;
+    for (const at of piece.pixels) data[at * 4 + 3] = 0;
+  }
+  // soften the cut edge a little so removed neighbours leave no hard halo
+  return sharp(data, { raw: { width, height, channels: 4 } })
+    .png()
+    .toBuffer();
+}
+
+const present = new Set(readdirSync(SRC));
+const manifest: Record<string, { width: number; height: number }> = {};
+for (const [id, [file, height]] of Object.entries(JOBS)) {
+  if (!present.has(file)) throw new Error(`missing ${file} in ${SRC}`);
+  const trimmed = await sharp(file === 'logo.png' ? join(SRC, file) : await clean(file))
+    .trim({ threshold: 8 })
+    .toBuffer();
+  const meta = await sharp(trimmed).metadata();
+  const scale = height / (meta.height ?? height);
+  const out = await sharp(trimmed)
+    .resize({ height, fit: 'inside', withoutEnlargement: scale > 1 })
+    .webp({ quality: 90, alphaQuality: 95, effort: 6 })
+    .toBuffer({ resolveWithObject: true });
+  writeFileSync(join(OUT, `${id}.webp`), out.data);
+  manifest[id] = { width: out.info.width, height: out.info.height };
+  console.log(id, out.info.width, out.info.height, out.data.length);
+}
+writeFileSync(
+  join(ROOT, 'apps/web/src/assets/brand.generated.ts'),
+  `// Generated by scripts/assets/brand.ts — do not edit.\nexport const BRAND_SIZES = ${JSON.stringify(manifest, null, 2)} as const;\n`,
+);
+
+// App and browser icons: the mascot on the brand's deep blue, with room around it for round masks.
+const PUBLIC = join(ROOT, 'apps/web/public');
+const mascot = await sharp(await clean('00_mascot_party_cone.png'))
+  .trim({ threshold: 8 })
+  .toBuffer();
+for (const [name, size] of [
+  ['favicon-48.png', 48],
+  ['apple-touch-icon.png', 180],
+  ['icon-192.png', 192],
+  ['icon-512.png', 512],
+] as const) {
+  const inner = Math.round(size * 0.78);
+  const art = await sharp(mascot)
+    .resize(inner, inner, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .toBuffer();
+  await sharp({
+    create: {
+      width: size,
+      height: size,
+      channels: 4,
+      background: { r: 6, g: 13, b: 46, alpha: 1 },
+    },
+  })
+    .composite([{ input: art, gravity: 'centre' }])
+    .png({ compressionLevel: 9 })
+    .toFile(join(PUBLIC, name));
+}

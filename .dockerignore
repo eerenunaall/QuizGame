@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+.git
+.turbo
+dist
+apps/web/dist
+test-results
+playwright-report
+scripts/assets/.cache
+docs
+*.log
+.env
+.env.*

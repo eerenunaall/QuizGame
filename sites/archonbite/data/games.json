@@ -1,0 +1,931 @@
+{
+  "_readme": "One data file drives the home page, both store pages and the carousel. Every text is {\"tr\": \"...\", \"en\": \"...\"}. Edit, save, reload. Fields listed in a game's \"todo\" array are placeholders: they get an orange TODO-OWNER frame when you open the page with ?edit=1. When you replace the content, delete the field name from \"todo\" and set \"placeholder\" to false on media you replaced. See OWNER-FILL.md.",
+  "studio": {
+    "name": "Archonbite",
+    "news": []
+  },
+  "games": [
+    {
+      "id": "quiznight",
+      "slug": "quiznight",
+      "accent": "accent-quiznight",
+      "title": "QuizNight",
+      "placeholder": false,
+      "todo": [],
+      "tagline": {
+        "tr": "TV sahne, telefon kumanda: masadaki herkesin oynadığı bilgi yarışması.",
+        "en": "TV is the stage, phones are the controllers: the quiz everyone at the table plays."
+      },
+      "short": {
+        "tr": "TV'yi sahneye, telefonları kumandaya çeviren bilgi yarışması. QR'ı okut, takımını seç, soruyu ekranda izle, cevabı telefonundan ver. Kurulum ve hesap yok.",
+        "en": "The quiz that turns the TV into a stage and phones into controllers. Scan the QR, pick your team, watch the question on screen, answer on your phone. No install, no account."
+      },
+      "about": [
+        {
+          "tr": "QuizNight, aynı odadaki insanlar için yapılmış bir bilgi yarışması. Televizyonu ya da bilgisayarı açarsın, ekrandaki QR kodu telefonunla okutursun; ekran sahne olur, telefonun kumandan. Soru büyük ekranda yazar, dört şık telefonunda belirir. Uygulama indirmek, hesap açmak ya da aynı Wi-Fi'ye bağlanmak gerekmez.",
+          "en": "QuizNight is a quiz made for people in the same room. Open it on a TV or a computer, scan the QR code on the screen with your phone, and the screen becomes the stage and your phone the controller. The question is on the big screen and four options appear on your phone. There is nothing to install, no account to make and no shared Wi-Fi to join."
+        },
+        {
+          "tr": "Bir akşam şöyle geçer: biri TV'de oyunu açar, herkes QR'ı okutup takma adını ve karakterini seçer. İstersen oyuncular Kaplanlar ve Baykuşlar gibi takımlara ayrılır; takım adlarını, simgelerini ve renklerini biz belirleriz, sen yalnızca bir düğmeye dokunursun. Sonra turlar başlar: soru, cevap, ortaya çıkış, puan tablosu. En sonda kürsü ve revanş.",
+          "en": "A night goes like this: someone opens the game on the TV, everyone scans the QR and picks a nickname and a character. If you like, players split into teams such as the Tigers and the Owls; we choose the team names, icons and colours and you just tap a chip. Then the rounds begin: question, answer, reveal, scoreboard. At the end the podium and a rematch."
+        },
+        {
+          "tr": "İki oyun biçimi var. Basit mod kafe masaları ve kalabalık gruplar için: bahis yok, üç kısa sabotaj, soru yalnızca TV'de. Tam mod bahis, güç ve sabotajla dolu: Güvenli, Risk ya da Yüksek diye bahsini seçer, Çifte Hak, Örtü, Düello ya da Havuz kullanır, 3. turdan itibaren bir rakibin süresini kısaltır ya da şıklarını karıştırırsın. Kimin yaptığı belli olmaz.",
+          "en": "There are two ways to play. Simple mode is for café tables and big groups: no stakes, three short sabotages, the question on the TV only. Full mode is packed with stakes, powers and sabotage: pick a Safe, Risk or High stake, use Double Down, Cover, a Duel or the Pot, and from round 3 cut a rival's time or shuffle their options. Nobody sees who did it."
+        },
+        {
+          "tr": "Süreyi, cevabı ve puanı yalnızca sunucu tutar; telefon sadece ne yapmak istediğini bildirir, yani puanla oynanamaz. Doğru cevap açılırken yanlış şıklar tek tek kararır, doğru şık parlar, sonra kısa bir \"biliyor muydun\" notu çıkar. Sesler tarayıcıda üretilen özgün bir paletten gelir; hiçbir ses dosyası yoktur.",
+          "en": "Only the server keeps time, answers and score; the phone just says what you want to do, so the score cannot be tampered with. When the answer opens, wrong options dim one by one, the right one lights up and a short \"did you know\" note follows. The sounds come from an original palette synthesised in the browser; there are no sound files."
+        },
+        {
+          "tr": "Kutu oyunu kafeleri ve oyun barları için mekan modu da var: görevli telefonundan TV'de süreli bir masa açar, kazanana isteğe bağlı bir ödül kodu çıkar, kafe kendi sorularını yükleyebilir. İlk mekan ortağımız Gusto Board Game Cafe (Çanakkale). Arayüz Türkçe ve İngilizce; sorular şimdilik Türkçe.",
+          "en": "For board-game cafés and game bars there is a venue mode: staff open a timed table on the TV from their phone, the winner can get an optional reward code and the café can upload its own questions. Our first venue partner is Gusto Board Game Cafe (Çanakkale). The interface is Turkish and English; the questions are Turkish for now."
+        }
+      ],
+      "tags": [
+        {
+          "tr": "Parti oyunu",
+          "en": "Party game"
+        },
+        {
+          "tr": "Bilgi yarışması",
+          "en": "Trivia"
+        },
+        {
+          "tr": "Çok oyunculu",
+          "en": "Multiplayer"
+        },
+        {
+          "tr": "Telefon kumanda",
+          "en": "Phone controller"
+        },
+        {
+          "tr": "TV oyunu",
+          "en": "TV game"
+        },
+        {
+          "tr": "Risk ve ödül",
+          "en": "Risk and reward"
+        },
+        {
+          "tr": "Kurulum yok",
+          "en": "No install"
+        },
+        {
+          "tr": "Türkçe",
+          "en": "Turkish"
+        },
+        {
+          "tr": "Takım modu",
+          "en": "Team mode"
+        },
+        {
+          "tr": "Kafe modu",
+          "en": "Venue mode"
+        }
+      ],
+      "meta": {
+        "developer": "Archonbite",
+        "publisher": "Archonbite",
+        "release": {
+          "tr": "Yakında",
+          "en": "Coming soon"
+        },
+        "platforms": {
+          "tr": "Web tarayıcısı (TV, bilgisayar, telefon)",
+          "en": "Web browser (TV, computer, phone)"
+        },
+        "status": {
+          "tr": "Erken sürüm",
+          "en": "Early version"
+        },
+        "price": {
+          "tr": "Fiyat henüz belirlenmedi",
+          "en": "Pricing not decided yet"
+        },
+        "players": {
+          "tr": "2 ile 8 oyuncu",
+          "en": "2 to 8 players"
+        },
+        "languages": {
+          "tr": "Arayüz: Türkçe, İngilizce. Sorular: Türkçe",
+          "en": "Interface: Turkish, English. Questions: Turkish"
+        }
+      },
+      "art": {
+        "capsule": "assets/quiznight/capsule.jpg",
+        "capsule_w": 920,
+        "capsule_h": 430,
+        "header": "assets/quiznight/key-art.jpg",
+        "bg": "assets/quiznight/key-art-bg.jpg",
+        "header_w": 1600,
+        "header_h": 900,
+        "square": "assets/quiznight/square.jpg",
+        "logo": "assets/quiznight/logo.webp",
+        "logo_w": 1000,
+        "logo_h": 333,
+        "hero_video": {
+          "poster": "assets/quiznight/tv-team-lobby.webp",
+          "sources": [
+            {
+              "src": "assets/quiznight/video/hero-party.webm",
+              "type": "video/webm"
+            },
+            {
+              "src": "assets/quiznight/video/hero-party.mp4",
+              "type": "video/mp4"
+            }
+          ]
+        }
+      },
+      "media": [
+        {
+          "type": "video",
+          "provider": "file",
+          "poster": "assets/quiznight/clip-team-lobby-poster.webp",
+          "thumb": "assets/quiznight/clip-team-lobby-poster.webp",
+          "w": 960,
+          "h": 540,
+          "sources": [
+            {
+              "src": "assets/quiznight/clip-team-lobby.mp4",
+              "type": "video/mp4"
+            }
+          ],
+          "alt": {
+            "tr": "Kısa klip: oyuncular katılır, takımlar dolar",
+            "en": "Short clip: players join and the teams fill up"
+          }
+        },
+        {
+          "type": "image",
+          "src": "assets/quiznight/tv-team-lobby.webp",
+          "thumb": "assets/quiznight/tv-team-lobby-t.webp",
+          "w": 1280,
+          "h": 720,
+          "alt": {
+            "tr": "TV'de takım lobisi: QR kod, oda kodu, Kaplanlar ve Baykuşlar takımları",
+            "en": "The team lobby on the TV: QR code, room code, the Tigers and Owls teams"
+          }
+        },
+        {
+          "type": "image",
+          "src": "assets/quiznight/phone-team-picker.webp",
+          "thumb": "assets/quiznight/phone-team-picker-t.webp",
+          "w": 390,
+          "h": 844,
+          "alt": {
+            "tr": "Telefonda takım seçimi",
+            "en": "Choosing a team on the phone"
+          },
+          "phone": true
+        },
+        {
+          "type": "image",
+          "src": "assets/quiznight/tv-team-question.webp",
+          "thumb": "assets/quiznight/tv-team-question-t.webp",
+          "w": 1280,
+          "h": 720,
+          "alt": {
+            "tr": "Bir soru TV'de: dört renkli şık, geri sayım halkası ve cevap veren oyuncular",
+            "en": "A question on the TV: four coloured options, a countdown ring and the players who have answered"
+          }
+        },
+        {
+          "type": "image",
+          "src": "assets/quiznight/phone-team-answer.webp",
+          "thumb": "assets/quiznight/phone-team-answer-t.webp",
+          "w": 390,
+          "h": 844,
+          "alt": {
+            "tr": "Telefonda cevap ekranı: renkli, harfli ve şekilli dört şık, soru metni yok",
+            "en": "The answer screen on the phone: four options with colour, letter and shape, no question text"
+          },
+          "phone": true
+        },
+        {
+          "type": "image",
+          "src": "assets/quiznight/tv-team-reveal.webp",
+          "thumb": "assets/quiznight/tv-team-reveal-t.webp",
+          "w": 1280,
+          "h": 720,
+          "alt": {
+            "tr": "Ortaya çıkış: yanlış şıklar kararır, doğru cevap parlar",
+            "en": "The reveal: wrong options dim and the correct answer lights up"
+          }
+        },
+        {
+          "type": "video",
+          "provider": "file",
+          "poster": "assets/quiznight/clip-staged-reveal-poster.webp",
+          "thumb": "assets/quiznight/clip-staged-reveal-poster.webp",
+          "w": 960,
+          "h": 540,
+          "sources": [
+            {
+              "src": "assets/quiznight/clip-staged-reveal.mp4",
+              "type": "video/mp4"
+            }
+          ],
+          "alt": {
+            "tr": "Kısa klip: cevaplar kilitlenir, kademeli ortaya çıkış",
+            "en": "Short clip: answers lock in and the staged reveal plays"
+          }
+        },
+        {
+          "type": "image",
+          "src": "assets/quiznight/tv-team-board.webp",
+          "thumb": "assets/quiznight/tv-team-board-t.webp",
+          "w": 1280,
+          "h": 720,
+          "alt": {
+            "tr": "Takım puanları: ortalama ve toplam",
+            "en": "Team standings: average and total"
+          }
+        },
+        {
+          "type": "image",
+          "src": "assets/quiznight/tv-team-podium.webp",
+          "thumb": "assets/quiznight/tv-team-podium-t.webp",
+          "w": 1280,
+          "h": 720,
+          "alt": {
+            "tr": "Takım kürsüsü: kazanan takım, oyuncu sıralaması ve ödüller",
+            "en": "The team podium: the winning team, the player ranking and awards"
+          }
+        },
+        {
+          "type": "video",
+          "provider": "file",
+          "poster": "assets/quiznight/clip-team-podium-poster.webp",
+          "thumb": "assets/quiznight/clip-team-podium-poster.webp",
+          "w": 960,
+          "h": 540,
+          "sources": [
+            {
+              "src": "assets/quiznight/clip-team-podium.mp4",
+              "type": "video/mp4"
+            }
+          ],
+          "alt": {
+            "tr": "Kısa klip: kürsü ve konfeti",
+            "en": "Short clip: the podium and confetti"
+          }
+        },
+        {
+          "type": "image",
+          "src": "assets/quiznight/tv-simple-prep.webp",
+          "thumb": "assets/quiznight/tv-simple-prep-t.webp",
+          "w": 1280,
+          "h": 720,
+          "alt": {
+            "tr": "Basit modda Hazırlan ekranı: Çifte Hak, Süre kes, Karıştır, Kör saat",
+            "en": "Prep screen in Simple mode: Double Down, Time Cut, Shuffle, Blind Clock"
+          }
+        },
+        {
+          "type": "image",
+          "src": "assets/quiznight/phone-simple-prep.webp",
+          "thumb": "assets/quiznight/phone-simple-prep-t.webp",
+          "w": 390,
+          "h": 790,
+          "alt": {
+            "tr": "Telefonda hazırlık: Çifte Hak, üç sabotaj ve hedef takım",
+            "en": "Prep on the phone: Double Down, three sabotages and the target team"
+          },
+          "phone": true
+        },
+        {
+          "type": "image",
+          "src": "assets/quiznight/tv-gusto-team-lobby.webp",
+          "thumb": "assets/quiznight/tv-gusto-team-lobby-t.webp",
+          "w": 1280,
+          "h": 720,
+          "alt": {
+            "tr": "Mekan teması: kafenin logosu ve renkleriyle takım lobisi",
+            "en": "Venue theme: the team lobby with a café's logo and colours"
+          }
+        },
+        {
+          "type": "image",
+          "src": "assets/quiznight/tv-risk.webp",
+          "thumb": "assets/quiznight/tv-risk-t.webp",
+          "w": 1280,
+          "h": 720,
+          "alt": {
+            "tr": "Risk zamanı: Güvenli, Risk ve Yüksek bahisler, Çifte Hak, Örtü, Düello ve Havuz",
+            "en": "Risk time: Safe, Risk and High stakes, Double Down, Cover, Duel and Pot"
+          }
+        },
+        {
+          "type": "image",
+          "src": "assets/quiznight/tv-sabotage.webp",
+          "thumb": "assets/quiznight/tv-sabotage-t.webp",
+          "w": 1280,
+          "h": 720,
+          "alt": {
+            "tr": "Sabotaj zamanı: sekiz sabotaj türü ve kimin kilitlediğini gösteren sayaç",
+            "en": "Sabotage time: the eight sabotage types and a counter of who has locked in"
+          }
+        },
+        {
+          "type": "image",
+          "src": "assets/quiznight/phone-sabotage.webp",
+          "thumb": "assets/quiznight/phone-sabotage-t.webp",
+          "w": 390,
+          "h": 844,
+          "phone": true,
+          "alt": {
+            "tr": "Telefonda sabotaj seçimi",
+            "en": "Choosing a sabotage on the phone"
+          }
+        }
+      ],
+      "features": [
+        {
+          "icon": "tv",
+          "title": {
+            "tr": "TV sahne, telefon kumanda",
+            "en": "TV stage, phone controller"
+          },
+          "text": {
+            "tr": "Soru büyük ekranda, cevaplar ve gizli kararlar telefonda. Herkes aynı ekrana bakar; kimse kumanda kapışmaz.",
+            "en": "Questions on the big screen, answers and hidden decisions on the phone. Everyone watches the same screen and nobody fights over a remote."
+          }
+        },
+        {
+          "icon": "qr",
+          "title": {
+            "tr": "QR ile gir, kurulum yok",
+            "en": "Scan to join, no install"
+          },
+          "text": {
+            "tr": "Kameranı QR koda tut ya da oda kodunu yaz. Uygulama, hesap, Bluetooth ve aynı Wi-Fi şartı yok.",
+            "en": "Point your camera at the QR or type the room code. No app, no account, no Bluetooth and no same-Wi-Fi rule."
+          }
+        },
+        {
+          "icon": "devices",
+          "title": {
+            "tr": "Soru TV'de, şıklar telefonda",
+            "en": "Question on the TV, options on the phone"
+          },
+          "text": {
+            "tr": "Telefonda büyük, renkli, harfli ve şekilli dört düğme var. Basit modda soru metni telefona hiç gönderilmez; gözler ekranda kalır.",
+            "en": "The phone has four big buttons with colour, letter and shape. In Simple mode the question text is never sent to phones, so eyes stay on the screen."
+          }
+        },
+        {
+          "icon": "dice",
+          "title": {
+            "tr": "Risk ve bahis",
+            "en": "Risk and stakes"
+          },
+          "text": {
+            "tr": "Tam modda Güvenli, Risk ya da Yüksek: doğruysa puanın katlanır, yanlışsa bahsin gider. Finalin son sorusunda herkes mecburen bahse girer.",
+            "en": "In Full mode, Safe, Risk or High: right and your points multiply, wrong and the stake is gone. On the final's last question everyone must bet."
+          }
+        },
+        {
+          "icon": "bolt",
+          "title": {
+            "tr": "Sabotaj ve güçler",
+            "en": "Sabotage and powers"
+          },
+          "text": {
+            "tr": "Sekiz sabotaj, Çifte Hak, 50/50, Kalkan, Örtü, Düello ve Havuz. Hepsinin sınırı var; kimse tüm turu oynayamaz hâle gelmez.",
+            "en": "Eight sabotages, Double Down, 50/50, Shield, Cover, Duel and Pot. All have limits, so nobody is locked out of a whole round."
+          }
+        },
+        {
+          "icon": "crown",
+          "title": {
+            "tr": "Basit mod: beş saniyede anlaşılır",
+            "en": "Simple mode: understood in five seconds"
+          },
+          "text": {
+            "tr": "Bahis yok; Çifte Hak, 50/50 ve üç sabotaj (Süre kes, Karıştır, Kör saat). Soru başına tek kısa hazırlık ekranı. Kafe masaları ve ilk kez oynayanlar için.",
+            "en": "No stakes; Double Down, 50/50 and three sabotages (Time Cut, Shuffle, Blind Clock). One short prep screen per question. For café tables and first-timers."
+          }
+        },
+        {
+          "icon": "devices",
+          "title": {
+            "tr": "Takım modu",
+            "en": "Team mode"
+          },
+          "text": {
+            "tr": "2 ile 4 takım; adlarını, simgelerini ve renklerini biz seçeriz, oyuncular bir takım düğmesine dokunur. Takımlar oyuncu başına ortalamayla sıralanır; bireysel oyun da duruyor.",
+            "en": "2 to 4 teams; we choose names, icons and colours and players tap a team chip. Teams are ranked by the average per player, and individual play is still there."
+          }
+        },
+        {
+          "icon": "store",
+          "title": {
+            "tr": "Kafeler için mekan modu",
+            "en": "Venue mode for cafés"
+          },
+          "text": {
+            "tr": "Süreli masa (+15/+30/+60 dk uzatma), isteğe bağlı kazanan ödül kodu, CSV ile kafeye özel sorular ve telefondan Mekan paneli. Sistem hiçbir zaman para almaz.",
+            "en": "Timed tables (+15/+30/+60 min extensions), an optional winner's reward code, venue-only questions by CSV and a staff panel on the phone. The system never takes money."
+          }
+        },
+        {
+          "icon": "book",
+          "title": {
+            "tr": "Türkçe soru bankası",
+            "en": "Turkish question bank"
+          },
+          "text": {
+            "tr": "35 kategoride 800'den fazla Türkçe soru; hepsinin \"biliyor muydun\" notu var, büyük çoğunluğunun kaynağı kayıtlı. Bağımsız bir yapay zekâ incelemesinden geçti; insan onayı sürüyor.",
+            "en": "Over 800 Turkish questions in 35 categories, each with a \"did you know\" note and most with recorded sources. Reviewed by an independent AI pass; human sign-off is still under way."
+          }
+        },
+        {
+          "icon": "palette",
+          "title": {
+            "tr": "Ses ve animasyon",
+            "en": "Sound and animation"
+          },
+          "text": {
+            "tr": "Tarayıcıda üretilen özgün ses paleti, kademeli ortaya çıkış, seri alevleri, ışıklı kürsü ve konfeti. Temalar: parti, mekan ve yüksek kontrast.",
+            "en": "An original sound palette synthesised in the browser, a staged reveal, streak flames, a spotlit podium and confetti. Themes: party, venue and high contrast."
+          }
+        },
+        {
+          "icon": "info",
+          "title": {
+            "tr": "Erişilebilirlik",
+            "en": "Accessibility"
+          },
+          "text": {
+            "tr": "Şıklar renkle birlikte harf ve şekille ayrılır; yüksek kontrast teması, renk körlüğüne uygun palet ve hareketi azaltma desteği var.",
+            "en": "Options carry a letter and shape as well as colour; there is a high-contrast theme, colour-blind-safe palettes and reduced-motion support."
+          }
+        },
+        {
+          "icon": "globe",
+          "title": {
+            "tr": "Türkçe ve İngilizce arayüz",
+            "en": "Turkish and English interface"
+          },
+          "text": {
+            "tr": "Her cihaz kendi dilinde: karışık dilli odalar çalışır. Sorular şimdilik Türkçe.",
+            "en": "Each device uses its own language, so mixed-language rooms work. Questions are Turkish for now."
+          }
+        }
+      ],
+      "requirements": {
+        "devices": [
+          {
+            "name": {
+              "tr": "Ekran: TV ya da bilgisayar",
+              "en": "Screen: TV or computer"
+            },
+            "min": [
+              {
+                "k": {
+                  "tr": "Tarayıcı",
+                  "en": "Browser"
+                },
+                "v": {
+                  "tr": "Güncel bir Chromium tabanlı tarayıcı (Chrome, Edge)",
+                  "en": "A current Chromium-based browser (Chrome, Edge)"
+                }
+              },
+              {
+                "k": {
+                  "tr": "Ekran",
+                  "en": "Display"
+                },
+                "v": {
+                  "tr": "1280×720, yatay",
+                  "en": "1280×720, landscape"
+                }
+              },
+              {
+                "k": {
+                  "tr": "Bağlantı",
+                  "en": "Connection"
+                },
+                "v": {
+                  "tr": "İnternet",
+                  "en": "Internet"
+                }
+              }
+            ],
+            "rec": [
+              {
+                "k": {
+                  "tr": "Tarayıcı",
+                  "en": "Browser"
+                },
+                "v": {
+                  "tr": "Güncel Chrome ya da Edge, tam ekran",
+                  "en": "Current Chrome or Edge, full screen"
+                }
+              },
+              {
+                "k": {
+                  "tr": "Ekran",
+                  "en": "Display"
+                },
+                "v": {
+                  "tr": "1920×1080 (4K ölçeklenir)",
+                  "en": "1920×1080 (4K scales)"
+                }
+              },
+              {
+                "k": {
+                  "tr": "Bağlantı",
+                  "en": "Connection"
+                },
+                "v": {
+                  "tr": "Kablolu ya da güçlü Wi-Fi",
+                  "en": "Wired or strong Wi-Fi"
+                }
+              }
+            ]
+          },
+          {
+            "name": {
+              "tr": "Kumanda: telefon",
+              "en": "Controller: phone"
+            },
+            "min": [
+              {
+                "k": {
+                  "tr": "Cihaz",
+                  "en": "Device"
+                },
+                "v": {
+                  "tr": "Tarayıcılı herhangi bir akıllı telefon",
+                  "en": "Any smartphone with a browser"
+                }
+              },
+              {
+                "k": {
+                  "tr": "Bağlantı",
+                  "en": "Connection"
+                },
+                "v": {
+                  "tr": "Wi-Fi ya da mobil veri (TV ile aynı ağda olması gerekmez)",
+                  "en": "Wi-Fi or mobile data (it need not be the TV's network)"
+                }
+              }
+            ],
+            "rec": [
+              {
+                "k": {
+                  "tr": "Cihaz",
+                  "en": "Device"
+                },
+                "v": {
+                  "tr": "Kamerası olan telefon (QR okutmak için), güncel Chrome",
+                  "en": "A phone with a camera (to scan the QR) and current Chrome"
+                }
+              },
+              {
+                "k": {
+                  "tr": "Oyuncu",
+                  "en": "Players"
+                },
+                "v": {
+                  "tr": "2 ile 8 telefon",
+                  "en": "2 to 8 phones"
+                }
+              }
+            ]
+          }
+        ],
+        "note": {
+          "tr": "Dürüst not: QuizNight şimdilik yalnızca Chromium tabanlı tarayıcılarda denendi. Hedeflenen en eski sürümler Chrome 63, Edge 79, Firefox 67 ve Safari 12'dir ama Safari, Firefox ve TV tarayıcılarında cihaz testleri sürüyor; bunlar henüz garanti edilmiyor.",
+          "en": "Honest note: so far QuizNight has only been tried in Chromium-based browsers. The oldest targeted versions are Chrome 63, Edge 79, Firefox 67 and Safari 12, but device tests on Safari, Firefox and TV browsers are ongoing and not yet guaranteed."
+        }
+      },
+      "news": [
+        {
+          "date": "2026-10-27",
+          "title": {
+            "tr": "Takım modu ve Basit mod",
+            "en": "Team mode and Simple mode"
+          },
+          "body": {
+            "tr": "Oyuncular Kaplanlar, Baykuşlar gibi takımlara ayrılabiliyor; takımlar oyuncu başına ortalamayla sıralanıyor. Kafe masaları için bahissiz, beş saniyede anlaşılır Basit mod da eklendi.",
+            "en": "Players can now split into teams such as the Tigers and the Owls, ranked by the average per player. A stake-free Simple mode that is understood in five seconds joined it for café tables."
+          }
+        },
+        {
+          "date": "2026-10-26",
+          "title": {
+            "tr": "Archonbite sitesi yenilendi",
+            "en": "The Archonbite site is redesigned"
+          },
+          "body": {
+            "tr": "Yeni sitede her oyunun mağaza sayfası, QuizNight için nasıl oynanır kılavuzu ve tarayıcıda oyna sayfası var. Çerez ve izleyici yok.",
+            "en": "The new site has a store page per game, a how-to-play guide for QuizNight and a play-in-browser page. No cookies, no trackers."
+          }
+        },
+        {
+          "date": "2026-10-19",
+          "title": {
+            "tr": "Mekan modu: kafeler için süreli masalar",
+            "en": "Venue mode: timed tables for cafés"
+          },
+          "body": {
+            "tr": "Kutu oyunu kafeleri için süreli masa, uzatma, isteğe bağlı kazanan ödülü ve mekana özel soru yükleme geldi. İlk mekan ortağımız Gusto Board Game Cafe (Çanakkale).",
+            "en": "Timed tables, extensions, an optional winner's reward and venue-only question uploads arrived for board-game cafés. Our first venue partner is Gusto Board Game Cafe (Çanakkale)."
+          }
+        },
+        {
+          "date": "2026-10-19",
+          "title": {
+            "tr": "Yeni riskler ve sabotajlar",
+            "en": "New risks and sabotages"
+          },
+          "body": {
+            "tr": "Örtü, Düello ve Havuz risk zamanına; Bahis sınırı, Kesme ve Kör saat sabotaj zamanına eklendi. \"Soru başına tek büyük kumar\" kuralı hepsini kapsıyor.",
+            "en": "Cover, Duel and Pot joined Risk time; Stake cap, Cut and Blind clock joined Sabotage time. The \"one big gamble per question\" rule covers them all."
+          }
+        }
+      ],
+      "links": {
+        "play": "play/",
+        "guide": "guide/",
+        "steam": null
+      },
+      "og": "assets/img/og-quiznight.jpg"
+    },
+    {
+      "id": "salty-pirate",
+      "slug": "salty-pirate",
+      "accent": "accent-salty-pirate",
+      "title": "Salty Pirates",
+      "placeholder": true,
+      "todo": [
+        "meta",
+        "requirements",
+        "news",
+        "links"
+      ],
+      "tagline": {
+        "tr": "Deniz sana hâlâ bir şey borçlu değil. Ama sen ona borçlusun.",
+        "en": "The sea still owes you nothing. But you owe it plenty."
+      },
+      "short": {
+        "tr": "Davy Jones'un karanlık sularında tek gemiyle bir roguelike deniz savaşı: toplar kendiliğinden ateş eder, her seviyede üç kart, üç kader.",
+        "en": "A roguelike naval battle with one ship in Davy Jones' dark waters: the cannons fire on their own, every level deals three cards, three fates."
+      },
+      "about": [
+        {
+          "tr": "Tek bir gemi, dinmeyen bir fırtına ve Davy Jones'un karanlık sularında ödenmemiş bir borç. Dümen senin; toplar kendi kendine konuşur. Düşman filoları dalga dalga gelir, battıkça tecrübe bırakır, ve her seviyede önüne üç kart düşer: üç kader, tek seçim. Gemini bir efsaneye çevir ya da fırtınaya bir isim daha ekle.",
+          "en": "One ship, one endless storm, and a debt unpaid in Davy Jones' dark waters. The helm is yours; the cannons speak for themselves. Enemy fleets roll in wave after wave, leave their wreckage behind as experience, and every level deals you three cards: three fates, one choice. Turn your ship into a legend, or give the storm one more name to remember."
+        }
+      ],
+      "tags": [
+        {
+          "tr": "Roguelike",
+          "en": "Roguelike"
+        },
+        {
+          "tr": "Deniz savaşı",
+          "en": "Naval combat"
+        },
+        {
+          "tr": "Kart seçimi",
+          "en": "Card picks"
+        },
+        {
+          "tr": "Bağımsız",
+          "en": "Indie"
+        }
+      ],
+      "meta": {
+        "developer": "Archonbite",
+        "publisher": "Archonbite",
+        "release": {
+          "tr": "Açıklanacak",
+          "en": "To be announced"
+        },
+        "platforms": {
+          "tr": "Windows PC (şimdilik)",
+          "en": "Windows PC (for now)"
+        },
+        "status": {
+          "tr": "Geliştiriliyor",
+          "en": "In development"
+        },
+        "price": {
+          "tr": "Açıklanacak",
+          "en": "To be announced"
+        }
+      },
+      "art": {
+        "capsule": "assets/salty-pirate/capsule.webp",
+        "capsule_w": 920,
+        "capsule_h": 430,
+        "header": "assets/salty-pirate/key-art.webp",
+        "bg": "assets/salty-pirate/key-art-bg.jpg",
+        "header_w": 1600,
+        "header_h": 900,
+        "square": "assets/salty-pirate/key-art.webp",
+        "logo": "assets/salty-pirate/logo.webp",
+        "logo_w": 900,
+        "logo_h": 964,
+        "hero_video": {
+          "poster": "assets/salty-pirate/key-art.webp",
+          "sources": [
+            {
+              "src": "assets/salty-pirate/video/broadside.webm",
+              "type": "video/webm"
+            },
+            {
+              "src": "assets/salty-pirate/video/broadside.mp4",
+              "type": "video/mp4"
+            }
+          ]
+        }
+      },
+      "media": [
+        {
+          "type": "video",
+          "provider": "file",
+          "poster": "assets/salty-pirate/video/broadside-poster.webp",
+          "thumb": "assets/salty-pirate/video/broadside-t.webp",
+          "w": 1920,
+          "h": 1080,
+          "sources": [
+            {
+              "src": "assets/salty-pirate/video/broadside.webm",
+              "type": "video/webm"
+            },
+            {
+              "src": "assets/salty-pirate/video/broadside.mp4",
+              "type": "video/mp4"
+            }
+          ],
+          "alt": {
+            "tr": "Oynanış: kara gemi fırtınada borda ateşi açıyor",
+            "en": "Gameplay: the black ship fires a broadside in the storm"
+          }
+        },
+        {
+          "type": "video",
+          "provider": "file",
+          "poster": "assets/salty-pirate/video/cannons-poster.webp",
+          "thumb": "assets/salty-pirate/video/cannons-t.webp",
+          "w": 1920,
+          "h": 1080,
+          "sources": [
+            {
+              "src": "assets/salty-pirate/video/cannons.webm",
+              "type": "video/webm"
+            },
+            {
+              "src": "assets/salty-pirate/video/cannons.mp4",
+              "type": "video/mp4"
+            }
+          ],
+          "alt": {
+            "tr": "Oynanış: top güllelerinin iz bıraktığı bir çatışma",
+            "en": "Gameplay: a fight with cannonball trails"
+          }
+        },
+        {
+          "type": "video",
+          "provider": "file",
+          "poster": "assets/salty-pirate/video/melee-poster.webp",
+          "thumb": "assets/salty-pirate/video/melee-t.webp",
+          "w": 1920,
+          "h": 1080,
+          "sources": [
+            {
+              "src": "assets/salty-pirate/video/melee.webm",
+              "type": "video/webm"
+            },
+            {
+              "src": "assets/salty-pirate/video/melee.mp4",
+              "type": "video/mp4"
+            }
+          ],
+          "alt": {
+            "tr": "Oynanış: hayalet gemilerle yakın dövüş",
+            "en": "Gameplay: close quarters with ghost ships"
+          }
+        },
+        {
+          "type": "image",
+          "src": "assets/salty-pirate/shot-1.webp",
+          "thumb": "assets/salty-pirate/shot-1-t.webp",
+          "w": 1600,
+          "h": 900,
+          "alt": {
+            "tr": "Kara gemi, patlamalar ve yıldırım arasında bir düşman gemisini parçalıyor",
+            "en": "The black ship tears an enemy apart amid explosions and lightning"
+          }
+        },
+        {
+          "type": "image",
+          "src": "assets/salty-pirate/shot-2.webp",
+          "thumb": "assets/salty-pirate/shot-2-t.webp",
+          "w": 1600,
+          "h": 900,
+          "alt": {
+            "tr": "Yağmur altında alev ve duman içinde bir deniz savaşı",
+            "en": "A sea battle in fire and smoke under the rain"
+          }
+        },
+        {
+          "type": "image",
+          "src": "assets/salty-pirate/shot-3.webp",
+          "thumb": "assets/salty-pirate/shot-3-t.webp",
+          "w": 1600,
+          "h": 900,
+          "alt": {
+            "tr": "Yeşil parlayan hayalet gemiler kara geminin yanında",
+            "en": "Glowing green ghost ships beside the black ship"
+          }
+        },
+        {
+          "type": "image",
+          "src": "assets/salty-pirate/shot-4.webp",
+          "thumb": "assets/salty-pirate/shot-4-t.webp",
+          "w": 1600,
+          "h": 900,
+          "alt": {
+            "tr": "Top gülleleri ve su sütunları arasında kafa kafaya bir çatışma",
+            "en": "A head-on clash between cannonballs and water spouts"
+          }
+        },
+        {
+          "type": "image",
+          "src": "assets/salty-pirate/shot-5.webp",
+          "thumb": "assets/salty-pirate/shot-5-t.webp",
+          "w": 1600,
+          "h": 900,
+          "alt": {
+            "tr": "Hayalet gemiler ve sallar, fırtınalı denizde kara gemiyi kuşatıyor",
+            "en": "Ghost ships and rafts close in on the black ship in a storm"
+          }
+        }
+      ],
+      "features": [
+        {
+          "icon": "book",
+          "title": {
+            "tr": "Hikâye",
+            "en": "Story"
+          },
+          "text": {
+            "tr": "Defterde adın hâlâ yazılı. Davy Jones hesabı unutmaz, sen de unutma.",
+            "en": "Your name is still in the ledger. Davy Jones never forgets a debt, and neither should you."
+          }
+        },
+        {
+          "icon": "bolt",
+          "title": {
+            "tr": "Oynanış",
+            "en": "Gameplay"
+          },
+          "text": {
+            "tr": "Sen dümene geç, toplar kendiliğinden ateş eder. Kart seç, silahını yükselt, kuleleri kuşat, derinlere in.",
+            "en": "Take the helm, the cannons fire on their own. Pick your cards, sharpen your guns, besiege the towers, sink deeper."
+          }
+        },
+        {
+          "icon": "palette",
+          "title": {
+            "tr": "Görseller",
+            "en": "Visuals"
+          },
+          "text": {
+            "tr": "Yağmur, yıldırım, hayalet filolar ve gecenin ortasında patlayan barut. Ekran görüntüleri ve videolar yukarıda; fragman yakında.",
+            "en": "Rain, lightning, ghost fleets and gunpowder blooming in the dark. Screenshots and videos above; trailer coming soon."
+          }
+        },
+        {
+          "icon": "devices",
+          "title": {
+            "tr": "Platformlar",
+            "en": "Platforms"
+          },
+          "text": {
+            "tr": "Şimdilik Windows PC. Diğer limanlar sonra.",
+            "en": "Windows PC for now. Other harbors later."
+          }
+        }
+      ],
+      "requirements": {
+        "devices": [],
+        "note": null
+      },
+      "news": [],
+      "links": {
+        "play": null,
+        "guide": null,
+        "steam": null
+      },
+      "og": "assets/img/og-salty-pirate.jpg"
+    }
+  ]
+}

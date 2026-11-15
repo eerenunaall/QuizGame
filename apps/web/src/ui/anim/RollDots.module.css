@@ -1,0 +1,25 @@
+.dots {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  display: flex;
+  margin-left: -42px;
+  pointer-events: none;
+  animation: qp-roll-away 200ms ease-in 1 both;
+  animation-delay: calc(var(--qp-until, 900ms) - 200ms);
+}
+
+.dot {
+  width: 18px;
+  height: 18px;
+  margin: 0 5px;
+  background: var(--qp-color-accent-a);
+  border-radius: 50%;
+  animation: qp-roll-beat 420ms ease-in-out infinite;
+}
+.dot:nth-child(2) {
+  animation-delay: 110ms;
+}
+.dot:nth-child(3) {
+  animation-delay: 220ms;
+}

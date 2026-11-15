@@ -1,0 +1,41 @@
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: #fff;
+  border-radius: 999px;
+  animation: qp-slide-down 260ms ease-out 1;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.banner > span {
+  margin-left: 12px;
+}
+.banner > span:first-child {
+  margin-left: 0;
+}
+
+.phone {
+  padding: 8px 18px;
+  font-size: 16px;
+}
+
+.tv {
+  padding: 14px 34px;
+  font-size: 30px;
+}
+
+.info {
+  background: rgba(47, 139, 255, 0.92);
+}
+.warning {
+  background: rgba(255, 164, 31, 0.95);
+  color: #2b1700;
+}
+.danger {
+  background: rgba(255, 71, 102, 0.95);
+}
+.success {
+  background: rgba(37, 200, 90, 0.95);
+}

@@ -1,0 +1,27 @@
+{
+  "cli": { "version": ">= 16.0.0", "appVersionSource": "remote" },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": { "QP_API_URL": "OWNER-TO-FILL: https://staging-api.example.com" }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": { "QP_API_URL": "OWNER-TO-FILL: https://staging-api.example.com" }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": { "QP_API_URL": "OWNER-TO-FILL: https://api.example.com" }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": { "ascAppId": "OWNER-TO-FILL" },
+      "android": {
+        "serviceAccountKeyPath": "OWNER-TO-FILL (path outside the repo)",
+        "track": "internal"
+      }
+    }
+  }
+}

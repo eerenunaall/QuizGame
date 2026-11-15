@@ -1,0 +1,190 @@
+/* Previews are drawn at the real screen size (a 1920x1080 stage, a 390 px phone) and scaled by ScaledStage. */
+.stage {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  color: var(--qp-color-text);
+  background: var(--qp-gradient-stage);
+}
+
+.brand {
+  position: absolute;
+  top: 54px;
+  left: 96px;
+  display: flex;
+  gap: 28px;
+  align-items: center;
+}
+
+.logo {
+  max-width: 420px;
+  height: 110px;
+  object-fit: contain;
+}
+
+.venue {
+  font-family: var(--qp-font-display);
+  font-size: 56px;
+  color: var(--qp-color-accent-a);
+}
+
+.join {
+  position: absolute;
+  top: 190px;
+  left: 96px;
+  width: 560px;
+  height: 800px;
+  padding: 30px 28px;
+  text-align: center;
+  background: var(--qp-gradient-panel);
+  border: 4px solid var(--qp-color-surface-line);
+  border-radius: 34px;
+}
+
+.joinTitle {
+  font-family: var(--qp-font-display);
+  font-size: 44px;
+  color: var(--qp-color-accent-a);
+}
+
+.qr {
+  width: 300px;
+  height: 300px;
+  margin: 24px auto 0;
+  background:
+    conic-gradient(#fff 25%, #111 0 50%, #fff 0 75%, #111 0) 0 0 / 60px 60px,
+    #fff;
+  border: 14px solid #fff;
+  border-radius: 14px;
+}
+
+.code {
+  margin: 20px auto 0;
+  width: 470px;
+  font-family: var(--qp-font-display);
+  font-size: 84px;
+  letter-spacing: 0.12em;
+  line-height: 1.15;
+  color: #fff;
+  background: rgba(var(--qp-deep-rgb), 0.8);
+  border: 5px solid var(--qp-color-answer-b);
+  border-radius: 26px;
+}
+
+.teams {
+  position: absolute;
+  top: 190px;
+  left: 760px;
+  display: flex;
+  gap: 56px;
+}
+
+.team {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  align-items: center;
+  width: 460px;
+  padding: 36px 20px;
+  background: var(--qp-gradient-panel);
+  border: 4px solid var(--qp-color-surface-line);
+  border-radius: 34px;
+}
+
+.teamName {
+  font-family: var(--qp-font-display);
+  font-size: 56px;
+  text-align: center;
+}
+
+.start {
+  position: absolute;
+  right: 96px;
+  bottom: 70px;
+  padding: 22px 56px;
+  font-family: var(--qp-font-display);
+  font-size: 56px;
+  color: #1b1200;
+  background: var(--qp-gradient-gold);
+  border-radius: 40px;
+}
+
+.phone {
+  width: 390px;
+  height: 560px;
+  padding: 26px 22px;
+  text-align: center;
+  color: var(--qp-color-text);
+  background: var(--qp-gradient-stage);
+}
+
+.phoneBrand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+}
+
+.phoneLogo {
+  max-width: 150px;
+  height: 52px;
+  object-fit: contain;
+}
+
+.phoneVenue {
+  font-family: var(--qp-font-display);
+  font-size: 24px;
+  color: var(--qp-color-accent-a);
+}
+
+.phoneCode {
+  margin: 22px auto 0;
+  width: 250px;
+  font-family: var(--qp-font-display);
+  font-size: 44px;
+  letter-spacing: 0.12em;
+  background: rgba(var(--qp-deep-rgb), 0.8);
+  border: 3px solid var(--qp-color-answer-b);
+  border-radius: 16px;
+}
+
+.phoneEntrance {
+  margin: 14px 0 0;
+  padding: 8px 12px;
+  font-size: 16px;
+  background: rgba(var(--qp-deep-rgb), 0.6);
+  border: 2px solid var(--qp-color-accent-a);
+  border-radius: 14px;
+}
+
+.phoneTeams {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 22px;
+}
+
+.phoneTeam {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  width: 150px;
+  padding: 14px 8px;
+  font-size: 18px;
+  background: var(--qp-gradient-panel);
+  border: 2px solid var(--qp-color-surface-line);
+  border-radius: 18px;
+}
+
+.phoneButton {
+  margin: 28px auto 0;
+  width: 280px;
+  padding: 14px 0;
+  font-family: var(--qp-font-display);
+  font-size: 28px;
+  color: #1b1200;
+  background: var(--qp-gradient-gold);
+  border-radius: 28px;
+}

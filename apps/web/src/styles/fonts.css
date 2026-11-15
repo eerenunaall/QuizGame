@@ -1,0 +1,11 @@
+/* Only the subsets the app needs: latin + latin-ext carry every Turkish letter. */
+@import '@fontsource/baloo-2/latin-500.css';
+@import '@fontsource/baloo-2/latin-ext-500.css';
+@import '@fontsource/baloo-2/latin-600.css';
+@import '@fontsource/baloo-2/latin-ext-600.css';
+@import '@fontsource/baloo-2/latin-700.css';
+@import '@fontsource/baloo-2/latin-ext-700.css';
+@import '@fontsource/baloo-2/latin-800.css';
+@import '@fontsource/baloo-2/latin-ext-800.css';
+@import '@fontsource/paytone-one/latin-400.css';
+@import '@fontsource/paytone-one/latin-ext-400.css';
