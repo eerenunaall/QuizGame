@@ -20,7 +20,7 @@ import type { Clock } from '../util/clock';
 import { clientIp } from '../ws/gateway';
 import { AuthoringError, type AuthoringService } from './authoring-service';
 import type { VenueDrafts } from './authoring-drafts';
-import { EXTRACT_LIMITS } from './extract';
+import { EXTRACT_LIMITS, extractDocument } from './extract';
 import type { VenueService } from './service';
 
 export interface AuthoringDeps {
@@ -45,6 +45,24 @@ const RunBody = z.strictObject({
   data: z.string().min(1).max(DOCUMENT_BODY_LIMIT),
   category: z.string().trim().min(1).max(80).default('Belgeden sorular'),
 });
+/** Pasted or typed question text (no model): about 100 KB of text is far more than 200 questions need. */
+const TEXT_BODY_LIMIT = 150_000;
+const Difficulty = z.enum(['EASY', 'MEDIUM', 'HARD', 'EXPERT']).default('MEDIUM');
+const ImportTextBody = z.strictObject({
+  fileName: z.string().trim().max(120).default('Yapıştırılan sorular'),
+  text: z.string().min(1).max(TEXT_BODY_LIMIT),
+  category: z.string().trim().min(1).max(80).default('Genel kültür'),
+  difficulty: Difficulty,
+});
+const ImportFileBody = z.strictObject({
+  fileName: z.string().max(200).default('belge'),
+  data: z.string().min(1).max(DOCUMENT_BODY_LIMIT),
+  category: z.string().trim().min(1).max(80).default('Genel kültür'),
+  difficulty: Difficulty,
+});
+/** A spreadsheet export or JSON lines belong in the question upload box, not in the text reader. */
+const TABLE_HEAD =
+  /^\s*(?:[{[]|"?(?:category|kategori|question|soru)"?\s*[,;\t].*(?:option|[sş][ıi]k|correct|do[gğ]ru))/iu;
 const ApproveBody = z.union([
   z.strictObject({ all: z.literal(true) }),
   z.strictObject({ ids: z.array(z.uuid()).min(1).max(100) }),
@@ -178,6 +196,82 @@ export function registerVenueAuthoringRoutes(app: FastifyInstance, deps: Authori
   // ───────────── documents to drafts (ADR-0028 §6) ─────────────
   const read = { auth: 'session', limit: 'venue' } as const;
   const write = { auth: 'session', limit: 'venueStudio' } as const;
+
+  /**
+   * Questions that already exist as text become drafts with no model and no key (owner decision 2026-11-10):
+   * the same review gate and import checks as every other draft. Pasted text and uploaded documents share
+   * `VenueDrafts.importText`; only the document route reads a file first (in the extraction worker).
+   */
+  const importAnswer = async (
+    reply: FastifyReply,
+    run: () => ReturnType<VenueDrafts['importText']>,
+  ) => {
+    try {
+      return await run();
+    } catch (error) {
+      if (error instanceof AuthoringError && error.code === 'SAME_FILE')
+        return apiError(reply, 409, 'INVALID_STATE', { reason: 'same_file' });
+      throw error;
+    }
+  };
+
+  app.post(
+    '/v1/venues/:venueId/authoring/import-text',
+    { bodyLimit: TEXT_BODY_LIMIT + 2048, config: { auth: 'session', limit: 'venueStudio' } },
+    async (request, reply) => {
+      const who = await ownerGate(request, reply);
+      if (!who) return reply;
+      const body = ImportTextBody.safeParse(request.body);
+      if (!body.success) return apiError(reply, 400, 'INVALID_MESSAGE');
+      if (TABLE_HEAD.test(body.data.text))
+        return apiError(reply, 422, 'INVALID_MESSAGE', { reason: 'table_format' });
+      return importAnswer(reply, () =>
+        deps.drafts.importText({ ...who, ...body.data, text: body.data.text }),
+      );
+    },
+  );
+
+  app.post(
+    '/v1/venues/:venueId/authoring/import-file',
+    {
+      bodyLimit: DOCUMENT_BODY_LIMIT + 1024,
+      config: { auth: 'session', limit: 'venueAuthoring' },
+    },
+    async (request, reply) => {
+      const who = await ownerGate(request, reply);
+      if (!who) return reply;
+      const body = ImportFileBody.safeParse(request.body);
+      if (!body.success || !BASE64.test(body.data.data))
+        return apiError(reply, 400, 'INVALID_MESSAGE');
+      const extracted = await extractDocument(
+        new Uint8Array(Buffer.from(body.data.data, 'base64')),
+        body.data.fileName,
+      );
+      if (!extracted.ok) {
+        if (extracted.code === 'busy')
+          return apiError(reply, 429, 'RATE_LIMITED', { reason: 'busy' });
+        if (extracted.code !== 'too_big' && extracted.code !== 'no_text')
+          deps.security.record('VENUE_CONTENT_REJECTED', {
+            ipHash: ipHashOf(request),
+            detail: { authoring: true, code: extracted.code },
+          });
+        return apiError(reply, 422, 'INVALID_MESSAGE', { reason: extracted.code });
+      }
+      const text = extracted.sections.map((section) => section.text).join('\n');
+      if (TABLE_HEAD.test(text))
+        return apiError(reply, 422, 'INVALID_MESSAGE', { reason: 'table_format' });
+      return importAnswer(reply, () =>
+        deps.drafts.importText({
+          venueId: who.venueId,
+          accountId: who.accountId,
+          fileName: body.data.fileName.slice(0, 120),
+          text,
+          category: body.data.category,
+          difficulty: body.data.difficulty,
+        }),
+      );
+    },
+  );
 
   app.get('/v1/venues/:venueId/authoring', { config: read }, async (request, reply) => {
     const who = await ownerGate(request, reply);

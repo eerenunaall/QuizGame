@@ -610,6 +610,7 @@ export interface VenueQuestionDrafts {
   created_by: string | null;
   expires_at: Timestamp;
   id: Generated<string>;
+  origin: Generated<string>;
   payload: Json;
   question_id: string | null;
   run_id: string | null;

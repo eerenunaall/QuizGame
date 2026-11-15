@@ -75,6 +75,7 @@ export interface AuthoringDeps {
 /** One JSONL row the venue import pipeline understands, for a draft (also used by the review gate). */
 export function draftRow(
   payload: Omit<DraftPayload, 'sourceQuote' | 'page'>,
+  authorType: 'AI_DRAFT' | 'AI_ASSISTED' = 'AI_DRAFT',
 ): Record<string, unknown> {
   return {
     language: 'tr',
@@ -84,7 +85,7 @@ export function draftRow(
     options: payload.options,
     correctIndex: payload.correctIndex,
     explanation: payload.explanation,
-    authorType: 'AI_DRAFT',
+    authorType,
   };
 }
 

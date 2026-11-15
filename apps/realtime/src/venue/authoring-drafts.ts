@@ -1,13 +1,18 @@
+import { createHash } from 'node:crypto';
 import type { Database } from '@quizparty/db';
 import {
+  AUTHORING_LIMITS,
   DraftPayload,
+  TEXT_IMPORT_LIMITS,
   analyzeVenueUpload,
   importVenueUpload,
+  parseQuestionText,
   type DraftEdit,
+  type SkipReason,
 } from '@quizparty/question-bank';
 import type { VenueIssue } from '@quizparty/question-schema';
 import type { Clock } from '../util/clock';
-import { draftRow, jsonl } from './authoring-service';
+import { AuthoringError, draftRow, jsonl } from './authoring-service';
 
 export interface DraftView {
   id: string;
@@ -24,6 +29,22 @@ export interface ApproveResult {
 }
 
 const APPROVE_AT_ONCE = 100;
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** The review list shows this many drafts (see `list`); more would be invisible to the owner. */
+const LIST_CAP = 200;
+
+export interface TextImportResult {
+  drafts: number;
+  /** Blocks that did not become drafts: the parser's reasons, plus `check` for the venue import checks. */
+  skipped: {
+    reason: SkipReason | 'check';
+    number: number | null;
+    excerpt: string;
+    /** For `check`: the issue codes the page already translates. */
+    codes?: string[];
+  }[];
+  keyUsed: boolean;
+}
 
 /**
  * The review gate (ADR-0028 §6): drafts are rows of their own, never questions. Only `approve` moves a
@@ -55,6 +76,118 @@ export class VenueDrafts {
       expiresAt: row.expires_at.getTime(),
       payload: payload.data,
     };
+  }
+
+  /**
+   * Questions that already exist as text become drafts without any model (owner decision 2026-11-10): the
+   * parser reads them, the same checks as an approval run now so nothing is shown that could never be
+   * published, and the rest waits for the owner's review like every other draft. Needs no `AUTHORING_*` key.
+   */
+  async importText(input: {
+    venueId: string;
+    accountId: string;
+    fileName: string;
+    text: string;
+    category: string;
+    difficulty: DraftPayload['difficulty'];
+  }): Promise<TextImportResult> {
+    const fileHash = createHash('sha256').update(input.text).digest('hex');
+    const existing = await this.deps.db
+      .selectFrom('venue_question_drafts')
+      .select(['source_file_hash'])
+      .where('venue_id', '=', input.venueId)
+      .where('state', '=', 'DRAFT')
+      .where('expires_at', '>', this.now())
+      .execute();
+    if (existing.some((row) => row.source_file_hash === fileHash))
+      throw new AuthoringError('SAME_FILE');
+
+    const parsed = parseQuestionText(input.text);
+    const skipped: TextImportResult['skipped'] = [...parsed.skipped];
+    const room = Math.max(0, LIST_CAP - existing.length);
+    let candidates = parsed.questions;
+    if (candidates.length > room) {
+      for (const dropped of candidates.slice(room))
+        skipped.push({
+          reason: 'over_cap',
+          number: dropped.number,
+          excerpt: dropped.question.slice(0, TEXT_IMPORT_LIMITS.excerpt),
+        });
+      candidates = candidates.slice(0, room);
+    }
+    const payloads: DraftPayload[] = candidates.map((q) => ({
+      category: input.category,
+      difficulty: input.difficulty,
+      question: q.question,
+      options: q.options,
+      correctIndex: q.correctIndex,
+      explanation: q.explanation,
+      sourceQuote: '',
+      page: '',
+    }));
+
+    let kept = candidates.map((_, i) => i);
+    if (payloads.length > 0) {
+      const dry = await analyzeVenueUpload(
+        this.deps.db,
+        {
+          venueId: input.venueId,
+          fileName: 'taslak',
+          bytes: jsonl(payloads.map((payload) => draftRow(payload, 'AI_ASSISTED'))),
+        },
+        { now: this.now() },
+      );
+      if ('ok' in dry && dry.ok === false) {
+        for (const q of candidates)
+          skipped.push({
+            reason: 'check',
+            number: q.number,
+            excerpt: q.question.slice(0, TEXT_IMPORT_LIMITS.excerpt),
+            codes: [dry.issue.code],
+          });
+        kept = [];
+      } else if ('rows' in dry) {
+        // The very same rows are a live upload already (the owner re-sent questions that are in the pool):
+        // the dry-run then lists no rows at all, so every one of them is a duplicate.
+        const bad = dry.alreadyImported
+          ? new Map(candidates.map((_, i) => [i + 1, ['duplicate']]))
+          : new Map(dry.rows.map((row) => [row.line, row.issues.map((x) => x.code)]));
+        kept = kept.filter((i) => !bad.has(i + 1));
+        for (const [line, codes] of bad) {
+          const q = candidates[line - 1];
+          if (q)
+            skipped.push({
+              reason: 'check',
+              number: q.number,
+              excerpt: q.question.slice(0, TEXT_IMPORT_LIMITS.excerpt),
+              codes,
+            });
+        }
+      }
+    }
+    if (kept.length > 0) {
+      const created = this.now();
+      const expires = new Date(created.getTime() + AUTHORING_LIMITS.draftDays * DAY_MS);
+      await this.deps.db
+        .insertInto('venue_question_drafts')
+        .values(
+          kept.map((i, order) => ({
+            venue_id: input.venueId,
+            run_id: null,
+            created_by: input.accountId,
+            // One millisecond apart: the review list is ordered by creation time, so it keeps the
+            // order of the document instead of a random one.
+            created_at: new Date(created.getTime() + order),
+            expires_at: expires,
+            source_file_hash: fileHash,
+            source_file_name: input.fileName.slice(0, 120),
+            origin: 'TEXT' as const,
+            payload: JSON.stringify(payloads[i]),
+          })),
+        )
+        .execute();
+    }
+    return { drafts: kept.length, skipped, keyUsed: parsed.keyUsed };
   }
 
   async list(venueId: string): Promise<DraftView[]> {
@@ -134,7 +267,7 @@ export class VenueDrafts {
   ): Promise<ApproveResult> {
     let query = this.deps.db
       .selectFrom('venue_question_drafts')
-      .select(['id', 'source_file_hash', 'source_file_name', 'payload'])
+      .select(['id', 'source_file_hash', 'source_file_name', 'origin', 'payload'])
       .where('venue_id', '=', venueId)
       .where('state', '=', 'DRAFT')
       .where('expires_at', '>', this.now());
@@ -169,15 +302,23 @@ export class VenueDrafts {
             issues: [{ field: '', code: 'row_not_object' }],
           });
       if (valid.length === 0) continue;
+      // Drafts of one file hash share an origin (the hash is of the same source text/document).
+      const fromText = valid[0]!.row.origin === 'TEXT';
       const imported = await importVenueUpload(
         this.deps.db,
         {
           venueId,
           accountId,
           // Not ending in .csv/.txt: the format is sniffed from the content (JSON lines), not the name.
-          fileName: `Belge: ${valid[0]!.row.source_file_name.slice(0, 100)} (AI)`,
-          bytes: jsonl(valid.map((item) => draftRow(item.payload))),
-          origin: 'AI',
+          fileName: fromText
+            ? `Belge: ${valid[0]!.row.source_file_name.slice(0, 100)}`
+            : `Belge: ${valid[0]!.row.source_file_name.slice(0, 100)} (AI)`,
+          bytes: jsonl(
+            valid.map((item) =>
+              fromText ? draftRow(item.payload, 'AI_ASSISTED') : draftRow(item.payload),
+            ),
+          ),
+          origin: fromText ? 'FILE' : 'AI',
           sourceFileHash: fileHash,
         },
         { now: this.now() },
