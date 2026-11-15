@@ -129,7 +129,7 @@ describe('suggestOptions', () => {
       '   ',
       'x'.repeat(5000),
       '9'.repeat(40),
-      '\u0000‮',
+      '\u0000\u202e',
       '1e999',
       '١٢٣',
     ]) {
