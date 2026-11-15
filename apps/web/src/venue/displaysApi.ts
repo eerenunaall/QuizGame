@@ -60,6 +60,9 @@ export const displaysApi = {
       'POST',
       minutes === undefined ? {} : { minutes },
     ),
+  /** Puts a quiz night's slides on a paired TV: it receives them on its next poll (docs/TODO.md A6). */
+  openNight: (venueId: string, displayId: string, nightId: string) =>
+    call<{ ok: true }>(`${v(venueId)}/displays/${displayId}/open-night`, 'POST', { nightId }),
   remove: (venueId: string, displayId: string) =>
     call<{ ok: true }>(`${v(venueId)}/displays/${displayId}/revoke`, 'POST', {}),
 };

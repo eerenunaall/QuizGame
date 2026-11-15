@@ -399,3 +399,59 @@ describe('Quiz night host tablet: question pictures', () => {
     });
   });
 });
+
+describe('Quiz night host tablet: send the night to a paired TV', () => {
+  const screens = [
+    { id: 'd1', name: 'Salon TV', online: true },
+    { id: 'd2', name: 'Teras TV', online: false },
+  ];
+  const serve = (openNight: { status: number; json?: unknown }) => {
+    const calls: { url: string; method: string; body: any }[] = []; // eslint-disable-line @typescript-eslint/no-explicit-any
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string, init?: RequestInit) => {
+        const method = init?.method ?? 'GET';
+        calls.push({ url, method, body: init?.body ? JSON.parse(init.body as string) : undefined });
+        const json = (data: unknown, status = 200) =>
+          Promise.resolve(new Response(JSON.stringify(data), { status }));
+        if (url.endsWith('/displays')) return json({ items: screens, seats: 3 });
+        if (url.endsWith('/open-night'))
+          return json(openNight.json ?? { ok: true }, openNight.status);
+        if (url.endsWith('/state')) return json({ host: hostView(state, Date.now()) });
+        return json({ error: { code: 'NOT_FOUND' } }, 404);
+      }),
+    );
+    return calls;
+  };
+
+  it("lists the café's TVs, sends to an online one and says so; an offline one is disabled", async () => {
+    const calls = serve({ status: 200 });
+    presentView();
+    const online = await screen.findByTestId('qn-screen-Salon TV');
+    expect(screen.getByTestId<HTMLButtonElement>('qn-screen-Teras TV').disabled).toBe(true);
+    fireEvent.click(online);
+    expect((await screen.findByTestId('qn-screen-sent')).textContent).toContain('Salon TV');
+    const post = calls.find((c) => c.url.endsWith('/displays/d1/open-night'))!;
+    expect(post.method).toBe('POST');
+    expect(post.body).toEqual({ nightId: 'n1' });
+  });
+
+  it('explains a TV that is busy with a game', async () => {
+    serve({ status: 409, json: { error: { code: 'GAME_IN_PROGRESS' } } });
+    presentView();
+    fireEvent.click(await screen.findByTestId('qn-screen-Salon TV'));
+    expect(await screen.findByText(/oyun sürüyor/u)).toBeTruthy();
+  });
+
+  it('shows no list when the café has no paired TV', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(new Response(JSON.stringify({ items: [], seats: 3 }), { status: 200 })),
+      ),
+    );
+    presentView();
+    await waitFor(() => expect(screen.getByTestId('qn-tvlink')).toBeTruthy());
+    expect(screen.queryByTestId('qn-screens')).toBeNull();
+  });
+});

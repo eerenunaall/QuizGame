@@ -77,6 +77,10 @@ export class VenueDisplays {
   /** display id → the room it last created or was handed (single instance, ADR-0024 consequences). */
   private readonly rooms = new Map<string, string>();
   private readonly deliveries = new Map<string, { delivery: DisplayDelivery; at: number }>();
+  /** display id → the quiz night address the panel sent to that TV (taken once by its poll). */
+  private readonly nightDeliveries = new Map<string, { path: string; at: number }>();
+  private mintNightLink:
+    ((venueId: string, nightId: string, accountId: string) => Promise<string>) | null = null;
 
   constructor(private readonly deps: DisplayDeps) {}
 
@@ -339,6 +343,49 @@ export class VenueDisplays {
   /** A room the display created itself (POST /v1/rooms with its credential). */
   roomCreated(displayId: string, roomId: string): void {
     this.rooms.set(displayId, roomId);
+  }
+
+  /**
+   * The quiz night service mints the signed display link (ADR-0029); it is given here after both exist, so
+   * this class never imports the night service. The function must answer a night of another venue with 404.
+   */
+  attachNights(
+    mint: (venueId: string, nightId: string, accountId: string) => Promise<string>,
+  ): void {
+    this.mintNightLink = mint;
+  }
+
+  /** Taken once by the TV's poll: the same-origin address of a quiz night slide show. */
+  takeNight(displayId: string): string | null {
+    const entry = this.nightDeliveries.get(displayId);
+    if (!entry) return null;
+    this.nightDeliveries.delete(displayId);
+    return this.now() - entry.at <= DELIVERY_TTL_MS ? entry.path : null;
+  }
+
+  /**
+   * "Bu TV'de aç" for a quiz night (docs/TODO.md A6): hands the paired TV its night's slides on its next poll.
+   * The display must belong to this venue, be online and not be in the middle of a game; the night must
+   * belong to this venue (the minting function answers any other id with 404).
+   */
+  async openNight(
+    venueId: string,
+    displayId: string,
+    accountId: string,
+    nightId: string,
+  ): Promise<{ ok: true }> {
+    const row = await this.activeRow(venueId, displayId);
+    const now = this.now();
+    const seen = this.lastSeenOf(row);
+    if (seen === null || now - seen > ONLINE_WINDOW_MS)
+      throw new VenueError(409, 'INVALID_STATE', { reason: 'offline' });
+    const room = this.liveRoomOf(displayId);
+    if (room && !ATTACHABLE_PHASES.has(room.state.phase))
+      throw new VenueError(409, 'GAME_IN_PROGRESS');
+    if (!this.mintNightLink) throw new VenueError(404, 'NOT_FOUND');
+    const path = await this.mintNightLink(venueId, nightId, accountId);
+    this.nightDeliveries.set(displayId, { path, at: now });
+    return { ok: true };
   }
 
   /** Taken once by the TV's poll. */

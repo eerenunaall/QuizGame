@@ -84,6 +84,12 @@ existing palette, public leaderboards across events.
 - Prize: the winning team gets a single-use code, shown only on the host tablet, stored hashed, one per
   night, only after the podium; staff may redeem it.
 
+## Amendment 2026-11-15 (paired TV)
+`POST /v1/venues/:venueId/displays/:displayId/open-night` (owner only): the server mints the night's signed display link and hands
+the same-origin path `/tv/gece?l=...` to the paired TV on its next poll (once, two minutes at most). The display and the night must
+belong to the venue, the display must be online and not in a running game; the TV page only follows a path of exactly that shape.
+A link that expires or is revoked sends the TV back to `/tv` after 20 seconds. Red-team ATTACK 95.
+
 ## Amendment 2026-11-15 (question pictures)
 A question's `imageUrl` is only ever `/v1/venue-assets/<this venue>/<sha256>` of an image in the venue's own store (new kind
 `QUESTION`, migration 0019, at most 60 per venue, separate from the 12 brand images; shelf cleaned of pictures no night uses

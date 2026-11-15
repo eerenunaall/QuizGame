@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Command, HostRound, HostView, LogEvent } from '@quizparty/quiznight';
 import { Button } from '../../ui/Button';
 import { useI18n } from '../../lib/i18n';
+import { AccountApiError } from '../../lib/account';
+import { displaysApi, type DisplayItem } from '../displaysApi';
 import { nightsApi, type NightDetail } from './api';
 import { useNightError } from './QuizNightTab';
 import styles from './quiznight.module.css';
@@ -30,6 +32,8 @@ export function Present({
   const [link, setLink] = useState<string | null>(null);
   const [prize, setPrize] = useState<{ code: string; teamName: string; text: string } | null>(null);
   const [log, setLog] = useState<LogEvent[] | null>(null);
+  const [screens, setScreens] = useState<DisplayItem[]>([]);
+  const [sentTo, setSentTo] = useState<string | null>(null);
   const inFlight = useRef(false);
 
   useEffect(() => {
@@ -94,6 +98,30 @@ export function Present({
       setError(describe(e));
     }
   }
+  // The café's paired TVs (a venue without the pairing lock has none): the owner can put the night on one.
+  useEffect(() => {
+    void displaysApi.list(venueId).then(
+      (r) => setScreens(r.items),
+      () => undefined,
+    );
+  }, [venueId]);
+  async function sendToScreen(display: DisplayItem): Promise<void> {
+    setError(null);
+    setSentTo(null);
+    try {
+      await displaysApi.openNight(venueId, display.id, night.id);
+      setSentTo(display.name);
+    } catch (e) {
+      const reason = e instanceof AccountApiError ? e.params.reason : undefined;
+      setError(
+        e instanceof AccountApiError && e.code === 'GAME_IN_PROGRESS'
+          ? t('qn.tv.err.busy')
+          : reason === 'offline'
+            ? t('qn.tv.err.offline', { name: display.name })
+            : describe(e),
+      );
+    }
+  }
   async function giveReward(teamId?: string): Promise<void> {
     try {
       setPrize(await nightsApi.reward(venueId, night.id, teamId));
@@ -115,6 +143,28 @@ export function Present({
           onFocus={(e) => e.currentTarget.select()}
           data-testid="qn-link"
         />
+      ) : null}
+      {screens.length > 0 ? (
+        <div className={styles.chips} data-testid="qn-screens">
+          {screens.map((display) => (
+            <button
+              key={display.id}
+              type="button"
+              className={styles.chip}
+              disabled={!display.online}
+              onClick={() => void sendToScreen(display)}
+              data-testid={`qn-screen-${display.name}`}
+            >
+              {t('qn.tv.openOn', { name: display.name })}
+              {display.online ? '' : ` (${t('qn.tv.offline')})`}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {sentTo ? (
+        <p className={styles.ok} role="status" data-testid="qn-screen-sent">
+          {t('qn.tv.sent', { name: sentTo })}
+        </p>
       ) : null}
       <div className={styles.row}>
         <Button

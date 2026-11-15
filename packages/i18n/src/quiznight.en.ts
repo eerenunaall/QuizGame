@@ -251,4 +251,9 @@ export const quizNightEn = {
   'qn.picture.external':
     'This question has an old outside address; the TV will not show it. Upload the picture.',
   'qn.err.BAD_IMAGE': 'A picture does not belong to this café or was deleted. Upload it again.',
+  'qn.tv.openOn': 'Open on {name}',
+  'qn.tv.offline': 'offline',
+  'qn.tv.sent': '{name} will show the night in a few seconds.',
+  'qn.tv.err.busy': 'A game is running on this TV; wait for it to finish.',
+  'qn.tv.err.offline': '{name} is offline right now.',
 } as const;

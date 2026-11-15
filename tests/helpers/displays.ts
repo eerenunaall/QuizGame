@@ -58,6 +58,7 @@ export class TvBrowser {
       paired: boolean;
       pairing?: { expiresAt: number } | null;
       display?: { name: string };
+      night?: { path: string };
       delivery?: {
         roomId: string;
         code: string;
@@ -108,6 +109,12 @@ export function displayApi(server: TestServer, who: { token: string } | null, ve
         table: { id: string } | null;
         error?: { code: string; params?: Record<string, string> };
       }>('POST', `${base}/${displayId}/open`, minutes === undefined ? {} : { minutes }),
+    openNight: (displayId: string, body: unknown) =>
+      send<{ ok?: true; error?: { code: string; params?: Record<string, string> } }>(
+        'POST',
+        `${base}/${displayId}/open-night`,
+        body,
+      ),
     revoke: (displayId: string) =>
       send<{ ok?: true; error?: { code: string } }>('POST', `${base}/${displayId}/revoke`, {}),
   };

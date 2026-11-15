@@ -9,7 +9,7 @@ to "optional". Work top to bottom; tick an item here in the same commit that fin
   agent worktrees under `.claude/worktrees/`) was lost once. Fetch, rebase, push; never force-push.
 - Bug → failing regression test first. Never skip a test. Strings only in `packages/i18n` (tr + en).
 - Source hygiene guard: no literal invisible/bidi characters in source, write escapes.
-- Next free numbers: migration `0020`, red-team `ATTACK 95`.
+- Next free numbers: migration `0020`, red-team `ATTACK 96`.
 - Gate before a final push: `pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test &&
   pnpm run test:web && pnpm run test:integration && pnpm run test:ws && pnpm run test:red-team`, then
   `pnpm run build:web && pnpm run build:admin && pnpm exec playwright test` (about 18 minutes, 47 tests).
@@ -70,7 +70,7 @@ to "optional". Work top to bottom; tick an item here in the same commit that fin
       `apps/realtime/src/venue/quiznight-routes.ts`, `quiznight-service.ts`), draft approval
       (`authoring-routes.ts`), display credentials (`displays.ts`, `display-routes.ts`). Every finding: test
       first, then fix.
-- [ ] **A6 Send a quiz night to a paired TV from the panel.** Today the TV opens a night through a signed
+- [x] **A6 Send a quiz night to a paired TV from the panel.** (done 2026-11-15, ADR-0029 amendment, ATTACK 95) Today the TV opens a night through a signed
       12-hour link (`/tv/gece?l=…`). Under `VENUE_LOCK` a paired display should receive it like a room:
       extend the display poll delivery (`displays.ts`, `display-routes.ts`,
       `apps/web/src/venue/DisplayPairing.tsx`) and add "Bu TV'de aç" in the quiz night screen;

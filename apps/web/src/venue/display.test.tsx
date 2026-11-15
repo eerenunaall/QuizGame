@@ -39,6 +39,47 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe('TV gate: a quiz night sent from the panel', () => {
+  const token = `${'a'.repeat(36)}.1700000000000.${'b'.repeat(64)}`;
+  const go = (path: string) => {
+    const assign = vi.fn();
+    vi.stubGlobal('location', { ...window.location, assign });
+    network((call) =>
+      call.path === '/v1/display/poll'
+        ? { json: { lock: true, paired: true, display: { name: 'Salon TV' }, night: { path } } }
+        : undefined,
+    );
+    wrap(
+      <DisplayLockGate>
+        <div data-testid="game" />
+      </DisplayLockGate>,
+    );
+    return assign;
+  };
+
+  it('goes to the night when the server hands over its address', async () => {
+    const assign = go(`/tv/gece?l=${encodeURIComponent(token)}`);
+    await waitFor(() =>
+      expect(assign).toHaveBeenCalledWith(`/tv/gece?l=${encodeURIComponent(token)}`),
+    );
+  });
+
+  it('never follows an address that is not a quiz night link of this origin', async () => {
+    for (const path of [
+      'https://evil.example/tv/gece?l=' + 'a'.repeat(40),
+      '//evil.example/x',
+      '/staff?x=1',
+      '/tv/gece?l=short',
+      'javascript:alert(1)',
+    ]) {
+      const assign = go(path);
+      await waitFor(() => expect(screen.getByTestId('game')).toBeTruthy());
+      expect(assign).not.toHaveBeenCalled();
+      cleanup();
+    }
+  });
+});
+
 describe('TV gate', () => {
   it('shows the game at once when the lock is off', async () => {
     network((call) =>

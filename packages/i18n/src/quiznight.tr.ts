@@ -249,4 +249,9 @@ export const quizNightTr = {
     'Resim rafı dolu (en fazla 60). Hiçbir gecede kullanılmayan resimler bir gün sonra kendiliğinden silinir.',
   'qn.picture.external': 'Bu soruda eski bir dış adres var; TV onu göstermez. Resmi yükleyin.',
   'qn.err.BAD_IMAGE': 'Bir resim bu kafeye ait değil ya da silinmiş. Resmi yeniden yükleyin.',
+  'qn.tv.openOn': "{name}'de aç",
+  'qn.tv.offline': 'çevrimdışı',
+  'qn.tv.sent': '{name} birkaç saniye içinde geceyi gösterecek.',
+  'qn.tv.err.busy': "Bu TV'de bir oyun sürüyor; bitmesini bekleyin.",
+  'qn.tv.err.offline': '{name} şu an çevrimdışı.',
 } as const;

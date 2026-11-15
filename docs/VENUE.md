@@ -339,6 +339,9 @@ Haftalık pub quiz gecesi: takımlar masalarda **kağıt ve kalemle** oynar, tel
 ### Sunum (gece)
 1. **Sunum** sekmesinde **TV bağlantısı oluştur**'a basın, çıkan adresi TV'nin tarayıcısında açın (`/tv/gece?l=...`).
    Bağlantı 12 saat geçerlidir, **Bağlantıları iptal et** ile kapatılır; TV eşleştirmesi gerekmez.
+   **Eşleşmiş TV varsa** (TV'ler sekmesinden bağladıysanız) aynı kutuda her TV için **"Salon TV'de aç"** düğmesi çıkar: basınca TV
+   birkaç saniye içinde geceyi kendiliğinden açar, adres yazmanız gerekmez. TV çevrimdışıysa düğme kapalıdır; TV'de bir oyun
+   sürüyorsa önce bitmesini bekleyin. Gece bağlantısı iptal edilirse ya da 12 saat dolarsa TV 20 saniye sonra kendi menüsüne döner.
 2. **Geceyi başlat**, sonra **İLERİ** büyük düğmesiyle slaytları ilerletin: açılış, nasıl oynanır, tur başlığı, sorular,
    *Kalemler bırakılsın*, *Kağıtları değiştirin* (Masa 1 → Masa 2 …), cevaplar tek tek, puanlama, tur puanları, puan durumu.
    Tabletiniz cevabı ve açıklamayı yalnızca size gösterir (mor "Yalnızca sizde görünür" etiketi); TV cevabı sizin açtığınız

@@ -20,7 +20,11 @@ interface PollAnswer {
   paired: boolean;
   pairing?: { expiresAt: number } | null;
   delivery?: Delivery;
+  /** A quiz night the panel put on this TV: where to go (always this origin's /tv/gece). */
+  night?: { path: string };
 }
+/** The only shape the TV will navigate to on the server's word. */
+const NIGHT_PATH = /^\/tv\/gece\?l=[A-Za-z0-9._~%-]{20,400}$/u;
 interface Pairing {
   code: string;
   pairUrl: string;
@@ -70,6 +74,10 @@ export function DisplayLockGate({ children }: { children: ReactNode }): ReactNod
         if (answer.paired) {
           wasPaired.current = true;
           setPairing(null);
+          if (answer.night && NIGHT_PATH.test(answer.night.path)) {
+            window.location.assign(answer.night.path);
+            return;
+          }
           if (answer.delivery) {
             const session: StoredSession = {
               sessionId: answer.delivery.display.sessionId,

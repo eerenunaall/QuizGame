@@ -63,6 +63,7 @@ const VenueParams = z.strictObject({ venueId: z.uuid() });
 const DisplayParams = z.strictObject({ venueId: z.uuid(), displayId: z.uuid() });
 const PairBody = z.strictObject({ code: z.string().min(1).max(20), name: z.string().max(80) });
 const OpenBody = z.strictObject({ minutes: z.int().min(1).max(MAX_MINUTES_PER_STEP).optional() });
+const OpenNightBody = z.strictObject({ nightId: z.uuid() });
 
 /**
  * The gate `POST /v1/rooms` asks under VENUE_LOCK (ADR-0028 §1). Returns the display that may create a
@@ -189,11 +190,13 @@ export function registerVenueDisplayRoutes(app: FastifyInstance, deps: DisplayRo
         cookies.push(cookie(config, displayName, outcome.rotateTo, DISPLAY_COOKIE_MAX_AGE));
       if (cookies.length > 0) void reply.header('set-cookie', cookies);
       const delivery = displays.takeDelivery(outcome.display.id);
+      const night = displays.takeNight(outcome.display.id);
       return {
         lock: true,
         paired: true,
         display: { name: outcome.display.name },
         ...(delivery ? { delivery } : {}),
+        ...(night ? { night: { path: night } } : {}),
       };
     },
   );
@@ -294,6 +297,30 @@ export function registerVenueDisplayRoutes(app: FastifyInstance, deps: DisplayRo
           params.data.displayId,
           who.accountId,
           body.data.minutes ?? null,
+        );
+      } catch (error) {
+        return fail(reply, error);
+      }
+    },
+  );
+
+  app.post(
+    '/v1/venues/:venueId/displays/:displayId/open-night',
+    { config: policy },
+    async (request, reply) => {
+      // Quiz nights belong to the owner (ADR-0029), so does putting one on a screen.
+      const who = await gate(request, reply, 'OWNER');
+      if (!who) return reply;
+      const params = DisplayParams.safeParse(request.params);
+      if (!params.success) return apiError(reply, 404, 'NOT_FOUND');
+      const body = OpenNightBody.safeParse(request.body);
+      if (!body.success) return apiError(reply, 400, 'INVALID_MESSAGE');
+      try {
+        return await displays.openNight(
+          who.venueId,
+          params.data.displayId,
+          who.accountId,
+          body.data.nightId,
         );
       } catch (error) {
         return fail(reply, error);

@@ -19,6 +19,8 @@ export function linkToken(search: string): string | null {
   return new URLSearchParams(search).get('l');
 }
 
+const BACK_TO_MENU_MS = 20_000;
+
 /** Sound and confetti follow the slide, once per slide (never again on a poll that changes nothing). */
 function useNightEffects(view: NightView | null): void {
   const last = useRef('');
@@ -84,6 +86,13 @@ export function NightTv() {
   const [view, setView] = useState<NightView | null>(null);
   const [fetchedAt, setFetchedAt] = useState(0);
   const [state, setState] = useState<'loading' | 'ok' | 'bad' | 'offline'>('loading');
+  // A link that is gone (expired, revoked, night deleted) sends the screen back to the TV page after a while,
+  // where a paired TV shows its menu again.
+  useEffect(() => {
+    if (state !== 'bad') return;
+    const timer = setTimeout(() => window.location.assign('/tv'), BACK_TO_MENU_MS);
+    return () => clearTimeout(timer);
+  }, [state]);
   const [now, setNow] = useState(() => Date.now());
   const token = linkToken(window.location.search);
   const failures = useRef(0);

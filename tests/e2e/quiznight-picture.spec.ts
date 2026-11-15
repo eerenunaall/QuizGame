@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any -- the night detail is inspected loosely in the page */
 import { expect, test, type Page } from '@playwright/test';
 import { MemoryEmailSender } from '../../apps/realtime/src/auth/email';
 import { png } from '../helpers/images';

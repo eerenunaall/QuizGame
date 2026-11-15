@@ -415,6 +415,11 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     venues,
   });
   const quizNights = new QuizNightService({ db, clock, secret: config.serverSecret, onError });
+  // "Bu TV'de aç" for a quiz night: the paired TV receives the signed display link on its next poll.
+  displays.attachNights(async (venueId, nightId, accountId) => {
+    const link = await quizNights.createLink(venueId, nightId, accountId);
+    return `/tv/gece?l=${encodeURIComponent(link.token)}`;
+  });
   registerVenueRoutes(app, {
     config,
     venues,

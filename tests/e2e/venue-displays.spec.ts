@@ -17,11 +17,12 @@ import {
 const mailbox = new MemoryEmailSender();
 const OWNER = 'sahip@gusto.example';
 let env: E2eServer;
+let venueId: string;
 
 test.beforeEach(async () => {
   env = await startE2eServer(PLAY_GAME_CONFIG, { VENUE_LOCK: '1' }, mailbox);
   await setVenueFlag(env.server, true);
-  await env.server.built.venues.createVenue('Gusto Board Game Cafe', OWNER, null);
+  venueId = (await env.server.built.venues.createVenue('Gusto Board Game Cafe', OWNER, null)).id;
 });
 test.afterEach(async () => {
   await env.server.dispose();
@@ -105,4 +106,84 @@ test('pair a TV from the panel, send a game to it, remove it', async ({ browser 
   await owner.page.getByTestId('display-remove-Salon TV 1').click();
   await expect(tv.getByTestId('display-pairing-code')).toBeVisible({ timeout: 15_000 });
   await expect(owner.page.getByTestId('display-Salon TV 1')).toHaveCount(0);
+});
+
+test('send a quiz night to a paired TV from the tablet, and the TV shows its slides', async ({
+  browser,
+}) => {
+  const tvContext = await browser.newContext({ viewport: TV_VIEWPORT, locale: 'tr-TR' });
+  const tv = await tvContext.newPage();
+  await tv.goto(`${env.url}/tv`);
+  const shown = (await tv.getByTestId('display-pairing-code').innerText()).trim();
+
+  const owner = await phonePage(browser);
+  await owner.page.goto(`${env.url}/staff`);
+  await signIn(owner.page, OWNER);
+  await owner.page.getByTestId('staff-tab-displays').click();
+  await owner.page.getByTestId('display-code').fill(shown.toLowerCase());
+  await owner.page.getByTestId('display-name').fill('Salon TV 1');
+  await owner.page.getByRole('button', { name: 'Bağla' }).click();
+  await expect(tv.getByTestId('tv-start')).toBeVisible({ timeout: 15_000 });
+  await expect(owner.page.getByText('Açık')).toBeVisible({ timeout: 15_000 });
+
+  // A night (made through the panel's own API, as the quiz night spec does), then its tablet screen.
+  const question = (id: string) => ({
+    id,
+    text: `Soru ${id}?`,
+    options: ['Bir', 'İki', 'Üç', 'Dört'],
+    answer: { type: 'OPTION', index: 2 },
+    points: 1,
+    jokerAllowed: true,
+  });
+  const created = await owner.page.evaluate(
+    async ([id, config]) => {
+      const r = await fetch(`/v1/venues/${id}/quiznights`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'x-quizparty-csrf': '1', 'content-type': 'application/json' },
+        body: JSON.stringify(config),
+      });
+      return { status: r.status, body: (await r.json()) as { night: { id: string } } };
+    },
+    [
+      venueId,
+      {
+        title: 'Ekran Gecesi',
+        date: '2026-11-20',
+        rounds: [
+          { id: 'r1', kind: 'NORMAL', title: 'Tur 1', questions: [question('a'), question('b')] },
+        ],
+        tieBreak: null,
+        teams: [1, 2].map((n) => ({
+          id: `t${n}`,
+          name: `Takım ${n}`,
+          badge: { color: '#e4572e', emoji: '🦁' },
+          table: n,
+        })),
+        settings: {
+          jokersPerTeam: 1,
+          wrongDoublePenalty: false,
+          timerSec: 30,
+          halfTimeAfterRound: 0,
+          entranceText: '',
+          prizeText: '',
+        },
+      },
+    ] as const,
+  );
+  expect(created.status).toBe(201);
+  await owner.page.getByTestId('staff-tab-quiznight').click();
+  await owner.page
+    .getByTestId(`qn-night-${created.body.night.id}`)
+    .getByRole('button', { name: 'Aç' })
+    .click();
+  await owner.page.getByTestId('qn-mode-present').click();
+  await owner.page.getByTestId('qn-screen-Salon TV 1').click();
+  await expect(owner.page.getByTestId('qn-screen-sent')).toContainText('Salon TV 1');
+
+  // The TV picks the hand-over up on its next poll and shows the night.
+  await expect(tv.getByTestId('night-tv')).toBeVisible({ timeout: 20_000 });
+  await expect(tv).toHaveURL(/\/tv\/gece\?l=/u);
+  await expect(tv.getByTestId('night-tv')).toContainText('Ekran Gecesi');
+  await shot(tv, 'display-night-on-tv');
 });
