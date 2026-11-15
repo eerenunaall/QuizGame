@@ -119,6 +119,8 @@ describe('ATTACK 18 — the route table is the access policy', () => {
         'POST /v1/venues/:venueId/questions/reports/:reportId/resolve [session]',
         'POST /v1/venues/:venueId/questions/manual [session]',
         'GET /v1/venues/:venueId/authoring [session]',
+        'POST /v1/venues/:venueId/authoring/import-text [session]',
+        'POST /v1/venues/:venueId/authoring/import-file [session]',
         'POST /v1/venues/:venueId/authoring/runs [session]',
         'GET /v1/venues/:venueId/authoring/runs/:runId [session]',
         'GET /v1/venues/:venueId/authoring/drafts [session]',

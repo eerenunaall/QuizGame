@@ -143,7 +143,9 @@ describe('parseQuestionText', () => {
   it('is calm about empty text, noise and invisible characters', () => {
     expect(parseQuestionText('')).toEqual({ questions: [], skipped: [], keyUsed: false });
     expect(parseQuestionText('Sayfa 1\n\n\n  \nBaşlık').questions).toEqual([]);
-    const r = parseQuestionText(`1. Soru metni​ burada?\nA) Bir\nB) İki\nC) Üç\nD) Dört\nCevap: B`);
+    const r = parseQuestionText(
+      `1.\u00a0Soru metni\u200b burada?\nA)\u00a0Bir\nB) İki\nC) Üç\nD) Dört\nCevap:\u00a0B`,
+    );
     expect(r.questions[0]).toMatchObject({ question: 'Soru metni burada?', correctIndex: 1 });
   });
 

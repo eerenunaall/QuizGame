@@ -57,7 +57,7 @@ export interface TextParseResult {
 }
 
 const TR_LETTERS = 'A-Za-zÇĞİÖŞÜçğıöşü';
-const OPTION = /^\s*([*✓✔]\s*)?[(\[]?\s*([A-Ea-e])\s*[)\].:\-–]\s*([*✓✔]\s*)?(\S.*)$/u;
+const OPTION = /^\s*([*✓✔]\s*)?[([]?\s*([A-Ea-e])\s*[)\].:\-–]\s*([*✓✔]\s*)?(\S.*)$/u;
 const ANSWER =
   /^\s*(?:[dD][oO][gğGĞ][rR][uU]\s+)?(?:[cC][eE][vV][aA][pP]|[yY][aAıIiİ][nN][ıIiİ][tT]|[cC][vV][pP]|[aA][nN][sS][wW][eE][rR])\s*[:=\-–]\s*(.*)$/u;
 const EXPLANATION =
@@ -75,7 +75,7 @@ const TRAILING_MARK = /\s*(?:[*✓✔]|\((?:[dD][oO][gğGĞ][rR][uU]|[xX])\))\s*
 
 const clean = (text: string): string =>
   text
-    .replace(/[ ​-‍⁠﻿]/gu, ' ')
+    .replace(/[\u00a0\u200b-\u200d\u2060\ufeff]/gu, ' ')
     .replace(/[ \t]+/gu, ' ')
     .trim();
 
@@ -111,7 +111,7 @@ const newBlock = (number: number | null, stem: string): Block => ({
 /** "B", "B)", "b) Ankara", "(B)" or the text of an option. */
 function resolveAnswer(raw: string, options: readonly string[]): number | null {
   const text = clean(raw);
-  const letter = /^[(\[]?([A-Da-d])(?:[)\].:\-–]\s*.*|\s*)$/u.exec(text);
+  const letter = /^[([]?([A-Da-d])(?:[)\].:\-–]\s*.*|\s*)$/u.exec(text);
   if (letter) {
     const index = letter[1]!.toUpperCase().charCodeAt(0) - 65;
     if (index < options.length) return index;

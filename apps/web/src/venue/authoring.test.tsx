@@ -334,7 +334,7 @@ describe('DocumentAuthoring: questions I already have (no model)', () => {
     });
     wrap(<QuestionStudio venueId={VENUE} />);
     expect((await screen.findByTestId('authoring-off')).textContent).toMatch(/Hazır sorularım/u);
-    expect((screen.getByTestId('text-read') as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByTestId<HTMLButtonElement>('text-read').disabled).toBe(true);
     paste('1. Soru metni?\nA) a\nB) b\nC) c\nD) d\nCevap: B');
     fireEvent.change(screen.getByTestId('text-category'), { target: { value: 'Galata' } });
     fireEvent.click(screen.getByTestId('text-read'));

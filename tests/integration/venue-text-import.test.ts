@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument -- responses are inspected loosely */
+/* eslint-disable @typescript-eslint/no-explicit-any -- responses are inspected loosely */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildDocx } from '../helpers/documents';
 import { call } from '../helpers/payments';
@@ -155,7 +155,9 @@ describe('text -> drafts without any key', () => {
     const r = await api(b.owner, b).importText({ text });
     expect(r.body).toMatchObject({ drafts: 2, keyUsed: true });
     expect(
-      ((await api(b.owner, b).drafts()).body.items as Json[]).map((d) => d.payload.correctIndex),
+      ((await api(b.owner, b).drafts()).body.items as Json[]).map(
+        (d) => d.payload.correctIndex as number,
+      ),
     ).toEqual([3, 1]);
   });
 
@@ -187,7 +189,9 @@ describe('text -> drafts without any key', () => {
     expect(r.status, JSON.stringify(r.body)).toBe(200);
     expect(r.body, JSON.stringify(r.body.skipped)).toMatchObject({ drafts: 2 });
     expect(
-      ((await api(a.owner, a).drafts()).body.items as Json[]).map((d) => d.payload.correctIndex),
+      ((await api(a.owner, a).drafts()).body.items as Json[]).map(
+        (d) => d.payload.correctIndex as number,
+      ),
     ).toEqual([1, 0]);
   });
 

@@ -203,6 +203,9 @@ describe('a table', () => {
     expect((await api(venue.staff).pause(id)).status).toBe(409);
     expect((await api(venue.staff).resume(id)).body.state).toBe('RUNNING');
 
+    // The tier follows the session asynchronously: wait for the raise first, or a loaded machine passes the
+    // next wait at once (the room is still FREE) and reads the session before time is up.
+    await waitUntil(() => live.tier() !== 'FREE', 3000, 'the open session raises the tier');
     // time runs out; the server tells the room and takes the full game back (no guest account linked)
     await waitUntil(() => live.tier() === 'FREE', 6000, 'time-up drops the tier');
     const up = (await api(venue.staff).sessions()).body.items.find((s) => s.id === id)!;

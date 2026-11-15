@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument -- responses are inspected loosely */
+/* eslint-disable @typescript-eslint/no-explicit-any -- responses are inspected loosely */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildZip } from '../helpers/documents';
 import { call } from '../helpers/payments';
